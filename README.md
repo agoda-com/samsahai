@@ -1,0 +1,14 @@
+## Samsahai
+[![CircleCI](https://circleci.com/gh/agoda-com/samsahai.svg?style=svg&circle-token=622dc452d07545e720fc396074cb25a737a204e5)](https://circleci.com/gh/agoda-com/samsahai) [![Docker Repository on Quay](https://quay.io/repository/phantomnat/samsahai/status "Docker Repository on Quay")](https://quay.io/repository/phantomnat/samsahai)
+
+> Creating self-update environment on Kubernetes
+
+---
+
+#### How to contribute
+
+---
+
+#### Related Projects:
+- [`go get github.com/ahmetb/govvv`](https://github.com/ahmetb/govvv) - Add version info to Golang app.
+- [`go get github.com/jpoles1/gopherbadger`](https://github.com/jpoles1/gopherbadger) - Generate code coverage badge
