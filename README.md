@@ -5,7 +5,8 @@
 
 ---
 
-#### How to contribute
+#### Install
+`make init`
 
 ---
 

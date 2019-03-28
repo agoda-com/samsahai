@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	command.SamsahaiCmd.Execute()
+	command.Execute()
 }

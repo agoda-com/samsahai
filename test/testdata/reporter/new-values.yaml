@@ -1,0 +1,12 @@
+comp1:
+  image:
+    repository: registry/image-comp1
+    tag: 1.1.3
+    timestamp: 1553507991
+    time: Monday, March 25, 2019 4:59:51 PM GMT+07:00
+comp2:
+  image:
+    repository: registry/image-comp2
+    tag: 1.1.0
+    timestamp: 1553157675
+    time: Thursday, March 21, 2019 3:41:15 PM GMT+07:00

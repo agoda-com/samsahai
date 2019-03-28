@@ -9,6 +9,14 @@ app_name := samsahai
 output_path := ./out
 go_ldflags ?= $(shell govvv -flags -pkg $(shell go list ./internal/samsahai))
 
+.PHONY: init
+init: tidy install-dep install
+
+.PHONY: install-dep
+install-dep:
+	go get github.com/ahmetb/govvv
+	go get golang.org/x/tools/cmd/goimports
+
 .PHONY: format
 format:
 	gofmt -w .
@@ -16,7 +24,7 @@ format:
 
 .PHONY: build
 build: format
-	go build -ldflags="$(go_ldflags)" -o $(output_path)/$(app_name) cmd/main.go
+	GO111MODULE=on go build -ldflags="$(go_ldflags)" -o $(output_path)/$(app_name) cmd/main.go
 
 .PHONY: install
 install: build
@@ -38,7 +46,7 @@ tidy:
 
 .PHONY: coverage
 coverage: format
-	go test `go list ./internal/... | grep -v cmd` -coverprofile=coverage.txt -covermode=atomic
+	GO111MODULE=on go test -race -v `go list ./internal/... | grep -v cmd` -coverprofile=coverage.txt -covermode=atomic
 
 .PHONY: cover-badge
 cover-badge: coverage

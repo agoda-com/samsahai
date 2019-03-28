@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/agoda-com/samsahai/internal/samsahai/command/send"
+
 	"github.com/spf13/cobra"
 )
 
 var SamsahaiCmd = &cobra.Command{
 	Use:   "samsahai",
-	Short: "Samsahai is a command line for create Blue/Green enviroment",
-	Long:  "Samsahai is a command line for create Blue/Green enviroment",
+	Short: "Samsahai is a command line for create Blue/Green environment",
+	Long:  "Samsahai is a command line for create Blue/Green environment",
 }
 
 // Execute executes the current command.
@@ -27,4 +29,5 @@ func init() {
 
 func addCommands() {
 	SamsahaiCmd.AddCommand(versionCmd())
+	SamsahaiCmd.AddCommand(send.SendCmd())
 }
