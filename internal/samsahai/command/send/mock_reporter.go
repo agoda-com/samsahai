@@ -21,7 +21,7 @@ func (r *mockReporter) SendFailedComponentUpgrade() error {
 }
 
 func (r *mockReporter) SendActivePromotionStatus(status, currentActiveNamespace, serviceOwner string, components []component.Component, showedDetails bool) error {
-	r.sendActivePromotionStatusCalls += 1
+	r.sendActivePromotionStatusCalls++
 	return nil
 }
 

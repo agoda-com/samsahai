@@ -23,7 +23,7 @@ type slackArgs struct {
 
 var slack slackArgs
 
-func SendCmd() *cobra.Command {
+func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "send",
 		Short:             "send [active-promotion|outdated-component|image-missing]",

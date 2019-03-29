@@ -20,11 +20,6 @@ jobs:
 
     working_directory: /go/src/github.com/agoda-com/samsahai
     steps:
-#      - checkout
-#      - restore_cache:
-#          keys:
-#            - project-{{ checksum "go.sum" }}
-#            - project-
 
       - checkout
       - setup_remote_docker
@@ -40,9 +35,7 @@ jobs:
       - run:
           name: "get required projects"
           command: |
-            go get golang.org/x/tools/cmd/goimports
-            go get github.com/ahmetb/govvv
-            go get github.com/jpoles1/gopherbadger
+            make install-dep
             echo 'export GO111MODULE="on"' >> $BASH_ENV
 
       - run:
@@ -55,12 +48,18 @@ jobs:
           command: |
             echo GO111MODULE=${GO111MODULE}
             make coverage
+            bash <(curl -s https://codecov.io/bash)
+
+      - persist_to_workspace:
+          root: /
+          paths:
+            - go
 
       - run:
           name: "build docker"
           command: |
             if [ "$CIRCLE_BRANCH" = "master" ]; then
-              DOCKER_IMAGE_TAG=$(cat ./VERSION)
+              DOCKER_IMAGE_TAG="master"
 
               docker_image_exists() {
                 local image_full_name="$1"; shift
@@ -101,36 +100,103 @@ jobs:
 #          paths:
 #            - /go
 
-#  publish-docker:
+#  code-coverage:
 #    docker:
 #      - image: circleci/golang:1.12
+#
 #    working_directory: /go/src/github.com/agoda-com/samsahai
 #      steps:
-#        - early_return_for_forked_pull_requests
-#        - checkout
-#        - run:
-#            name: Prepared Env vars.
-#            command: |
-#              echo 'export docker_user="$QUAY_DOCKER_USER"' >> $BASH_ENV
-#              echo 'export docker_registry="$QUAY_DOCKER_REGISTRY"' >> $BASH_ENV
-#              echo 'export docker_registry="$QUAY_DOCKER_REGISTRY"' >> $BASH_ENV
-#        attach_workspace:
-#          at: /go
+#        - persist_to_workspace:
+#            root: /
+#            paths:
+#              - go
 #
 #        - run:
-#            name: Docker login
+#            name: codecov
 #            command: |
-#              make docker-login docker_password="$QUAY_DOCKER_TOKEN"
-#        - run:
-#            name: Docker push
-#            command: |
-#              make docker-push
+#              bash <(curl -s https://codecov.io/bash)
+
+  publish-github-release:
+    docker:
+      - image: circleci/golang:1.12
+    working_directory: /go/src/github.com/agoda-com/samsahai
+    steps:
+      - early_return_for_forked_pull_requests
+#        - checkout
+      - setup_remote_docker
+
+      - run:
+          name: Prepared Env vars.
+          command: |
+            echo 'export docker_user="$QUAY_DOCKER_USER"' >> $BASH_ENV
+            echo 'export docker_registry="$QUAY_DOCKER_REGISTRY"' >> $BASH_ENV
+            echo 'export docker_image_repo="phantomnat/samsahai"' >> $BASH_ENV
+            # echo 'export docker_image_tag="latest"' >> $BASH_ENV
+
+      - attach_workspace:
+          at: /go
+
+      # increment version
+      # create tag
+
+      - run:
+          name: "build docker"
+          command: |
+            if [ "$CIRCLE_BRANCH" = "master" ]; then
+              DOCKER_IMAGE_TAG=$(cat ./VERSION)
+
+              docker_image_exists() {
+                local image_full_name="$1"; shift
+                local wait_time="${1:-5}"
+                local search_term='Pulling|is up to date|not found'
+                local result="$((timeout --preserve-status "$wait_time" docker 2>&1 pull "$image_full_name" &) | grep -v 'Pulling repository' | egrep -o "$search_term")"
+                test "$result" || { echo "Timed out too soon. Try using a wait_time greater than $wait_time..."; return 1 ;}
+                echo $result | grep -vq 'not found'
+              }
+
+              if docker_image_exists "$docker_registry/$docker_image_repo:$DOCKER_IMAGE_TAG"; then
+                echo "error: docker image version $DOCKER_IMAGE_TAG already exists!"
+                exit 1
+              fi
+            else
+              echo "error: not master branch!"
+              circleci step halt
+            fi
+
+            echo tag: $DOCKER_IMAGE_TAG
+            echo "export docker_image_tag=\"$DOCKER_IMAGE_TAG\"" >> $BASH_ENV
+
+            make build-docker docker_image_tag=$DOCKER_IMAGE_TAG
+
+      - run:
+          name: docker login
+          command: |
+            make docker-login docker_password="$QUAY_DOCKER_TOKEN"
+
+      - run:
+          name: docker push
+          command: |
+            make docker-push
+
+            if [ "$CIRCLE_BRANCH" = "master" ]; then
+              make docker-tag-n-push-latest
+            fi
 
 workflows:
   version: 2
   build-deploy:
     jobs:
       - build
+      - publish-github-release:
+          requires:
+            - build
+          filters:
+            branches:
+#              only: master
+              ignore: /.*/
+            tags:
+              only: /(?<=^[Vv]|^)(?:(?<major>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<minor>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<patch>(?:0|[1-9](?:(?:0|[1-9])+)*))(?:-(?<prerelease>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*)))*))?(?:[+](?<build>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+)))*))?)$/
+
 #      - publish-docker:
 #          requires:
 #            - build

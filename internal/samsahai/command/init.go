@@ -29,5 +29,5 @@ func init() {
 
 func addCommands() {
 	SamsahaiCmd.AddCommand(versionCmd())
-	SamsahaiCmd.AddCommand(send.SendCmd())
+	SamsahaiCmd.AddCommand(send.Cmd())
 }

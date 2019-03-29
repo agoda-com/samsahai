@@ -11,7 +11,7 @@ import (
 func TestSendActivePromotionStatus(t *testing.T) {
 	g := NewGomegaWithT(t)
 	mockReporter := mockReporter{}
-	sendActivePromotionStatus(&mockReporter, []component.Component{})
+	_ = sendActivePromotionStatus(&mockReporter, []component.Component{})
 	g.Expect(mockReporter.sendActivePromotionStatusCalls).Should(Equal(1), "should call send active promotion status func")
 }
 

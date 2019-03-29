@@ -8,14 +8,20 @@ package_name := github.com/agoda-com/samsahai
 app_name := samsahai
 output_path := ./out
 go_ldflags ?= $(shell govvv -flags -pkg $(shell go list ./internal/samsahai))
+golangci_lint_version := v1.15.0
 
 .PHONY: init
 init: tidy install-dep install
 
 .PHONY: install-dep
 install-dep:
-	go get github.com/ahmetb/govvv
-	go get golang.org/x/tools/cmd/goimports
+	GO111MODULE=off go get github.com/ahmetb/govvv
+	GO111MODULE=off go get golang.org/x/tools/cmd/goimports
+	# install golangci-lint
+	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | \
+		sh -s -- -b $(shell go env GOPATH)/bin $(golangci_lint_version)
+
+	@echo 'done!'
 
 .PHONY: format
 format:
@@ -44,8 +50,18 @@ build-docker:
 tidy:
 	GO111MODULE=on go mod tidy
 
+.PHONY: golangci-lint-check-version
+golangci-lint-check-version:
+	@if golangci-lint --version | grep "$(golangci_lint_version)" > /dev/null; then \
+		echo; \
+	else \
+		echo "golangci-lint version mismatch"; \
+		exit 1; \
+	fi
+
 .PHONY: coverage
 coverage: format
+	GO111MODULE=on golangci-lint run
 	GO111MODULE=on go test -race -v `go list ./internal/... | grep -v cmd` -coverprofile=coverage.txt -covermode=atomic
 
 .PHONY: cover-badge
