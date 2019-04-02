@@ -2,45 +2,38 @@ package active
 
 import (
 	"strings"
-	"time"
 
 	"github.com/agoda-com/samsahai/internal/samsahai/component"
 )
 
-func GetCurrentActiveComponents(currentActiveValuesFile, newValuesFile map[string]component.ValuesFile) ([]component.Component, error) {
-	var components []component.Component
+// GetCurrentActiveComponents get current components in active namespace
+// compares version with new components
+func GetCurrentActiveComponents(currentActiveValuesFile, newValuesFile map[string]component.ValuesFile) ([]component.OutdatedComponent, error) {
+	outdatedComponents := make([]component.OutdatedComponent, 0)
 	for name, val := range currentActiveValuesFile {
 		currentVersion := strings.TrimSpace(val.Image.Tag)
 		var (
 			newVersion   string
-			outdatedDays int
+			newTimestamp int64
 		)
 		if _, exist := newValuesFile[name]; exist {
 			newVersion = strings.TrimSpace(newValuesFile[name].Image.Tag)
-			if newVersion != currentVersion {
-				outdatedDays = getOutdatedDays(newValuesFile[name].Image.Timestamp)
-			}
+			newTimestamp = newValuesFile[name].Image.Timestamp
 		}
 
-		component, err := component.NewComponent(name, currentVersion, newVersion, outdatedDays)
+		component, err := component.NewOutdatedComponent(name, currentVersion, component.NewOptionNewVersion(newVersion, newTimestamp))
 		if err != nil {
 			return nil, err
 		}
 
-		components = append(components, *component)
+		outdatedComponents = append(outdatedComponents, *component)
 	}
 
-	return components, nil
+	return outdatedComponents, nil
 }
 
 // TODO: implements
+// GetCurrentActiveNamespaceByOwner gets current active namespace by service owner
 func GetCurrentActiveNamespaceByOwner(owner string) (string, error) {
 	return "", nil
-}
-
-func getOutdatedDays(newVersionTimestamp int64) int {
-	now := time.Now()
-	newDate := time.Unix(newVersionTimestamp, 0)
-	days := now.Sub(newDate).Hours() / 24
-	return int(days) + 1
 }

@@ -1,19 +1,15 @@
 package send
 
 import (
-	"io/ioutil"
 	"log"
 
 	"github.com/agoda-com/samsahai/internal/samsahai/reporter"
 
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
-
 	"github.com/agoda-com/samsahai/internal/samsahai/component"
-	"github.com/agoda-com/samsahai/internal/samsahai/namespace/active"
-	s "github.com/agoda-com/samsahai/internal/samsahai/reporter/slack"
+	"github.com/spf13/cobra"
 )
 
+// activePromotionArgs defines arguments of active-promotion command
 type activePromotionArgs struct {
 	status                  string
 	currentActiveNamespace  string
@@ -23,6 +19,7 @@ type activePromotionArgs struct {
 	showedDetail            bool
 }
 
+// atvPromotion is global var for binding value
 var atvPromotion activePromotionArgs
 
 func activePromotionCmd() *cobra.Command {
@@ -52,19 +49,18 @@ func activePromotionCmd() *cobra.Command {
 	return cmd
 }
 
+// sendActivePromotionStatusCmd runs when command is executed
 func sendActivePromotionStatusCmd(cmd *cobra.Command, args []string) error {
-	if slack.enabled {
-		if validated, err := validateSlackArgs(&slack); !validated {
-			return err
-		}
+	components, err := getActiveComponentsFromValuesFile(atvPromotion.currentActiveValuesPath, atvPromotion.newValuesPath)
+	if err != nil {
+		return err
+	}
 
-		components, err := getActiveComponentsFromValuesFile(atvPromotion.currentActiveValuesPath, atvPromotion.newValuesPath)
+	if slack.enabled {
+		slackCli, err := newSlackReporter()
 		if err != nil {
 			return err
 		}
-
-		channels := getSlackChannels(slack.channels)
-		slackCli := s.NewSlack(slack.accessToken, slack.username, channels)
 
 		if err := sendActivePromotionStatus(slackCli, components); err != nil {
 			return err
@@ -74,49 +70,10 @@ func sendActivePromotionStatusCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getActiveComponentsFromValuesFile(currentActiveValuesPath, newValuesPath string) ([]component.Component, error) {
-	if currentActiveValuesPath == "" {
-		return nil, nil
-	}
-
-	var (
-		activeValues, newValues map[string]component.ValuesFile
-		err                     error
-	)
-
-	activeValues, err = parseValuesfileToStruct(currentActiveValuesPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if newValuesPath != "" {
-		newValues, err = parseValuesfileToStruct(newValuesPath)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return active.GetCurrentActiveComponents(activeValues, newValues)
-}
-
-func sendActivePromotionStatus(r reporter.Reporter, components []component.Component) error {
+func sendActivePromotionStatus(r reporter.Reporter, components []component.OutdatedComponent) error {
 	if err := r.SendActivePromotionStatus(atvPromotion.status, atvPromotion.currentActiveNamespace, atvPromotion.serviceOwner, components, atvPromotion.showedDetail); err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func parseValuesfileToStruct(valuesFilePath string) (map[string]component.ValuesFile, error) {
-	b, err := ioutil.ReadFile(valuesFilePath)
-	if err != nil {
-		return nil, err
-	}
-
-	var values map[string]component.ValuesFile
-	if err := yaml.Unmarshal(b, &values); err != nil {
-		return nil, err
-	}
-
-	return values, nil
 }

@@ -1,8 +1,8 @@
 package component
 
 import (
-	"strconv"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 )
@@ -14,41 +14,29 @@ func TestNewComponent(t *testing.T) {
 		expectedComponent *Component
 		expectedErr       error
 	}{
-		"component should be create successfully": {
+		"component should be created successfully": {
 			in: map[string]string{
-				"name":           "component-test",
-				"currentVersion": "1.1.0",
-				"newVersion":     "1.1.2",
-				"outdatedDays":   "2",
+				"name":    "component-test",
+				"version": "1.1.0",
 			},
-			expectedComponent: &Component{Name: "component-test", CurrentVersion: "1.1.0", NewVersion: "1.1.2", OutdatedDays: 2},
-			expectedErr:       nil,
+			expectedComponent: &Component{
+				Name:    "component-test",
+				Version: "1.1.0",
+			},
+			expectedErr: nil,
 		},
 		"component should not be created with missing arguments error": {
 			in: map[string]string{
-				"name":           "",
+				"name":           "component-test",
 				"currentVersion": "",
-				"newVersion":     "1.1.2",
-				"outdatedDays":   "2",
 			},
 			expectedComponent: nil,
 			expectedErr:       ErrMissingComponentArgs,
 		},
-		"component should not be created with wrong format of arguments error": {
-			in: map[string]string{
-				"name":           "component-test",
-				"currentVersion": "1.1.0",
-				"newVersion":     "1.1.2",
-				"outdatedDays":   "-1",
-			},
-			expectedComponent: nil,
-			expectedErr:       ErrWrongFormatComponentArgs,
-		},
 	}
 
 	for desc, test := range tests {
-		outdatedDays, _ := strconv.Atoi(test.in["outdatedDays"])
-		component, err := NewComponent(test.in["name"], test.in["currentVersion"], test.in["newVersion"], outdatedDays)
+		component, err := NewComponent(test.in["name"], test.in["version"])
 		if test.expectedErr == nil {
 			g.Expect(err).Should(BeNil(), desc)
 		} else {
@@ -60,5 +48,76 @@ func TestNewComponent(t *testing.T) {
 		} else {
 			g.Expect(component).Should(Equal(test.expectedComponent), desc)
 		}
+	}
+}
+
+func TestNewOutdatedComponent(t *testing.T) {
+	g := NewGomegaWithT(t)
+	now := time.Now()
+	tests := map[string]struct {
+		in                map[string]string
+		inOption          Option
+		expectedComponent *OutdatedComponent
+	}{
+		"outdated component should be created successfully with full options": {
+			in: map[string]string{
+				"name":           "component-test",
+				"currentVersion": "1.1.0",
+			},
+			inOption: Option{
+				key:   optionNewVersion,
+				value: versionTimestamp{"1.1.2", now.AddDate(0, 0, -1).Unix()},
+			},
+			expectedComponent: &OutdatedComponent{
+				CurrentComponent: &Component{Name: "component-test", Version: "1.1.0"},
+				NewComponent:     &Component{Name: "component-test", Version: "1.1.2"},
+				OutdatedDays:     2,
+			},
+		},
+		"outdated component should be created successfully without options": {
+			in: map[string]string{
+				"name":           "component-test",
+				"currentVersion": "1.1.0",
+			},
+			inOption: Option{},
+			expectedComponent: &OutdatedComponent{
+				CurrentComponent: &Component{Name: "component-test", Version: "1.1.0"},
+				NewComponent:     &Component{},
+				OutdatedDays:     0,
+			},
+		},
+	}
+
+	for desc, test := range tests {
+		component, err := NewOutdatedComponent(test.in["name"], test.in["currentVersion"], test.inOption)
+		g.Expect(err).Should(BeNil(), desc)
+		g.Expect(component).Should(Equal(test.expectedComponent), desc)
+	}
+}
+
+func TestGetOutdatedDays(t *testing.T) {
+	g := NewGomegaWithT(t)
+	now := time.Now()
+	tests := map[string]struct {
+		in  int64
+		out int
+	}{
+		"next day but outdated greater than fully day": {
+			in:  now.AddDate(0, 0, -1).Unix(),
+			out: 2,
+		},
+		"next day but outdated less than fully day": {
+			in:  now.AddDate(0, 0, -1).Add(10 * time.Minute).Unix(),
+			out: 1,
+		},
+		"same day": {
+			in:  now.Add(-10 * time.Minute).Unix(),
+			out: 1,
+		},
+	}
+
+	for desc, test := range tests {
+		outdatedDays := getOutdatedDays(test.in)
+		g.Expect(outdatedDays).Should(Equal(test.out), desc)
 	}
 }

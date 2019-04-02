@@ -16,7 +16,7 @@ func TestGetCurrentActiveComponents(t *testing.T) {
 	tests := map[string]struct {
 		inCurrentActiveValuesFile map[string]component.ValuesFile
 		inNewValuesFile           map[string]component.ValuesFile
-		expectedComponents        []component.Component
+		expectedComponents        []component.OutdatedComponent
 	}{
 		"single active components with same version": {
 			inCurrentActiveValuesFile: map[string]component.ValuesFile{
@@ -29,12 +29,11 @@ func TestGetCurrentActiveComponents(t *testing.T) {
 					Image: component.Image{Repository: "repo1", Tag: "1.1.0", Timestamp: 1551509631},
 				},
 			},
-			expectedComponents: []component.Component{
+			expectedComponents: []component.OutdatedComponent{
 				{
-					Name:           "component1",
-					CurrentVersion: "1.1.0",
-					NewVersion:     "1.1.0",
-					OutdatedDays:   0,
+					CurrentComponent: &component.Component{Name: "component1", Version: "1.1.0"},
+					NewComponent:     &component.Component{Name: "component1", Version: "1.1.0"},
+					OutdatedDays:     0,
 				},
 			},
 		},
@@ -49,12 +48,11 @@ func TestGetCurrentActiveComponents(t *testing.T) {
 					Image: component.Image{Repository: "repo1", Tag: "1.1.1", Timestamp: now.AddDate(0, 0, -1).Unix()},
 				},
 			},
-			expectedComponents: []component.Component{
+			expectedComponents: []component.OutdatedComponent{
 				{
-					Name:           "component1",
-					CurrentVersion: "1.1.0",
-					NewVersion:     "1.1.1",
-					OutdatedDays:   2,
+					CurrentComponent: &component.Component{Name: "component1", Version: "1.1.0"},
+					NewComponent:     &component.Component{Name: "component1", Version: "1.1.1"},
+					OutdatedDays:     2,
 				},
 			},
 		},
@@ -72,18 +70,16 @@ func TestGetCurrentActiveComponents(t *testing.T) {
 					Image: component.Image{Repository: "repo1", Tag: "1.1.0", Timestamp: 1551509631},
 				},
 			},
-			expectedComponents: []component.Component{
+			expectedComponents: []component.OutdatedComponent{
 				{
-					Name:           "component1",
-					CurrentVersion: "1.1.0",
-					NewVersion:     "1.1.0",
-					OutdatedDays:   0,
+					CurrentComponent: &component.Component{Name: "component1", Version: "1.1.0"},
+					NewComponent:     &component.Component{Name: "component1", Version: "1.1.0"},
+					OutdatedDays:     0,
 				},
 				{
-					Name:           "component2",
-					CurrentVersion: "1.1.0",
-					NewVersion:     "",
-					OutdatedDays:   0,
+					CurrentComponent: &component.Component{Name: "component2", Version: "1.1.0"},
+					NewComponent:     &component.Component{},
+					OutdatedDays:     0,
 				},
 			},
 		},
@@ -101,12 +97,11 @@ func TestGetCurrentActiveComponents(t *testing.T) {
 					Image: component.Image{Repository: "repo2", Tag: "1.1.0", Timestamp: 1551509631},
 				},
 			},
-			expectedComponents: []component.Component{
+			expectedComponents: []component.OutdatedComponent{
 				{
-					Name:           "component1",
-					CurrentVersion: "1.1.0",
-					NewVersion:     "1.1.0",
-					OutdatedDays:   0,
+					CurrentComponent: &component.Component{Name: "component1", Version: "1.1.0"},
+					NewComponent:     &component.Component{Name: "component1", Version: "1.1.0"},
+					OutdatedDays:     0,
 				},
 			},
 		},
@@ -130,33 +125,6 @@ func TestGetCurrentActiveNamespaceByOwner(t *testing.T) {
 	g.Expect(currentActiveNamespace, Equal(""))
 }
 
-func TestGetOutdatedDays(t *testing.T) {
-	g := NewGomegaWithT(t)
-	now := time.Now()
-	tests := map[string]struct {
-		in  int64
-		out int
-	}{
-		"next day but outdated greater than fully day": {
-			in:  now.AddDate(0, 0, -1).Unix(),
-			out: 2,
-		},
-		"next day but outdated less than fully day": {
-			in:  now.AddDate(0, 0, -1).Add(10 * time.Minute).Unix(),
-			out: 1,
-		},
-		"same day": {
-			in:  now.Add(-10 * time.Minute).Unix(),
-			out: 1,
-		},
-	}
-
-	for desc, test := range tests {
-		outdatedDays := getOutdatedDays(test.in)
-		g.Expect(outdatedDays).Should(Equal(test.out), desc)
-	}
-}
-
-func sortComponents(components []component.Component) {
-	sort.Slice(components, func(i, j int) bool { return components[i].Name > components[j].Name })
+func sortComponents(components []component.OutdatedComponent) {
+	sort.Slice(components, func(i, j int) bool { return components[i].CurrentComponent.Name > components[j].CurrentComponent.Name })
 }

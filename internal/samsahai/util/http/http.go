@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// Client manages client side of http request
 type Client struct {
 	BaseURL *url.URL
 }
@@ -29,6 +30,7 @@ func NewClient(baseURL string) *Client {
 	return &client
 }
 
+// Post sends http post
 func (c *Client) Post(reqURI string, data []byte) ([]byte, error) {
 	baseURL, err := url.Parse(c.BaseURL.String())
 	if err != nil {
@@ -46,6 +48,7 @@ func (c *Client) Post(reqURI string, data []byte) ([]byte, error) {
 	return c.request(req)
 }
 
+// Get sends http get
 func (c *Client) Get(reqURI string) ([]byte, error) {
 	baseURL, err := url.Parse(c.BaseURL.String())
 	if err != nil {

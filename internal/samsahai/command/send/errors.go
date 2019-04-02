@@ -2,7 +2,8 @@ package send
 
 const (
 	ErrMissingSlackArguments = Error("slack-access-token/slack-channels argument is required")
-	ErrEnvCannotBind         = Error("environment variable cannot be binded")
+	ErrBindingEnv            = Error("cannot bind environment variable")
+	ErrWrongImageFormat      = Error("docker image was wrong format")
 )
 
 type Error string

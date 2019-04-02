@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// SamsahaiCmd is the base command
 var SamsahaiCmd = &cobra.Command{
 	Use:   "samsahai",
 	Short: "Samsahai is a command line for create Blue/Green environment",
