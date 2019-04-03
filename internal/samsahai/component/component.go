@@ -1,12 +1,15 @@
 package component
 
-import "time"
+import (
+	"sort"
+	"time"
+)
 
 // Component defines properties of component
 type Component struct {
-	Name    string `required:"true"`
-	Version string `required:"true"`
-	Image   *Image
+	Name    string `required:"true" json:"name"`
+	Version string `required:"true" json:"version"`
+	Image   *Image `json:"image,omitempty"`
 }
 
 // emptyValueValidate validates empty values
@@ -16,17 +19,17 @@ func (c *Component) emptyValueValidate() bool {
 
 // OutdatedComponent defines properties of outdated component
 type OutdatedComponent struct {
-	CurrentComponent *Component `required:"true"`
-	NewComponent     *Component
-	OutdatedDays     int
+	CurrentComponent *Component `required:"true" json:"current_component"`
+	NewComponent     *Component `json:"new_component"`
+	OutdatedDays     int        `json:"outdated_days"`
 }
 
 // Image defines properties of image
 type Image struct {
-	Repository string `yaml:"repository"`
-	Tag        string `yaml:"tag"`
-	Timestamp  int64  `yaml:"timestamp"`
-	Time       string `yaml:"time"`
+	Repository string `yaml:"repository" json:"repository"`
+	Tag        string `yaml:"tag" json:"tag"`
+	Timestamp  int64  `yaml:"timestamp" json:"timestamp,omitempty"`
+	Time       string `yaml:"time" json:"time,omitempty"`
 }
 
 // ValuesFile defines properties of values file
@@ -122,6 +125,11 @@ func NewOutdatedComponent(name, currentVersion string, options ...Option) (*Outd
 	}
 
 	return outdatedComponent, nil
+}
+
+// SortComponentsByOutdatedDays sorts components by outdated days descending order
+func SortComponentsByOutdatedDays(components []OutdatedComponent) {
+	sort.Slice(components, func(i, j int) bool { return components[i].OutdatedDays > components[j].OutdatedDays })
 }
 
 // getOutdatedDays calculates outdated days

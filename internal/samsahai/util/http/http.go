@@ -38,13 +38,13 @@ func (c *Client) Post(reqURI string, data []byte) ([]byte, error) {
 	}
 
 	baseURL.Path = path.Join(baseURL.Path, reqURI)
-	log.Printf("POST to %s with %s", baseURL.String(), string(data))
 
 	req, err := http.NewRequest("POST", baseURL.String(), bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}
 
+	log.Printf("Data successfully sent to %s\n", baseURL.String())
 	return c.request(req)
 }
 
@@ -56,7 +56,6 @@ func (c *Client) Get(reqURI string) ([]byte, error) {
 	}
 
 	baseURL.Path = path.Join(baseURL.Path, reqURI)
-	log.Printf("GET to %s", baseURL.String())
 
 	req, err := http.NewRequest("GET", baseURL.String(), nil)
 	if err != nil {

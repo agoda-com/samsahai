@@ -44,13 +44,12 @@ func sendOutdatedComponentCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if slack.enabled {
-		slackCli, err := newSlackReporter()
-		if err != nil {
-			return err
-		}
+	opts := []reporter.Option{
+		reporter.NewOptionSubject(email.subject),
+	}
 
-		if err := sendOutdatedComponents(slackCli, components); err != nil {
+	for _, r := range reporters {
+		if err := sendOutdatedComponents(r, components, opts...); err != nil {
 			return err
 		}
 	}
@@ -58,8 +57,8 @@ func sendOutdatedComponentCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func sendOutdatedComponents(r reporter.Reporter, components []component.OutdatedComponent) error {
-	if err := r.SendOutdatedComponents(components); err != nil {
+func sendOutdatedComponents(r reporter.Reporter, components []component.OutdatedComponent, options ...reporter.Option) error {
+	if err := r.SendOutdatedComponents(components, options...); err != nil {
 		return err
 	}
 

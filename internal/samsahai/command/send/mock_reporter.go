@@ -16,8 +16,28 @@ type mockReporter struct {
 	sendComponentUpgradeFailCalls  int
 }
 
+// MakeComponentUpgradeFailReport mocks MakeComponentUpgradeFailReport function
+func (r *mockReporter) MakeComponentUpgradeFailReport(cuf *reporter.ComponentUpgradeFail, options ...reporter.Option) string {
+	return ""
+}
+
+// MakeActivePromotionStatusReport mocks MakeActivePromotionStatusReport function
+func (r *mockReporter) MakeActivePromotionStatusReport(atv *reporter.ActivePromotion, options ...reporter.Option) string {
+	return ""
+}
+
+// MakeOutdatedComponentsReport mocks MakeOutdatedComponentsReport function
+func (r *mockReporter) MakeOutdatedComponentsReport(oc *reporter.OutdatedComponents, options ...reporter.Option) string {
+	return ""
+}
+
+// MakeImageMissingListReport mocks MakeImageMissingListReport function
+func (r *mockReporter) MakeImageMissingListReport(im *reporter.ImageMissing, options ...reporter.Option) string {
+	return ""
+}
+
 // SendMessage mocks SendMessage function
-func (r *mockReporter) SendMessage(message string) error {
+func (r *mockReporter) SendMessage(message string, options ...reporter.Option) error {
 	return nil
 }
 
@@ -28,19 +48,19 @@ func (r *mockReporter) SendComponentUpgradeFail(component *component.Component, 
 }
 
 // SendActivePromotionStatus mocks SendActivePromotionStatus function
-func (r *mockReporter) SendActivePromotionStatus(status, currentActiveNamespace, serviceOwner string, components []component.OutdatedComponent, showedDetails bool) error {
+func (r *mockReporter) SendActivePromotionStatus(status, currentActiveNamespace, serviceOwner string, components []component.OutdatedComponent, options ...reporter.Option) error {
 	r.sendActivePromotionStatusCalls++
 	return nil
 }
 
 // SendOutdatedComponents mocks SendOutdatedComponents function
-func (r *mockReporter) SendOutdatedComponents(components []component.OutdatedComponent) error {
+func (r *mockReporter) SendOutdatedComponents(components []component.OutdatedComponent, options ...reporter.Option) error {
 	r.sendOutdatedComponentsCalls++
 	return nil
 }
 
 // SendImageMissingList mocks SendImageMissingList function
-func (r *mockReporter) SendImageMissingList(image []component.Image) error {
+func (r *mockReporter) SendImageMissingList(image []component.Image, options ...reporter.Option) error {
 	r.sendImageMissingCalls++
 	return nil
 }

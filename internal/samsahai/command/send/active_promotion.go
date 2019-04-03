@@ -56,13 +56,13 @@ func sendActivePromotionStatusCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if slack.enabled {
-		slackCli, err := newSlackReporter()
-		if err != nil {
-			return err
-		}
+	opts := []reporter.Option{
+		reporter.NewOptionShowedDetails(atvPromotion.showedDetail),
+		reporter.NewOptionSubject(email.subject),
+	}
 
-		if err := sendActivePromotionStatus(slackCli, components); err != nil {
+	for _, r := range reporters {
+		if err := sendActivePromotionStatus(r, components, opts...); err != nil {
 			return err
 		}
 	}
@@ -70,8 +70,8 @@ func sendActivePromotionStatusCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func sendActivePromotionStatus(r reporter.Reporter, components []component.OutdatedComponent) error {
-	if err := r.SendActivePromotionStatus(atvPromotion.status, atvPromotion.currentActiveNamespace, atvPromotion.serviceOwner, components, atvPromotion.showedDetail); err != nil {
+func sendActivePromotionStatus(r reporter.Reporter, components []component.OutdatedComponent, options ...reporter.Option) error {
+	if err := r.SendActivePromotionStatus(atvPromotion.status, atvPromotion.currentActiveNamespace, atvPromotion.serviceOwner, components, options...); err != nil {
 		return err
 	}
 

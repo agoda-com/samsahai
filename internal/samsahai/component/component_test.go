@@ -95,6 +95,57 @@ func TestNewOutdatedComponent(t *testing.T) {
 	}
 }
 
+func TestSortComponentsByOutdatedDays(t *testing.T) {
+	g := NewGomegaWithT(t)
+	components := []OutdatedComponent{
+		{
+			CurrentComponent: &Component{Name: "comp1", Version: "1.1.0"},
+			NewComponent:     &Component{Name: "comp1", Version: "1.1.2"},
+			OutdatedDays:     1,
+		},
+		{
+			CurrentComponent: &Component{Name: "comp2", Version: "1.1.0"},
+			NewComponent:     &Component{Name: "comp2", Version: "1.1.0"},
+			OutdatedDays:     0,
+		},
+		{
+			CurrentComponent: &Component{Name: "comp3", Version: "1.1.0"},
+			NewComponent:     &Component{Name: "comp3", Version: "1.1.4"},
+			OutdatedDays:     3,
+		},
+		{
+			CurrentComponent: &Component{Name: "comp4", Version: "1.1.0"},
+			NewComponent:     &Component{Name: "comp4", Version: "1.1.0"},
+			OutdatedDays:     0,
+		},
+	}
+	SortComponentsByOutdatedDays(components)
+	g.Expect(components).Should(Equal(
+		[]OutdatedComponent{
+			{
+				CurrentComponent: &Component{Name: "comp3", Version: "1.1.0"},
+				NewComponent:     &Component{Name: "comp3", Version: "1.1.4"},
+				OutdatedDays:     3,
+			},
+			{
+				CurrentComponent: &Component{Name: "comp1", Version: "1.1.0"},
+				NewComponent:     &Component{Name: "comp1", Version: "1.1.2"},
+				OutdatedDays:     1,
+			},
+			{
+				CurrentComponent: &Component{Name: "comp2", Version: "1.1.0"},
+				NewComponent:     &Component{Name: "comp2", Version: "1.1.0"},
+				OutdatedDays:     0,
+			},
+			{
+				CurrentComponent: &Component{Name: "comp4", Version: "1.1.0"},
+				NewComponent:     &Component{Name: "comp4", Version: "1.1.0"},
+				OutdatedDays:     0,
+			},
+		},
+	))
+}
+
 func TestGetOutdatedDays(t *testing.T) {
 	g := NewGomegaWithT(t)
 	now := time.Now()

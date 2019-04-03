@@ -21,9 +21,8 @@ type Client struct {
 
 // NewClient creates a new client
 func NewClient(token string) *Client {
-	api := slack.New(token)
 	client := Client{
-		api: api,
+		api: slack.New(token),
 	}
 
 	return &client

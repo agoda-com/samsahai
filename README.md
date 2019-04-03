@@ -5,11 +5,16 @@
 
 ---
 
-#### Install
-`make init`
+### Installation
+`make init`  
 
 ---
 
-#### Related Projects:
+### Test
+`make coverage`
+
+---
+
+### Related Projects:
 - [`go get github.com/ahmetb/govvv`](https://github.com/ahmetb/govvv) - Add version info to Golang app.
 - [`go get github.com/jpoles1/gopherbadger`](https://github.com/jpoles1/gopherbadger) - Generate code coverage badge

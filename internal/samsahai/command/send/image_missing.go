@@ -40,13 +40,12 @@ func sendImageMissingListCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if slack.enabled {
-		slackCli, err := newSlackReporter()
-		if err != nil {
-			return err
-		}
+	opts := []reporter.Option{
+		reporter.NewOptionSubject(email.subject),
+	}
 
-		if err := sendImageMissing(slackCli, images); err != nil {
+	for _, r := range reporters {
+		if err := sendImageMissing(r, images, opts...); err != nil {
 			return err
 		}
 	}
@@ -54,8 +53,8 @@ func sendImageMissingListCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func sendImageMissing(r reporter.Reporter, images []component.Image) error {
-	if err := r.SendImageMissingList(images); err != nil {
+func sendImageMissing(r reporter.Reporter, images []component.Image, options ...reporter.Option) error {
+	if err := r.SendImageMissingList(images, options...); err != nil {
 		return err
 	}
 

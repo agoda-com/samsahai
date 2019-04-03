@@ -36,7 +36,7 @@ func componentUpgradeFailCmd() *cobra.Command {
 	cmd.Flags().StringVar(&upgradeFail.image, "image", "", "Image of component (Required)")
 	cmd.Flags().StringVar(&upgradeFail.serviceOwner, "service-owner", "", "Service owner (Required)")
 	cmd.Flags().StringVar(&upgradeFail.issueType, "issue-type", "", "Issue type")
-	cmd.Flags().StringVar(&upgradeFail.valuesFile, "values-file", "", "Values file URL")
+	cmd.Flags().StringVar(&upgradeFail.valuesFile, "values-file-url", "", "Values file URL")
 	cmd.Flags().StringVar(&upgradeFail.ciURL, "ci-url", "", "Build URL")
 	cmd.Flags().StringVar(&upgradeFail.logsURL, "logs-url", "", "Logs URL")
 	cmd.Flags().StringVar(&upgradeFail.errorURL, "error-url", "", "Error URL")
@@ -61,19 +61,17 @@ func sendComponentUpgradeFailCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	optIssueType := reporter.NewOptionIssueType(upgradeFail.issueType)
-	optValuesFile := reporter.NewOptionValuesFileURL(upgradeFail.valuesFile)
-	optCIURL := reporter.NewOptionCIURL(upgradeFail.ciURL)
-	optLogsURL := reporter.NewOptionLogsURL(upgradeFail.logsURL)
-	optErrorURL := reporter.NewOptionErrorURL(upgradeFail.errorURL)
+	opts := []reporter.Option{
+		reporter.NewOptionSubject(email.subject),
+		reporter.NewOptionIssueType(upgradeFail.issueType),
+		reporter.NewOptionValuesFileURL(upgradeFail.valuesFile),
+		reporter.NewOptionCIURL(upgradeFail.ciURL),
+		reporter.NewOptionLogsURL(upgradeFail.logsURL),
+		reporter.NewOptionErrorURL(upgradeFail.errorURL),
+	}
 
-	if slack.enabled {
-		slackCli, err := newSlackReporter()
-		if err != nil {
-			return err
-		}
-
-		if err := sendComponentUpgradeFail(slackCli, component, optIssueType, optValuesFile, optCIURL, optLogsURL, optErrorURL); err != nil {
+	for _, r := range reporters {
+		if err := sendComponentUpgradeFail(r, component, opts...); err != nil {
 			return err
 		}
 	}
