@@ -1,27 +1,10 @@
 package send
 
 import (
-	"io/ioutil"
-
+	"github.com/agoda-com/samsahai/internal/samsahai/command/util"
 	"github.com/agoda-com/samsahai/internal/samsahai/component"
 	"github.com/agoda-com/samsahai/internal/samsahai/namespace/active"
-	"gopkg.in/yaml.v2"
 )
-
-// parseValuesfileToStruct reads values file and parses to component
-func parseValuesfileToStruct(valuesFilePath string) (map[string]component.ValuesFile, error) {
-	b, err := ioutil.ReadFile(valuesFilePath)
-	if err != nil {
-		return nil, err
-	}
-
-	values := make(map[string]component.ValuesFile)
-	if err := yaml.Unmarshal(b, &values); err != nil {
-		return nil, err
-	}
-
-	return values, nil
-}
 
 func getActiveComponentsFromValuesFile(currentActiveValuesPath, newValuesPath string) ([]component.OutdatedComponent, error) {
 	if currentActiveValuesPath == "" {
@@ -33,13 +16,13 @@ func getActiveComponentsFromValuesFile(currentActiveValuesPath, newValuesPath st
 		err                     error
 	)
 
-	activeValues, err = parseValuesfileToStruct(currentActiveValuesPath)
+	activeValues, err = util.ParseValuesFileToStruct(currentActiveValuesPath)
 	if err != nil {
 		return nil, err
 	}
 
 	if newValuesPath != "" {
-		newValues, err = parseValuesfileToStruct(newValuesPath)
+		newValues, err = util.ParseValuesFileToStruct(newValuesPath)
 		if err != nil {
 			return nil, err
 		}

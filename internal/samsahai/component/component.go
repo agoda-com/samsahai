@@ -28,8 +28,8 @@ type OutdatedComponent struct {
 type Image struct {
 	Repository string `yaml:"repository" json:"repository"`
 	Tag        string `yaml:"tag" json:"tag"`
-	Timestamp  int64  `yaml:"timestamp" json:"timestamp,omitempty"`
-	Time       string `yaml:"time" json:"time,omitempty"`
+	Timestamp  int64  `yaml:"timestamp,omitempty" json:"timestamp,omitempty"`
+	Time       string `yaml:"time,omitempty" json:"time,omitempty"`
 }
 
 // ValuesFile defines properties of values file

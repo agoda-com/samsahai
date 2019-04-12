@@ -7,23 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestParseValuesfileToStruct(t *testing.T) {
-	g := NewGomegaWithT(t)
-	valuesPath := "../../../../test/testdata/reporter/values.yaml"
-	compMapping, err := parseValuesfileToStruct(valuesPath)
-	g.Expect(err).Should(BeNil())
-	g.Expect(compMapping).Should(Equal(map[string]component.ValuesFile{
-		"comp1": {
-			Image: component.Image{
-				Repository: "registry/image-comp1", Tag: "1.1.3", Timestamp: 1553507991,
-			}},
-		"comp2": {
-			Image: component.Image{
-				Repository: "registry/image-comp2", Tag: "1.1.0", Timestamp: 1553157675,
-			}},
-	}))
-}
-
 func TestGetActiveComponentsFromValuesFile(t *testing.T) {
 	g := NewGomegaWithT(t)
 	tests := map[string]struct {

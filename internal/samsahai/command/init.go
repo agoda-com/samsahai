@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/agoda-com/samsahai/internal/samsahai/command/compare"
+
 	"github.com/agoda-com/samsahai/internal/samsahai/command/send"
 
 	"github.com/spf13/cobra"
@@ -31,4 +33,5 @@ func init() {
 func addCommands() {
 	SamsahaiCmd.AddCommand(versionCmd())
 	SamsahaiCmd.AddCommand(send.Cmd())
+	SamsahaiCmd.AddCommand(compare.Cmd())
 }
