@@ -2,6 +2,10 @@
 .DS_Store
 
 out/
+bin/
+
+vendor/
 
 coverage.out
 coverage.txt
+cover.out

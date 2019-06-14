@@ -1,0 +1,9 @@
+apiVersion: env.samsahai.io/v1beta1
+kind: Queue
+metadata:
+  name: alpine
+spec:
+  # Add fields here
+  name: alpine
+  repository: alpine
+

@@ -12,17 +12,42 @@ commands:
               circleci step halt
             fi
 
-version: 2
+version: 2.1
 jobs:
   build:
-    docker:
-      - image: circleci/golang:1.12
+    machine:
+      image: ubuntu-1604:201903-01
 
-    working_directory: /go/src/github.com/agoda-com/samsahai
+    environment:
+      K8S_VERSION: v1.13.7
+      KUBECONFIG: /home/circleci/.kube/config
+      MINIKUBE_VERSION: v1.1.1
+      MINIKUBE_WANTUPDATENOTIFICATION: false
+      MINIKUBE_WANTREPORTERRORPROMPT: false
+      MINIKUBE_HOME: /home/circleci
+      CHANGE_MINIKUBE_NONE_USER: true
+      GOPATH: /home/circleci/go
+      POD_NAMESPACE: default
+      GOVERSION: 1.12.5
+      OS: linux
+      ARCH: amd64
+
+    working_directory: /home/circleci/go/src/github.com/agoda-com/samsahai
     steps:
 
       - checkout
-      - setup_remote_docker
+
+      - run:
+          name: install Go
+          command: |
+            go version
+            go env GOROOT
+            mkdir tmp
+            cd tmp
+            sudo rm -rf /usr/local/go
+            wget https://storage.googleapis.com/golang/go$GOVERSION.$OS-$ARCH.tar.gz
+            sudo tar -C /usr/local -xzf go$GOVERSION.$OS-$ARCH.tar.gz
+            go version
 
       - run:
           name: Prepared Env vars.
@@ -30,28 +55,65 @@ jobs:
             echo 'export docker_user="$QUAY_DOCKER_USER"' >> $BASH_ENV
             echo 'export docker_registry="$QUAY_DOCKER_REGISTRY"' >> $BASH_ENV
             echo 'export docker_image_repo="phantomnat/samsahai"' >> $BASH_ENV
-            # echo 'export docker_image_tag="latest"' >> $BASH_ENV
-
-      - run:
-          name: "get required projects"
-          command: |
-            make install-dep
-            echo 'export GO111MODULE="on"' >> $BASH_ENV
 
       - run:
           name: "install dependencies"
           command: |
+            make install-dep
+            make dep-kubebuilder-linux
+            echo 'export GO111MODULE="on"' >> $BASH_ENV
+            echo 'export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin' >> $BASH_ENV
+            export GO111MODULE=on
             go mod tidy
 
       - run:
-          name: "run test"
+          name: "unit env"
           command: |
+            echo PATH=$PATH
+            ls -al $(go env GOPATH)/bin | grep goimports
+            ls -al $(go env GOPATH)/bin | grep govvv
+
+#      - run:
+#          name: "run unit test"
+#          command: |
+#            echo KUBECONFIG=${KUBECONFIG}
+#            echo GO111MODULE=${GO111MODULE}
+#            make unit-test
+
+      # spin up minikube
+      - run:
+          name: Setup kubectl
+          command: |
+            curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/${K8S_VERSION}/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+            mkdir -p ${HOME}/.kube
+            touch ${HOME}/.kube/config
+      - run:
+          name: Setup minikube
+          command: |
+            curl -Lo minikube https://github.com/kubernetes/minikube/releases/download/${MINIKUBE_VERSION}/minikube-linux-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
+      - run:
+          name: Start minikube
+          command: |
+            sudo -E minikube start --vm-driver=none --cpus 2 --memory 4096 --kubernetes-version=${K8S_VERSION}
+      - run:
+          name: "e2e verify"
+          command: |
+            minikube status
+            kubectl version
+            kubectl cluster-info
+            docker version
+
+      # run e2e test
+      - run:
+          name: "run e2e test"
+          command: |
+            echo KUBECONFIG=${KUBECONFIG}
             echo GO111MODULE=${GO111MODULE}
-            make coverage
+            make e2e-test
             bash <(curl -s https://codecov.io/bash)
 
       - persist_to_workspace:
-          root: /
+          root: /home/circleci/
           paths:
             - go
 
@@ -80,27 +142,6 @@ jobs:
             if [ "$CIRCLE_BRANCH" = "master" ]; then
               make docker-tag-n-push-latest
             fi
-
-#      - save_cache:
-#          key: project-{{ checksum "project.clj" }}
-#          paths:
-#            - /go
-
-#  code-coverage:
-#    docker:
-#      - image: circleci/golang:1.12
-#
-#    working_directory: /go/src/github.com/agoda-com/samsahai
-#      steps:
-#        - persist_to_workspace:
-#            root: /
-#            paths:
-#              - go
-#
-#        - run:
-#            name: codecov
-#            command: |
-#              bash <(curl -s https://codecov.io/bash)
 
   publish-github-release:
     docker:
