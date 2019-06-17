@@ -16,4 +16,5 @@
 ---
 
 ### Related Projects:
-- [`go get github.com/ahmetb/govvv`](https://github.com/ahmetb/govvv) - Add version info to Golang app.
+- [`govvv`](https://github.com/ahmetb/govvv) - Adding version info to Golang app.
+- [`Flux - Helm Operator`](https://github.com/weaveworks/flux) - The GitOps Kubernetes operator

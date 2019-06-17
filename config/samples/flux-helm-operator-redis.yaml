@@ -1,0 +1,17 @@
+apiVersion: flux.weave.works/v1beta1
+kind: HelmRelease
+metadata:
+  name: redis
+spec:
+  releaseName: redis
+  chart:
+    repository: https://kubernetes-charts.storage.googleapis.com
+    name: redis
+    version: ""
+  timeout: 120
+  values:
+    master:
+      persistence:
+        enabled: false
+    cluster:
+      enabled: false
