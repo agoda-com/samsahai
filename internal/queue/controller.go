@@ -2,77 +2,61 @@ package queue
 
 import (
 	"context"
+	"time"
 
-	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/agoda-com/samsahai/internal"
-	"github.com/agoda-com/samsahai/internal/apis/env/v1beta1"
-	"github.com/agoda-com/samsahai/internal/config"
+	"github.com/agoda-com/samsahai/internal/k8s"
+	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
-const (
-	LabelSelector = "managed-by=samsahai"
-)
+var logger = s2hlog.Log.WithName(CtrlName)
+
+const CtrlName = "queue-ctrl"
 
 type controller struct {
-	//client     client.Client
-	restClient rest.Interface
-	namespace  string
-	log        logr.Logger
+	runtimeClient client.Client
+	restClient    rest.Interface
+	namespace     string
 }
 
 var _ internal.QueueController = &controller{}
 
-func NewUpgradeQueue(namespace, name, repository, version string) *v1beta1.Queue {
+func NewUpgradeQueue(teamName, namespace, name, repository, version string) *v1beta1.Queue {
+	qLabels := internal.GetDefaultLabels(teamName)
+	qLabels["app"] = name
 	return &v1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			Labels: map[string]string{
-				"managed-by": "samsahai",
-			},
+			Labels:    qLabels,
 		},
 		Spec: v1beta1.QueueSpec{
 			Name:       name,
+			TeamName:   teamName,
 			Repository: repository,
 			Version:    version,
-			NoOfRetry:  0,
-			Type:       v1beta1.UPGRADE,
+			Type:       v1beta1.QueueTypeUpgrade,
 		},
 		Status: v1beta1.QueueStatus{},
 	}
 }
 
-func NewWithClient(namespace string, restClient rest.Interface) internal.QueueController {
+// New returns QueueController
+func New(ns string, runtimeClient client.Client, restClient rest.Interface) internal.QueueController {
 	c := &controller{
-		namespace:  namespace,
-		restClient: restClient,
-		log:        log.Log,
+		namespace:     ns,
+		restClient:    restClient,
+		runtimeClient: runtimeClient,
 	}
 	return c
-}
-
-func New(namespace string, cfg *rest.Config) internal.QueueController {
-	log := log.Log.WithName("new queue controller")
-
-	// register types at the scheme builder
-	if err := v1beta1.AddToScheme(scheme.Scheme); err != nil {
-		log.Error(err, "cannot addtoscheme")
-		return nil
-	}
-
-	// create rest client
-	restClient, err := rest.UnversionedRESTClientFor(config.GetRESTConfg(cfg, &v1beta1.SchemeGroupVersion))
-	if err != nil {
-		log.Error(err, "cannot create unversioned restclient")
-		return nil
-	}
-
-	return NewWithClient(namespace, restClient)
 }
 
 func (c *controller) Add(q *v1beta1.Queue) error {
@@ -84,36 +68,52 @@ func (c *controller) AddTop(q *v1beta1.Queue) error {
 }
 
 func (c *controller) Size() int {
-	list, err := c.List(nil)
+	list, err := c.list(nil)
 	if err != nil {
-		c.log.Error(err, "cannot list queue")
+		logger.Error(err, "cannot list queue")
 		return 0
 	}
 	return len(list.Items)
 }
 
 func (c *controller) First() (*v1beta1.Queue, error) {
-	list, err := c.List(nil)
+	list, err := c.list(nil)
 	if err != nil {
-		c.log.Error(err, "cannot list queue")
+		logger.Error(err, "cannot list queue")
 		return nil, err
 	}
-	list.Sort()
-	return list.First(), nil
+
+	q := list.First()
+
+	if q == nil {
+		return nil, nil
+	}
+
+	if q.Spec.NextProcessAt == nil || time.Now().After(q.Spec.NextProcessAt.Time) {
+		return q, nil
+	}
+
+	return nil, nil
 }
 
 func (c *controller) Remove(q *v1beta1.Queue) error {
-	return c.Delete(q.Name, nil)
+	return c.runtimeClient.Delete(context.TODO(), q)
 }
 
-func (c *controller) RemoveAll() error {
-	return c.DeleteCollection(nil, nil)
+func (c *controller) RemoveAllQueues() error {
+	return k8s.DeleteCollection(c.restClient, c.namespace, k8s.Queues, nil, nil)
 }
 
 func (c *controller) add(ctx context.Context, queue *v1beta1.Queue, atTop bool) error {
-	queueList, err := c.List(nil)
+	queueList, err := c.list(nil)
 	if err != nil {
 		return err
+	}
+
+	if isMatch, err := c.isMatchWithStableComponent(ctx, queue); err != nil {
+		return err
+	} else if isMatch {
+		return nil
 	}
 
 	var pQueue *v1beta1.Queue
@@ -129,8 +129,8 @@ func (c *controller) add(ctx context.Context, queue *v1beta1.Queue, atTop bool) 
 	// remove duplicate component
 	removingList := c.removeSimilar(queue, queueList)
 
-	for _, q := range removingList {
-		if err := c.Delete(q.Name, nil); err != nil {
+	for i := range removingList {
+		if err := c.runtimeClient.Delete(context.TODO(), &removingList[i]); err != nil {
 			return err
 		}
 	}
@@ -146,7 +146,7 @@ func (c *controller) add(ctx context.Context, queue *v1beta1.Queue, atTop bool) 
 			pQueue.Spec.NoOfOrder = queueList.TopQueueOrder()
 		}
 
-		if _, err := c.Update(pQueue); err != nil {
+		if err = c.runtimeClient.Update(context.TODO(), pQueue); err != nil {
 			return err
 		}
 	} else {
@@ -157,15 +157,31 @@ func (c *controller) add(ctx context.Context, queue *v1beta1.Queue, atTop bool) 
 			queue.Spec.NoOfOrder = queueList.LastQueueOrder()
 		}
 
+		queue.Status.State = v1beta1.Waiting
 		queue.Status.CreatedAt = &now
 		queue.Status.UpdatedAt = &now
 
-		if _, err := c.Create(queue); err != nil {
+		if err = c.runtimeClient.Create(context.TODO(), queue); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (c *controller) isMatchWithStableComponent(ctx context.Context, q *v1beta1.Queue) (isMatch bool, err error) {
+	stableComp := &v1beta1.StableComponent{}
+	err = c.runtimeClient.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: q.GetName()}, stableComp)
+	if err != nil && k8serrors.IsNotFound(err) {
+		return false, nil
+	} else if err != nil {
+		return
+	}
+
+	isMatch = stableComp.Spec.Repository == q.Spec.Repository &&
+		stableComp.Spec.Version == q.Spec.Version
+
+	return
 }
 
 // removeSimilar removes similar queue (same `name` from queue) from QueueList
@@ -187,4 +203,153 @@ func (c *controller) removeSimilar(queue *v1beta1.Queue, list *v1beta1.QueueList
 	}
 	list.Items = items
 	return removing
+}
+
+func (c *controller) list(opts *client.ListOptions) (list *v1beta1.QueueList, err error) {
+	list = &v1beta1.QueueList{}
+	if opts == nil {
+		opts = &client.ListOptions{Namespace: c.namespace}
+	}
+	if err = c.runtimeClient.List(context.Background(), opts, list); err != nil {
+		return
+	}
+	return list, nil
+}
+
+func (c *controller) SetLastOrder(q *v1beta1.Queue) error {
+	queueList, err := c.list(nil)
+	if err != nil {
+		return err
+	}
+
+	q.Spec.NoOfOrder = queueList.LastQueueOrder()
+	q.Status.Conditions = nil
+
+	return c.runtimeClient.Update(context.TODO(), q)
+}
+
+func (c *controller) SetReverifyQueueAtFirst(q *v1beta1.Queue) error {
+	list, err := c.list(nil)
+	if err != nil {
+		return err
+	}
+	now := metav1.Now()
+	q.Status = v1beta1.QueueStatus{
+		CreatedAt:     &now,
+		NoOfProcessed: q.Status.NoOfProcessed,
+		State:         v1beta1.Waiting,
+	}
+	q.Spec.Type = v1beta1.QueueTypeReverify
+	q.Spec.NoOfOrder = list.TopQueueOrder()
+	return c.runtimeClient.Update(context.TODO(), q)
+}
+
+func (c *controller) SetRetryQueue(q *v1beta1.Queue, noOfRetry int, nextAt time.Time) error {
+	list, err := c.list(nil)
+	if err != nil {
+		return err
+	}
+	now := metav1.Now()
+	q.Status = v1beta1.QueueStatus{
+		CreatedAt:     &now,
+		NoOfProcessed: q.Status.NoOfProcessed,
+		State:         v1beta1.Waiting,
+	}
+	q.Spec.NextProcessAt = &metav1.Time{Time: nextAt}
+	q.Spec.NoOfRetry = noOfRetry
+	q.Spec.Type = v1beta1.QueueTypeUpgrade
+	q.Spec.NoOfOrder = list.LastQueueOrder()
+	return c.runtimeClient.Update(context.TODO(), q)
+}
+
+// EnsurePreActiveComponents ensures that components with were deployed with `pre-active` config and tested
+func EnsurePreActiveComponents(c client.Client, teamName, namespace string) (q *v1beta1.Queue, err error) {
+	q = &v1beta1.Queue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      internal.EnvPreActive,
+			Namespace: namespace,
+		},
+		Spec: v1beta1.QueueSpec{
+			Type:     v1beta1.QueueTypePreActive,
+			TeamName: teamName,
+		},
+	}
+
+	err = ensureQueue(context.TODO(), c, q)
+	return
+}
+
+// EnsurePromoteToActiveComponents ensures that components were deployed with `active` config
+func EnsurePromoteToActiveComponents(c client.Client, teamName, namespace string) (q *v1beta1.Queue, err error) {
+	q = &v1beta1.Queue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      internal.EnvActive,
+			Namespace: namespace,
+		},
+		Spec: v1beta1.QueueSpec{
+			Type:     v1beta1.QueueTypePromoteToActive,
+			TeamName: teamName,
+		},
+	}
+	err = ensureQueue(context.TODO(), c, q)
+	return
+}
+
+// EnsureDemoteFromActiveComponents ensures that components were deployed without `active` config
+func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace string) (q *v1beta1.Queue, err error) {
+	q = &v1beta1.Queue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      internal.EnvDeActive,
+			Namespace: namespace,
+		},
+		Spec: v1beta1.QueueSpec{
+			Type:     v1beta1.QueueTypeDemoteFromActive,
+			TeamName: teamName,
+		},
+	}
+	err = ensureQueue(context.TODO(), c, q)
+	return
+}
+
+func DeletePreActiveQueue(c client.Client, ns string) error {
+	return deleteQueue(c, ns, internal.EnvPreActive)
+}
+
+func DeletePromoteToActiveQueue(c client.Client, ns string) error {
+	return deleteQueue(c, ns, internal.EnvActive)
+}
+
+func DeleteDemoteFromActiveQueue(c client.Client, ns string) error {
+	return deleteQueue(c, ns, internal.EnvDeActive)
+}
+
+// deleteQueue removes Queue in target namespace by name
+func deleteQueue(c client.Client, ns, name string) error {
+	q := &v1beta1.Queue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+	}
+	err := c.Delete(context.TODO(), q)
+	if err != nil && k8serrors.IsNotFound(err) {
+		return nil
+	}
+
+	return errors.Wrap(err, "cannot delete queue")
+}
+
+func ensureQueue(ctx context.Context, c client.Client, q *v1beta1.Queue) (err error) {
+	fetched := &v1beta1.Queue{}
+	err = c.Get(ctx, types.NamespacedName{Namespace: q.Namespace, Name: q.Name}, fetched)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			// Create
+			return c.Create(ctx, q)
+		}
+		return err
+	}
+	q.Spec = fetched.Spec
+	q.Status = fetched.Status
+	return nil
 }

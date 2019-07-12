@@ -1,0 +1,208 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: samsahai-role
+rules:
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - activepromotions
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - activepromotions/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes/status
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - services/status
+  verbs:
+  - get
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses/status
+  verbs:
+  - get
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - teams
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - teams/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - activepromotions
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - activepromotions/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - activepromotionhistories
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - activepromotionhistories/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - desiredcomponents
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - desiredcomponents/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - queues
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - queues/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - queuehistories
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - queuehistories/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - stablecomponents
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - env.samsahai.io
+  resources:
+  - stablecomponents/status
+  verbs:
+  - get
+  - update
+  - patch

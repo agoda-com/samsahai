@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "samsahai.fullname" . }}
+  labels:
+    {{ include "samsahai.labels" . | indent 4 | trim }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "samsahai.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "samsahai.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum | quote }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{ toYaml . | indent 8 | trim }}
+    {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 8081
+              protocol: TCP
+          command: ["samsahai"]
+          args: ["start"]
+          {{- $root := . }}
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            {{- if .Values.debug }}
+            - name: DEBUG
+              value: "1"
+            {{- end }}
+          {{- with .Values.extraEnvs }}
+            {{ tpl (toYaml .) $root | indent 12 | trim }}
+          {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ default (include "samsahai.fullname" .) .Values.existingSecret }}
+            - configMapRef:
+                name: {{ include "samsahai.fullname" . }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          {{- with .Values.resources }}
+          volumeMounts:
+            - name: configdir
+              mountPath: /opt/samsahai/samsahai.yaml
+              subPath: samsahai.yaml
+              readOnly: true
+          resources:
+            {{ toYaml . | indent 12 | trim }}
+          {{- end }}
+      serviceAccountName: {{ template "samsahai.fullname" . }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{ toYaml . | indent 8 | trim }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{ toYaml . | indent 8 | trim }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{ toYaml . | indent 8 | trim }}
+    {{- end }}
+      volumes:
+        - name: configdir
+          configMap:
+            name: {{ template "samsahai.fullname" . }}

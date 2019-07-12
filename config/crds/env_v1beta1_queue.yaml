@@ -31,6 +31,11 @@ spec:
             name:
               description: Name represents Component name
               type: string
+            nextProcessAt:
+              description: NextProcessAt represents time to wait for process this
+                queue
+              format: date-time
+              type: string
             noOfOrder:
               description: NoOfOrder defines the position in queue lower is will be
                 picked first
@@ -43,6 +48,9 @@ spec:
               type: integer
             repository:
               description: Repository represents Docker image repository
+              type: string
+            teamName:
+              description: TeamName represents team owner of the queue
               type: string
             type:
               description: Type represents how we will process this queue
@@ -57,23 +65,104 @@ spec:
           - type
           - noOfRetry
           - noOfOrder
+          - teamName
           type: object
         status:
           properties:
+            conditions:
+              description: Conditions contains observations of the resource's state
+                e.g., Queue deployed, being tested +patchMergeKey=type +patchStrategy=merge
+              items:
+                properties:
+                  lastTransitionTime:
+                    format: date-time
+                    type: string
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                  status:
+                    type: string
+                  type:
+                    type: string
+                required:
+                - type
+                - status
+                type: object
+              type: array
             createdAt:
               description: CreatedAt represents time when the component has been added
                 to queue
               format: date-time
+              type: string
+            imageMissingList:
+              description: ImageMissingList defines image missing list
+              items:
+                properties:
+                  repository:
+                    type: string
+                  tag:
+                    type: string
+                required:
+                - repository
+                - tag
+                type: object
+              type: array
+            kubeZipLog:
+              description: KubeZipLog defines log of k8s resources during deployment
+                in base64 zip format
               type: string
             nextProcessAt:
               description: NextProcessAt represents time to wait for process this
                 queue
               format: date-time
               type: string
+            noOfProcessed:
+              description: NoOfProcessed represents how many time that this queue
+                had been processed
+              format: int64
+              type: integer
+            queueHistoryName:
+              description: QueueHistoryName defines name of history of this queue
+              type: string
+            releaseName:
+              description: ReleaseName defines name of helmrelease
+              type: string
+            startDeployTime:
+              description: StartDeployTime represents the time when this queue start
+                deploying
+              format: date-time
+              type: string
+            startTestingTime:
+              description: StartTestingTime represents the time when this queue start
+                testing
+              format: date-time
+              type: string
+            state:
+              description: State represents current status of this queue
+              type: string
+            testRunners:
+              description: TestRunner defines the test runner
+              properties:
+                teamcity:
+                  properties:
+                    buildID:
+                      type: string
+                    buildTypeID:
+                      type: string
+                    buildURL:
+                      type: string
+                  type: object
+              type: object
             updatedAt:
               description: UpdatedAt represents time when the component was processed
               format: date-time
               type: string
+          required:
+          - state
+          - releaseName
+          - queueHistoryName
+          - kubeZipLog
           type: object
   version: v1beta1
 status:

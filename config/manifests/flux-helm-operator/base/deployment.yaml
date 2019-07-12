@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flux-helm-operator
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: helm-operator
+    spec:
+      volumes:
+        # - name: git-key
+        #   secret:
+        #     secretName: git-key
+        #     defaultMode: 0400
+        # - name: sshdir
+        #   configMap:
+        #     name: {{ template "flux.fullname" . }}-ssh-config
+        #     defaultMode: 0600
+        # - name: git-config
+        #   secret:
+        #     secretName: {{ include "git.config.secretName" . }}
+        #     defaultMode: 0400
+        # - name: helm-tls-certs
+        #   secret:
+        #     secretName: {{ .Values.helmOperator.tls.secretName }}
+        #     defaultMode: 0400
+        # - name: helm-tls-ca
+        #   configMap:
+        #     name: {{ template "flux.fullname" . }}-helm-tls-ca-config
+        #     defaultMode: 0600
+        - name: repositories-yaml
+          secret:
+            secretName: flux-helm-repositories
+        - name: repositories-cache
+          emptyDir: {}
+      containers:
+        - name: helm-operator
+          image: docker.io/fluxcd/helm-operator
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3030
+          volumeMounts:
+            # - name: sshdir
+            #   mountPath: /root/.ssh/known_hosts
+            #   subPath: known_hosts
+            #   readOnly: true
+            # - name: git-config
+            #   mountPath: /root/.gitconfig
+            #   subPath: gitconfig
+            #   readOnly: true
+            # - name: git-key
+            #   mountPath: /etc/fluxd/ssh
+            #   readOnly: true
+            # - name: helm-tls-certs
+            #   mountPath: /etc/fluxd/helm
+            #   readOnly: true
+            # - name: helm-tls-ca
+            #   mountPath: /etc/fluxd/helm-ca
+            #   readOnly: true
+            - name: repositories-yaml
+              mountPath: /var/fluxd/helm/repository/repositories.yaml
+              subPath: repositories.yaml
+              readOnly: true
+            - name: repositories-cache
+              mountPath: /var/fluxd/helm/repository/cache
+          args:
+            - --log-format=$(logFormat)
+            - --git-timeout=$(gitTimeout)
+            - --git-poll-interval=$(gitPollInterval)
+            - --charts-sync-interval=$(chartsSyncInterval)
+            - --update-chart-deps=$(updateChartDeps)
+            - --log-release-diffs=$(logReleaseDiffs)
+            - --tiller-namespace=$(tillerNamespace)
+          # - --tiller-tls-enable={{ .Values.helmOperator.tls.enable }}
+          # - --tiller-tls-key-path=/etc/fluxd/helm/{{ .Values.helmOperator.tls.keyFile }}
+          # - --tiller-tls-cert-path=/etc/fluxd/helm/{{ .Values.helmOperator.tls.certFile }}
+          # - --tiller-tls-verify={{ .Values.helmOperator.tls.verify }}
+          # - --tiller-tls-ca-cert-path=/etc/fluxd/helm-ca/ca.crt
+          # - --tiller-tls-hostname={{ .Values.helmOperator.tls.hostname }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi

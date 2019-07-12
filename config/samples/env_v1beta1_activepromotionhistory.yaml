@@ -1,0 +1,9 @@
+apiVersion: env.samsahai.io/v1beta1
+kind: ActivePromotionHistory
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: activepromotionhistory-sample
+spec:
+  # Add fields here
+  foo: bar

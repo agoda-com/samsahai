@@ -25,3 +25,7 @@ comment:
   behavior: default
   require_changes: no
 
+ignore:
+  - "**/zz_generated*.go"
+  - "**/*.pb.go"
+  - "**/*.twirp.go"

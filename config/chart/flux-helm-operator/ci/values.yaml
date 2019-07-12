@@ -1,0 +1,30 @@
+helmOperator:
+  repository: reg-hk.agodadev.io/aiab/helm-operator
+  tag: 0.10.1-always-download-chart
+  create: true
+  configureRepositories:
+    enable: true
+    repositories:
+      - name: stable
+        url: https://kubernetes-charts.storage.googleapis.com
+      - name: incubator
+        url: https://kubernetes-charts-incubator.storage.googleapis.com
+      - name: agoda-github
+        url: https://github.agodadev.io/pages/docker/agoda-charts-repo
+  tillerHost: tiller-deploy.samsahai-system.svc.hkci-k8s-a.local
+  extraEnvs:
+    - name: HTTP_PROXY
+      value: http://hk-agcprx-2000.corpdmz.agoda.local:8080
+    - name: HTTPS_PROXY
+      value: http://hk-agcprx-2000.corpdmz.agoda.local:8080
+    - name: NO_PROXY
+      value: "localhost,127.0.0.0/8,169.0.0.0/8,172.16.0.0/12,192.168.0.0/16,10.0.0.0/8,.agodadev.io,.agoda.local,.hkci-k8s-a.local,github.agodadev.io"
+    - name: GOMAXPROCS
+      value: "2"
+  resources:
+    requests:
+      cpu: 2
+      memory: 2Gi
+    limits:
+      cpu: 2
+      memory: 2Gi

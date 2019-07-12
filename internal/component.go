@@ -8,26 +8,22 @@ const (
 	PublicHarbor   UpdatingSource = "publicHarbor"
 )
 
-type SubComponent struct {
-	Name   string          `json:"name" yaml:"name"`
-	Image  ComponentImage  `json:"image" yaml:"image"`
-	Source *UpdatingSource `json:"source,omitempty" yaml:"source,omitempty"`
-}
-
+// Component represents a unit in Samsahai
 type Component struct {
-	Name         string          `json:"name" yaml:"name"`
-	Chart        ComponentChart  `json:"chart" yaml:"chart"`
-	Image        ComponentImage  `json:"image" yaml:"image"`
-	Values       interface{}     `json:"values,omitempty" yaml:"values,omitempty"`
-	ValuesFiles  []string        `json:"valuesFiles,omitempty" yaml:"valuesFiles,omitempty"`
-	Source       *UpdatingSource `json:"source,omitempty" yaml:"source,omitempty"`
-	Dependencies []*SubComponent `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+	Parent       string                 `json:"parent,omitempty"`
+	Name         string                 `json:"name" yaml:"name"`
+	Chart        ComponentChart         `json:"chart" yaml:"chart"`
+	Image        ComponentImage         `json:"image" yaml:"image"`
+	Values       map[string]interface{} `json:"values,omitempty" yaml:"values,omitempty"`
+	Source       *UpdatingSource        `json:"source,omitempty" yaml:"source,omitempty"`
+	Dependencies []*Component           `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 }
 
+// ComponentImage
 type ComponentImage struct {
 	Repository string `json:"repository" yaml:"repository"`
 	Tag        string `json:"tag" yaml:"tag"`
-	Pattern    string `json:"pattern" yaml:"pattern"`
+	Pattern    string `json:"pattern,omitempty" yaml:"pattern"`
 }
 
 // ComponentChart
@@ -36,3 +32,9 @@ type ComponentChart struct {
 	Name       string `json:"name" yaml:"name"`
 	Version    string `json:"version,omitempty" yaml:"version,omitempty"`
 }
+
+// ComponentValues
+type ComponentValues map[string]interface{}
+
+// ComponentsValues
+type ComponentsValues map[string]ComponentValues

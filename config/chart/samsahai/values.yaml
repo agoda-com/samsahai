@@ -1,0 +1,81 @@
+# Default values for samsahai.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: quay.io/samsahai/samsahai
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+debug: false
+
+extraEnvs: {}
+
+configs:
+  S2H_CONFIG_PATH: "samsahai.yaml"
+  S2H_SERVICE_NAME: '{{ include "samsahai.fullname" . }}'
+# existingSecret: ""
+
+fileConfigs:
+  s2hImage: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'
+  clusterDomain: "cluster.local"
+#  teamcityURL: ""
+#  s2hExternalURL: ""
+
+  activePromotion:
+    concurrences: 3
+    timeout: "30m"
+    rollbackTimeout: "5m"
+    teardownDuration: "10m"
+    maxHistories: 14
+    # demotion timeout should be less than rollback timeout
+    demotionTimeout: "3m"
+
+#  postNamespaceCreation:
+#    command: ["/bin/sh", "-c"]
+#    args:
+#      - |
+#        {{ `echo {{ .Namespace }}` }}
+
+credentials:
+  S2H_AUTH_TOKEN: "please_change_this"
+  TEAMCITY_USERNAME:
+  TEAMCITY_PASSWORD:
+  SLACK_TOKEN:
+
+service:
+  type: ClusterIP
+  http: 8080
+
+exporter:
+  port: 8081
+  enabled: false
+
+
+ingress:
+  enabled: false
+  annotations: {}
+  # kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths: []
+
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

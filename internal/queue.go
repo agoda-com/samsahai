@@ -1,26 +1,37 @@
 package internal
 
 import (
-	envv1beta1 "github.com/agoda-com/samsahai/internal/apis/env/v1beta1"
+	"time"
+
+	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 // QueueController manages updating component queue through CRD
 type QueueController interface {
 	// Add adds Queue
-	Add(q *envv1beta1.Queue) error
+	Add(q *v1beta1.Queue) error
 
 	// AddTop adds Queue to the top
-	AddTop(q *envv1beta1.Queue) error
+	AddTop(q *v1beta1.Queue) error
 
-	// First returns first component in Queue
-	First() (*envv1beta1.Queue, error)
+	// First returns first component in Queue or current running Queue
+	First() (*v1beta1.Queue, error)
 
 	// Remove removes Queue
-	Remove(q *envv1beta1.Queue) error
+	Remove(q *v1beta1.Queue) error
 
 	// Size returns no of queues
 	Size() int
 
-	// RemoveAll removes all Queue
-	RemoveAll() error
+	// SetLastOrder sets queue order to the last
+	SetLastOrder(q *v1beta1.Queue) error
+
+	// SetReverifyQueueAtFirst sets queue to reverify type
+	SetReverifyQueueAtFirst(q *v1beta1.Queue) error
+
+	// SetRetryQueue sets Queue to retry one time
+	SetRetryQueue(q *v1beta1.Queue, noOfRetry int, nextAt time.Time) error
+
+	// RemoveAllQueues removes all queues
+	RemoveAllQueues() error
 }

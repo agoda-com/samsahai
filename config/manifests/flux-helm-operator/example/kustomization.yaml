@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+  - clusterrole-rbac.yaml
+namespace: kube-system
+images:
+  - name: docker.io/fluxcd/helm-operator
+    newName: docker.io/fluxcd/helm-operator
+    newTag: 0.10.0
+patchesJson6902:
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: flux-helm-operator
+    path: deployment-patch.yaml
+secretGenerator:
+  - name: flux-helm-repositories
+    files:
+      - repositories.yaml
+    type: Opaque
+    behavior: replace
+  # generate a SSH key named identity: ssh-keygen -q -N "" -f ./identity
+  - name: git-key
+    files:
+      - identity
+      - identity.pub
+    type: Opaque
+configMapGenerator:
+  - name: flux-helm-operator-parameters
+    env: params.env
+    behavior: merge

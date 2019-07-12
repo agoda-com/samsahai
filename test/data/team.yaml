@@ -1,0 +1,30 @@
+apiVersion: env.samsahai.io/v1beta1
+kind: Team
+metadata:
+  name: teamtest
+spec:
+  # Add fields here
+  description: this is team sample resource
+  owners:
+    - samsahai@samsahai.io
+  resources:
+    cpu: 10
+    memory: 10Gi
+  gitStorage:
+    url: https://github.agodadev.io/docker/samsahai-example.git
+  credential:
+    secretName: s2h-teamtest
+    git:
+      username:
+        key: gitUser
+      password:
+        key: gitPassword
+#    teamcity: https://github.com/agoda-com/samsahai-example.git
+#      username:
+#        key: tcUser
+#      password:
+#        key: tcPass
+#    slack:
+#      token:
+#        key: slackToken
+

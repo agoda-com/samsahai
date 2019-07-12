@@ -19,16 +19,11 @@ jobs:
       image: ubuntu-1604:201903-01
 
     environment:
-      K8S_VERSION: v1.13.7
-      KUBECONFIG: /home/circleci/.kube/config
-      MINIKUBE_VERSION: v1.1.1
-      MINIKUBE_WANTUPDATENOTIFICATION: false
-      MINIKUBE_WANTREPORTERRORPROMPT: false
-      MINIKUBE_HOME: /home/circleci
-      CHANGE_MINIKUBE_NONE_USER: true
+      KUBECONFIG: /tmp/s2h/k3s-kubeconfig
       GOPATH: /home/circleci/go
+      INSTALL_DIR: /home/circleci/go/bin/
       POD_NAMESPACE: default
-      GOVERSION: 1.12.5
+      GOVERSION: 1.12.7
       OS: linux
       ARCH: amd64
 
@@ -37,8 +32,13 @@ jobs:
 
       - checkout
 
+      - restore_cache:
+          key: gopkg-1.12.7-{{ .Branch }}-{{ checksum "go.mod" }}
+          paths:
+            - /home/circleci/go/pkg/mod
+
       - run:
-          name: install Go
+          name: Install Go
           command: |
             go version
             go env GOROOT
@@ -57,176 +57,109 @@ jobs:
             echo 'export docker_image_repo="phantomnat/samsahai"' >> $BASH_ENV
 
       - run:
-          name: "install dependencies"
+          name: "Install Dependencies"
           command: |
-            make install-dep
-            make dep-kubebuilder-linux
+            make install-dep SUDO="sudo " DEBUG=1
+
             echo 'export GO111MODULE="on"' >> $BASH_ENV
-            echo 'export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin' >> $BASH_ENV
+            echo 'export PATH=$PATH:/usr/local/go/bin:/usr/local/kubebuilder/bin:$GOPATH/bin' >> $BASH_ENV
+
             export GO111MODULE=on
             go mod tidy
 
-      - run:
-          name: "unit env"
-          command: |
-            echo PATH=$PATH
-            ls -al $(go env GOPATH)/bin | grep goimports
-            ls -al $(go env GOPATH)/bin | grep govvv
+      - save_cache:
+          key: gopkg-1.12.7-{{ .Branch }}-{{ checksum "go.mod" }}
+          paths:
+            - /home/circleci/go/pkg/mod
 
-#      - run:
-#          name: "run unit test"
-#          command: |
-#            echo KUBECONFIG=${KUBECONFIG}
-#            echo GO111MODULE=${GO111MODULE}
-#            make unit-test
+      - run:
+          name: "Run Unit Test"
+          command: |
+            make unit-test
 
-      # spin up minikube
       - run:
-          name: Setup kubectl
+          name: "Unit Test Coverage"
           command: |
-            curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/${K8S_VERSION}/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-            mkdir -p ${HOME}/.kube
-            touch ${HOME}/.kube/config
+            make overall-coverage
+
       - run:
-          name: Setup minikube
+          name: Prepare E2E Test Environment
           command: |
-            curl -Lo minikube https://github.com/kubernetes/minikube/releases/download/${MINIKUBE_VERSION}/minikube-linux-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
-      - run:
-          name: Start minikube
-          command: |
-            sudo -E minikube start --vm-driver=none --cpus 2 --memory 4096 --kubernetes-version=${K8S_VERSION}
-      - run:
-          name: "e2e verify"
-          command: |
-            minikube status
-            kubectl version
-            kubectl cluster-info
-            docker version
+            make prepare-env-e2e-k3d
 
       # run e2e test
       - run:
-          name: "run e2e test"
+          name: "Run E2E Test"
           command: |
-            echo KUBECONFIG=${KUBECONFIG}
-            echo GO111MODULE=${GO111MODULE}
-            make e2e-test
+            kubectl version
+            kubectl cluster-info
+            helm version
+
+            make e2e-test-k3d DEBUG=1
+          no_output_timeout: 30m
+
+      - run:
+          name: "E2E Test Coverage"
+          command: |
+            make overall-coverage
+
             bash <(curl -s https://codecov.io/bash)
 
-      - persist_to_workspace:
-          root: /home/circleci/
-          paths:
-            - go
-
       - run:
-          name: "build docker"
+          name: Save test results
           command: |
-            if [ "$CIRCLE_BRANCH" = "master" ]; then
-              DOCKER_IMAGE_TAG="master"
-            else
-              DOCKER_IMAGE_TAG=$(echo "${CIRCLE_PULL_REQUEST}" |awk -F/ '{print $ (NF-1)"-"$NF}')
-            fi
-            echo tag: $DOCKER_IMAGE_TAG
-            echo "export docker_image_tag=\"$DOCKER_IMAGE_TAG\"" >> $BASH_ENV
-            make build-docker docker_image_tag=$DOCKER_IMAGE_TAG
+            mkdir -p ./test/result/
+            find . -type f -regex "./.*unit-test.xml" -exec cp {} ./test/result/ \;
+            ls -al ./test/result/
+          when: always
 
-      - run:
-          name: docker login
-          command: |
-            make docker-login docker_password="$QUAY_DOCKER_TOKEN"
+      - store_test_results:
+          path: ./test/result
 
-      - run:
-          name: docker push
-          command: |
-            make docker-push
+      - store_artifacts:
+          path: ./test/result
 
-            if [ "$CIRCLE_BRANCH" = "master" ]; then
-              make docker-tag-n-push-latest
-            fi
+      # TODO: build binary
 
-  publish-github-release:
-    docker:
-      - image: circleci/golang:1.12
-    working_directory: /go/src/github.com/agoda-com/samsahai
+#      - persist_to_workspace:
+#          root: /home/circleci/
+#          paths:
+#            - go
+
+  # TODO: release to github with go release
+  release:
+    machine:
+      image: ubuntu-1604:201903-01
+
+    environment:
+      GOPATH: /home/circleci/go
+
+    working_directory: /home/circleci/go/src/github.com/agoda-com/samsahai
     steps:
       - early_return_for_forked_pull_requests
-#        - checkout
       - setup_remote_docker
-
-      - run:
-          name: Prepared Env vars.
-          command: |
-            echo 'export docker_user="$QUAY_DOCKER_USER"' >> $BASH_ENV
-            echo 'export docker_registry="$QUAY_DOCKER_REGISTRY"' >> $BASH_ENV
-            echo 'export docker_image_repo="phantomnat/samsahai"' >> $BASH_ENV
-            # echo 'export docker_image_tag="latest"' >> $BASH_ENV
-
       - attach_workspace:
-          at: /go
-
-      # increment version
-      # create tag
-
+          at: /home/circleci/
       - run:
-          name: "build docker"
+          name: "verify"
           command: |
-            if [ "$CIRCLE_BRANCH" = "master" ]; then
-              DOCKER_IMAGE_TAG=$(cat ./VERSION)
-
-              docker_image_exists() {
-                local image_full_name="$1"; shift
-                local wait_time="${1:-5}"
-                local search_term='Pulling|is up to date|not found'
-                local result="$((timeout --preserve-status "$wait_time" docker 2>&1 pull "$image_full_name" &) | grep -v 'Pulling repository' | egrep -o "$search_term")"
-                test "$result" || { echo "Timed out too soon. Try using a wait_time greater than $wait_time..."; return 1 ;}
-                echo $result | grep -vq 'not found'
-              }
-
-              if docker_image_exists "$docker_registry/$docker_image_repo:$DOCKER_IMAGE_TAG"; then
-                echo "error: docker image version $DOCKER_IMAGE_TAG already exists!"
-                exit 1
-              fi
-            else
-              echo "error: not master branch!"
-              circleci step halt
-            fi
-
-            echo tag: $DOCKER_IMAGE_TAG
-            echo "export docker_image_tag=\"$DOCKER_IMAGE_TAG\"" >> $BASH_ENV
-
-            make build-docker docker_image_tag=$DOCKER_IMAGE_TAG
-
-      - run:
-          name: docker login
-          command: |
-            make docker-login docker_password="$QUAY_DOCKER_TOKEN"
-
-      - run:
-          name: docker push
-          command: |
-            make docker-push
-
-            if [ "$CIRCLE_BRANCH" = "master" ]; then
-              make docker-tag-n-push-latest
-            fi
+            set -x
+            echo GOPATH=$GOPATH
+            echo PATH=$PATH
+            ls -al
+            ls -al $GOPATH/bin
+            ls -al out
 
 workflows:
   version: 2
   build-deploy:
     jobs:
       - build
-      - publish-github-release:
+      - release:
           requires:
             - build
           filters:
             branches:
-#              only: master
               ignore: /.*/
             tags:
-              only: /(?<=^[Vv]|^)(?:(?<major>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<minor>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<patch>(?:0|[1-9](?:(?:0|[1-9])+)*))(?:-(?<prerelease>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*)))*))?(?:[+](?<build>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+)))*))?)$/
-
-#      - publish-docker:
-#          requires:
-#            - build
-#          filters:
-#            branches:
-#              only: master
+              only: /v[0-9]+(\.[0-9]+)*(-.*)*/

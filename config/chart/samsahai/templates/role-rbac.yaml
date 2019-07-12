@@ -1,0 +1,44 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "samsahai.fullname" . }}
+  labels:
+    {{ include "samsahai.labels" . | indent 4 | trim }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "samsahai.fullname" . }}
+  labels:
+    {{ include "samsahai.labels" . | indent 4 | trim }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ template "samsahai.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "samsahai.fullname" . }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "samsahai.fullname" . }}
+  labels:
+    {{ include "samsahai.labels" . | indent 4 | trim }}

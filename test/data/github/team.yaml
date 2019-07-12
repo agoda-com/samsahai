@@ -1,0 +1,40 @@
+apiVersion: env.samsahai.io/v1beta1
+kind: Team
+metadata:
+  name: example
+spec:
+  # Add fields here
+  description: Example team
+  owners:
+    - example@samsahai.io
+  #  resources:
+  #    cpu: 10
+  #    memory: 10Gi
+  gitStorage:
+    url: https://github.com/agoda-com/samsahai-example.git
+    path: configs
+
+  stagingCtrl:
+    endpoint: http://127.0.0.1:8090
+    isDeploy: false
+
+status:
+  namespace:
+    staging: default
+
+#  credential:
+#    secretName: s2h-teamtest
+#    git:
+#      username:
+#        key: gitUser
+#      password:
+#        key: gitPassword
+#    teamcity:
+#      username:
+#        key: tcUser
+#      password:
+#        key: tcPass
+#    slack:
+#      token:
+#        key: slackToken
+

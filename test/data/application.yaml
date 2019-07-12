@@ -1,0 +1,9 @@
+activePromotion:
+  concurrences: 2
+  teardownDuration: "10s"
+
+postNamespaceCreation:
+  command: ["/bin/sh", "-c"]
+  args:
+    - |
+      echo {{ .Namespace }}

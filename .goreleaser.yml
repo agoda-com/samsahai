@@ -1,0 +1,67 @@
+#before
+builds:
+  - env:
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    id: "samsahai"
+    main: ./cmd/samsahai/main.go
+    binary: samsahai
+    ldflags:
+      - -s -w
+      - -X "{{.Env.GO_PACKAGE}}.Version={{.Version}}"
+      - -X "{{.Env.GO_PACKAGE}}.GitCommit={{.ShortCommit}}"
+    goos:
+      - linux
+    ignore:
+      - goos: linux
+        goarch: 386
+  - env:
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    id: "staging"
+    main: ./cmd/staging/main.go
+    binary: staging
+    ldflags:
+      - -s -w
+      - -X "{{.Env.GO_PACKAGE}}.Version={{.Version}}"
+      - -X "{{.Env.GO_PACKAGE}}.GitCommit={{.ShortCommit}}"
+    goos:
+      - linux
+    ignore:
+      - goos: linux
+        goarch: 386
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+dist: out
+#release:
+#  disable: true
+github_urls:
+  api: https://github.agodadev.io/api/v3/
+  upload: https://github.agodadev.io/api/uploads/
+  download: https://github.agodadev.io/
+  skip_tls_verify: true
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+dockers:
+  - goos: linux
+    goarch: amd64
+    binaries:
+      - samsahai
+      - staging
+    image_templates:
+      - "{{ .Env.DOCKER_REPO }}:{{ .Tag }}"
+      - "{{ .Env.DOCKER_REPO }}:latest"
+    dockerfile: scripts/alpine.Dockerfile
+    build_flag_templates:
+      - "--label=org.label-schema.schema-version=1.0"
+      - "--label=org.label-schema.version={{.Version}}"
+      - "--label=org.label-schema.name={{.ProjectName}}"
+      - "--build-arg=HTTP_PROXY={{.Env.http_proxy}}"
+      - "--build-arg=HTTPS_PROXY={{.Env.https_proxy}}"
+      - "--build-arg=NO_PROXY={{.Env.no_proxy}}"
+    extra_files:
+      - bin/kubectl-linux

@@ -1,0 +1,94 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - crd.yaml
+  - deployment.yaml
+commonLabels:
+  kustomize.component: flux-helm-operator
+images:
+  - name: docker.io/fluxcd/helm-operator
+    newName: docker.io/fluxcd/helm-operator
+    newTag: 0.10.0
+secretGenerator:
+  - name: flux-helm-repositories
+    files:
+      - repositories.yaml
+    type: Opaque
+configMapGenerator:
+  - name: flux-helm-operator-parameters
+    env: params.env
+generatorOptions:
+  disableNameSuffixHash: false
+vars:
+  - name: logFormat
+    objref:
+      kind: ConfigMap
+      name: flux-helm-operator-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.logFormat
+  - name: chartsSyncInterval
+    objref:
+      kind: ConfigMap
+      name: flux-helm-operator-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.chartsSyncInterval
+  - name: updateChartDeps
+    objref:
+      kind: ConfigMap
+      name: flux-helm-operator-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.updateChartDeps
+  - name: logReleaseDiffs
+    objref:
+      kind: ConfigMap
+      name: flux-helm-operator-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.logReleaseDiffs
+  - name: tillerNamespace
+    objref:
+      kind: ConfigMap
+      name: flux-helm-operator-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.tillerNamespace
+  - name: gitPollInterval
+    objref:
+      kind: ConfigMap
+      name: flux-helm-operator-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.gitPollInterval
+  - name: gitTimeout
+    objref:
+      kind: ConfigMap
+      name: flux-helm-operator-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.gitTimeout
+  - name: http_proxy
+    objref:
+      kind: ConfigMap
+      name: flux-helm-operator-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.http_proxy
+  - name: https_proxy
+    objref:
+      kind: ConfigMap
+      name: flux-helm-operator-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.https_proxy
+  - name: no_proxy
+    objref:
+      kind: ConfigMap
+      name: flux-helm-operator-parameters
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.no_proxy
+configurations:
+  - params.yaml

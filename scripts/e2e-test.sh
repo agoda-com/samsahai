@@ -1,11 +1,34 @@
 #!/usr/bin/env bash
 
-set -e
+set -eux
 
-for d in $(go list ./... | grep -v cmd); do
-    GO111MODULE=on go test -p 1 -race -v -covermode=atomic -coverprofile=coverage.out $d
-    if [ -f coverage.out ]; then
-        cat coverage.out >> coverage.txt
-        rm coverage.out
-    fi
-done
+export GO111MODULE=on
+
+cover_pkgs=$(go list ./... | grep -v /cmd | grep -v /vendor | grep -v /test | tr "\n" ",")
+
+# install ginkgo cli
+go install github.com/onsi/ginkgo/ginkgo
+
+ginkgo \
+  --failFast \
+  --progress --noColor --v \
+  --nodes=1 \
+  -timeout=20m \
+  -race \
+  -cover \
+  -covermode atomic \
+  -coverprofile coverage.out \
+  -coverpkg "$cover_pkgs" \
+  -outputdir "$(pwd)" \
+  ./test/e2e
+
+tail -n +2 coverage.out >> coverage.txt || exit 255
+rm coverage.out
+
+CIRCLECI=${CIRCLECI:-}
+if [[ ! -z "$CIRCLECI" ]]; then
+  mkdir -p ./test/result/
+  find . -type f -regex "./test/e2e/.*unit-test.xml" -exec cp {} ./test/result/ \;
+  find . -type f -regex "./test/e2e/.*unit-test.xml" -exec rm {} +;
+  ls -al ./test/result/;
+fi

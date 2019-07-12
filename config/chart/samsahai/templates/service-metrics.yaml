@@ -1,0 +1,22 @@
+{{- if .Values.exporter.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "samsahai.fullname" . }}-metrics
+  labels:
+    app.kubernetes.io/component: metrics
+    {{ include "samsahai.labels" . | indent 4 | trim }}
+  annotations:
+    prometheus.io/port: "{{ .Values.exporter.port }}"
+    prometheus.io/scrape: "true"
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.exporter.port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    app.kubernetes.io/name: {{ include "samsahai.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

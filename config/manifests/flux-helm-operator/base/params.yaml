@@ -1,0 +1,4 @@
+data:
+  SLACK_TOKEN: abcd
+  samsahai.yaml: |
+    slack-token: abcd

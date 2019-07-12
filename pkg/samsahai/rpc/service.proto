@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package samsahai.io.samsahai;
+option go_package = "rpc";
+
+service RPC {
+    rpc GetConfiguration (Team) returns (Configuration);
+    rpc NotifyComponentUpgrade (ComponentUpgrade) returns (Empty);
+    rpc GetMissingVersion (TeamWithCurrentComponent) returns (ImageList);
+}
+
+message Empty {
+}
+
+message Team {
+    string name = 1;
+}
+
+message Configuration {
+    bytes config = 1;
+    string gitRevision = 2;
+}
+
+message ComponentUpgrade {
+    enum UpgradeStatus {
+        FAILURE = 0;
+        SUCCESS = 1;
+    }
+    enum IssueType {
+        UNKNOWN = 0;
+        DESIRED_VERSION_FAILED = 1;
+        IMAGE_MISSING = 2;
+        ENVIRONMENT_ISSUE = 3;
+    }
+    UpgradeStatus status = 1;
+    string name = 2;
+    string teamName = 3;
+    Image image = 4;
+    IssueType issueType = 5;
+    string queueHistoryName = 6;
+    repeated Image imageMissingList = 7;
+    string namespace = 8;
+    string testBuildTypeID = 9;
+}
+
+message Image {
+    string repository = 1;
+    string tag = 2;
+}
+
+message ImageList {
+    repeated Image images = 1;
+}
+
+message TeamWithCurrentComponent {
+    string teamName = 1;
+    string compName = 2;
+    Image image = 3;
+}

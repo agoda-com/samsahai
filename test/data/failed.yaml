@@ -1,0 +1,71 @@
+tearDownDuration: 30m
+
+staging:
+  maxRetry: 3
+  deployment:
+    timeout: 10s
+    engine: mock
+    testRunner:
+      timeout: 10s
+      pollingTime: 10s
+      testMock:
+        result: false
+
+
+report:
+  reportMock: true
+  slack:
+    name: Samsahai Notification
+    secretKeyRef:
+      token:
+        name: mock-secret
+        key: slack-token
+    channels:
+      - samsahai
+
+components:
+  - name: redis
+    chart:
+      repository: https://kubernetes-charts.storage.googleapis.com
+      name: redis
+    image:
+      repository: bitnami/redis
+      pattern: '5.*debian-9.*'
+    source: public-registry
+    values:
+      image:
+        repository: bitnami/redis
+        pullPolicy: IfNotPresent
+      cluster:
+        enabled: false
+      clusterDomain: hkci-k8s-a.local
+      usePassword: false
+      master:
+        persistence:
+          enabled: false
+  - name: wordpress
+    chart:
+      repository: https://kubernetes-charts.storage.googleapis.com
+      name: wordpress
+    image:
+      repository: bitnami/wordpress
+      pattern: '5\.2.*debian-9.*'
+    source: public-registry
+    dependencies:
+      - name: mariadb
+        image:
+          repository: bitnami/mariadb
+          pattern: '10\.3.*debian-9.*'
+        source: public-registry
+    values:
+      service:
+        type: NodePort
+      persistence:
+        enabled: false
+      mariadb:
+        enabled: true
+        replication:
+          enabled: false
+        master:
+          persistence:
+            enabled: false

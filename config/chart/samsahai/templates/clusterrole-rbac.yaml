@@ -1,0 +1,115 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "samsahai.fullname" . }}
+  labels:
+    {{ include "samsahai.labels" . | indent 4 | trim }}
+rules:
+  - apiGroups:
+      - env.samsahai.io
+    resources:
+      - teams
+      - activepromotions
+      - activepromotionhistories
+      - desiredcomponents
+      - queues
+      - queuehistories
+      - stablecomponents
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - services
+      - serviceaccounts
+      - secrets
+      - resourcequotas
+    verbs:
+      - "*"
+  - apiGroups:
+      - apps
+      - extensions
+    resources:
+      - deployments
+      - statefulsets
+    verbs:
+      - "*"
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+      - rolebindings
+    verbs:
+      - "*"
+  - apiGroups:
+      - flux.weave.works
+    resources:
+      - helmreleases
+    verbs:
+      - "*"
+  - apiGroups:
+      - env.samsahai.io
+    resources:
+      - teams/status
+      - activepromotions/status
+      - activepromotionhistories/status
+      - desiredcomponents/status
+      - queues/status
+      - queuehistories/status
+      - stablecomponents/status
+    verbs:
+      - get
+      - update
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - services/status
+      - endpoints
+      - endpoints/status
+      - nodes
+      - nodes/status
+      - pods
+      - pods/log
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - extensions
+    resources:
+      - ingresses
+      - ingresses/status
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+      - persistentvolumeclaims/status
+    verbs:
+      - get
+      - list
+      - watch
+      - delete
+      - deletecollection
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "samsahai.fullname" . }}
+  labels:
+    {{ include "samsahai.labels" . | indent 4 | trim }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "samsahai.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "samsahai.fullname" . }}
+    namespace: {{ .Release.Namespace }}

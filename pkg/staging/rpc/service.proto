@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package samsahai.io.staging;
+option go_package = "rpc";
+
+service RPC {
+    rpc UpdateConfiguration(Configuration) returns (Empty);
+}
+
+message Empty {
+}
+
+message Configuration {
+    bytes config = 1;
+    string gitRevision = 2;
+}

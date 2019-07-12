@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "samsahai.fullname" . }}
+  labels:
+    {{ include "samsahai.labels" . | indent 4 | trim }}
+data:
+  {{- $root := . }}
+  {{- range $key, $value := .Values.configs }}
+  {{ $key }}: {{ (tpl $value $root) | quote }}
+  {{- end }}
+
+  samsahai.yaml: |-
+    {{ tpl (toYaml .Values.fileConfigs) . | nindent 4 }}

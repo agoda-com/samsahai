@@ -1,9 +1,18 @@
 package internal
 
-type Storage interface {
-	Load()
+type StorageController interface {
+	// Start starts the storage and keep in-sync with target repository
+	Start(shutdown <-chan struct{})
 
-	Read() ([]byte, error)
+	// Stop stops sync and exit
+	Stop()
 
-	Save()
+	// Notify
+	//Notify()
+
+	// OnChanged notifies on changed
+	OnChanged() <-chan struct{}
+
+	// Read returns file content
+	//Read(filepath string) ([]byte, error)
 }
