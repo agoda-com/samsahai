@@ -5,6 +5,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/queue"
 	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
@@ -14,14 +15,14 @@ func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1beta1.Acti
 	targetNs := atpComp.Status.TargetNamespace
 	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs)
 	if err != nil {
-		logger.Error(err, "cannot ensure pre-active components", "namespace", targetNs)
+		return errors.Wrapf(err, "cannot ensure pre-active components, namespace %s", targetNs)
 	}
 
 	if !atpComp.IsActivePromotionCanceled() && !atpComp.Status.IsTimeout {
 		// to save pre-active queue after pre-active queue finished
 		q, err = c.ensurePreActiveComponentsTested(teamName, targetNs)
 		if err != nil {
-			logger.Error(err, "cannot ensure pre-active components tested", "namespace", targetNs)
+			return errors.Wrapf(err, "cannot ensure pre-active components tested, namespace %s", targetNs)
 		}
 	}
 
