@@ -3,6 +3,7 @@ package exporter
 import (
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -19,6 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/agoda-com/samsahai/internal"
+	"github.com/agoda-com/samsahai/internal/config"
+	"github.com/agoda-com/samsahai/internal/config/git"
 	"github.com/agoda-com/samsahai/internal/util/http"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
@@ -84,9 +87,12 @@ var _ = Describe("Samsahai Exporter", func() {
 		mgr, err := manager.New(cfg, manager.Options{Namespace: namespace, MetricsBindAddress: ":8008"})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
+		configMgr, err := config.NewWithGitClient(&git.Client{}, "example", path.Join("..", "..", "..", "test", "data"))
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(configMgr).NotTo(BeNil())
+
 		t := map[string]internal.ConfigManager{
-			"example":      nil,
-			"testTeamname": nil,
+			"testQTeamName1": configMgr,
 		}
 		q := &s2hv1beta1.QueueList{
 			Items: []s2hv1beta1.Queue{
@@ -96,12 +102,13 @@ var _ = Describe("Samsahai Exporter", func() {
 						Namespace: namespace,
 					},
 					Spec: s2hv1beta1.QueueSpec{
-						TeamName: "testQTeamName1",
-						Version:  "10.9.8.7",
+						TeamName:  "testQTeamName1",
+						Version:   "10.9.8.7",
+						NoOfOrder: 0,
 					},
 					Status: s2hv1beta1.QueueStatus{
 						NoOfProcessed: 1,
-						State:         "testQState1",
+						State:         "waiting",
 					},
 				},
 				{
@@ -110,12 +117,13 @@ var _ = Describe("Samsahai Exporter", func() {
 						Namespace: namespace,
 					},
 					Spec: s2hv1beta1.QueueSpec{
-						TeamName: "testQTeamName2",
-						Version:  "7.8.9.10",
+						TeamName:  "testQTeamName2",
+						Version:   "7.8.9.10",
+						NoOfOrder: 0,
 					},
 					Status: s2hv1beta1.QueueStatus{
 						NoOfProcessed: 1,
-						State:         "testQState2",
+						State:         "waiting",
 					},
 				},
 			},
@@ -166,7 +174,7 @@ var _ = Describe("Samsahai Exporter", func() {
 						Namespace: namespace,
 					},
 					Status: s2hv1beta1.ActivePromotionStatus{
-						State: s2hv1beta1.ActivePromotionWaiting,
+						State: "waiting",
 					},
 				},
 				{
@@ -175,7 +183,7 @@ var _ = Describe("Samsahai Exporter", func() {
 						Namespace: namespace,
 					},
 					Status: s2hv1beta1.ActivePromotionStatus{
-						State: s2hv1beta1.ActivePromotionFinished,
+						State: "finished",
 					},
 				},
 			},
@@ -260,7 +268,7 @@ var _ = Describe("Samsahai Exporter", func() {
 		}
 
 		SetTeamNameMetric(t)
-		SetQueueMetric(q)
+		SetQueueMetric(q, t)
 		SetQueueHistoriesMetric(qh, SamsahaiURL)
 		SetActivePromotionMetric(ap)
 		SetActivePromotionHistoriesMetric(aph)
@@ -284,7 +292,7 @@ var _ = Describe("Samsahai Exporter", func() {
 	It("Should show team name correctly ", func() {
 		data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_team{teamName="example"} 1`)
+		expectedData := strings.Contains(string(data), `samsahai_team{teamName="testQTeamName1"} 1`)
 		g.Expect(expectedData).To(BeTrue())
 	}, timeout)
 
@@ -292,9 +300,9 @@ var _ = Describe("Samsahai Exporter", func() {
 		defer close(done)
 		data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_queue{component="qName1",no_of_processed="1",order="0",state="testQState1",teamName="testQTeamName1",version="10.9.8.7"} 1`)
+		expectedData := strings.Contains(string(data), `samsahai_queue{component="qName1",no_of_processed="1",order="0",state="waiting",teamName="testQTeamName1",version="10.9.8.7"} 1`)
 		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_queue{component="qName2",no_of_processed="1",order="0",state="testQState2",teamName="testQTeamName2",version="7.8.9.10"} 1`)
+		expectedData = strings.Contains(string(data), `samsahai_queue{component="qName2",no_of_processed="1",order="0",state="waiting",teamName="testQTeamName2",version="7.8.9.10"} 1`)
 		g.Expect(expectedData).To(BeTrue())
 		expectedData = strings.Contains(string(data), `samsahai_queue{component="",`)
 		g.Expect(expectedData).To(BeFalse())
@@ -316,11 +324,10 @@ var _ = Describe("Samsahai Exporter", func() {
 		defer close(done)
 		data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_active_promotion{status="Finished",teamName="testAPName2"} 1`)
+		expectedData := strings.Contains(string(data), `samsahai_active_promotion{state="destroying",teamName="testAPName2"} 1`)
 		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion{status="Waiting",teamName="testAPName1"} 1`)
+		expectedData = strings.Contains(string(data), `samsahai_active_promotion{state="waiting",teamName="testAPName1"} 1`)
 		g.Expect(expectedData).To(BeTrue())
-
 	}, timeout)
 
 	It("Should show active promotion histories correctly", func(done Done) {

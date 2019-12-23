@@ -191,7 +191,7 @@ func (c *controller) NotifyComponentUpgrade(ctx context.Context, comp *rpc.Compo
 	if err := c.client.List(context.TODO(), nil, queueList); err != nil {
 		logger.Error(err, "cannot list all queue")
 	}
-	exporter.SetQueueMetric(queueList)
+	exporter.SetQueueMetric(queueList, c.teamConfigs)
 
 	queueHistoriesList := &s2hv1beta1.QueueHistoryList{}
 	if err := c.client.List(context.TODO(), nil, queueHistoriesList); err != nil {

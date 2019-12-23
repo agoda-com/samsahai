@@ -270,7 +270,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	if err = c.client.List(context.TODO(), nil, queueList); err != nil {
 		logger.Error(err, "cannot list all queue")
 	}
-	exporter.SetQueueMetric(queueList)
+	exporter.SetQueueMetric(queueList, c.teamConfigs)
 
 	return nil
 }
@@ -458,7 +458,7 @@ func (c *controller) exportAllMetric() {
 	if err := c.client.List(context.TODO(), nil, queueList); err != nil {
 		logger.Error(err, "cannot list all queue")
 	}
-	exporter.SetQueueMetric(queueList)
+	exporter.SetQueueMetric(queueList, c.teamConfigs)
 
 	//queue histories
 	queueHistoriesList := &s2hv1beta1.QueueHistoryList{}
@@ -485,6 +485,9 @@ func (c *controller) exportAllMetric() {
 	oc := map[string]outdatedComponentTime{}
 	for _, atpHistories := range atpHisList.Items {
 		teamName := atpHistories.Labels["samsahai.io/teamname"]
+		if atpHistories.Spec.ActivePromotion == nil {
+			continue
+		}
 		itemCreateTime := atpHistories.Spec.ActivePromotion.CreationTimestamp
 		if obj, ok := oc[teamName]; ok {
 			if obj.CreatedTime.Before(&itemCreateTime) {
