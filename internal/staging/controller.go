@@ -524,9 +524,12 @@ func isCleanupTimeout(startedTime *metav1.Time, timeout *metav1.Duration) bool {
 }
 
 func forceCleanupResources(client *kubernetes.Clientset, namespace string, listOpt metav1.ListOptions) {
+	logger.Debug("force cleaning up all resources", "namespace", namespace)
+
 	// force delete sts, deploy, sa, cm, secret, ing, pdb, pod, svc
 	gracePeriod := int64(0)
-	deleteOpt := &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod}
+	deletePropagation := metav1.DeletePropagationBackground
+	deleteOpt := &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &deletePropagation}
 
 	_ = client.AppsV1().StatefulSets(namespace).DeleteCollection(deleteOpt, listOpt)
 	_ = client.AppsV1().Deployments(namespace).DeleteCollection(deleteOpt, listOpt)
