@@ -17,7 +17,9 @@ func (c *controller) runPostActive(ctx context.Context, atpComp *s2hv1beta1.Acti
 		if err := c.setOutdatedDuration(ctx, atpComp); err != nil {
 			return err
 		}
-		exporter.SetOutdatedComponentMetric(atpComp)
+		if atpComp != nil && atpComp.Status.Result != s2hv1beta1.ActivePromotionCanceled {
+			exporter.SetOutdatedComponentMetric(atpComp)
+		}
 
 		histName, err := c.createActivePromotionHistory(ctx, atpComp)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {

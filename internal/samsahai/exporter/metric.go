@@ -83,8 +83,8 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 		for i := range queueList.Items {
 			queueStateList := map[string]float64{"waiting": 0, "testing": 0, "finished": 0, "deploying": 0, "cleaning": 0}
 			queue := queueList.Items[i]
-			switch string(queue.Status.State) {
-			case "waiting":
+			switch queue.Status.State {
+			case v1beta1.Waiting:
 				queueStateList["waiting"] = 1
 				for state, val := range queueStateList {
 					QueueMetric.WithLabelValues(
@@ -95,7 +95,7 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 						state,
 						strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
 				}
-			case "testing", "collecting":
+			case v1beta1.Testing, v1beta1.Collecting:
 				queueStateList["testing"] = 1
 				for state, val := range queueStateList {
 					QueueMetric.WithLabelValues(
@@ -106,7 +106,7 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 						state,
 						strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
 				}
-			case "finished":
+			case v1beta1.Finished:
 				queueStateList["finished"] = 1
 				for state, val := range queueStateList {
 					QueueMetric.WithLabelValues(
@@ -117,7 +117,7 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 						state,
 						strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
 				}
-			case "detect_missing_image", "creating":
+			case v1beta1.DetectingImageMissing, v1beta1.Creating:
 				queueStateList["deploying"] = 1
 				for state, val := range queueStateList {
 					QueueMetric.WithLabelValues(
@@ -128,7 +128,7 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 						state,
 						strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
 				}
-			case "cleaning_before", "cleaning_after":
+			case v1beta1.CleaningBefore, v1beta1.CleaningAfter:
 				queueStateList["cleaning"] = 1
 				for state, val := range queueStateList {
 					QueueMetric.WithLabelValues(
@@ -173,38 +173,38 @@ func SetActivePromotionMetric(activePromotionList *v1beta1.ActivePromotionList) 
 	for i := range activePromotionList.Items {
 		activePromStateList := map[string]float64{"waiting": 0, "deploying": 0, "testing": 0, "promoting": 0, "destroying": 0}
 		activeProm := activePromotionList.Items[i]
-		atpState := string(activeProm.Status.State)
+		atpState := activeProm.Status.State
 		if atpState != "" {
 			switch atpState {
-			case "waiting":
+			case v1beta1.ActivePromotionWaiting:
 				activePromStateList["waiting"] = 1
 				for state, val := range activePromStateList {
 					ActivePromotionMetric.WithLabelValues(
 						activeProm.Name,
 						state).Set(val)
 				}
-			case "deployingStableComponents", "creatingPreActiveEnvironment":
+			case v1beta1.ActivePromotionDeployingComponents, v1beta1.ActivePromotionCreatingPreActive:
 				activePromStateList["deploying"] = 1
 				for state, val := range activePromStateList {
 					ActivePromotionMetric.WithLabelValues(
 						activeProm.Name,
 						state).Set(val)
 				}
-			case "testingPreActiveEnvironment", "collectingPreActiveResult":
+			case v1beta1.ActivePromotionTestingPreActive, v1beta1.ActivePromotionCollectingPreActiveResult:
 				activePromStateList["testing"] = 1
 				for state, val := range activePromStateList {
 					ActivePromotionMetric.WithLabelValues(
 						activeProm.Name,
 						state).Set(val)
 				}
-			case "promotingActiveEnvironment", "demotingActiveEnvironment":
+			case v1beta1.ActivePromotionActiveEnvironment, v1beta1.ActivePromotionDemoting:
 				activePromStateList["promoting"] = 1
 				for state, val := range activePromStateList {
 					ActivePromotionMetric.WithLabelValues(
 						activeProm.Name,
 						state).Set(val)
 				}
-			case "destroyingPreviousActiveEnvironment", "destroyingPreActiveEnvironment", "finished":
+			case v1beta1.ActivePromotionDestroyingPreActive, v1beta1.ActivePromotionDestroyingPreviousActive, v1beta1.ActivePromotionFinished:
 				activePromStateList["destroying"] = 1
 				for state, val := range activePromStateList {
 					ActivePromotionMetric.WithLabelValues(
@@ -318,7 +318,7 @@ func SetOutdatedComponentMetric(outdatedComponent *v1beta1.ActivePromotion) {
 	teamName := outdatedComponent.Name
 	for i := range outdatedComponent.Status.OutdatedComponents {
 		outdated := outdatedComponent.Status.OutdatedComponents[i]
-		outdatedDays := outdated.OutdatedDuration / 24 * time.Hour
+		outdatedDays := outdated.OutdatedDuration / (24 * time.Hour)
 		OutdatedComponentMetric.WithLabelValues(
 			teamName,
 			outdated.Name,

@@ -37,6 +37,9 @@ type updateTeamGit string
 type updateHealth struct {
 }
 
+type exportMetric struct {
+}
+
 // updateTeamDesiredComponent defines which component of which team to be checked and updated
 type updateTeamDesiredComponent struct {
 	TeamName        string
@@ -58,8 +61,8 @@ func (c *controller) Start(stop <-chan struct{}) {
 		}, jitterPeriod, c.internalStop)
 	}
 
-	c.exportAllMetric()
 	c.queue.Add(updateHealth{})
+	c.queue.AddAfter(exportMetric{}, (30*time.Second))
 
 	<-stop
 
@@ -103,6 +106,8 @@ func (c *controller) process() bool {
 		err = c.updateTeamDesiredComponent(v)
 	case updateHealth:
 		err = c.updateHealthMetric()
+	case exportMetric:
+		err = c.exportAllMetric()
 	default:
 		c.queue.Forget(obj)
 		return true
@@ -448,7 +453,7 @@ type outdatedComponentTime struct {
 	CreatedTime *metav1.Time
 }
 
-func (c *controller) exportAllMetric() {
+func (c *controller) exportAllMetric() error {
 
 	//team name
 	exporter.SetTeamNameMetric(c.teamConfigs)
@@ -484,27 +489,32 @@ func (c *controller) exportAllMetric() {
 	//outdated component
 	oc := map[string]outdatedComponentTime{}
 	for _, atpHistories := range atpHisList.Items {
-		teamName := atpHistories.Labels["samsahai.io/teamname"]
-		if atpHistories.Spec.ActivePromotion == nil {
+		teamName := atpHistories.Spec.TeamName
+		if teamName == "" {
+			teamName = atpHistories.Labels["samsahai.io/teamname"]
+		}
+		if atpHistories.Spec.ActivePromotion == nil  {
 			continue
 		}
-		itemCreateTime := atpHistories.Spec.ActivePromotion.CreationTimestamp
+		if atpHistories.Spec.ActivePromotion.Status.Result == s2hv1beta1.ActivePromotionCanceled {
+			continue
+		}
+		itemCreateTime := atpHistories.CreationTimestamp
 		if obj, ok := oc[teamName]; ok {
-			if obj.CreatedTime.Before(&itemCreateTime) {
-				oc[teamName] = outdatedComponentTime{
-					atpHistories.Spec.ActivePromotion,
-					obj.CreatedTime}
+			if !obj.CreatedTime.Before(&itemCreateTime) {
+				continue
 			}
-		} else {
-			oc[teamName] = outdatedComponentTime{
-				atpHistories.Spec.ActivePromotion,
-				&itemCreateTime}
+		}
+		atpHistories.Spec.ActivePromotion.Name = teamName
+		oc[teamName] = outdatedComponentTime{
+			atpHistories.Spec.ActivePromotion,
+			&itemCreateTime,
 		}
 	}
 	for _, obj := range oc {
 		exporter.SetOutdatedComponentMetric(obj.Component)
 	}
-
+	return nil
 }
 
 func (c *controller) updateHealthMetric() error {

@@ -174,7 +174,7 @@ var _ = Describe("Samsahai Exporter", func() {
 						Namespace: namespace,
 					},
 					Status: s2hv1beta1.ActivePromotionStatus{
-						State: "waiting",
+						State: s2hv1beta1.ActivePromotionWaiting,
 					},
 				},
 				{
@@ -183,7 +183,7 @@ var _ = Describe("Samsahai Exporter", func() {
 						Namespace: namespace,
 					},
 					Status: s2hv1beta1.ActivePromotionStatus{
-						State: "finished",
+						State: s2hv1beta1.ActivePromotionFinished,
 					},
 				},
 			},
@@ -202,7 +202,7 @@ var _ = Describe("Samsahai Exporter", func() {
 					Spec: s2hv1beta1.ActivePromotionHistorySpec{
 						ActivePromotion: &s2hv1beta1.ActivePromotion{
 							Status: s2hv1beta1.ActivePromotionStatus{
-								State:     "DestroyingPreviousActiveEnvironment",
+								State:     s2hv1beta1.ActivePromotionDestroyingPreActive,
 								StartedAt: startDate(2019, 12, 10, 2, 22, 02),
 								PreActiveQueue: s2hv1beta1.QueueStatus{
 									Conditions: []s2hv1beta1.QueueCondition{
@@ -350,9 +350,9 @@ var _ = Describe("Samsahai Exporter", func() {
 		defer close(done)
 		data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_outdated_component{component="testOCName1",currentVer="2019.12.07.00",desiredVer="2019.12.10.00",teamName="testOCTeamName"} 2.432554678116942e+18`)
+		expectedData := strings.Contains(string(data), `samsahai_outdated_component{component="testOCName1",currentVer="2019.12.07.00",desiredVer="2019.12.10.00",teamName="testOCTeamName"} 1`)
 		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_outdated_component{component="testOCName2",currentVer="2019.12.07.00",desiredVer="2019.12.10.00",teamName="testOCTeamName"} 4.214431078557532e+17`)
+		expectedData = strings.Contains(string(data), `samsahai_outdated_component{component="testOCName2",currentVer="2019.12.07.00",desiredVer="2019.12.10.00",teamName="testOCTeamName"} 1`)
 		g.Expect(expectedData).To(BeTrue())
 	}, timeout)
 
