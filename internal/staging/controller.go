@@ -531,14 +531,30 @@ func forceCleanupResources(client *kubernetes.Clientset, namespace string, listO
 	deletePropagation := metav1.DeletePropagationBackground
 	deleteOpt := &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &deletePropagation}
 
-	_ = client.AppsV1().StatefulSets(namespace).DeleteCollection(deleteOpt, listOpt)
-	_ = client.AppsV1().Deployments(namespace).DeleteCollection(deleteOpt, listOpt)
-	_ = client.CoreV1().ServiceAccounts(namespace).DeleteCollection(deleteOpt, listOpt)
-	_ = client.CoreV1().ConfigMaps(namespace).DeleteCollection(deleteOpt, listOpt)
-	_ = client.CoreV1().Secrets(namespace).DeleteCollection(deleteOpt, listOpt)
-	_ = client.ExtensionsV1beta1().Ingresses(namespace).DeleteCollection(deleteOpt, listOpt)
-	_ = client.PolicyV1beta1().PodDisruptionBudgets(namespace).DeleteCollection(deleteOpt, listOpt)
-	_ = client.CoreV1().Pods(namespace).DeleteCollection(deleteOpt, listOpt)
+	if err := client.AppsV1().StatefulSets(namespace).DeleteCollection(deleteOpt, listOpt); err != nil {
+		logger.Error(err, "cannot delete statefulsets", "namespace", namespace, "listOpt", listOpt)
+	}
+	if err := client.AppsV1().Deployments(namespace).DeleteCollection(deleteOpt, listOpt); err != nil {
+		logger.Error(err, "cannot delete deployments", "namespace", namespace, "listOpt", listOpt)
+	}
+	if err := client.CoreV1().ServiceAccounts(namespace).DeleteCollection(deleteOpt, listOpt); err != nil {
+		logger.Error(err, "cannot delete serviceaccounts", "namespace", namespace, "listOpt", listOpt)
+	}
+	if err := client.CoreV1().ConfigMaps(namespace).DeleteCollection(deleteOpt, listOpt); err != nil {
+		logger.Error(err, "cannot delete configmaps", "namespace", namespace, "listOpt", listOpt)
+	}
+	if err := client.CoreV1().Secrets(namespace).DeleteCollection(deleteOpt, listOpt); err != nil {
+		logger.Error(err, "cannot delete secrets", "namespace", namespace, "listOpt", listOpt)
+	}
+	if err := client.ExtensionsV1beta1().Ingresses(namespace).DeleteCollection(deleteOpt, listOpt); err != nil {
+		logger.Error(err, "cannot delete ingresses", "namespace", namespace, "listOpt", listOpt)
+	}
+	if err := client.PolicyV1beta1().PodDisruptionBudgets(namespace).DeleteCollection(deleteOpt, listOpt); err != nil {
+		logger.Error(err, "cannot delete poddisruptionbudgets", "namespace", namespace, "listOpt", listOpt)
+	}
+	if err := client.CoreV1().Pods(namespace).DeleteCollection(deleteOpt, listOpt); err != nil {
+		logger.Error(err, "cannot delete pods", "namespace", namespace, "listOpt", listOpt)
+	}
 
 	svcList, _ := client.CoreV1().Services(namespace).List(listOpt)
 	if len(svcList.Items) > 0 {
