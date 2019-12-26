@@ -63,7 +63,7 @@ func execute(ctx context.Context, exePath, command string, args ...string) ([]by
 	out, err := cmd.Output()
 	if err != nil {
 		logger.Error(err, "cannot execute command", "command", command, "args", args)
-		return []byte{}, err
+		return out, err
 	}
 
 	return out, nil

@@ -74,11 +74,11 @@ func (p *plugin) GetVersion(repository, name, pattern string) (string, error) {
 	if err != nil {
 		switch err.Error() {
 		case errors.ErrNoDesiredComponentVersion.Error():
-			return "", errors.ErrNoDesiredComponentVersion
+			return output, errors.ErrNoDesiredComponentVersion
 		case errors.ErrRequestTimeout.Error():
-			return "", errors.ErrRequestTimeout
+			return output, errors.ErrRequestTimeout
 		default:
-			return "", err
+			return output, err
 		}
 	}
 	return output, nil
@@ -131,7 +131,6 @@ func (p *plugin) executeCmd(ctx context.Context, commandAndArgs ...string) (stri
 			default:
 				errCh <- err
 			}
-			return
 		}
 		outputCh <- strings.TrimRight(string(data), "\n")
 	}()
@@ -141,7 +140,8 @@ func (p *plugin) executeCmd(ctx context.Context, commandAndArgs ...string) (stri
 	case <-ctx.Done():
 		return "", errors.ErrRequestTimeout
 	case err := <-errCh:
-		return "", err
+		output := <-outputCh
+		return output, err
 	case output := <-outputCh:
 		return output, nil
 	}
