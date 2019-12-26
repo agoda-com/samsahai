@@ -101,8 +101,10 @@ func (c *controller) checkTestConfig(queue *s2hv1beta1.Queue) (skipTest bool, te
 	}
 
 	now := metav1.Now()
-	queue.Status.StartTestingTime = &now
-	err = c.updateQueue(queue)
+	if queue.Status.StartTestingTime == nil {
+		queue.Status.StartTestingTime = &now
+		err = c.updateQueue(queue)
+	}
 	return
 }
 
