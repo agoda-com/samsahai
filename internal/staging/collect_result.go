@@ -56,21 +56,23 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 		return err
 	}
 
-	if isDeploySuccess && isTestSuccess && !isReverify {
-		// success deploy and test without reverify state
-		// save to stable
-		if err := c.setStableComponent(queue); err != nil {
-			return err
-		}
+	// TODO: support sending component upgrade report from configuration
+	if !queue.IsActivePromotionQueue() {
+		if isDeploySuccess && isTestSuccess && !isReverify {
+			// success deploy and test without reverify state
+			// save to stable
+			if err := c.setStableComponent(queue); err != nil {
+				return err
+			}
 
-		// queue.Status.QueueHistoryName
-		if err := c.sendReport(rpc.ComponentUpgrade_SUCCESS, queue); err != nil {
-			return err
-		}
+			if err := c.sendReport(rpc.ComponentUpgrade_SUCCESS, queue); err != nil {
+				return err
+			}
 
-	} else if isReverify {
-		if err := c.sendReport(rpc.ComponentUpgrade_FAILURE, queue); err != nil {
-			return err
+		} else if isReverify {
+			if err := c.sendReport(rpc.ComponentUpgrade_FAILURE, queue); err != nil {
+				return err
+			}
 		}
 	}
 

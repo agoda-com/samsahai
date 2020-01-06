@@ -176,51 +176,62 @@ var _ = Describe("send slack message", func() {
 			g.Expect(err).Should(BeNil())
 		})
 
-		It("should correctly send active promotion failure with outdated components message", func() {
-			configMgr := newConfigMock()
-			g.Expect(configMgr).ShouldNot(BeNil())
+		It("should correctly send active promotion failure with outdated components/image missing message",
+			func() {
+				configMgr := newConfigMock()
+				g.Expect(configMgr).ShouldNot(BeNil())
 
-			var comp1, repoComp1, comp2, repoComp2 = "comp1", "repo/comp1", "comp2", "repo/comp2"
-			var v110, v112 = "1.1.0", "1.1.2"
+				var comp1, repoComp1, comp2, repoComp2 = "comp1", "repo/comp1", "comp2", "repo/comp2"
+				var v110, v112 = "1.1.0", "1.1.2"
 
-			status := &s2hv1beta1.ActivePromotionStatus{
-				Result:               s2hv1beta1.ActivePromotionFailure,
-				HasOutdatedComponent: true,
-				OutdatedComponents: []*s2hv1beta1.OutdatedComponent{
-					{
-						Name:             comp1,
-						CurrentImage:     &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
-						LatestImage:      &s2hv1beta1.Image{Repository: repoComp1, Tag: v112},
-						OutdatedDuration: time.Duration(86400000000000), // 1d0h0m
+				status := &s2hv1beta1.ActivePromotionStatus{
+					Result:               s2hv1beta1.ActivePromotionFailure,
+					HasOutdatedComponent: true,
+					PreActiveQueue: s2hv1beta1.QueueStatus{
+						ImageMissingList: []s2hv1beta1.Image{
+							{Repository: "repo1", Tag: "1.xx"},
+							{Repository: "repo2", Tag: "2.xx"},
+						},
 					},
-					{
-						Name:             comp2,
-						CurrentImage:     &s2hv1beta1.Image{Repository: repoComp2, Tag: v110},
-						LatestImage:      &s2hv1beta1.Image{Repository: repoComp2, Tag: v110},
-						OutdatedDuration: time.Duration(0),
+					OutdatedComponents: []*s2hv1beta1.OutdatedComponent{
+						{
+							Name:             comp1,
+							CurrentImage:     &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
+							LatestImage:      &s2hv1beta1.Image{Repository: repoComp1, Tag: v112},
+							OutdatedDuration: time.Duration(86400000000000), // 1d0h0m
+						},
+						{
+							Name:             comp2,
+							CurrentImage:     &s2hv1beta1.Image{Repository: repoComp2, Tag: v110},
+							LatestImage:      &s2hv1beta1.Image{Repository: repoComp2, Tag: v110},
+							OutdatedDuration: time.Duration(0),
+						},
 					},
-				},
-				ActivePromotionHistoryName: "owner-12345",
-			}
-			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner", "owner-123456")
+					ActivePromotionHistoryName: "owner-12345",
+				}
+				atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner", "owner-123456")
 
-			mockSlackCli := &mockSlack{}
-			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
-			err := r.SendActivePromotionStatus(configMgr, atpRpt)
-			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
-			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner-123456"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/activepromotions/histories/owner-12345/log|Download here>"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/activepromotions/histories/owner-12345|Click here>"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(`*Outdated Components:*
+				mockSlackCli := &mockSlack{}
+				r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+				err := r.SendActivePromotionStatus(configMgr, atpRpt)
+				g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
+				g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring("owner-123456"))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/activepromotions/histories/owner-12345/log|Download here>"))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/activepromotions/histories/owner-12345|Click here>"))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring(`*Image Missing List*
+- repo1:1.xx
+- repo2:2.xx
+`))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring(`*Outdated Components:*
 *comp1*
 >Not update for 1d 0h 0m
 >Current Version: <http://repo/comp1|1.1.0>
 >Latest Version: <http://repo/comp1|1.1.2>`))
-			g.Expect(err).Should(BeNil())
-		})
+				g.Expect(err).Should(BeNil())
+			})
 
 		It("should correctly send active promotion failure without outdated components message", func() {
 			configMgr := newConfigMock()

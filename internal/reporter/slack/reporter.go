@@ -74,6 +74,13 @@ func (r *reporter) SendComponentUpgrade(configMgr internal.ConfigManager, comp *
 // SendActivePromotionStatus implements the reporter SendActivePromotionStatus function
 func (r *reporter) SendActivePromotionStatus(configMgr internal.ConfigManager, atpRpt *internal.ActivePromotionReporter) error {
 	message := r.makeActivePromotionStatusReport(atpRpt)
+
+	imageMissingList := atpRpt.ActivePromotionStatus.PreActiveQueue.ImageMissingList
+	if len(imageMissingList) > 0 {
+		message += "\n"
+		message += r.makeImageMissingListReport(convertImageListToRPCImageList(imageMissingList))
+	}
+
 	message += "\n"
 	if atpRpt.HasOutdatedComponent {
 		message += r.makeOutdatedComponentsReport(atpRpt.OutdatedComponents)
@@ -99,6 +106,18 @@ func (r *reporter) SendActivePromotionStatus(configMgr internal.ConfigManager, a
 	}
 
 	return r.post(configMgr, message, internal.ActivePromotionType)
+}
+
+func convertImageListToRPCImageList(images []s2hv1beta1.Image) []*rpc.Image {
+	rpcImages := make([]*rpc.Image, 0)
+	for _, img := range images {
+		rpcImages = append(rpcImages, &rpc.Image{
+			Repository: img.Repository,
+			Tag:        img.Tag,
+		})
+	}
+
+	return rpcImages
 }
 
 // SendImageMissing implements the reporter SendImageMissing function

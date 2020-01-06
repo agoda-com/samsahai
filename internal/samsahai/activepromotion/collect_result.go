@@ -30,6 +30,11 @@ func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1beta1.Acti
 		atpComp.Status.SetPreActiveQueue(q.Status)
 	}
 
+	if len(q.Status.ImageMissingList) > 0 {
+		atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondVerified, corev1.ConditionTrue,
+			"Image missing")
+	}
+
 	if atpComp.IsActivePromotionFailure() || atpComp.IsActivePromotionCanceled() {
 		logger.Debug("destroying pre-active environment due to failure or cancel",
 			"team", teamName, "namespace", targetNs)
