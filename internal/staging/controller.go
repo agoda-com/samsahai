@@ -526,12 +526,23 @@ func isCleanupTimeout(startedTime *metav1.Time, timeout *metav1.Duration) bool {
 func forceCleanupResources(client *kubernetes.Clientset, namespace string, listOpt metav1.ListOptions) {
 	logger.Debug("force cleaning up all pods", "namespace", namespace)
 
-	// force delete pod
+	// force delete pods and all jobs without list options
 	gracePeriod := int64(0)
 	deletePropagation := metav1.DeletePropagationBackground
 	deleteOpt := &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &deletePropagation}
 
 	if err := client.CoreV1().Pods(namespace).DeleteCollection(deleteOpt, listOpt); err != nil {
 		logger.Error(err, "cannot delete pods", "namespace", namespace, "listOpt", listOpt)
+	}
+
+	// to cleanup all jobs in case of pre-delete hook
+	forceCleanupJobsWithoutListOpt(client, namespace, deleteOpt)
+}
+
+func forceCleanupJobsWithoutListOpt(client *kubernetes.Clientset, namespace string, deleteOpt *metav1.DeleteOptions) {
+	logger.Debug("force cleaning up all jobs", "namespace", namespace)
+
+	if err := client.BatchV1().Jobs(namespace).DeleteCollection(deleteOpt, metav1.ListOptions{}); err != nil {
+		logger.Error(err, "cannot delete jobs", "namespace", namespace)
 	}
 }
