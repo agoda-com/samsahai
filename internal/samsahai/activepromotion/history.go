@@ -68,8 +68,11 @@ func (c *controller) updateActivePromotionHistory(ctx context.Context, histName 
 		return errors.Wrapf(err, "cannot update activepromotionhistory %s", histName)
 	}
 
-	atpHisList := s2hv1beta1.ActivePromotionHistoryList{Items: []s2hv1beta1.ActivePromotionHistory{*atpHist}}
-	exporter.SetActivePromotionHistoriesMetric(&atpHisList)
+	atpHisList := &s2hv1beta1.ActivePromotionHistoryList{}
+	if err := c.client.List(context.TODO(), nil, atpHisList); err != nil {
+		logger.Error(err, "cannot list all active promotion histories")
+	}
+	exporter.SetActivePromotionHistoriesMetric(atpHisList)
 
 	return nil
 }

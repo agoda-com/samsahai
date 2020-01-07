@@ -62,12 +62,14 @@ func RegisterMetrics() {
 }
 
 func SetTeamNameMetric(teamList map[string]internal.ConfigManager) {
+	TeamMetric.Reset()
 	for teamName := range teamList {
 		TeamMetric.WithLabelValues(teamName).Set(1)
 	}
 }
 
 func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.ConfigManager) {
+	QueueMetric.Reset()
 	for teamName := range teamList {
 		componentList := teamList[teamName].GetComponents()
 		for componentName := range componentList {
@@ -145,6 +147,7 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 }
 
 func SetQueueHistoriesMetric(queueHistoriesList *v1beta1.QueueHistoryList, SamsahaiURL string) {
+	QueueHistoriesMetric.Reset()
 	for i := range queueHistoriesList.Items {
 		queueHistoriesResult := "failed"
 		queueHist := queueHistoriesList.Items[i]
@@ -164,12 +167,14 @@ func SetQueueHistoriesMetric(queueHistoriesList *v1beta1.QueueHistoryList, Samsa
 }
 
 func SetHealthStatusMetric(version, gitCommit string, ts float64) {
+	HealthStatusMetric.Reset()
 	HealthStatusMetric.WithLabelValues(
 		version,
 		gitCommit).Set(ts)
 }
 
 func SetActivePromotionMetric(activePromotionList *v1beta1.ActivePromotionList) {
+	ActivePromotionMetric.Reset()
 	for i := range activePromotionList.Items {
 		activePromStateList := map[string]float64{"waiting": 0, "deploying": 0, "testing": 0, "promoting": 0, "destroying": 0}
 		activeProm := activePromotionList.Items[i]
@@ -217,6 +222,7 @@ func SetActivePromotionMetric(activePromotionList *v1beta1.ActivePromotionList) 
 }
 
 func SetActivePromotionHistoriesMetric(activePromotionHistories *v1beta1.ActivePromotionHistoryList) {
+	ActivePromotionHistoriesMetric.Reset()
 	for i := range activePromotionHistories.Items {
 		atpHistories := activePromotionHistories.Items[i]
 		if atpHistories.Spec.ActivePromotion == nil {

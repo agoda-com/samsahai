@@ -4,6 +4,7 @@ import (
 	"context"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/agoda-com/samsahai/internal"
@@ -12,14 +13,25 @@ import (
 	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
+type outdatedComponentTime struct {
+	Component   *s2hv1beta1.ActivePromotion
+	CreatedTime *metav1.Time
+}
+
 func (c *controller) runPostActive(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
 	if atpComp.Status.ActivePromotionHistoryName == "" {
 		if err := c.setOutdatedDuration(ctx, atpComp); err != nil {
 			return err
 		}
-		if atpComp != nil && atpComp.Status.Result != s2hv1beta1.ActivePromotionCanceled {
-			exporter.SetOutdatedComponentMetric(atpComp)
+		atpHisList := &s2hv1beta1.ActivePromotionHistoryList{}
+		if err := c.client.List(context.TODO(), nil, atpHisList); err != nil {
+			logger.Error(err, "cannot list all active promotion histories")
 		}
+		exporter.OutdatedComponentMetric.Reset()
+		for _, obj := range getAllOutdatedComponent(*atpHisList) {
+			exporter.SetOutdatedComponentMetric(obj.Component)
+		}
+		exporter.SetOutdatedComponentMetric(atpComp)
 
 		histName, err := c.createActivePromotionHistory(ctx, atpComp)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
@@ -108,4 +120,32 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta
 	atpStatus := &atpComp.Status
 	o.SetOutdatedDuration(atpStatus)
 	return nil
+}
+
+func getAllOutdatedComponent(atpHisList s2hv1beta1.ActivePromotionHistoryList) map[string]outdatedComponentTime {
+	oc := map[string]outdatedComponentTime{}
+	for _, atpHistories := range atpHisList.Items {
+		teamName := atpHistories.Spec.TeamName
+		if teamName == "" {
+			teamName = atpHistories.Labels["samsahai.io/teamname"]
+		}
+		if atpHistories.Spec.ActivePromotion == nil  {
+			continue
+		}
+		if atpHistories.Spec.ActivePromotion.Status.Result == s2hv1beta1.ActivePromotionCanceled {
+			continue
+		}
+		itemCreateTime := atpHistories.CreationTimestamp
+		if obj, ok := oc[teamName]; ok {
+			if !obj.CreatedTime.Before(&itemCreateTime) {
+				continue
+			}
+		}
+		atpHistories.Spec.ActivePromotion.Name = teamName
+		oc[teamName] = outdatedComponentTime{
+			atpHistories.Spec.ActivePromotion,
+			&itemCreateTime,
+		}
+	}
+	return oc
 }
