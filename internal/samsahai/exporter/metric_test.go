@@ -75,6 +75,7 @@ var _ = Describe("Samsahai Exporter", func() {
 	var wgStop *sync.WaitGroup
 	var chStop chan struct{}
 	var SamsahaiURL = "aaa"
+	var updatedDate = metav1.Date(2020,01,01,01,01,01,01,time.UTC)
 
 	configMgr, err := config.NewWithGitClient(&git.Client{}, "example", path.Join("..", "..", "..", "test", "data"))
 	g.Expect(err).NotTo(HaveOccurred())
@@ -127,6 +128,10 @@ var _ = Describe("Samsahai Exporter", func() {
 							Spec: s2hv1beta1.QueueSpec{
 								TeamName: "testQHTeamNameOld",
 								Version:  "1.2.3.4-Old",
+							},
+							Status:s2hv1beta1.QueueStatus{
+								UpdatedAt: &updatedDate ,
+								NoOfProcessed : 9,
 							},
 						},
 						IsDeploySuccess: true,
@@ -320,9 +325,8 @@ var _ = Describe("Samsahai Exporter", func() {
 		defer close(done)
 		data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_queue_histories{component="testQHnameOld",log="aaa/team/testQHTeamNameOld/queue/histories/testQHnameOld/log",result="success",teamName="testQHTeamNameOld",version="1.2.3.4-Old"} 1`)
+		expectedData := strings.Contains(string(data), `samsahai_queue_histories{component="testQHnameOld",date="2020-01-01T01:01:01Z",log="aaa/team/testQHTeamNameOld/queue/histories/testQHnameOld/log",result="success",teamName="testQHTeamNameOld",version="1.2.3.4-Old"} 9`)
 		g.Expect(expectedData).To(BeTrue())
-
 		qh := &s2hv1beta1.QueueHistoryList{
 			Items: []s2hv1beta1.QueueHistory{
 				{
@@ -335,6 +339,10 @@ var _ = Describe("Samsahai Exporter", func() {
 							Spec: s2hv1beta1.QueueSpec{
 								TeamName: "testQHTeamName1",
 								Version:  "1.2.3.4",
+							},
+							Status:s2hv1beta1.QueueStatus{
+								UpdatedAt: &updatedDate ,
+								NoOfProcessed: 9,
 							},
 						},
 						IsDeploySuccess: true,
@@ -352,6 +360,10 @@ var _ = Describe("Samsahai Exporter", func() {
 								TeamName: "testQHTeamName2",
 								Version:  "4.3.2.1",
 							},
+							Status:s2hv1beta1.QueueStatus{
+								UpdatedAt: &updatedDate ,
+								NoOfProcessed: 9,
+							},
 						},
 						IsDeploySuccess: true,
 						IsTestSuccess:   true,
@@ -362,13 +374,13 @@ var _ = Describe("Samsahai Exporter", func() {
 		SetQueueHistoriesMetric(qh, SamsahaiURL)
 		data, err = http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
-		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHname1",log="aaa/team/testQHTeamName1/queue/histories/testQHname1/log",result="success",teamName="testQHTeamName1",version="1.2.3.4"} 1`)
+		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHname1",date="2020-01-01T01:01:01Z",log="aaa/team/testQHTeamName1/queue/histories/testQHname1/log",result="success",teamName="testQHTeamName1",version="1.2.3.4"} 9`)
 		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHname2",log="aaa/team/testQHTeamName2/queue/histories/testQHname2/log",result="success",teamName="testQHTeamName2",version="4.3.2.1"} 1`)
+		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHname2",date="2020-01-01T01:01:01Z",log="aaa/team/testQHTeamName2/queue/histories/testQHname2/log",result="success",teamName="testQHTeamName2",version="4.3.2.1"} 9`)
 		g.Expect(expectedData).To(BeTrue())
 		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="",`)
 		g.Expect(expectedData).To(BeFalse())
-		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHnameOld",log="aaa/team/testQHTeamNameOld/queue/histories/testQHnameOld/log",result="success",teamName="testQHTeamNameOld",version="1.2.3.4-Old"} 1`)
+		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHnameOld",date="2020-01-01T01:01:01Z",log="aaa/team/testQHTeamNameOld/queue/histories/testQHnameOld/log",result="success",teamName="testQHTeamNameOld",version="1.2.3.4-Old"} 9`)
 		g.Expect(expectedData).To(BeFalse())
 	}, timeout)
 

@@ -28,7 +28,7 @@ var QueueMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 var QueueHistoriesMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "samsahai_queue_histories",
 	Help: "Get queue histories",
-}, []string{"teamName", "component", "version", "result", "log"})
+}, []string{"teamName", "component", "version", "result", "log", "date"})
 
 var HealthStatusMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "samsahai_health",
@@ -58,7 +58,6 @@ func RegisterMetrics() {
 	metrics.Registry.MustRegister(ActivePromotionHistoriesMetric)
 	metrics.Registry.MustRegister(OutdatedComponentMetric)
 	metrics.Registry.MustRegister(HealthStatusMetric)
-
 }
 
 func SetTeamNameMetric(teamList map[string]internal.ConfigManager) {
@@ -162,7 +161,9 @@ func SetQueueHistoriesMetric(queueHistoriesList *v1beta1.QueueHistoryList, Samsa
 			queueHist.Name,
 			queueHist.Spec.Queue.Spec.Version,
 			queueHistoriesResult,
-			SamsahaiURL+"/team/"+queueHist.Spec.Queue.Spec.TeamName+"/queue/histories/"+queueHist.Name+"/log").Set(1)
+			SamsahaiURL+"/team/"+queueHist.Spec.Queue.Spec.TeamName+"/queue/histories/"+queueHist.Name+"/log",
+			queueHist.Spec.Queue.Status.UpdatedAt.Format(time.RFC3339),
+			).Set(float64(queueHist.Spec.Queue.Status.NoOfProcessed))
 	}
 }
 
