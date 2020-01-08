@@ -139,7 +139,6 @@ func (c *controller) getTestResult(queue *s2hv1beta1.Queue, testRunner internal.
 	}
 
 	if !isBuildFinished {
-		runtime.Gosched()
 		pollingTime := metav1.Duration{Duration: testPolling}
 		if c.getTestConfiguration(queue).PollingTime.Duration != 0 {
 			pollingTime = c.getTestConfiguration(queue).PollingTime

@@ -2,7 +2,6 @@ package fluxhelm
 
 import (
 	"reflect"
-	"runtime"
 
 	fluxv1beta1 "github.com/fluxcd/flux/integrations/apis/flux.weave.works/v1beta1"
 	"github.com/pkg/errors"
@@ -16,13 +15,20 @@ import (
 
 var logger = s2hlog.Log.WithName(EngineName)
 
+type Action string
+
 const (
 	EngineName = "flux-helm"
+
+	InstallAction Action = "install"
+	UpgradeAction Action = "upgrade"
 )
 
 type engine struct {
-	configMgr internal.ConfigManager
-	hrClient  internal.HelmReleaseClient
+	configMgr              internal.ConfigManager
+	hrClient               internal.HelmReleaseClient
+	lastAction             Action
+	lastObservedGeneration int64
 }
 
 // New creates a new teamcity test runner
@@ -64,6 +70,7 @@ func (e *engine) Create(
 	if err != nil && k8serrors.IsNotFound(err) {
 		// deploy parent component chart
 		_, err := e.hrClient.Create(&hr)
+		e.lastAction = InstallAction
 		return errors.Wrap(err, "cannot create HelmRelease")
 	} else if err != nil {
 		return err
@@ -74,6 +81,8 @@ func (e *engine) Create(
 		// update
 		fetched.Spec = hr.Spec
 		_, err := e.hrClient.Update(fetched)
+		e.lastAction = UpgradeAction
+		e.lastObservedGeneration = hr.Status.ObservedGeneration
 		return errors.Wrap(err, "cannot update HelmRelease")
 	}
 
@@ -108,10 +117,15 @@ func (e *engine) IsReady(queue *v1beta1.Queue) (bool, error) {
 		return false, err
 	}
 
-	// check helm release release status
-	if hr.Status.ReleaseStatus != "DEPLOYED" {
-		runtime.Gosched()
-		return false, nil
+	switch e.lastAction {
+	case UpgradeAction:
+		if e.lastObservedGeneration == hr.Status.ObservedGeneration {
+			return false, nil
+		}
+	default:
+		if hr.Status.ReleaseStatus != "DEPLOYED" {
+			return false, nil
+		}
 	}
 
 	return true, nil

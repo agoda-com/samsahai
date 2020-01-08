@@ -2,7 +2,6 @@ package staging
 
 import (
 	"fmt"
-	"runtime"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -83,7 +82,6 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 		if err != nil {
 			return err
 		} else if !isReady {
-			runtime.Gosched()
 			time.Sleep(2 * time.Second)
 			return nil
 		}
@@ -95,7 +93,6 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 	if err != nil {
 		return err
 	} else if !isReady {
-		runtime.Gosched()
 		time.Sleep(2 * time.Second)
 		return nil
 	}

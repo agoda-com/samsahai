@@ -168,7 +168,6 @@ func (c *controller) process() bool {
 
 	// no queue
 	if c.getCurrentQueue() == nil {
-		runtime.Gosched()
 		time.Sleep(2 * time.Second)
 		return true
 	}
@@ -347,7 +346,6 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 	if err != nil {
 		return err
 	} else if !isCleaned {
-		runtime.Gosched()
 		time.Sleep(2 * time.Second)
 		return nil
 	}
@@ -380,7 +378,6 @@ func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
 	if err != nil {
 		return err
 	} else if !isCleaned {
-		runtime.Gosched()
 		time.Sleep(2 * time.Second)
 		return nil
 	}

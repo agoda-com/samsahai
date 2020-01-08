@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
-	"runtime"
 	"sync"
 	"time"
 
@@ -649,7 +648,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 			wgReverify.Wait()
 
 			for stagingCtrl.IsBusy() {
-				runtime.Gosched()
+				time.Sleep(50 * time.Millisecond)
 			}
 		}, 60)
 
