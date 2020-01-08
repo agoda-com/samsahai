@@ -1607,6 +1607,13 @@
                         "$ref": "#/definitions/v1beta1.TeamCondition"
                     }
                 },
+                "currentActiveComponents": {
+                    "description": "CurrentActiveComponents represents a list of stable components in current active namespace\n+optional",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1beta1.StableComponent"
+                    }
+                },
                 "desiredComponentImageCreatedTime": {
                     "description": "DesiredComponentImageCreatedTime represents mapping of desired component image and created time\nmap[componentName][repository:tag] = image and createdTime\n+optional",
                     "type": "object"

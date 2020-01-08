@@ -335,6 +335,11 @@ func (c *controller) PromoteActiveEnvironment(teamComp *s2hv1beta1.Team, namespa
 	preActiveNamespace := teamComp.Status.Namespace.PreActive
 	activeNamespace := teamComp.Status.Namespace.Active
 	if namespace == preActiveNamespace {
+		if err := c.storeCurrentActiveComponentsToTeam(teamComp, namespace); err != nil {
+			return errors.Wrapf(err, "cannot store current active components of %s into team %s",
+				namespace, teamComp.Name)
+		}
+
 		teamNsOpts := []TeamNamespaceStatusOption{
 			withTeamActiveNamespaceStatus(preActiveNamespace),
 			withTeamPreviousActiveNamespaceStatus(activeNamespace),
@@ -369,6 +374,16 @@ func (c *controller) PromoteActiveEnvironment(teamComp *s2hv1beta1.Team, namespa
 
 	return fmt.Errorf("regarding " + namespace + " (pre-active namespace) is not consistent with " +
 		preActiveNamespace + " (team pre-active namespace), so this pre-active namespace cannot be switched")
+}
+
+func (c *controller) storeCurrentActiveComponentsToTeam(teamComp *s2hv1beta1.Team, namespace string) error {
+	stableList := &s2hv1beta1.StableComponentList{}
+	if err := c.client.List(context.TODO(), &client.ListOptions{Namespace: namespace}, stableList); err != nil {
+		return errors.Wrapf(err, "cannot get list of stable components, namespace %s", namespace)
+	}
+
+	teamComp.Status.SetCurrentActiveComponents(stableList.Items)
+	return nil
 }
 
 func (c *controller) createNamespace(teamName string, teamNsOpt TeamNamespaceStatusOption) error {

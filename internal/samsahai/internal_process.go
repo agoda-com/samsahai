@@ -62,7 +62,7 @@ func (c *controller) Start(stop <-chan struct{}) {
 	}
 
 	c.queue.Add(updateHealth{})
-	c.queue.AddAfter(exportMetric{}, (30*time.Second))
+	c.queue.AddAfter(exportMetric{}, (30 * time.Second))
 
 	<-stop
 
@@ -493,7 +493,7 @@ func (c *controller) exportAllMetric() error {
 		if teamName == "" {
 			teamName = atpHistories.Labels["samsahai.io/teamname"]
 		}
-		if atpHistories.Spec.ActivePromotion == nil  {
+		if atpHistories.Spec.ActivePromotion == nil {
 			continue
 		}
 		if atpHistories.Spec.ActivePromotion.Status.Result == s2hv1beta1.ActivePromotionCanceled {

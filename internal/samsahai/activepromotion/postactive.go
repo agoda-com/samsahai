@@ -129,7 +129,7 @@ func getAllOutdatedComponent(atpHisList s2hv1beta1.ActivePromotionHistoryList) m
 		if teamName == "" {
 			teamName = atpHistories.Labels["samsahai.io/teamname"]
 		}
-		if atpHistories.Spec.ActivePromotion == nil  {
+		if atpHistories.Spec.ActivePromotion == nil {
 			continue
 		}
 		if atpHistories.Spec.ActivePromotion.Status.Result == s2hv1beta1.ActivePromotionCanceled {

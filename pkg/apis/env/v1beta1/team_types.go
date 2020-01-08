@@ -127,6 +127,10 @@ type TeamStatus struct {
 	// +optional
 	StableComponents []StableComponent `json:"stableComponents,omitempty"`
 
+	// CurrentActiveComponents represents a list of stable components in current active namespace
+	// +optional
+	CurrentActiveComponents []StableComponent `json:"currentActiveComponents,omitempty"`
+
 	// Conditions contains observations of the resource's state e.g.,
 	// Team namespace is created, destroyed
 	// +optional
@@ -147,6 +151,17 @@ func (ts *TeamStatus) SetStableComponents(stableComps []StableComponent) {
 		ts.StableComponents = append(ts.StableComponents, StableComponent{
 			Spec:   stableComp.Spec,
 			Status: stableComp.Status,
+		})
+	}
+}
+
+// SetCurrentActiveComponents sets current active components
+func (ts *TeamStatus) SetCurrentActiveComponents(currentComps []StableComponent) {
+	ts.CurrentActiveComponents = make([]StableComponent, 0)
+	for _, currentComp := range currentComps {
+		ts.CurrentActiveComponents = append(ts.CurrentActiveComponents, StableComponent{
+			Spec:   currentComp.Spec,
+			Status: currentComp.Status,
 		})
 	}
 }

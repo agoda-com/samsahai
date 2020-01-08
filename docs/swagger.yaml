@@ -745,6 +745,13 @@ definitions:
         items:
           $ref: '#/definitions/v1beta1.TeamCondition'
         type: array
+      currentActiveComponents:
+        description: |-
+          CurrentActiveComponents represents a list of stable components in current active namespace
+          +optional
+        items:
+          $ref: '#/definitions/v1beta1.StableComponent'
+        type: array
       desiredComponentImageCreatedTime:
         description: |-
           DesiredComponentImageCreatedTime represents mapping of desired component image and created time

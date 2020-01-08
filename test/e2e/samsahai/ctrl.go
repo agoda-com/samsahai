@@ -520,6 +520,12 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(atpHists.Items[1].Name).ToNot(Equal(atpHist.Name + "-1"))
 		Expect(atpHists.Items[1].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())
 
+		By("Current active components should be set")
+		teamComp = s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(len(teamComp.Status.CurrentActiveComponents)).ToNot(BeZero())
+
 		By("Public API")
 		{
 			By("Get team")
@@ -884,6 +890,12 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).To(BeNil())
 		Expect(len(atpHists.Items)).To(Equal(1))
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())
+
+		By("Current active components should not be set")
+		teamComp := s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(len(teamComp.Status.CurrentActiveComponents)).To(BeZero())
 	}, 60)
 
 	It("should rollback active environment timeout", func(done Done) {
