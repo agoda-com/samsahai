@@ -158,7 +158,7 @@ var _ = Describe("send slack message", func() {
 				HasOutdatedComponent:       false,
 				ActivePromotionHistoryName: "owner-12345",
 				PreviousActiveNamespace:    "owner-prevns",
-				DestroyTime:                &timeNow,
+				DestroyedTime:              &timeNow,
 			}
 			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner", "owner-123456")
 

@@ -338,9 +338,9 @@ definitions:
           DemotionStatus represents a status of the active demotion
           +optional
         type: string
-      destroyTime:
+      destroyedTime:
         description: |-
-          DestroyTime represents time at which the previous active namespace will be destroyed
+          DestroyedTime represents time at which the previous active namespace will be destroyed
           +optional
         type: string
       hasOutdatedComponent:

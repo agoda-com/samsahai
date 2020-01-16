@@ -130,8 +130,8 @@ github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5Kwzbycv
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/fluxcd/flux v1.15.0 h1:xWu4dRrF7Qdsojdn9wjtoL4XsLtsGFyVHqQwh+WRuwY=
 github.com/fluxcd/flux v1.15.0/go.mod h1:eKTHFkxOIEQL23j5Uz+OY1NLcWDjppTPlsRlDol6JZk=
-github.com/fluxcd/flux v1.17.0 h1:oeuIsAKPFx2vLqO5KDvuz937ssB2hZqY2ujjzhgzGT4=
-github.com/fluxcd/flux v1.17.0/go.mod h1:tfS+4MOzMz38V78bu1vDIZhHZiNMUiach0Gy42zCTnE=
+github.com/fluxcd/flux v1.17.1 h1:4BTPTCu1TCF9vbQiWYmNBk6gvyam0tpVZl/EJc5K4L0=
+github.com/fluxcd/flux v1.17.1/go.mod h1:tfS+4MOzMz38V78bu1vDIZhHZiNMUiach0Gy42zCTnE=
 github.com/fluxcd/helm-operator v1.0.0-rc1/go.mod h1:qBr+Yiqv9T2EjBsYzJNFQJ83b0ALM+aCJhxtPWyOP+E=
 github.com/fluxcd/helm-operator v1.0.0-rc2/go.mod h1:lBILt3uB6Oi2Z4QdU3COC0wT/PYlAQXtKs1rUja2IcA=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568 h1:BHsljHzVlRcyQhjrss6TZTdY2VfCqZPbv5k3iBFa2ZQ=

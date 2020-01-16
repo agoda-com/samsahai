@@ -163,7 +163,7 @@ func SetQueueHistoriesMetric(queueHistoriesList *v1beta1.QueueHistoryList, Samsa
 			queueHistoriesResult,
 			SamsahaiURL+"/team/"+queueHist.Spec.Queue.Spec.TeamName+"/queue/histories/"+queueHist.Name+"/log",
 			queueHist.Spec.Queue.Status.UpdatedAt.Format(time.RFC3339),
-			).Set(float64(queueHist.Spec.Queue.Status.NoOfProcessed))
+		).Set(float64(queueHist.Spec.Queue.Status.NoOfProcessed))
 	}
 }
 

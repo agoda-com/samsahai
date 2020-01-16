@@ -147,9 +147,9 @@ type ActivePromotionStatus struct {
 	// Result represents a result of the active promotion
 	// +optional
 	Result ActivePromotionResult `json:"result,omitempty"`
-	// DestroyTime represents time at which the previous active namespace will be destroyed
+	// DestroyedTime represents time at which the previous active namespace will be destroyed
 	// +optional
-	DestroyTime *metav1.Time `json:"destroyTime,omitempty"`
+	DestroyedTime *metav1.Time `json:"destroyedTime,omitempty"`
 	// ActivePromotionHistoryName represents created ActivePromotionHistoryName name
 	// +optional
 	ActivePromotionHistoryName string `json:"activePromotionHistoryName,omitempty"`
@@ -201,8 +201,8 @@ func (s *ActivePromotionStatus) SetIsTimeout() {
 	s.IsTimeout = true
 }
 
-func (s *ActivePromotionStatus) SetDestroyTime(destroyTime metav1.Time) {
-	s.DestroyTime = &destroyTime
+func (s *ActivePromotionStatus) SetDestroyedTime(destroyedTime metav1.Time) {
+	s.DestroyedTime = &destroyedTime
 }
 
 func (s *ActivePromotionStatus) SetActivePromotionHistoryName(atpHistName string) {

@@ -1133,8 +1133,8 @@
                     "description": "DemotionStatus represents a status of the active demotion\n+optional",
                     "type": "string"
                 },
-                "destroyTime": {
-                    "description": "DestroyTime represents time at which the previous active namespace will be destroyed\n+optional",
+                "destroyedTime": {
+                    "description": "DestroyedTime represents time at which the previous active namespace will be destroyed\n+optional",
                     "type": "string"
                 },
                 "hasOutdatedComponent": {

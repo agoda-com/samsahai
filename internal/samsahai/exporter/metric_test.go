@@ -75,7 +75,7 @@ var _ = Describe("Samsahai Exporter", func() {
 	var wgStop *sync.WaitGroup
 	var chStop chan struct{}
 	var SamsahaiURL = "aaa"
-	var updatedDate = metav1.Date(2020,01,01,01,01,01,01,time.UTC)
+	var updatedDate = metav1.Date(2020, 01, 01, 01, 01, 01, 01, time.UTC)
 
 	configMgr, err := config.NewWithGitClient(&git.Client{}, "example", path.Join("..", "..", "..", "test", "data"))
 	g.Expect(err).NotTo(HaveOccurred())
@@ -129,9 +129,9 @@ var _ = Describe("Samsahai Exporter", func() {
 								TeamName: "testQHTeamNameOld",
 								Version:  "1.2.3.4-Old",
 							},
-							Status:s2hv1beta1.QueueStatus{
-								UpdatedAt: &updatedDate ,
-								NoOfProcessed : 9,
+							Status: s2hv1beta1.QueueStatus{
+								UpdatedAt:     &updatedDate,
+								NoOfProcessed: 9,
 							},
 						},
 						IsDeploySuccess: true,
@@ -340,8 +340,8 @@ var _ = Describe("Samsahai Exporter", func() {
 								TeamName: "testQHTeamName1",
 								Version:  "1.2.3.4",
 							},
-							Status:s2hv1beta1.QueueStatus{
-								UpdatedAt: &updatedDate ,
+							Status: s2hv1beta1.QueueStatus{
+								UpdatedAt:     &updatedDate,
 								NoOfProcessed: 9,
 							},
 						},
@@ -360,8 +360,8 @@ var _ = Describe("Samsahai Exporter", func() {
 								TeamName: "testQHTeamName2",
 								Version:  "4.3.2.1",
 							},
-							Status:s2hv1beta1.QueueStatus{
-								UpdatedAt: &updatedDate ,
+							Status: s2hv1beta1.QueueStatus{
+								UpdatedAt:     &updatedDate,
 								NoOfProcessed: 9,
 							},
 						},

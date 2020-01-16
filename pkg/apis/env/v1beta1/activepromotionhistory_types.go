@@ -22,44 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ContainerStatus defines a container status
-type ContainerStatus string
-
-const (
-	InitContainerStatusInitializing ContainerStatus = "Init"
-	ContainerStatusInitializing     ContainerStatus = "ContainerCreating"
-	ContainerStatusRunning          ContainerStatus = "Running"
-	ContainerStatusTerminating      ContainerStatus = "Terminating"
-)
-
-type ActivePromotionHistoryK8SResources struct {
-	Pods         []ActivePromotionHistoryPod         `json:"pods,omitempty"`
-	Deployments  []ActivePromotionHistoryDeployment  `json:"deployments,omitempty"`
-	StatefulSets []ActivePromotionHistoryStatefulSet `json:"statefulsets,omitempty"`
-}
-
-type ActivePromotionHistoryPod struct {
-	Name     string          `json:"name"`
-	Ready    string          `json:"ready"`
-	Status   ContainerStatus `json:"status"`
-	Restarts int32           `json:"restarts"`
-}
-
-type ActivePromotionHistoryDeployment struct {
-	Name  string `json:"name"`
-	Ready string `json:"ready"`
-}
-
-//
-//type ActivePromotionHistoryReplicaSet struct {
-//	Name string `json:"name"`
-//}
-
-type ActivePromotionHistoryStatefulSet struct {
-	Name  string `json:"name"`
-	Ready string `json:"ready"`
-}
-
 // ActivePromotionHistorySpec defines the desired state of ActivePromotionHistory
 type ActivePromotionHistorySpec struct {
 	TeamName        string           `json:"teamName,omitempty"`

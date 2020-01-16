@@ -63,8 +63,8 @@ spec:
             demotionStatus:
               description: DemotionStatus represents a status of the active demotion
               type: string
-            destroyTime:
-              description: DestroyTime represents time at which the previous active
+            destroyedTime:
+              description: DestroyedTime represents time at which the previous active
                 namespace will be destroyed
               format: date-time
               type: string

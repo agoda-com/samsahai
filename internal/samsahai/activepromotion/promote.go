@@ -29,11 +29,11 @@ func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv
 		return err
 	}
 
-	if prevNs != "" && atpComp.Status.DestroyTime == nil {
+	if prevNs != "" && atpComp.Status.DestroyedTime == nil {
 		logger.Debug("previous active namespace destroyed time has been set",
 			"team", teamName, "namespace", prevNs)
-		destroyTime := metav1.Now().Add(atpComp.Spec.TearDownDuration.Duration)
-		atpComp.Status.SetDestroyTime(metav1.Time{Time: destroyTime})
+		destroyedTime := metav1.Now().Add(atpComp.Spec.TearDownDuration.Duration)
+		atpComp.Status.SetDestroyedTime(metav1.Time{Time: destroyedTime})
 	}
 
 	logger.Info("active environment has been promoted successfully",

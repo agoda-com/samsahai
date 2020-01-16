@@ -59,10 +59,10 @@ func (c *controller) checkDemotionTimeout(ctx context.Context, atpComp *s2hv1bet
 
 	if isTimeout {
 		// destroy active environment when demotion timeout due to active is not working
-		if atpComp.Status.DestroyTime == nil {
+		if atpComp.Status.DestroyedTime == nil {
 			now := metav1.Now()
 			atpComp.Status.SetDemotionStatus(s2hv1beta1.ActivePromotionDemotionFailure)
-			atpComp.Status.SetDestroyTime(now)
+			atpComp.Status.SetDestroyedTime(now)
 
 			if err := c.updateActivePromotion(ctx, atpComp); err != nil {
 				return err
@@ -70,7 +70,7 @@ func (c *controller) checkDemotionTimeout(ctx context.Context, atpComp *s2hv1bet
 			return s2herrors.ErrActiveDemotionTimeout
 		}
 
-		if err := c.destroyActiveEnvironment(ctx, atpComp, atpComp.Status.DestroyTime); err != nil {
+		if err := c.destroyActiveEnvironment(ctx, atpComp, atpComp.Status.DestroyedTime); err != nil {
 			if s2herrors.IsDeletingReleases(err) || s2herrors.IsEnsuringNamespaceDestroyed(err) {
 				return s2herrors.ErrEnsureActiveDemoted
 			}

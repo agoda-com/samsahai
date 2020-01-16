@@ -29,8 +29,8 @@ const (
 func (c *controller) destroyPreviousActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
 	teamName := atpComp.Name
 	prevNs := atpComp.Status.PreviousActiveNamespace
-	destroyTime := atpComp.Status.DestroyTime
-	if err := c.destroyPreviousActiveEnvironmentAt(ctx, teamName, prevNs, destroyTime); err != nil {
+	destroyedTime := atpComp.Status.DestroyedTime
+	if err := c.destroyPreviousActiveEnvironmentAt(ctx, teamName, prevNs, destroyedTime); err != nil {
 		return err
 	}
 
@@ -45,21 +45,21 @@ func (c *controller) destroyPreviousActiveEnvironment(ctx context.Context, atpCo
 	return nil
 }
 
-func (c *controller) destroyPreviousActiveEnvironmentAt(ctx context.Context, teamName, prevNs string, destroyTime *metav1.Time) error {
+func (c *controller) destroyPreviousActiveEnvironmentAt(ctx context.Context, teamName, prevNs string, destroyedTime *metav1.Time) error {
 	if prevNs == "" {
 		logger.Debug("previous active namespace is empty", "team", teamName)
 		return nil
 	}
 
-	if destroyTime.IsZero() {
+	if destroyedTime.IsZero() {
 		return s2herrors.ErrEnsureNamespaceDestroyed
 	}
 
-	if !metav1.Now().After(destroyTime.Time) {
+	if !metav1.Now().After(destroyedTime.Time) {
 		return s2herrors.ErrEnsureNamespaceDestroyed
 	}
 
-	if err := c.ensureDestroyEnvironment(ctx, previousActiveEnvirontment, teamName, prevNs, destroyTime); err != nil {
+	if err := c.ensureDestroyEnvironment(ctx, previousActiveEnvirontment, teamName, prevNs, destroyedTime); err != nil {
 		return err
 	}
 
