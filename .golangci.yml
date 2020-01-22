@@ -7,7 +7,7 @@ linters:
     - gofmt
     - golint
     - goimports
-#    - stylecheck
+    #    - stylecheck
     - scopelint
 #    - lll
 
@@ -15,9 +15,6 @@ run:
   skip-dirs:
     - test/
     - out/
-
-# golangci.com configuration
-# https://github.com/golangci/golangci/wiki/Configuration
-service:
-  golangci-lint-version: 1.15.x # use the fixed version to not introduce new linters unexpectedly
+  skip-files:
+    - "zz_.*\\.deepcopy\\.go$"
 

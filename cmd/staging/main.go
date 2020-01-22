@@ -27,42 +27,52 @@ import (
 	fluxv1beta1 "github.com/fluxcd/flux/integrations/apis/flux.weave.works/v1beta1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	appv1beta1 "k8s.io/api/apps/v1beta1"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2hconfig "github.com/agoda-com/samsahai/internal/config"
 	desiredctrl "github.com/agoda-com/samsahai/internal/desiredcomponent"
-	"github.com/agoda-com/samsahai/internal/k8s"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	stagingctrl "github.com/agoda-com/samsahai/internal/staging"
 	"github.com/agoda-com/samsahai/internal/util"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
-var logger = s2hlog.Log.WithName("staging.cmd")
+var (
+	scheme = runtime.NewScheme()
 
-var cmd = &cobra.Command{
-	Use:   "staging",
-	Short: "Staging Controller",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		l := logf.ZapLogger(viper.GetBool(s2h.VKDebug))
-		logf.SetLogger(l)
-		s2hlog.SetLogger(l)
-	},
-}
+	logger = s2hlog.Log.WithName("cmd")
+
+	cmd = &cobra.Command{
+		Use:   "staging",
+		Short: "Staging Controller",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			l := zap.New(func(o *zap.Options) {
+				o.Development = viper.GetBool(s2h.VKDebug)
+			})
+			logf.SetLogger(l)
+			s2hlog.SetLogger(l)
+		},
+	}
+)
 
 func init() {
 	cobra.OnInitialize(util.InitViper)
+
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = s2hv1beta1.AddToScheme(scheme)
+	_ = fluxv1beta1.SchemeBuilder.AddToScheme(scheme)
 
 	cmd.PersistentFlags().Bool(s2h.VKDebug, false, "More debugging log.")
 
@@ -122,29 +132,8 @@ func startCtrlCmd() *cobra.Command {
 			// Setup Scheme for all resources
 			logger.Info("setting up scheme")
 
-			// register types at the scheme builder
-			if err := appv1beta1.AddToScheme(scheme.Scheme); err != nil {
-				logger.Error(err, "cannot addtoscheme")
-				os.Exit(1)
-			}
-			if err := s2hv1beta1.AddToScheme(scheme.Scheme); err != nil {
-				logger.Error(err, "unable add `env.samsahai.io` to scheme")
-				os.Exit(1)
-			}
-			if err := fluxv1beta1.SchemeBuilder.AddToScheme(scheme.Scheme); err != nil {
-				logger.Error(err, "unable add `flux.weave.works` to scheme")
-				os.Exit(1)
-			}
-
 			// Create runtime client
-			runtimeClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
-			if err != nil {
-				logger.Error(err, "cannot create unversioned restclient")
-				os.Exit(1)
-			}
-
-			// Create REST client
-			restClient, err := k8s.NewRESTClient(cfg)
+			runtimeClient, err := client.New(cfg, client.Options{Scheme: scheme})
 			if err != nil {
 				logger.Error(err, "cannot create unversioned restclient")
 				os.Exit(1)
@@ -160,7 +149,7 @@ func startCtrlCmd() *cobra.Command {
 				logger.Error(err, "cannot load configuration from server")
 				os.Exit(1)
 			}
-			queueCtrl := queue.New(namespace, runtimeClient, restClient)
+			queueCtrl := queue.New(namespace, runtimeClient)
 			desiredctrl.New(teamName, mgr, queueCtrl)
 			authToken := viper.GetString(s2h.VKS2HAuthToken)
 			tcBaseURL := viper.GetString(s2h.VKTeamcityURL)

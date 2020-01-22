@@ -9,13 +9,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/k8s/helmrelease"
 	"github.com/agoda-com/samsahai/internal/staging"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/fluxhelm"
+	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 type envType string
@@ -186,7 +187,7 @@ func (c *controller) waitForComponentsCleaned(teamName, ns string, startedCleanu
 
 	deployEngine := c.getDeployEngine(configMgr, ns)
 
-	return staging.WaitForComponentsCleaned(c.clientset, deployEngine, configMgr.GetParentComponents(),
+	return staging.WaitForComponentsCleaned(c.client, deployEngine, configMgr.GetParentComponents(),
 		teamName, ns, startedCleanupTime, c.getComponentCleanupTimeout(configMgr))
 }
 
@@ -207,7 +208,7 @@ func (c *controller) getDeployEngine(configMgr internal.ConfigManager, ns string
 	atpConfig := cfg.ActivePromotion
 
 	if atpConfig == nil || atpConfig.Deployment == nil || atpConfig.Deployment.Engine == nil || *atpConfig.Deployment.Engine == "" {
-		e = internal.MockDeployEngine
+		e = mock.EngineName
 	} else {
 		e = *cfg.ActivePromotion.Deployment.Engine
 	}
@@ -217,6 +218,8 @@ func (c *controller) getDeployEngine(configMgr internal.ConfigManager, ns string
 	switch e {
 	case fluxhelm.EngineName:
 		engine = fluxhelm.New(configMgr, helmrelease.New(ns, c.restCfg))
+	case helm3.EngineName:
+		engine = helm3.New(ns, false)
 	default:
 		engine = mock.New()
 	}

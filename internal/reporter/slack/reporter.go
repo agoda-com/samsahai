@@ -3,11 +3,11 @@ package slack
 import (
 	"strings"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/slack"
 	"github.com/agoda-com/samsahai/internal/util/template"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 

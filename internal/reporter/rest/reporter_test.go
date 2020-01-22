@@ -12,11 +12,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/reporter/rest"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 

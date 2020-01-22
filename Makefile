@@ -6,17 +6,24 @@ DOCKER_PASSWORD			?=
 GITHUB_API_URL			?= https://api.github.com
 GITHUB_TOKEN			?=
 GITHUB_REPO				?= agoda-com/samsahai
-GOLANGCI_LINT_VERSION 	?= 1.17.1
-KUBEBUILDER_VERSION 	?= 1.0.8
+GO_VERSION          	?= 1.13.6
+GOLANGCI_LINT_VERSION 	?= 1.22.2
+# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
+ifeq (,$(shell go env GOBIN))
+GOBIN=$(shell go env GOPATH)/bin
+else
+GOBIN=$(shell go env GOBIN)
+endif
+KUBEBUILDER_VERSION 	?= 2.2.0
 KUBEBULIDER_FILENAME	= kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
 KUBEBUILDER_PATH		?= /usr/local/kubebuilder/
-GORELEASER_VERSION		?= 0.118.0
-K3S_DOCKER_IMAGE 		?= rancher/k3s:v0.8.1
+GORELEASER_VERSION		?= 0.124.0
+K3S_DOCKER_IMAGE 		?= rancher/k3s:v0.9.1
 KUBECONFIG 				= /tmp/s2h/k3s-kubeconfig
 K3S_DOCKER_NAME			?= s2h-k3s-server
 K3S_PORT				?= 7443
-K8S_VERSION				?= 1.14.6
-KUSTOMIZE_VERSION		?= 3.1.0
+K8S_VERSION				?= 1.15.7
+KUSTOMIZE_VERSION		?= 3.5.3
 HELM_VERSION			?= 2.13.1
 POD_NAMESPACE			?= default
 
@@ -118,6 +125,9 @@ k3s-get-kubeconfig:
 	@echo export KUBECONFIG=$(KUBECONFIG)
 
 prepare-env-e2e-k3d: prepare-env-e2e
+
+prepare-kube-1-13: K3S_DOCKER_IMAGE = rancher/k3s:v0.8.1
+prepare-kube-1-13: prepare-env-e2e
 
 prepare-env-e2e:
 	echo start k3s
@@ -311,32 +321,32 @@ swag:
 	$(SWAG) init -g cmd/samsahai/main.go
 
 # Generate code
-generate:
-ifndef GOPATH
-	$(error GOPATH not defined, please define GOPATH. Run "go help gopath" to learn more about GOPATH)
-endif
-	export GO111MODULE=on; \
-	go get k8s.io/code-generator@v0.0.0-20181117043124-c2090bec4d9b || echo 'ignore error.'; \
-	go generate ./pkg/apis/...
+#generate:
+#ifndef GOPATH
+#	$(error GOPATH not defined, please define GOPATH. Run "go help gopath" to learn more about GOPATH)
+#endif
+#	export GO111MODULE=on; \
+#	go get k8s.io/code-generator@v0.0.0-20181117043124-c2090bec4d9b || echo 'ignore error.'; \
+#	go generate ./pkg/apis/...
 
-manifests: controller-tools="github.com/phantomnat/controller-tools@v0.1.11-1/cmd/controller-gen/main.go"
-manifests:
-	go get sigs.k8s.io/controller-tools@v0.1.11
-	go run $$GOPATH/pkg/mod/$(controller-tools) crd --apis-path pkg/apis
-	go run $$GOPATH/pkg/mod/$(controller-tools) rbac \
-			--name desired-component \
-			--input-dir internal/desiredcomponent \
-			--output-dir config/rbac/desiredcomponent
-	go run $$GOPATH/pkg/mod/$(controller-tools) rbac \
-    			--name samsahai \
-    			--input-dir internal/samsahai \
-    			--output-dir config/rbac/samsahai \
-    			--service-account samsahai \
-    			--service-account-namespace samsahai-system
-
-install-crds: generate manifests
-	kubectl apply -f ./config/crds
-	make lint
+#manifests: controller-tools="github.com/phantomnat/controller-tools@v0.1.11-1/cmd/controller-gen/main.go"
+#manifests:
+#	go get sigs.k8s.io/controller-tools@v0.1.11
+#	go run $$GOPATH/pkg/mod/$(controller-tools) crd --apis-path pkg/apis
+#	go run $$GOPATH/pkg/mod/$(controller-tools) rbac \
+#			--name desired-component \
+#			--input-dir internal/desiredcomponent \
+#			--output-dir config/rbac/desiredcomponent
+#	go run $$GOPATH/pkg/mod/$(controller-tools) rbac \
+#    			--name samsahai \
+#    			--input-dir internal/samsahai \
+#    			--output-dir config/rbac/samsahai \
+#    			--service-account samsahai \
+#    			--service-account-namespace samsahai-system
+#
+#install-crds: generate manifests
+#	kubectl apply -f ./config/crds
+#	make lint
 
 
 APP_NAME 		?=
@@ -345,8 +355,19 @@ _VERSION_ARGS 	?= version
 
 ifndef DEBUG
 .SILENT: .install-kubectl .install-kustomize .install-helm .install-golangci-lint \
-			.install-kubebuilder .install-protoc .install-goreleaser .install-kubectl-linux
+			.install-kubebuilder .install-protoc .install-goreleaser .install-kubectl-linux \
+			install-go
 endif
+
+install-go: export APP_NAME 		= go
+install-go: export APP_VERSION 	= $(GO_VERSION)
+install-go: export _VERSION_ARGS 	= version
+install-go:
+	export _FILENAME="go$(GO_VERSION).$(OS)-$(ARCH)"; \
+	export _DOWNLOAD_URL="https://storage.googleapis.com/golang/$$_FILENAME.tar.gz"; \
+	export _MOVE_CMD="$(RM) -rf /usr/local/$(APP_NAME)/ && $(MKDIR) -p /usr/local/$(APP_NAME)/ && $(MV) $(TMP_DIR)/$(APP_NAME)/* /usr/local/$(APP_NAME)/"; \
+	export INSTALL_DIR="/usr/local/$(APP_NAME)/bin/"; \
+	$(MAKE) .install-archive;
 
 .install-kubectl: export APP_NAME 		= kubectl
 .install-kubectl: export APP_VERSION 	= $(K8S_VERSION)
@@ -366,10 +387,11 @@ endif
 
 .install-kustomize: export APP_NAME 		= kustomize
 .install-kustomize: export APP_VERSION 		= $(KUSTOMIZE_VERSION)
-.install-kustomize: export _DOWNLOAD_URL 	= https://github.com/kubernetes-sigs/kustomize/releases/download/v$(KUSTOMIZE_VERSION)/kustomize_$(KUSTOMIZE_VERSION)_$(OS)_$(ARCH)
 .install-kustomize:
-	$(MAKE) .install-binary \
-		_DOWNLOAD_URL="https://github.com/kubernetes-sigs/kustomize/releases/download/v$(KUSTOMIZE_VERSION)/kustomize_$(KUSTOMIZE_VERSION)_$(OS)_$(ARCH)"
+	export _FILENAME="kustomize_v$(KUSTOMIZE_VERSION)_$(OS)_$(ARCH)"; \
+	export _DOWNLOAD_URL="https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv$(KUSTOMIZE_VERSION)/$$_FILENAME.tar.gz"; \
+	export _MOVE_CMD="$(MV) $(TMP_DIR)/$(APP_NAME) $(_APP_CMD)"; \
+	$(MAKE) .install-archive
 
 .install-golangci-lint: export APP_NAME 		= golangci-lint
 .install-golangci-lint: export APP_VERSION 		= $(GOLANGCI_LINT_VERSION)
@@ -470,7 +492,7 @@ endif
 		mkdir -p $(TMP_DIR); \
 		curl -sLo $(TMP_DIR)/$(_FILENAME)$(ARCHIVE_EXT) $(_DOWNLOAD_URL); \
 		if [ "$(ARCHIVE_EXT)" = ".tar.gz" ]; then \
-			tar -zxvf $(TMP_DIR)/$(_FILENAME)$(ARCHIVE_EXT) -C $(TMP_DIR); \
+			tar -zxf $(TMP_DIR)/$(_FILENAME)$(ARCHIVE_EXT) -C $(TMP_DIR); \
 		elif [ "$(ARCHIVE_EXT)" = ".zip" ]; then \
 			unzip $(TMP_DIR)/$(_FILENAME)$(ARCHIVE_EXT) -d $(TMP_DIR)/$(_FILENAME); \
 		else \
@@ -480,9 +502,6 @@ endif
 		mkdir -p $$(dirname $(_APP_CMD)); \
 		$(_MOVE_CMD); \
 		\
-		rm -rf $(_FILENAME) || echo 'ignore error'; \
-		rm -f $(_FILENAME)$(ARCHIVE_EXT); \
-		rm -rf $(TMP_DIR); \
 		\
 		echo $(APP_NAME) $(APP_VERSION) installed; \
 	else \
@@ -495,3 +514,23 @@ endif
 		golang.org/x/tools/cmd/goimports \
 		github.com/golang/protobuf/protoc-gen-go \
 		github.com/twitchtv/twirp/protoc-gen-twirp
+
+# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
+CRD_OPTIONS ?= "crd"
+
+CONTROLLER_GEN=go run $$GOPATH/pkg/mod/github.com/phantomnat/controller-tools@v0.2.4-1/cmd/controller-gen/main.go
+
+# Generate manifests e.g. CRD, RBAC etc.
+manifests: controller-gen
+	go get sigs.k8s.io/controller-tools
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." output:crd:artifacts:config=config/crds output:none
+
+# Generate code
+generate: controller-gen
+	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
+
+# find or download controller-gen
+# download controller-gen if necessary
+controller-gen:
+	@go get sigs.k8s.io/controller-tools
+

@@ -20,13 +20,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2hconfig "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/samsahai"
 	"github.com/agoda-com/samsahai/internal/util"
 	"github.com/agoda-com/samsahai/internal/util/http"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 func TestWebhook(t *testing.T) {

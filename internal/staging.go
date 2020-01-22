@@ -3,7 +3,7 @@ package internal
 import (
 	"net/http"
 
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
+	"github.com/agoda-com/samsahai/api/v1beta1"
 	stagingrpc "github.com/agoda-com/samsahai/pkg/staging/rpc"
 )
 

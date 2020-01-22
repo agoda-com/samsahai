@@ -6,21 +6,18 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	"github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	s2hk8s "github.com/agoda-com/samsahai/internal/k8s"
 	"github.com/agoda-com/samsahai/internal/queue"
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 var _ = Describe("queue controller [e2e]", func() {
 	var controller internal.QueueController
 	var namespace string
 	var client rclient.Client
-	var restClient rest.Interface
 	var teamName = "example"
 
 	BeforeEach(func(done Done) {
@@ -35,10 +32,7 @@ var _ = Describe("queue controller [e2e]", func() {
 		client, err = rclient.New(cfg, rclient.Options{Scheme: scheme.Scheme})
 		Expect(err).NotTo(HaveOccurred())
 
-		restClient, err = s2hk8s.NewRESTClient(cfg)
-		Expect(err).NotTo(HaveOccurred())
-
-		controller = queue.New(namespace, client, restClient)
+		controller = queue.New(namespace, client)
 		Expect(controller).NotTo(BeNil(), "Should successfully init Queue controller")
 
 		Expect(controller.RemoveAllQueues()).To(BeNil())

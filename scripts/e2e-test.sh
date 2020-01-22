@@ -10,11 +10,9 @@ cover_pkgs=$(go list ./... | grep -v /cmd | grep -v /vendor | grep -v /test | tr
 go install github.com/onsi/ginkgo/ginkgo
 
 ginkgo \
-  --failFast \
   --progress --noColor --v \
   --nodes=1 \
   -timeout=20m \
-  -race \
   -cover \
   -covermode atomic \
   -coverprofile coverage.out \

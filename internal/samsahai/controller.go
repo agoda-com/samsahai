@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hconfig "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/errors"
@@ -48,7 +49,6 @@ import (
 	"github.com/agoda-com/samsahai/internal/util/cmd"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -378,7 +378,7 @@ func (c *controller) PromoteActiveEnvironment(teamComp *s2hv1beta1.Team, namespa
 
 func (c *controller) storeCurrentActiveComponentsToTeam(teamComp *s2hv1beta1.Team, namespace string) error {
 	stableList := &s2hv1beta1.StableComponentList{}
-	if err := c.client.List(context.TODO(), &client.ListOptions{Namespace: namespace}, stableList); err != nil {
+	if err := c.client.List(context.TODO(), stableList, &client.ListOptions{Namespace: namespace}); err != nil {
 		return errors.Wrapf(err, "cannot get list of stable components, namespace %s", namespace)
 	}
 
@@ -788,17 +788,17 @@ func (c *controller) GetConnections(namespace string) (map[string][]internal.Con
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	nodes := corev1.NodeList{}
-	err = c.client.List(ctx, &client.ListOptions{}, &nodes)
+	err = c.client.List(ctx, &nodes, &client.ListOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot list nodes")
 	}
 	services := corev1.ServiceList{}
-	err = c.client.List(ctx, &client.ListOptions{Namespace: namespace}, &services)
+	err = c.client.List(ctx, &services, &client.ListOptions{Namespace: namespace})
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot list services")
 	}
 	ingresses := v1beta1.IngressList{}
-	err = c.client.List(ctx, &client.ListOptions{Namespace: namespace}, &ingresses)
+	err = c.client.List(ctx, &ingresses, &client.ListOptions{Namespace: namespace})
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot list ingresses")
 	}
@@ -868,13 +868,13 @@ func (c *controller) GetConnections(namespace string) (map[string][]internal.Con
 
 func (c *controller) GetTeams() (v *s2hv1beta1.TeamList, err error) {
 	v = &s2hv1beta1.TeamList{}
-	err = c.client.List(context.TODO(), &client.ListOptions{}, v)
+	err = c.client.List(context.TODO(), v, &client.ListOptions{})
 	return v, errors.Wrap(err, "cannot list teams")
 }
 
 func (c *controller) GetQueueHistories(namespace string) (v *s2hv1beta1.QueueHistoryList, err error) {
 	v = &s2hv1beta1.QueueHistoryList{}
-	err = c.client.List(context.TODO(), &client.ListOptions{Namespace: namespace}, v)
+	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})
 	return v, errors.Wrap(err, "cannot list queue histories")
 }
 
@@ -886,7 +886,7 @@ func (c *controller) GetQueueHistory(name, namespace string) (v *s2hv1beta1.Queu
 
 func (c *controller) GetQueues(namespace string) (v *s2hv1beta1.QueueList, err error) {
 	v = &s2hv1beta1.QueueList{}
-	err = c.client.List(context.TODO(), &client.ListOptions{Namespace: namespace}, v)
+	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})
 	return v, errors.Wrap(err, "cannot list queues")
 }
 
@@ -903,7 +903,7 @@ func (c *controller) GetStableValues(team *s2hv1beta1.Team, comp *internal.Compo
 
 func (c *controller) GetActivePromotions() (v *s2hv1beta1.ActivePromotionList, err error) {
 	v = &s2hv1beta1.ActivePromotionList{}
-	err = c.client.List(context.TODO(), &client.ListOptions{}, v)
+	err = c.client.List(context.TODO(), v, &client.ListOptions{})
 	return
 }
 
@@ -916,7 +916,7 @@ func (c *controller) GetActivePromotion(name string) (v *s2hv1beta1.ActivePromot
 func (c *controller) GetActivePromotionHistories(selectors map[string]string) (v *s2hv1beta1.ActivePromotionHistoryList, err error) {
 	v = &s2hv1beta1.ActivePromotionHistoryList{}
 	listOpt := &client.ListOptions{LabelSelector: labels.SelectorFromSet(selectors)}
-	err = c.client.List(context.TODO(), listOpt, v)
+	err = c.client.List(context.TODO(), v, listOpt)
 	return
 }
 

@@ -12,11 +12,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/reporter/slack"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -29,7 +29,7 @@ func (c *controller) authenticateRPC(authToken string) error {
 }
 
 func (c *controller) GetConfiguration(ctx context.Context, team *rpc.Team) (*rpc.Configuration, error) {
-	if err := c.authenticateRPC(ctx.Value(s2h.SamsahaiAuthHeader).(string)); err != nil {
+	if err := c.authenticateRPC(ctx.Value(s2h.HTTPHeader(s2h.SamsahaiAuthHeader)).(string)); err != nil {
 		return nil, err
 	}
 
@@ -46,7 +46,7 @@ func (c *controller) GetConfiguration(ctx context.Context, team *rpc.Team) (*rpc
 }
 
 func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWithCurrentComponent) (*rpc.ImageList, error) {
-	if err := c.authenticateRPC(ctx.Value(s2h.SamsahaiAuthHeader).(string)); err != nil {
+	if err := c.authenticateRPC(ctx.Value(s2h.HTTPHeader(s2h.SamsahaiAuthHeader)).(string)); err != nil {
 		return nil, err
 	}
 
@@ -67,7 +67,7 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 			"staging namespace should not be empty")
 	}
 
-	err := c.client.List(ctx, &client.ListOptions{Namespace: teamComp.Status.Namespace.Staging}, stableList)
+	err := c.client.List(ctx, stableList, &client.ListOptions{Namespace: teamComp.Status.Namespace.Staging})
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return nil, errors.Wrapf(err,
 			"cannot get list of stable components, namespace %s", teamComp.Status.Namespace.Staging)
@@ -131,7 +131,7 @@ func (c *controller) getImageSource(comps map[string]*s2h.Component, name string
 }
 
 func (c *controller) NotifyComponentUpgrade(ctx context.Context, comp *rpc.ComponentUpgrade) (*rpc.Empty, error) {
-	if err := c.authenticateRPC(ctx.Value(s2h.SamsahaiAuthHeader).(string)); err != nil {
+	if err := c.authenticateRPC(ctx.Value(s2h.HTTPHeader(s2h.SamsahaiAuthHeader)).(string)); err != nil {
 		return nil, err
 	}
 
@@ -188,13 +188,13 @@ func (c *controller) NotifyComponentUpgrade(ctx context.Context, comp *rpc.Compo
 
 	// Add metric updateQueueMetric & histories
 	queueList := &s2hv1beta1.QueueList{}
-	if err := c.client.List(context.TODO(), nil, queueList); err != nil {
+	if err := c.client.List(context.TODO(), queueList); err != nil {
 		logger.Error(err, "cannot list all queue")
 	}
 	exporter.SetQueueMetric(queueList, c.teamConfigs)
 
 	queueHistoriesList := &s2hv1beta1.QueueHistoryList{}
-	if err := c.client.List(context.TODO(), nil, queueHistoriesList); err != nil {
+	if err := c.client.List(context.TODO(), queueHistoriesList); err != nil {
 		logger.Error(err, "cannot list all queue")
 	}
 	exporter.SetQueueHistoriesMetric(queueHistoriesList, c.configs.SamsahaiURL)
@@ -210,7 +210,7 @@ func (c *controller) sendComponentUpgradeReport(configMgr s2h.ConfigManager, r s
 
 func (c *controller) storeStableComponentsToTeam(ctx context.Context, comp *rpc.ComponentUpgrade) error {
 	stableList := &s2hv1beta1.StableComponentList{}
-	if err := c.client.List(ctx, &client.ListOptions{Namespace: comp.Namespace}, stableList); err != nil {
+	if err := c.client.List(ctx, stableList, &client.ListOptions{Namespace: comp.Namespace}); err != nil {
 		return errors.Wrapf(err, "cannot get list of stable components, namespace %s", comp.Namespace)
 	}
 
@@ -250,7 +250,7 @@ func (c *controller) getLatestFailureQueueHistory(comp *rpc.ComponentUpgrade) (*
 func (c *controller) listQueueHistory(selectors map[string]string) (*s2hv1beta1.QueueHistoryList, error) {
 	queueHists := &s2hv1beta1.QueueHistoryList{}
 	listOpt := &client.ListOptions{LabelSelector: labels.SelectorFromSet(selectors)}
-	err := c.client.List(context.TODO(), listOpt, queueHists)
+	err := c.client.List(context.TODO(), queueHists, listOpt)
 	queueHists.SortDESC()
 	return queueHists, err
 }

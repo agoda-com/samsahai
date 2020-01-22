@@ -11,9 +11,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) (string, error) {
@@ -69,7 +69,7 @@ func (c *controller) updateActivePromotionHistory(ctx context.Context, histName 
 	}
 
 	atpHisList := &s2hv1beta1.ActivePromotionHistoryList{}
-	if err := c.client.List(context.TODO(), nil, atpHisList); err != nil {
+	if err := c.client.List(context.TODO(), atpHisList); err != nil {
 		logger.Error(err, "cannot list all active promotion histories")
 	}
 	exporter.SetActivePromotionHistoriesMetric(atpHisList)
@@ -80,7 +80,7 @@ func (c *controller) updateActivePromotionHistory(ctx context.Context, histName 
 func (c *controller) deleteActivePromotionHistoryIfOutOfRange(ctx context.Context, teamName string, selectors map[string]string) error {
 	atpHists := s2hv1beta1.ActivePromotionHistoryList{}
 	listOpt := client.ListOptions{LabelSelector: labels.SelectorFromSet(selectors)}
-	if err := c.client.List(ctx, &listOpt, &atpHists); err != nil {
+	if err := c.client.List(ctx, &atpHists, &listOpt); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil
 		}

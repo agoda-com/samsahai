@@ -8,13 +8,11 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	"github.com/agoda-com/samsahai/internal/k8s"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 var logger = s2hlog.Log.WithName(CtrlName)
@@ -22,9 +20,8 @@ var logger = s2hlog.Log.WithName(CtrlName)
 const CtrlName = "queue-ctrl"
 
 type controller struct {
-	runtimeClient client.Client
-	restClient    rest.Interface
-	namespace     string
+	client    client.Client
+	namespace string
 }
 
 var _ internal.QueueController = &controller{}
@@ -32,6 +29,7 @@ var _ internal.QueueController = &controller{}
 func NewUpgradeQueue(teamName, namespace, name, repository, version string) *v1beta1.Queue {
 	qLabels := internal.GetDefaultLabels(teamName)
 	qLabels["app"] = name
+	qLabels["component"] = name
 	return &v1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -50,11 +48,10 @@ func NewUpgradeQueue(teamName, namespace, name, repository, version string) *v1b
 }
 
 // New returns QueueController
-func New(ns string, runtimeClient client.Client, restClient rest.Interface) internal.QueueController {
+func New(ns string, runtimeClient client.Client) internal.QueueController {
 	c := &controller{
-		namespace:     ns,
-		restClient:    restClient,
-		runtimeClient: runtimeClient,
+		namespace: ns,
+		client:    runtimeClient,
 	}
 	return c
 }
@@ -97,11 +94,12 @@ func (c *controller) First() (*v1beta1.Queue, error) {
 }
 
 func (c *controller) Remove(q *v1beta1.Queue) error {
-	return c.runtimeClient.Delete(context.TODO(), q)
+	return c.client.Delete(context.TODO(), q)
 }
 
 func (c *controller) RemoveAllQueues() error {
-	return k8s.DeleteCollection(c.restClient, c.namespace, k8s.Queues, nil, nil)
+
+	return c.client.DeleteAllOf(context.TODO(), &v1beta1.Queue{}, client.InNamespace(c.namespace))
 }
 
 func (c *controller) add(ctx context.Context, queue *v1beta1.Queue, atTop bool) error {
@@ -130,7 +128,7 @@ func (c *controller) add(ctx context.Context, queue *v1beta1.Queue, atTop bool) 
 	removingList := c.removeSimilar(queue, queueList)
 
 	for i := range removingList {
-		if err := c.runtimeClient.Delete(context.TODO(), &removingList[i]); err != nil {
+		if err := c.client.Delete(context.TODO(), &removingList[i]); err != nil {
 			return err
 		}
 	}
@@ -146,7 +144,7 @@ func (c *controller) add(ctx context.Context, queue *v1beta1.Queue, atTop bool) 
 			pQueue.Spec.NoOfOrder = queueList.TopQueueOrder()
 		}
 
-		if err = c.runtimeClient.Update(context.TODO(), pQueue); err != nil {
+		if err = c.client.Update(context.TODO(), pQueue); err != nil {
 			return err
 		}
 	} else {
@@ -161,7 +159,7 @@ func (c *controller) add(ctx context.Context, queue *v1beta1.Queue, atTop bool) 
 		queue.Status.CreatedAt = &now
 		queue.Status.UpdatedAt = &now
 
-		if err = c.runtimeClient.Create(context.TODO(), queue); err != nil {
+		if err = c.client.Create(context.TODO(), queue); err != nil {
 			return err
 		}
 	}
@@ -171,7 +169,7 @@ func (c *controller) add(ctx context.Context, queue *v1beta1.Queue, atTop bool) 
 
 func (c *controller) isMatchWithStableComponent(ctx context.Context, q *v1beta1.Queue) (isMatch bool, err error) {
 	stableComp := &v1beta1.StableComponent{}
-	err = c.runtimeClient.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: q.GetName()}, stableComp)
+	err = c.client.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: q.GetName()}, stableComp)
 	if err != nil && k8serrors.IsNotFound(err) {
 		return false, nil
 	} else if err != nil {
@@ -210,7 +208,7 @@ func (c *controller) list(opts *client.ListOptions) (list *v1beta1.QueueList, er
 	if opts == nil {
 		opts = &client.ListOptions{Namespace: c.namespace}
 	}
-	if err = c.runtimeClient.List(context.Background(), opts, list); err != nil {
+	if err = c.client.List(context.Background(), list, opts); err != nil {
 		return
 	}
 	return list, nil
@@ -225,7 +223,7 @@ func (c *controller) SetLastOrder(q *v1beta1.Queue) error {
 	q.Spec.NoOfOrder = queueList.LastQueueOrder()
 	q.Status.Conditions = nil
 
-	return c.runtimeClient.Update(context.TODO(), q)
+	return c.client.Update(context.TODO(), q)
 }
 
 func (c *controller) SetReverifyQueueAtFirst(q *v1beta1.Queue) error {
@@ -241,7 +239,7 @@ func (c *controller) SetReverifyQueueAtFirst(q *v1beta1.Queue) error {
 	}
 	q.Spec.Type = v1beta1.QueueTypeReverify
 	q.Spec.NoOfOrder = list.TopQueueOrder()
-	return c.runtimeClient.Update(context.TODO(), q)
+	return c.client.Update(context.TODO(), q)
 }
 
 func (c *controller) SetRetryQueue(q *v1beta1.Queue, noOfRetry int, nextAt time.Time) error {
@@ -259,7 +257,7 @@ func (c *controller) SetRetryQueue(q *v1beta1.Queue, noOfRetry int, nextAt time.
 	q.Spec.NoOfRetry = noOfRetry
 	q.Spec.Type = v1beta1.QueueTypeUpgrade
 	q.Spec.NoOfOrder = list.LastQueueOrder()
-	return c.runtimeClient.Update(context.TODO(), q)
+	return c.client.Update(context.TODO(), q)
 }
 
 // EnsurePreActiveComponents ensures that components with were deployed with `pre-active` config and tested

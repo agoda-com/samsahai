@@ -1,7 +1,7 @@
 package internal
 
 import (
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 

@@ -6,7 +6,6 @@ import (
 	"github.com/fluxcd/flux/integrations/apis/flux.weave.works/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 
@@ -127,7 +126,7 @@ func getRESTconfig(config *rest.Config, groupVersion *schema.GroupVersion) *rest
 	cfg := *config
 	cfg.ContentConfig.GroupVersion = groupVersion
 	cfg.APIPath = "/apis"
-	cfg.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
+	cfg.NegotiatedSerializer = scheme.Codecs
 	cfg.UserAgent = rest.DefaultKubernetesUserAgent()
 	return &cfg
 }

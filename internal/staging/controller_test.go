@@ -7,13 +7,13 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/util"
 	"github.com/agoda-com/samsahai/internal/util/dotaccess"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 func TestApplyEnvBasedConfig(t *testing.T) {

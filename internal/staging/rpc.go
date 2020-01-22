@@ -20,7 +20,7 @@ func ErrorComponentNotExist(name string) error {
 }
 
 func (c *controller) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	ctx := context.WithValue(req.Context(), s2h.SamsahaiAuthHeader, req.Header.Get(s2h.SamsahaiAuthHeader))
+	ctx := context.WithValue(req.Context(), s2h.HTTPHeader(s2h.SamsahaiAuthHeader), req.Header.Get(s2h.SamsahaiAuthHeader))
 	req = req.WithContext(ctx)
 
 	router := httprouter.New()
@@ -38,7 +38,7 @@ func (c *controller) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (c *controller) UpdateConfiguration(ctx context.Context, config *rpc.Configuration) (*rpc.Empty, error) {
-	if err := c.authenticateRPC(ctx.Value(s2h.SamsahaiAuthHeader).(string)); err != nil {
+	if err := c.authenticateRPC(ctx.Value(s2h.HTTPHeader(s2h.SamsahaiAuthHeader)).(string)); err != nil {
 		return nil, err
 	}
 	cfg := &s2h.Configuration{}

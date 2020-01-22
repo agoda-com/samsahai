@@ -1,13 +1,7 @@
 package internal
 
 import (
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
-)
-
-const (
-	//ArgoWorkflowDeployEngine     string = "argo-workflow"
-	FluxHelmOperatorDeployEngine string = "flux-helm"
-	MockDeployEngine             string = "mock"
+	"github.com/agoda-com/samsahai/api/v1beta1"
 )
 
 type DeployEngine interface {
@@ -18,7 +12,7 @@ type DeployEngine interface {
 	Create(refName string, comp *Component, parentComp *Component, values map[string]interface{}) error
 
 	// Delete deletes environment
-	Delete(queue *v1beta1.Queue) error
+	Delete(refName string) error
 
 	// IsReady checks the environment is ready to use or not
 	IsReady(queue *v1beta1.Queue) (bool, error)

@@ -12,9 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 func (c *controller) createPreActiveEnvAndDeployStableCompObjects(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
@@ -92,7 +92,7 @@ func (c *controller) copyStableComponentObjectsToTargetNamespace(ctx context.Con
 
 func (c *controller) getStableComponentObjects(ctx context.Context, ns string) (*s2hv1beta1.StableComponentList, error) {
 	stableComps := &s2hv1beta1.StableComponentList{}
-	if err := c.client.List(ctx, &client.ListOptions{Namespace: ns}, stableComps); err != nil {
+	if err := c.client.List(ctx, stableComps, &client.ListOptions{Namespace: ns}); err != nil {
 		return &s2hv1beta1.StableComponentList{}, err
 	}
 

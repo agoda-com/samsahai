@@ -7,11 +7,11 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 func (c *controller) updateActivePromotion(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
@@ -21,7 +21,7 @@ func (c *controller) updateActivePromotion(ctx context.Context, atpComp *s2hv1be
 
 	// Add metric activepromotion
 	atpList := &s2hv1beta1.ActivePromotionList{}
-	if err := c.client.List(context.TODO(), nil, atpList); err != nil {
+	if err := c.client.List(context.TODO(), atpList); err != nil {
 		logger.Error(err, "cannot list all active promotion")
 	}
 	exporter.SetActivePromotionMetric(atpList)

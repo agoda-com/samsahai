@@ -1,7 +1,9 @@
 package errors
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+
+	pkgerrors "github.com/pkg/errors"
 	"gopkg.in/src-d/go-git.v4"
 )
 
@@ -54,9 +56,11 @@ const (
 )
 
 var (
+	Is    = errors.Is
 	New   = errors.New
-	Wrap  = errors.Wrap
-	Wrapf = errors.Wrapf
+	Cause = pkgerrors.Cause
+	Wrap  = pkgerrors.Wrap
+	Wrapf = pkgerrors.Wrapf
 )
 
 type Error string

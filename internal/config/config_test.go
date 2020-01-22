@@ -7,14 +7,14 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/config/git"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 func TestUnit(t *testing.T) {
@@ -23,7 +23,9 @@ func TestUnit(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	if os.Getenv("DEBUG") != "" {
-		s2hlog.SetLogger(log.ZapLogger(true))
+		s2hlog.SetLogger(zap.New(func(o *zap.Options) {
+			o.Development = true
+		}))
 	}
 })
 

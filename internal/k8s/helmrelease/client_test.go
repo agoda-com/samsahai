@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -25,7 +25,9 @@ var c internal.HelmReleaseClient
 
 func TestMain(m *testing.M) {
 	if os.Getenv("DEBUG") != "" {
-		s2hlog.SetLogger(log.ZapLogger(true))
+		s2hlog.SetLogger(zap.New(func(o *zap.Options) {
+			o.Development = true
+		}))
 	}
 
 	t := &envtest.Environment{

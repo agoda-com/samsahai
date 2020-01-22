@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -19,7 +19,9 @@ func TestChecker(t *testing.T) {
 
 var _ = Describe("Public Registry Checker", func() {
 	if os.Getenv("DEBUG") != "" {
-		s2hlog.SetLogger(log.ZapLogger(true))
+		s2hlog.SetLogger(zap.New(func(o *zap.Options) {
+			o.Development = true
+		}))
 	}
 
 	var checker = New()

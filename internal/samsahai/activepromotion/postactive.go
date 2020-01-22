@@ -7,10 +7,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/util/outdated"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 type outdatedComponentTime struct {
@@ -24,7 +24,7 @@ func (c *controller) runPostActive(ctx context.Context, atpComp *s2hv1beta1.Acti
 			return err
 		}
 		atpHisList := &s2hv1beta1.ActivePromotionHistoryList{}
-		if err := c.client.List(context.TODO(), nil, atpHisList); err != nil {
+		if err := c.client.List(context.TODO(), atpHisList); err != nil {
 			logger.Error(err, "cannot list all active promotion histories")
 		}
 		exporter.OutdatedComponentMetric.Reset()
@@ -109,7 +109,7 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta
 	}
 
 	stableCompList := &s2hv1beta1.StableComponentList{}
-	err = c.client.List(ctx, &client.ListOptions{Namespace: atpNs}, stableCompList)
+	err = c.client.List(ctx, stableCompList, &client.ListOptions{Namespace: atpNs})
 	if err != nil {
 		return err
 	}

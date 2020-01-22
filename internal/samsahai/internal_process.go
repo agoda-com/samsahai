@@ -15,11 +15,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 	stagingrpc "github.com/agoda-com/samsahai/pkg/staging/rpc"
 )
@@ -272,7 +272,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 
 	// Add matric updateQueueMetric
 	queueList := &s2hv1beta1.QueueList{}
-	if err = c.client.List(context.TODO(), nil, queueList); err != nil {
+	if err = c.client.List(context.TODO(), queueList); err != nil {
 		logger.Error(err, "cannot list all queue")
 	}
 	exporter.SetQueueMetric(queueList, c.teamConfigs)
@@ -460,28 +460,28 @@ func (c *controller) exportAllMetric() error {
 
 	//queue
 	queueList := &s2hv1beta1.QueueList{}
-	if err := c.client.List(context.TODO(), nil, queueList); err != nil {
+	if err := c.client.List(context.TODO(), queueList); err != nil {
 		logger.Error(err, "cannot list all queue")
 	}
 	exporter.SetQueueMetric(queueList, c.teamConfigs)
 
 	//queue histories
 	queueHistoriesList := &s2hv1beta1.QueueHistoryList{}
-	if err := c.client.List(context.TODO(), nil, queueHistoriesList); err != nil {
+	if err := c.client.List(context.TODO(), queueHistoriesList); err != nil {
 		logger.Error(err, "cannot list all queue")
 	}
 	exporter.SetQueueHistoriesMetric(queueHistoriesList, c.configs.SamsahaiURL)
 
 	//active Promotion
 	atpList := &s2hv1beta1.ActivePromotionList{}
-	if err := c.client.List(context.TODO(), nil, atpList); err != nil {
+	if err := c.client.List(context.TODO(), atpList); err != nil {
 		logger.Error(err, "cannot list all active promotion")
 	}
 	exporter.SetActivePromotionMetric(atpList)
 
 	//active Promotion histories
 	atpHisList := &s2hv1beta1.ActivePromotionHistoryList{}
-	if err := c.client.List(context.TODO(), nil, atpHisList); err != nil {
+	if err := c.client.List(context.TODO(), atpHisList); err != nil {
 		logger.Error(err, "cannot list all active promotion histories")
 	}
 	exporter.SetActivePromotionHistoriesMetric(atpHisList)

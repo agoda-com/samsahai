@@ -5,16 +5,16 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/util"
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 // GetStableComponentsMap returns map of StableComponents in the namespace
 func GetStableComponentsMap(c client.Client, namespace string) (stableMap map[string]v1beta1.StableComponent, err error) {
 	// get stable
 	stableList := &v1beta1.StableComponentList{}
-	err = c.List(context.Background(), &client.ListOptions{Namespace: namespace}, stableList)
+	err = c.List(context.Background(), stableList, &client.ListOptions{Namespace: namespace})
 	if err != nil {
 		return
 	}

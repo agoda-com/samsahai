@@ -3,7 +3,7 @@ package internal
 import (
 	"time"
 
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
+	"github.com/agoda-com/samsahai/api/v1beta1"
 )
 
 // QueueController manages updating component queue through CRD

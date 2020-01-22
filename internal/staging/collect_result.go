@@ -22,8 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -188,7 +188,7 @@ func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 // output is base64 encoded string of the zif file
 func (c *controller) createDeploymentZipLogs(q *s2hv1beta1.Queue) (string, error) {
 	pods := &corev1.PodList{}
-	err := c.client.List(context.TODO(), &client.ListOptions{}, pods)
+	err := c.client.List(context.TODO(), pods, &client.ListOptions{})
 	if err != nil {
 		logger.Error(err, "cannot list all pods")
 		return "", err

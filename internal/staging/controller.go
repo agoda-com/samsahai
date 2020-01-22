@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/twitchtv/twirp"
+	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,20 +19,20 @@ import (
 	apiruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/k8s/helmrelease"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/fluxhelm"
+	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/testmock"
 	"github.com/agoda-com/samsahai/internal/util/random"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 	stagingrpc "github.com/agoda-com/samsahai/pkg/staging/rpc"
 )
@@ -49,7 +50,6 @@ type controller struct {
 	authToken  string
 	configMgr  internal.ConfigManager
 	queueCtrl  internal.QueueController
-	clientset  *kubernetes.Clientset
 	client     client.Client
 	helmClient internal.HelmReleaseClient
 	scheme     *apiruntime.Scheme
@@ -90,13 +90,6 @@ func NewController(
 		panic(s2herrors.ErrInternalError)
 	}
 
-	// creates clientset
-	clientset, err := kubernetes.NewForConfig(mgr.GetConfig())
-	if err != nil {
-		logger.Error(s2herrors.ErrInternalError, "cannot create clientset")
-		panic(s2herrors.ErrInternalError)
-	}
-
 	stopper := make(chan struct{})
 	c := &controller{
 		deployEngines:           map[string]internal.DeployEngine{},
@@ -108,7 +101,6 @@ func NewController(
 		configMgr:               configMgr,
 		queueCtrl:               queueCtrl,
 		client:                  mgr.GetClient(),
-		clientset:               clientset,
 		helmClient:              helmrelease.New(namespace, mgr.GetConfig()),
 		scheme:                  mgr.GetScheme(),
 		internalStop:            stopper,
@@ -232,6 +224,7 @@ func (c *controller) loadDeployEngines() {
 	engines := []internal.DeployEngine{
 		mock.New(),
 		fluxhelm.New(c.configMgr, c.helmClient),
+		helm3.New(c.namespace, true),
 	}
 
 	for _, e := range engines {
@@ -317,8 +310,14 @@ func (c *controller) syncQueueWithK8s() error {
 }
 
 func (c *controller) initQueue(q *s2hv1beta1.Queue) error {
+	deployConfig := c.getDeployConfiguration(q)
 	q.Status.NoOfProcessed++
 	q.Status.QueueHistoryName = q.Name + "-" + random.GenerateRandomString(10)
+	if deployConfig.Engine != nil {
+		if _, ok := c.deployEngines[*deployConfig.Engine]; ok {
+			q.Status.DeployEngine = *deployConfig.Engine
+		}
+	}
 	q.Status.SetCondition(s2hv1beta1.QueueCleaningBeforeStarted, corev1.ConditionTrue,
 		"starts cleaning the namespace before running task")
 
@@ -326,10 +325,13 @@ func (c *controller) initQueue(q *s2hv1beta1.Queue) error {
 }
 
 func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
-	deployEngine := c.getDeployEngine(c.getDeployConfiguration(queue))
+	deployEngine := c.getDeployEngine(queue)
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedBefore) {
-		if err := deployEngine.Delete(queue); err != nil {
-			return err
+		for compName := range c.configMgr.GetParentComponents() {
+			refName := genReleaseName(c.teamName, c.namespace, compName)
+			if err := deployEngine.Delete(refName); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -340,7 +342,7 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 	}
 
 	startedCleaningTime := queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningBeforeStarted)
-	isCleaned, err := WaitForComponentsCleaned(c.clientset, deployEngine, c.configMgr.GetParentComponents(),
+	isCleaned, err := WaitForComponentsCleaned(c.client, deployEngine, c.configMgr.GetParentComponents(),
 		c.teamName, c.namespace, startedCleaningTime, cleanupTimeout)
 	if err != nil {
 		return err
@@ -358,10 +360,13 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 }
 
 func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
-	deployEngine := c.getDeployEngine(c.getDeployConfiguration(queue))
+	deployEngine := c.getDeployEngine(queue)
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedAfter) {
-		if err := deployEngine.Delete(queue); err != nil {
-			return err
+		for compName := range c.configMgr.GetParentComponents() {
+			refName := genReleaseName(c.teamName, c.namespace, compName)
+			if err := deployEngine.Delete(refName); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -372,7 +377,7 @@ func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
 	}
 
 	startedCleaningTime := queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningAfterStarted)
-	isCleaned, err := WaitForComponentsCleaned(c.clientset, deployEngine, c.configMgr.GetParentComponents(),
+	isCleaned, err := WaitForComponentsCleaned(c.client, deployEngine, c.configMgr.GetParentComponents(),
 		c.teamName, c.namespace, startedCleaningTime, cleanupTimeout)
 	if err != nil {
 		return err
@@ -437,7 +442,7 @@ func (c *controller) getConfigManager() internal.ConfigManager {
 }
 
 func WaitForComponentsCleaned(
-	client *kubernetes.Clientset,
+	c client.Client,
 	deployEngine internal.DeployEngine,
 	parentComps map[string]*internal.Component,
 	teamName string,
@@ -451,17 +456,18 @@ func WaitForComponentsCleaned(
 
 	for _, comp := range parentComps {
 		selectors := deployEngine.GetLabelSelectors(genReleaseName(teamName, namespace, comp.Name))
-		listOpt := metav1.ListOptions{LabelSelector: labels.SelectorFromSet(selectors).String()}
+		listOpt := &client.ListOptions{Namespace: namespace, LabelSelector: labels.SelectorFromSet(selectors)}
 
 		if startedCleanupTime == nil || timeout.Duration == 0 {
 			timeout = &metav1.Duration{Duration: componentCleanupTimeout}
 		}
 		if isTimeout := isCleanupTimeout(startedCleanupTime, timeout); isTimeout {
-			forceCleanupResources(client, namespace, listOpt)
+			forceCleanupResources(c, namespace, selectors)
 		}
 
 		// check pods
-		podList, err := client.CoreV1().Pods(namespace).List(listOpt)
+		pods := &corev1.PodList{}
+		err := c.List(context.TODO(), pods, listOpt)
 		if err != nil {
 			logger.Error(err, "list pods error",
 				"namespace", namespace, "selector", labels.SelectorFromSet(selectors).String())
@@ -469,12 +475,13 @@ func WaitForComponentsCleaned(
 			return false, err
 		}
 
-		if len(podList.Items) > 0 {
+		if len(pods.Items) > 0 {
 			return false, nil
 		}
 
 		// check services
-		services, err := client.CoreV1().Services(namespace).List(listOpt)
+		services := &corev1.ServiceList{}
+		err = c.List(context.TODO(), services, listOpt)
 		if err != nil {
 			logger.Error(err, "list services error",
 				"namespace", namespace, "selector", labels.SelectorFromSet(selectors).String())
@@ -486,7 +493,8 @@ func WaitForComponentsCleaned(
 		}
 
 		// check pvcs
-		pvcs, err := client.CoreV1().PersistentVolumeClaims(namespace).List(listOpt)
+		pvcs := &corev1.PersistentVolumeClaimList{}
+		err = c.List(context.TODO(), pvcs, listOpt)
 		if err != nil {
 			logger.Error(err, "list pvcs error",
 				"namespace", namespace, "selector", labels.SelectorFromSet(selectors).String())
@@ -495,9 +503,11 @@ func WaitForComponentsCleaned(
 
 		if len(pvcs.Items) > 0 {
 			logger.Debug("pvc found, deleting")
-			deletePropagation := metav1.DeletePropagationBackground
-			err = client.CoreV1().PersistentVolumeClaims(namespace).
-				DeleteCollection(&metav1.DeleteOptions{PropagationPolicy: &deletePropagation}, listOpt)
+			err = c.DeleteAllOf(context.TODO(), &corev1.PersistentVolumeClaim{},
+				client.InNamespace(namespace),
+				client.MatchingLabels(selectors),
+				client.PropagationPolicy(metav1.DeletePropagationBackground),
+			)
 			if err != nil {
 				logger.Warn(fmt.Sprintf("delete all pvc error: %+v", err),
 					"namespace", namespace, "selector", labels.SelectorFromSet(selectors).String())
@@ -519,26 +529,28 @@ func isCleanupTimeout(startedTime *metav1.Time, timeout *metav1.Duration) bool {
 	return now.Sub(startedTime.Time) > timeout.Duration
 }
 
-func forceCleanupResources(client *kubernetes.Clientset, namespace string, listOpt metav1.ListOptions) {
+func forceCleanupResources(c client.Client, namespace string, selectors map[string]string) {
 	logger.Debug("force cleaning up all pods", "namespace", namespace)
 
-	// force delete pods and all jobs without list options
-	gracePeriod := int64(0)
-	deletePropagation := metav1.DeletePropagationBackground
-	deleteOpt := &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &deletePropagation}
-
-	if err := client.CoreV1().Pods(namespace).DeleteCollection(deleteOpt, listOpt); err != nil {
-		logger.Error(err, "cannot delete pods", "namespace", namespace, "listOpt", listOpt)
+	// force delete pods and all jobs
+	err := c.DeleteAllOf(context.TODO(), &corev1.Pod{},
+		client.InNamespace(namespace),
+		client.MatchingLabels(selectors),
+		client.GracePeriodSeconds(0),
+		client.PropagationPolicy(metav1.DeletePropagationBackground),
+	)
+	if err != nil {
+		logger.Error(err, "cannot delete pods", "namespace", namespace)
 	}
 
-	// to cleanup all jobs in case of pre-delete hook
-	forceCleanupJobsWithoutListOpt(client, namespace, deleteOpt)
-}
-
-func forceCleanupJobsWithoutListOpt(client *kubernetes.Clientset, namespace string, deleteOpt *metav1.DeleteOptions) {
+	// to cleanup all jobs
 	logger.Debug("force cleaning up all jobs", "namespace", namespace)
 
-	if err := client.BatchV1().Jobs(namespace).DeleteCollection(deleteOpt, metav1.ListOptions{}); err != nil {
+	err = c.DeleteAllOf(context.TODO(), &v1.Job{},
+		client.InNamespace(namespace),
+		client.MatchingLabels(selectors),
+	)
+	if err != nil {
 		logger.Error(err, "cannot delete jobs", "namespace", namespace)
 	}
 }

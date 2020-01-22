@@ -1,19 +1,23 @@
 package staging
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	//deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
+
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
-	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
+	"github.com/agoda-com/samsahai/internal/third_party/k8s.io/kubernetes/deployment/util"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 // deployEnvironment deploy components into namespace
@@ -24,7 +28,7 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 		deployTimeout = deployConfig.Timeout
 	}
 
-	deployEngine := c.getDeployEngine(c.getDeployConfiguration(queue))
+	deployEngine := c.getDeployEngine(queue)
 
 	// check deploy timeout
 	if err := c.checkDeployTimeout(queue, deployTimeout); err != nil {
@@ -103,21 +107,6 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 		corev1.ConditionTrue,
 		"queue deployment succeeded")
 	return c.updateQueueWithState(queue, s2hv1beta1.Testing)
-}
-
-func (c *controller) getDeployEngine(deployConfig *internal.ConfigDeploy) internal.DeployEngine {
-	var e string
-	if deployConfig == nil || deployConfig.Engine == nil || *deployConfig.Engine == "" {
-		e = internal.MockDeployEngine
-	} else {
-		e = *deployConfig.Engine
-	}
-	engine, ok := c.deployEngines[e]
-	if !ok {
-		logger.Warn("fallback to mock engine")
-		return c.deployEngines[mock.EngineName]
-	}
-	return engine
 }
 
 // checkDeployTimeout checks if deploy duration was longer than timeout.
@@ -355,7 +344,12 @@ func (c *controller) waitForReady(selectors map[string]string) (bool, error) {
 		return true, nil
 	}
 
-	listOpt := metav1.ListOptions{LabelSelector: labels.SelectorFromSet(selectors).String()}
+	listOpt := &client.ListOptions{
+		Namespace:     c.namespace,
+		LabelSelector: labels.SelectorFromSet(selectors),
+	}
+
+	//listOpt := metav1.ListOptions{LabelSelector: labels.SelectorFromSet(selectors).String()}
 
 	// check pods
 	if isReady, err := c.isPodsReady(listOpt); err != nil || !isReady {
@@ -382,15 +376,16 @@ func (c *controller) waitForReady(selectors map[string]string) (bool, error) {
 	return true, nil
 }
 
-func (c *controller) isDeploymentsReady(listOpt metav1.ListOptions) (bool, error) {
-	list, err := c.clientset.AppsV1().Deployments(c.namespace).List(listOpt)
+func (c *controller) isDeploymentsReady(listOpt *client.ListOptions) (bool, error) {
+	deployments := &appsv1.DeploymentList{}
+	err := c.client.List(context.TODO(), deployments, listOpt)
 	if err != nil {
-		logger.Error(err, "list appsv1.deployments error: "+listOpt.String())
+		logger.Error(err, "list appsv1.deployments error: "+listOpt.AsListOptions().String())
 		return false, err
 	}
 
-	for i, deploy := range list.Items {
-		rs, err := deploymentutil.GetNewReplicaSet(&list.Items[i], c.clientset.AppsV1())
+	for i, deploy := range deployments.Items {
+		rs, err := util.GetNewReplicaSet(&deployments.Items[i], c.client)
 		if err != nil {
 			logger.Error(err, "deploymentutil.getnewreplicaset error")
 			return false, err
@@ -399,7 +394,7 @@ func (c *controller) isDeploymentsReady(listOpt metav1.ListOptions) (bool, error
 		}
 		if deploy.Spec.Replicas == nil {
 			// success
-		} else if !(rs.Status.ReadyReplicas >= *deploy.Spec.Replicas-deploymentutil.MaxUnavailable(deploy)) {
+		} else if !(rs.Status.ReadyReplicas >= *deploy.Spec.Replicas-util.MaxUnavailable(deploy)) {
 			return false, nil
 		}
 	}
@@ -407,18 +402,19 @@ func (c *controller) isDeploymentsReady(listOpt metav1.ListOptions) (bool, error
 	return true, nil
 }
 
-func (c *controller) isPodsReady(listOpt metav1.ListOptions) (bool, error) {
-	podList, err := c.clientset.CoreV1().Pods(c.namespace).List(listOpt)
+func (c *controller) isPodsReady(listOpt *client.ListOptions) (bool, error) {
+	pods := &corev1.PodList{}
+	err := c.client.List(context.TODO(), pods, listOpt)
 	if err != nil {
 		logger.Error(err, "list pods error", "namespace", c.namespace)
 		return false, err
 	}
 
-	if len(podList.Items) == 0 {
+	if len(pods.Items) == 0 {
 		return false, nil
 	}
 
-	for _, pod := range podList.Items {
+	for _, pod := range pods.Items {
 		isReady := false
 		for _, cond := range pod.Status.Conditions {
 			if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
@@ -434,10 +430,11 @@ func (c *controller) isPodsReady(listOpt metav1.ListOptions) (bool, error) {
 	return true, nil
 }
 
-func (c *controller) isServicesReady(listOpt metav1.ListOptions) (bool, error) {
-	list, err := c.clientset.CoreV1().Services(c.namespace).List(listOpt)
+func (c *controller) isServicesReady(listOpt *client.ListOptions) (bool, error) {
+	list := &corev1.ServiceList{}
+	err := c.client.List(context.TODO(), list, listOpt)
 	if err != nil {
-		logger.Error(err, "list services error: "+listOpt.String())
+		logger.Error(err, "list services error: "+listOpt.AsListOptions().String())
 		return false, err
 	}
 
@@ -459,10 +456,11 @@ func (c *controller) isServicesReady(listOpt metav1.ListOptions) (bool, error) {
 	return true, nil
 }
 
-func (c *controller) isPVCsReady(listOpt metav1.ListOptions) (bool, error) {
-	list, err := c.clientset.CoreV1().PersistentVolumeClaims(c.namespace).List(listOpt)
+func (c *controller) isPVCsReady(listOpt *client.ListOptions) (bool, error) {
+	list := &corev1.PersistentVolumeClaimList{}
+	err := c.client.List(context.TODO(), list, listOpt)
 	if err != nil {
-		logger.Error(err, "list pvcs error: "+listOpt.String())
+		logger.Error(err, "list pvcs error: "+listOpt.AsListOptions().String())
 		return false, err
 	}
 

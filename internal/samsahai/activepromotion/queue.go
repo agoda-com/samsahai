@@ -8,12 +8,12 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 )
 
 func (c *controller) manageQueue(ctx context.Context) (bool, error) {
 	atpComps := s2hv1beta1.ActivePromotionList{}
-	if err := c.client.List(ctx, &client.ListOptions{}, &atpComps); err != nil {
+	if err := c.client.List(ctx, &atpComps, &client.ListOptions{}); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return false, nil
 		}

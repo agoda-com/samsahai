@@ -8,8 +8,8 @@ import (
 	"github.com/julienschmidt/httprouter"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
+	"github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 type activePromotion struct {

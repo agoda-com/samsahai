@@ -11,10 +11,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 
 	_ "github.com/agoda-com/samsahai/test/e2e/checkers"
 	_ "github.com/agoda-com/samsahai/test/e2e/config"
@@ -44,8 +45,12 @@ var _ = BeforeSuite(func(done Done) {
 	var err error
 
 	if os.Getenv("DEBUG") == "1" {
-		log.SetLogger(log.ZapLogger(true))
-		s2hlog.SetLogger(log.ZapLogger(true))
+		log.SetLogger(zap.New(func(o *zap.Options) {
+			o.Development = true
+		}))
+		s2hlog.SetLogger(zap.New(func(o *zap.Options) {
+			o.Development = true
+		}))
 	}
 
 	err = corev1.AddToScheme(scheme.Scheme)

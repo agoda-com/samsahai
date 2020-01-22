@@ -8,8 +8,7 @@ import (
 )
 
 func (c *controller) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	ctx = context.WithValue(ctx, s2h.SamsahaiAuthHeader, r.Header.Get(s2h.SamsahaiAuthHeader))
+	ctx := context.WithValue(r.Context(), s2h.HTTPHeader(s2h.SamsahaiAuthHeader), r.Header.Get(s2h.SamsahaiAuthHeader))
 	r = r.WithContext(ctx)
 	c.rpcHandler.ServeHTTP(w, r)
 }

@@ -18,13 +18,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 var logger = s2hlog.Log.WithName(CtrlName)
@@ -192,7 +192,7 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, atpComp *s
 
 				// Add metric activePromotion
 				atpList := &s2hv1beta1.ActivePromotionList{}
-				if err := c.client.List(context.TODO(), nil, atpList); err != nil {
+				if err := c.client.List(context.TODO(), atpList); err != nil {
 					logger.Error(err, "cannot list all active promotion")
 				}
 				exporter.SetActivePromotionMetric(atpList)

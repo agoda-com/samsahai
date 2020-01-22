@@ -29,7 +29,9 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	s2hconfig "github.com/agoda-com/samsahai/internal/config"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
-	s2hk8s "github.com/agoda-com/samsahai/internal/k8s"
+
+	"github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal/k8s/helmrelease"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/queue"
@@ -37,8 +39,6 @@ import (
 	s2hobject "github.com/agoda-com/samsahai/internal/samsahai/k8sobject"
 	"github.com/agoda-com/samsahai/internal/staging"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 	stagingrpc "github.com/agoda-com/samsahai/pkg/staging/rpc"
 )
@@ -49,7 +49,6 @@ var _ = Describe("Staging Controller [e2e]", func() {
 	var namespace string
 	var configMgr internal.ConfigManager
 	var runtimeClient crclient.Client
-	var restClient rest.Interface
 	var restCfg *rest.Config
 	var hrClient internal.HelmReleaseClient
 	var wgStop *sync.WaitGroup
@@ -186,13 +185,10 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		mgr, err = manager.New(restCfg, manager.Options{Namespace: namespace})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
-		restClient, err = s2hk8s.NewRESTClient(restCfg)
-		Expect(err).NotTo(HaveOccurred(), "should create rest client successfully")
-
 		runtimeClient, err = crclient.New(restCfg, crclient.Options{Scheme: scheme.Scheme})
 		Expect(err).NotTo(HaveOccurred(), "should create runtime client successfully")
 
-		queueCtrl = queue.New(namespace, runtimeClient, restClient)
+		queueCtrl = queue.New(namespace, runtimeClient)
 
 		hrClient = helmrelease.New(namespace, restCfg)
 		Expect(hrClient).NotTo(BeNil())
@@ -219,12 +215,14 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		Expect(runtimeClient.Get(context.TODO(), crclient.ObjectKey{Namespace: namespace, Name: "mock-secret"}, sc)).NotTo(HaveOccurred())
 		Expect(runtimeClient.Delete(context.TODO(), sc)).NotTo(HaveOccurred())
 
+		ctx := context.Background()
+
 		By("Deleting nginx deployment")
 		deploy := &deployNginx
-		_ = runtimeClient.Delete(context.TODO(), deploy)
+		_ = runtimeClient.Delete(ctx, deploy)
 
 		By("Deleting all teams")
-		err = s2hk8s.DeleteAllTeams(restClient, testLabels)
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Team{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Deleting all HelmReleases")
@@ -232,24 +230,24 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Deleting all StableComponents")
-		err = s2hk8s.DeleteAllStableComponents(restClient, namespace)
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, crclient.InNamespace(namespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Deleting all Queues")
-		err = s2hk8s.DeleteAllQueues(restClient, namespace)
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Queue{}, crclient.InNamespace(namespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Deleting all QueueHistories")
-		err = s2hk8s.DeleteAllQueueHistories(restClient, namespace)
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.QueueHistory{}, crclient.InNamespace(namespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		ql := &v1beta1.QueueList{}
-		err = runtimeClient.List(context.Background(), &crclient.ListOptions{Namespace: namespace}, ql)
+		err = runtimeClient.List(context.Background(), ql, &crclient.ListOptions{Namespace: namespace})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(ql.Items).To(BeEmpty())
 
 		sl := &v1beta1.StableComponentList{}
-		err = runtimeClient.List(context.Background(), &crclient.ListOptions{Namespace: namespace}, sl)
+		err = runtimeClient.List(context.Background(), sl, &crclient.ListOptions{Namespace: namespace})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sl.Items).To(BeEmpty())
 
@@ -429,7 +427,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 		qhl := &v1beta1.QueueHistoryList{}
 		err = wait.PollImmediate(1*time.Second, 30*time.Second, func() (ok bool, err error) {
-			err = runtimeClient.List(context.TODO(), &crclient.ListOptions{}, qhl)
+			err = runtimeClient.List(context.TODO(), qhl, &crclient.ListOptions{})
 			if err != nil || len(qhl.Items) < 1 {
 				return false, nil
 			}
@@ -484,8 +482,154 @@ var _ = Describe("Staging Controller [e2e]", func() {
 			return
 		})
 		Expect(err).NotTo(HaveOccurred(), "Cleaning error")
-
 	}, 30)
+
+	Describe("Deploy Engine", func() {
+		Describe("Helm3", func() {
+			It("Should successfully deploy", func(done Done) {
+				defer close(done)
+				authToken := "12345"
+				configMgr, err = s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "data", "helm3"))
+
+				stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, configMgr,
+					"", "", "")
+
+				go stagingCtrl.Start(chStop)
+
+				cfg := configMgr.Get()
+				deployTimeout := cfg.Staging.Deployment.Timeout.Duration
+				testingTimeout := cfg.Staging.Deployment.TestRunner.Timeout
+
+				swp := stableWordPress
+				Expect(runtimeClient.Create(context.TODO(), &swp)).To(BeNil())
+
+				By("creating queue")
+				newQueue := queue.NewUpgradeQueue(teamName, namespace, "redis", "bitnami/redis", "5.0.5-debian-9-r160")
+				Expect(queueCtrl.Add(newQueue)).To(BeNil())
+
+				By("deploying")
+
+				err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
+					queue := &v1beta1.Queue{}
+					err = runtimeClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: newQueue.Name}, queue)
+					if err != nil {
+						return false, nil
+					}
+					if queue.Status.IsConditionTrue(v1beta1.QueueDeployStarted) {
+						ok = true
+						return
+					}
+					return
+				})
+				Expect(err).NotTo(HaveOccurred(), "Deploying error")
+
+				By("testing")
+
+				err = wait.PollImmediate(2*time.Second, testingTimeout.Duration, func() (ok bool, err error) {
+					return !stagingCtrl.IsBusy(), nil
+				})
+				Expect(err).NotTo(HaveOccurred(), "Testing error")
+
+				By("collecting")
+
+				err = wait.PollImmediate(2*time.Second, 30*time.Second, func() (ok bool, err error) {
+					stableComp := &v1beta1.StableComponent{}
+					err = runtimeClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: newQueue.Name}, stableComp)
+					if err != nil {
+						return false, nil
+					}
+					ok = true
+					return
+				})
+				Expect(err).NotTo(HaveOccurred(), "Collecting error")
+
+				By("Ensure Pre Active Components")
+
+				redisServiceName := fmt.Sprintf("%s-%s-redis-master", teamName, namespace)
+
+				err = wait.PollImmediate(2*time.Second, 100*time.Second, func() (ok bool, err error) {
+					queue, err := queue.EnsurePreActiveComponents(runtimeClient, teamName, namespace)
+					if err != nil {
+						logger.Error(err, "cannot ensure pre-active components")
+						return false, nil
+					}
+
+					if queue.Status.State != v1beta1.Finished {
+						return
+					}
+
+					svc := corev1.Service{}
+					err = runtimeClient.Get(context.TODO(), crclient.ObjectKey{Name: redisServiceName, Namespace: namespace}, &svc)
+					if err != nil {
+						return
+					}
+
+					for _, p := range svc.Spec.Ports {
+						if p.NodePort == 31002 {
+							ok = true
+							return
+						}
+					}
+
+					return
+				})
+				Expect(err).NotTo(HaveOccurred(), "Ensure Pre Active error")
+
+				q, err := queue.EnsurePreActiveComponents(runtimeClient, teamName, namespace)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(q.IsDeploySuccess()).To(BeTrue())
+				Expect(q.IsTestSuccess()).To(BeTrue())
+
+				By("Delete Pre Active Queue")
+				Expect(queue.DeletePreActiveQueue(runtimeClient, namespace))
+
+				By("Demote from Active")
+
+				err = wait.PollImmediate(2*time.Second, 100*time.Second, func() (ok bool, err error) {
+					queue, err := queue.EnsureDemoteFromActiveComponents(runtimeClient, teamName, namespace)
+					if err != nil {
+						logger.Error(err, "cannot ensure demote from active components")
+						return false, nil
+					}
+
+					if queue.Status.State != v1beta1.Finished {
+						return
+					}
+
+					ok = true
+					return
+
+				})
+				Expect(err).NotTo(HaveOccurred(), "Demote from Active error")
+
+				By("Delete Demote from Active Queue")
+				Expect(queue.DeleteDemoteFromActiveQueue(runtimeClient, namespace))
+
+				By("Promote to Active")
+
+				err = wait.PollImmediate(2*time.Second, 100*time.Second, func() (ok bool, err error) {
+					queue, err := queue.EnsurePromoteToActiveComponents(runtimeClient, teamName, namespace)
+					if err != nil {
+						logger.Error(err, "cannot ensure promote to active components")
+						return false, nil
+					}
+
+					if queue.Status.State != v1beta1.Finished {
+						return
+					}
+
+					ok = true
+					return
+
+				})
+				Expect(err).NotTo(HaveOccurred(), "Promote to Active error")
+
+				By("Delete Promote to Active Queue")
+				Expect(queue.DeletePromoteToActiveQueue(runtimeClient, namespace))
+
+			}, 600)
+		})
+	})
 
 	Describe("gRPC", func() {
 		It("Should error if client not specify the authentication", func(done Done) {
@@ -602,11 +746,11 @@ var _ = Describe("Staging Controller [e2e]", func() {
 			defer close(done)
 
 			By("Deleting all StableComponents")
-			err = s2hk8s.DeleteAllStableComponents(restClient, namespace)
+			err = runtimeClient.DeleteAllOf(context.TODO(), &s2hv1beta1.StableComponent{}, crclient.InNamespace(namespace))
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Deleting all Queues")
-			err = s2hk8s.DeleteAllQueues(restClient, namespace)
+			err = runtimeClient.DeleteAllOf(context.TODO(), &s2hv1beta1.Queue{}, crclient.InNamespace(namespace))
 			Expect(err).NotTo(HaveOccurred())
 
 			close(chStop)

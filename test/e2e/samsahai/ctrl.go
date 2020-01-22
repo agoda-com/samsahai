@@ -22,14 +22,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hconfig "github.com/agoda-com/samsahai/internal/config"
-	s2hk8s "github.com/agoda-com/samsahai/internal/k8s"
 	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/internal/samsahai"
 	"github.com/agoda-com/samsahai/internal/samsahai/activepromotion"
@@ -38,7 +37,6 @@ import (
 	"github.com/agoda-com/samsahai/internal/staging"
 	utilhttp "github.com/agoda-com/samsahai/internal/util/http"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -54,7 +52,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 		samsahaiCtrl         internal.SamsahaiController
 		stagingPreActiveCtrl internal.StagingController
 		runtimeClient        crclient.Client
-		restClient           rest.Interface
 		wgStop               *sync.WaitGroup
 		chStop               chan struct{}
 		mgr                  manager.Manager
@@ -224,9 +221,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 		mgr, err = manager.New(restCfg, manager.Options{})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
-		restClient, err = s2hk8s.NewRESTClient(restCfg)
-		Expect(err).NotTo(HaveOccurred(), "should create rest client successfully")
-
 		runtimeClient, err = crclient.New(restCfg, crclient.Options{Scheme: scheme.Scheme})
 		Expect(err).NotTo(HaveOccurred(), "should create runtime client successfully")
 
@@ -275,16 +269,16 @@ var _ = Describe("Main Controller [e2e]", func() {
 		ctx := context.TODO()
 
 		By("Deleting all StableComponents")
-		err = s2hk8s.DeleteAllStableComponents(restClient, stgNamespace)
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, crclient.InNamespace(stgNamespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Deleting all Teams")
-		err = s2hk8s.DeleteAllTeams(restClient, testLabels)
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Team{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
 		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
 			teamList := s2hv1beta1.TeamList{}
 			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
-			err = runtimeClient.List(ctx, listOpt, &teamList)
+			err = runtimeClient.List(ctx, &teamList, listOpt)
 			if err != nil && errors.IsNotFound(err) {
 				return true, nil
 			}
@@ -309,12 +303,12 @@ var _ = Describe("Main Controller [e2e]", func() {
 		})
 
 		By("Deleting all ActivePromotions")
-		err = s2hk8s.DeleteAllActivePromotions(restClient, testLabels)
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotion{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
 		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
 			atpList := s2hv1beta1.ActivePromotionList{}
 			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
-			err = runtimeClient.List(ctx, listOpt, &atpList)
+			err = runtimeClient.List(ctx, &atpList, listOpt)
 			if err != nil && errors.IsNotFound(err) {
 				return true, nil
 			}
@@ -327,13 +321,15 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete all active promotions error")
 
 		By("Deleting ActivePromotionHistories")
-		err = s2hk8s.DeleteAllActivePromotionHistories(restClient, defaultLabels)
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotionHistory{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = s2hk8s.DeleteAllActivePromotionHistories(restClient, defaultLabelsQ1)
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotionHistory{}, crclient.MatchingLabels(defaultLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = s2hk8s.DeleteAllActivePromotionHistories(restClient, defaultLabelsQ2)
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotionHistory{}, crclient.MatchingLabels(defaultLabelsQ1))
 		Expect(err).NotTo(HaveOccurred())
-		err = s2hk8s.DeleteAllActivePromotionHistories(restClient, defaultLabelsQ3)
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotionHistory{}, crclient.MatchingLabels(defaultLabelsQ2))
+		Expect(err).NotTo(HaveOccurred())
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotionHistory{}, crclient.MatchingLabels(defaultLabelsQ3))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Deleting Secret")
@@ -458,7 +454,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		{
 			cmgr, err := s2hconfig.NewWithSamsahaiClient(samsahaiClient, teamName, samsahaiAuthToken)
 			Expect(err).NotTo(HaveOccurred(), "should successfully get config from the server")
-			qctrl := queue.New(preActiveNs, runtimeClient, restClient)
+			qctrl := queue.New(preActiveNs, runtimeClient)
 			stagingPreActiveCtrl = staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient, mgr, qctrl, cmgr, "", "", "")
 			go stagingPreActiveCtrl.Start(chStop)
 		}
@@ -473,7 +469,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		By("Checking stable components has been deployed to target namespace")
 		stableComps := &s2hv1beta1.StableComponentList{}
-		err = runtimeClient.List(ctx, &crclient.ListOptions{Namespace: atpRes.Status.TargetNamespace}, stableComps)
+		err = runtimeClient.List(ctx, stableComps, &crclient.ListOptions{Namespace: atpRes.Status.TargetNamespace})
 		Expect(err).To(BeNil())
 		Expect(len(stableComps.Items)).To(Equal(1))
 
@@ -513,7 +509,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("ActivePromotionHistory should be created")
 		atpHists := &s2hv1beta1.ActivePromotionHistoryList{}
 		listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
-		err = runtimeClient.List(context.TODO(), listOpt, atpHists)
+		err = runtimeClient.List(context.TODO(), atpHists, listOpt)
 		Expect(err).To(BeNil())
 		Expect(len(atpHists.Items)).To(Equal(2))
 		Expect(atpHists.Items[0].Name).ToNot(Equal(atpHist.Name + "-1"))
@@ -673,7 +669,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
 			teamList := s2hv1beta1.TeamList{}
 			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
-			if err := runtimeClient.List(ctx, listOpt, &teamList); err != nil {
+			if err := runtimeClient.List(ctx, &teamList, listOpt); err != nil {
 				return false, nil
 			}
 
@@ -886,7 +882,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		atpHists := &s2hv1beta1.ActivePromotionHistoryList{}
 		listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
-		err = runtimeClient.List(context.TODO(), listOpt, atpHists)
+		err = runtimeClient.List(context.TODO(), atpHists, listOpt)
 		Expect(err).To(BeNil())
 		Expect(len(atpHists.Items)).To(Equal(1))
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())

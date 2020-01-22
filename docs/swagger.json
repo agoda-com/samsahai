@@ -1407,6 +1407,10 @@
                     "description": "CreatedAt represents time when the component has been added to queue",
                     "type": "string"
                 },
+                "deployEngine": {
+                    "description": "DeployEngine represents engine using during installation",
+                    "type": "string"
+                },
                 "imageMissingList": {
                     "description": "ImageMissingList defines image missing list",
                     "type": "array",

@@ -8,9 +8,9 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
+	"github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 var logger = s2hlog.S2HLog.WithName("exporter")

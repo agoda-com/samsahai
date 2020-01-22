@@ -27,22 +27,23 @@ import (
 	"path/filepath"
 	"time"
 
-	fluxv1beta1 "github.com/fluxcd/flux/integrations/apis/flux.weave.works/v1beta1"
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	httpSwagger "github.com/swaggo/http-swagger"
-	appv1beta1 "k8s.io/api/apps/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	//_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	cr "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	docs2 "github.com/agoda-com/samsahai/docs"
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -52,23 +53,32 @@ import (
 	s2hhttp "github.com/agoda-com/samsahai/internal/samsahai/webhook"
 	"github.com/agoda-com/samsahai/internal/util"
 	"github.com/agoda-com/samsahai/internal/util/random"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
-var logger = s2hlog.S2HLog.WithName("cmd")
+var (
+	scheme = runtime.NewScheme()
 
-var cmd = &cobra.Command{
-	Use:   "samsahai",
-	Short: "Samsahai Controller",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		l := logf.ZapLogger(viper.GetBool(s2h.VKDebug))
-		logf.SetLogger(l)
-		s2hlog.SetLogger(l)
-	},
-}
+	logger = s2hlog.S2HLog.WithName("cmd")
+
+	cmd = &cobra.Command{
+		Use:   "samsahai",
+		Short: "Samsahai Controller",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			l := zap.New(func(o *zap.Options) {
+				o.Development = viper.GetBool(s2h.VKDebug)
+			})
+			logf.SetLogger(l)
+			s2hlog.SetLogger(l)
+		},
+	}
+)
 
 func init() {
 	cobra.OnInitialize(util.InitViper)
+
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = s2hv1beta1.AddToScheme(scheme)
+	//_ = appv1beta1.AddToScheme(scheme)
 
 	cmd.PersistentFlags().Bool(s2h.VKDebug, false, "More debugging log.")
 
@@ -111,28 +121,12 @@ func startCtrlCmd() *cobra.Command {
 
 			// Create a new Cmd to provide shared dependencies and start components
 			logger.Info("setting up manager")
-			mgr, err := manager.New(cfg, manager.Options{
+			mgr, err := cr.NewManager(cfg, manager.Options{
+				Scheme:             scheme,
 				MetricsBindAddress: ":" + httpMetricPort,
 			})
 			if err != nil {
 				logger.Error(err, "unable to set up overall controller manager")
-				os.Exit(1)
-			}
-
-			// Setup Scheme for all resources
-			logger.Info("setting up scheme")
-			if err := s2hv1beta1.AddToScheme(mgr.GetScheme()); err != nil {
-				logger.Error(err, "unable add apis to scheme")
-				os.Exit(1)
-			}
-			// register types at the scheme builder
-			if err := appv1beta1.AddToScheme(scheme.Scheme); err != nil {
-				logger.Error(err, "cannot addtoscheme")
-				os.Exit(1)
-			}
-
-			if err := fluxv1beta1.SchemeBuilder.AddToScheme(scheme.Scheme); err != nil {
-				logger.Error(err, "unable add `flux.weave.works` to scheme")
 				os.Exit(1)
 			}
 

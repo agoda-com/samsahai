@@ -29,5 +29,6 @@ secretGenerator:
     type: Opaque
 configMapGenerator:
   - name: flux-helm-operator-parameters
-    env: params.env
+    envs:
+    - params.env
     behavior: merge

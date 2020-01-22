@@ -10,11 +10,11 @@ import (
 	"github.com/jvsteiner/multilock"
 	"gopkg.in/src-d/go-git.v4"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hgit "github.com/agoda-com/samsahai/internal/config/git"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 type processWithError struct {

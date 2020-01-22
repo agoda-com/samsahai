@@ -3,9 +3,9 @@ package mock
 import (
 	"fmt"
 
+	"github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 var logger = s2hlog.Log.WithName(EngineName)
@@ -15,7 +15,7 @@ const (
 )
 
 type CreateCallbackFn func(refName string, comp *internal.Component, parentComp *internal.Component, values map[string]interface{})
-type DeleteCallbackFn func(queue *v1beta1.Queue)
+type DeleteCallbackFn func(refName string)
 
 type engine struct {
 	createFn CreateCallbackFn
@@ -48,11 +48,11 @@ func (e *engine) Create(
 	return nil
 }
 
-func (e *engine) Delete(queue *v1beta1.Queue) error {
+func (e *engine) Delete(refName string) error {
 	if e.deleteFn != nil {
-		e.deleteFn(queue)
+		e.deleteFn(refName)
 	}
-	logger.Debug(fmt.Sprintf("delete env with resource key: %s", queue.Status.ReleaseName))
+	logger.Debug(fmt.Sprintf("delete env with resource key: %s", refName))
 	return nil
 }
 

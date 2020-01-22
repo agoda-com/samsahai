@@ -8,12 +8,11 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	s2hlog "github.com/agoda-com/samsahai/internal/log"
-	"github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
-var logger = s2hlog.Log.WithName(EngineName)
+//var logger = s2hlog.Log.WithName(EngineName)
 
 type Action string
 
@@ -90,23 +89,13 @@ func (e *engine) Create(
 	return nil
 }
 
-func (e *engine) Delete(queue *v1beta1.Queue) error {
-	list, err := e.hrClient.List(metav1.ListOptions{})
-	if err != nil {
-		logger.Error(err, "list helmrelease error")
+func (e *engine) Delete(refName string) error {
+	if err := e.hrClient.Delete(refName, nil); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
 		return err
 	}
-
-	for _, hr := range list.Items {
-		if err := e.hrClient.Delete(hr.Name, nil); err != nil {
-			return err
-		}
-	}
-
-	// TODO: should we apply helm fast delete (delete pods with grace period)
-
-	// TODO: wait for namespace to be empty before return nil
-
 	return nil
 }
 

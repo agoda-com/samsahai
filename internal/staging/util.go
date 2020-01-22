@@ -7,8 +7,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
+	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 )
 
 func (c *controller) getDeployConfiguration(queue *s2hv1beta1.Queue) *internal.ConfigDeploy {
@@ -37,6 +38,29 @@ func (c *controller) getTestConfiguration(queue *s2hv1beta1.Queue) *internal.Con
 	}
 
 	return deployConfig.TestRunner
+}
+
+func (c *controller) getDeployEngine(queue *s2hv1beta1.Queue) internal.DeployEngine {
+	// Try to get DeployEngine from Queue
+	if _, ok := c.deployEngines[queue.Status.DeployEngine]; queue.Status.DeployEngine != "" && ok {
+		return c.deployEngines[queue.Status.DeployEngine]
+	}
+
+	// Get DeployEngine from configuration
+	deployConfig := c.getDeployConfiguration(queue)
+
+	var e string
+	if deployConfig == nil || deployConfig.Engine == nil || *deployConfig.Engine == "" {
+		e = mock.EngineName
+	} else {
+		e = *deployConfig.Engine
+	}
+	engine, ok := c.deployEngines[e]
+	if !ok {
+		logger.Warn("fallback to mock engine")
+		return c.deployEngines[mock.EngineName]
+	}
+	return engine
 }
 
 func (c *controller) clearCurrentQueue() {

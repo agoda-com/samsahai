@@ -7,9 +7,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/queue"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {

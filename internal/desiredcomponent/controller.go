@@ -13,17 +13,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/queue"
-	s2hv1beta1 "github.com/agoda-com/samsahai/pkg/apis/env/v1beta1"
 )
 
 const (
-	CtrlName         = "desired-component-ctrl"
-	EnvPodNamespace  = "pod-namespace"
-	MaxRetryOnFailed = 3
+	CtrlName = "desired-component-ctrl"
 )
 
 var logger = s2hlog.Log.WithName(CtrlName)
