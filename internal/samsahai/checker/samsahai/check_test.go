@@ -74,7 +74,8 @@ var _ = Describe("", func() {
 		s2hCtrl = samsahai.New(nil, namespace, s2hConfig,
 			samsahai.WithClient(crClient),
 			samsahai.WithConfigManager(teamName, configMgr),
-			samsahai.WithDisableLoaders(true, true, true))
+			samsahai.WithDisableLoaders(true, true, true),
+			samsahai.WithScheme(scheme.Scheme))
 		check = New(s2hCtrl)
 
 		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "..", "test", "data", "github", "team.yaml"))

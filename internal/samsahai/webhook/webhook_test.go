@@ -81,10 +81,12 @@ var _ = Describe("Samsahai Webhook", func() {
 				InternalAuthToken: "123456",
 			},
 		}
+
 		s2hCtrl = samsahai.New(nil, namespace, s2hConfig,
 			samsahai.WithClient(c),
 			samsahai.WithConfigManager(teamName, configMgr),
-			samsahai.WithDisableLoaders(true, false, true))
+			samsahai.WithDisableLoaders(true, false, true),
+			samsahai.WithScheme(scheme.Scheme))
 
 		r := New(s2hCtrl)
 

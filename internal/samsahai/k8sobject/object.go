@@ -12,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
@@ -60,7 +59,7 @@ func GetResourceQuota(teamComp *s2hv1beta1.Team, namespaceName string) runtime.O
 	return &resourceQuota
 }
 
-func GetDeployment(teamComp *s2hv1beta1.Team, namespaceName, samsahaiURL, samsahaiImage string) runtime.Object {
+func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceName, samsahaiURL, samsahaiImage string) runtime.Object {
 	teamName := teamComp.GetName()
 
 	if teamComp.Spec.StagingCtrl != nil && !strings.EqualFold((*teamComp.Spec.StagingCtrl).Image, "") {
@@ -177,14 +176,14 @@ func GetDeployment(teamComp *s2hv1beta1.Team, namespaceName, samsahaiURL, samsah
 		deployment.Spec.Template.Spec.Containers[0].Resources = (*teamComp.Spec.StagingCtrl).Resources
 	}
 
-	if err := controllerutil.SetControllerReference(teamComp, &deployment, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(teamComp, &deployment, scheme); err != nil {
 		logger.Warn(fmt.Sprintf("cannot set controller reference for %s %s deployment", teamName, internal.StagingCtrlName))
 	}
 
 	return &deployment
 }
 
-func GetService(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
+func GetService(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	service := corev1.Service{
@@ -207,7 +206,7 @@ func GetService(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object 
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(teamComp, &service, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(teamComp, &service, scheme); err != nil {
 		logger.Warn(fmt.Sprintf("cannot set controller reference for %s %s service", teamName, internal.StagingCtrlName))
 	}
 
@@ -359,7 +358,7 @@ type KeyValue struct {
 	Value intstr.IntOrString
 }
 
-func GetSecret(teamComp *s2hv1beta1.Team, namespaceName string, kvs ...KeyValue) runtime.Object {
+func GetSecret(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceName string, kvs ...KeyValue) runtime.Object {
 	teamName := teamComp.GetName()
 	data := map[string][]byte{}
 	for i := range kvs {
@@ -380,7 +379,7 @@ func GetSecret(teamComp *s2hv1beta1.Team, namespaceName string, kvs ...KeyValue)
 		Data: data,
 	}
 
-	if err := controllerutil.SetControllerReference(teamComp, &secret, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(teamComp, &secret, scheme); err != nil {
 		logger.Warn(fmt.Sprintf("cannot set controller reference for %s %s secret", teamName, internal.StagingCtrlName))
 	}
 

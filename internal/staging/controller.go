@@ -101,7 +101,7 @@ func NewController(
 		configMgr:               configMgr,
 		queueCtrl:               queueCtrl,
 		client:                  mgr.GetClient(),
-		helmClient:              helmrelease.New(namespace, mgr.GetConfig()),
+		helmClient:              helmrelease.New(namespace, mgr.GetClient()),
 		scheme:                  mgr.GetScheme(),
 		internalStop:            stopper,
 		internalStopper:         stopper,

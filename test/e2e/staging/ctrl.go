@@ -190,7 +190,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 		queueCtrl = queue.New(namespace, runtimeClient)
 
-		hrClient = helmrelease.New(namespace, restCfg)
+		hrClient = helmrelease.New(namespace, runtimeClient)
 		Expect(hrClient).NotTo(BeNil())
 
 		sc := mockSecret

@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crctrl "sigs.k8s.io/controller-runtime/pkg/controller"
@@ -71,6 +70,8 @@ const (
 )
 
 type controller struct {
+	scheme *runtime.Scheme
+
 	muTeamConfigs *sync.Mutex
 	client        client.Client
 	clientset     *kubernetes.Clientset
@@ -110,7 +111,13 @@ func New(
 	queue := workqueue.NewRateLimitingQueue(
 		workqueue.NewItemExponentialFailureRateLimiter(DefaultWorkQueueBaseDelay, DefaultWorkQueueMaxDelay))
 
+	scheme := &runtime.Scheme{}
+	if mgr != nil {
+		scheme = mgr.GetScheme()
+	}
+
 	c := &controller{
+		scheme:          scheme,
 		muTeamConfigs:   &sync.Mutex{},
 		teamConfigs:     map[string]internal.ConfigManager{},
 		namespace:       ns,
@@ -189,6 +196,12 @@ func WithDisableLoaders(checkers, plugins, reporters bool) Option {
 		c.checkersDisabled = checkers
 		c.pluginsDisabled = plugins
 		c.reportersDisabled = reporters
+	}
+}
+
+func WithScheme(scheme *runtime.Scheme) Option {
+	return func(c *controller) {
+		c.scheme = scheme
 	}
 }
 
@@ -412,7 +425,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
-				if err := controllerutil.SetControllerReference(teamComp, &namespaceObj, scheme.Scheme); err != nil {
+				if err := controllerutil.SetControllerReference(teamComp, &namespaceObj, c.scheme); err != nil {
 					return err
 				}
 			}
@@ -496,17 +509,17 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 		},
 	}
 	k8sObjects := []runtime.Object{
-		k8sobject.GetService(teamComp, namespace),
+		k8sobject.GetService(c.scheme, teamComp, namespace),
 		k8sobject.GetServiceAccount(teamComp, namespace),
 		k8sobject.GetRole(teamComp, namespace),
 		k8sobject.GetRoleBinding(teamComp, namespace),
-		k8sobject.GetSecret(teamComp, namespace, secretKVs...),
+		k8sobject.GetSecret(c.scheme, teamComp, namespace, secretKVs...),
 	}
 
 	if teamComp.Spec.StagingCtrl != nil && !(*teamComp.Spec.StagingCtrl).IsDeploy {
 		logger.Warn("skip deploying the staging controller deployment")
 	} else {
-		deploymentObj := k8sobject.GetDeployment(teamComp, namespace, c.configs.SamsahaiURL, c.configs.SamsahaiImage)
+		deploymentObj := k8sobject.GetDeployment(c.scheme, teamComp, namespace, c.configs.SamsahaiURL, c.configs.SamsahaiImage)
 		k8sObjects = append(k8sObjects, deploymentObj)
 	}
 

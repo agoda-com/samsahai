@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/helm/pkg/chartutil"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -45,7 +46,8 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	c = New("default", cfg)
+	runtimeClient, err := crclient.New(cfg, crclient.Options{Scheme: scheme.Scheme})
+	c = New("default", runtimeClient)
 	//Expect(c).NotTo(BeNil())
 	if c == nil {
 		logger.Error(err, "create runtime client error")
@@ -73,7 +75,7 @@ var _ = Describe("HelmRelease Rest Client", func() {
 		//fetched := &Team{}
 		var err error
 		namespace := "default"
-		created := &v1beta1.HelmRelease{
+		created := v1beta1.HelmRelease{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: namespace,
@@ -104,7 +106,8 @@ var _ = Describe("HelmRelease Rest Client", func() {
 		}
 
 		By("create HelmRelease")
-		_, err = c.Create(created)
+		createdObj := created
+		_, err = c.Create(&createdObj)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		By("get HelmRelease")
@@ -127,7 +130,8 @@ var _ = Describe("HelmRelease Rest Client", func() {
 		By("delete HelmRelease")
 		g.Expect(c.Delete("foo", &metav1.DeleteOptions{})).NotTo(HaveOccurred())
 
-		_, err = c.Create(created)
+		createdObj = created
+		_, err = c.Create(&createdObj)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		By("list HelmRelease")

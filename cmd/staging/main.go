@@ -121,6 +121,7 @@ func startCtrlCmd() *cobra.Command {
 			// Create a new Cmd to provide shared dependencies and start components
 			logger.Info("setting up manager")
 			mgr, err := manager.New(cfg, manager.Options{
+				Scheme:             scheme,
 				MetricsBindAddress: ":" + httpMetricPort,
 				Namespace:          namespace,
 			})

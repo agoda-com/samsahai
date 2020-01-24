@@ -157,7 +157,7 @@ func (c *controller) ensureNamespaceDestroyed(ctx context.Context, teamName, ns 
 }
 
 func (c *controller) deleteAllHelmReleasesInNamespace(teamName, ns string, startedCleanupTime *metav1.Time) error {
-	hrClient := helmrelease.New(ns, c.restCfg)
+	hrClient := helmrelease.New(ns, c.client)
 	_, err := hrClient.List(metav1.ListOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "cannot list helmreleases in namespace %s", ns)
@@ -217,7 +217,7 @@ func (c *controller) getDeployEngine(configMgr internal.ConfigManager, ns string
 
 	switch e {
 	case fluxhelm.EngineName:
-		engine = fluxhelm.New(configMgr, helmrelease.New(ns, c.restCfg))
+		engine = fluxhelm.New(configMgr, helmrelease.New(ns, c.client))
 	case helm3.EngineName:
 		engine = helm3.New(ns, false)
 	default:
