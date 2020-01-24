@@ -17,7 +17,7 @@ endif
 KUBEBUILDER_VERSION 	?= 2.2.0
 KUBEBULIDER_FILENAME	= kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
 KUBEBUILDER_PATH		?= /usr/local/kubebuilder/
-GORELEASER_VERSION		?= 0.124.0
+GORELEASER_VERSION		?= 0.124.1
 K3S_DOCKER_IMAGE 		?= rancher/k3s:v0.9.1
 KUBECONFIG 				= /tmp/s2h/k3s-kubeconfig
 K3S_DOCKER_NAME			?= s2h-k3s-server
