@@ -92,7 +92,7 @@ func (r *reporter) GetName() string {
 	return ReporterName
 }
 
-// SendComponentUpgrade send details of component upgrade failure via http POST
+// SendComponentUpgrade send details of component upgrade via http POST
 func (r *reporter) SendComponentUpgrade(configMgr internal.ConfigManager, comp *internal.ComponentUpgradeReporter) error {
 	cfg := configMgr.Get()
 	if cfg.Reporter == nil || cfg.Reporter.Rest == nil || cfg.Reporter.Rest.ComponentUpgrade == nil {

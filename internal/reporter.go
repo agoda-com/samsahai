@@ -24,21 +24,9 @@ func WithTestRunner(tr s2hv1beta1.TestRunner) ComponentUpgradeOption {
 	}
 }
 
-// WithIsReverify specifies isReverify to override when create component upgrade reporter object
-func WithIsReverify(isReverify bool) ComponentUpgradeOption {
-	return func(c *ComponentUpgradeReporter) {
-		c.IsReverify = isReverify
-	}
-}
-
-// WithIsBuildSuccess specifies isBuildSuccess to override when create component upgrade reporter object
-func WithIsBuildSuccess(isBuildSuccess bool) ComponentUpgradeOption {
-	return func(c *ComponentUpgradeReporter) {
-		c.IsBuildSuccess = isBuildSuccess
-	}
-}
-
 // WithQueueHistoryName specifies queuehistory name to override when create component upgrade reporter object
+// QueueHistoryName will be the latest failure of component upgrade
+// if reverification is success, QueueHistoryName will be the history of queue before running reverification
 func WithQueueHistoryName(qHist string) ComponentUpgradeOption {
 	return func(c *ComponentUpgradeReporter) {
 		c.QueueHistoryName = qHist
@@ -47,13 +35,11 @@ func WithQueueHistoryName(qHist string) ComponentUpgradeOption {
 
 // ComponentUpgradeReporter manages component upgrade report
 type ComponentUpgradeReporter struct {
-	IssueTypeStr   IssueType             `json:"issueTypeStr,omitempty"`
-	StatusStr      StatusType            `json:"statusStr,omitempty"`
-	StatusInt      int32                 `json:"statusInt,omitempty"`
-	IsReverify     bool                  `json:"isReverify,omitempty"`
-	IsBuildSuccess bool                  `json:"isBuildSuccess,omitempty"`
-	TestRunner     s2hv1beta1.TestRunner `json:"testRunner,omitempty"`
-	Credential     s2hv1beta1.Credential `json:"credential,omitempty"`
+	IssueTypeStr IssueType             `json:"issueTypeStr,omitempty"`
+	StatusStr    StatusType            `json:"statusStr,omitempty"`
+	StatusInt    int32                 `json:"statusInt,omitempty"`
+	TestRunner   s2hv1beta1.TestRunner `json:"testRunner,omitempty"`
+	Credential   s2hv1beta1.Credential `json:"credential,omitempty"`
 	rpc.ComponentUpgrade
 	SamsahaiConfig
 }
@@ -63,7 +49,7 @@ func NewComponentUpgradeReporter(comp *rpc.ComponentUpgrade, s2hConfig SamsahaiC
 	c := &ComponentUpgradeReporter{
 		ComponentUpgrade: *comp,
 		SamsahaiConfig:   s2hConfig,
-		IssueTypeStr:     convertIssuetype(comp.IssueType),
+		IssueTypeStr:     convertIssueType(comp.IssueType),
 		StatusStr:        convertStatusType(comp.Status),
 		StatusInt:        int32(comp.Status),
 	}
@@ -135,7 +121,7 @@ type Reporter interface {
 	// GetName returns type of reporter
 	GetName() string
 
-	// SendComponentUpgrade sends details of component upgrade failure
+	// SendComponentUpgrade sends details of component upgrade
 	SendComponentUpgrade(configMgr ConfigManager, comp *ComponentUpgradeReporter) error
 
 	// SendActivePromotionStatus sends active promotion status
@@ -145,13 +131,13 @@ type Reporter interface {
 	SendImageMissing(configMgr ConfigManager, images *rpc.Image) error
 }
 
-func convertIssuetype(issueType rpc.ComponentUpgrade_IssueType) IssueType {
+func convertIssueType(issueType rpc.ComponentUpgrade_IssueType) IssueType {
 	switch issueType {
-	case rpc.ComponentUpgrade_DESIRED_VERSION_FAILED:
+	case rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED:
 		return IssueDesiredVersionFailed
-	case rpc.ComponentUpgrade_ENVIRONMENT_ISSUE:
+	case rpc.ComponentUpgrade_IssueType_ENVIRONMENT_ISSUE:
 		return IssueEnvironment
-	case rpc.ComponentUpgrade_IMAGE_MISSING:
+	case rpc.ComponentUpgrade_IssueType_IMAGE_MISSING:
 		return IssueImageMissing
 	default:
 		return IssueUnknown
@@ -160,7 +146,7 @@ func convertIssuetype(issueType rpc.ComponentUpgrade_IssueType) IssueType {
 
 func convertStatusType(statusType rpc.ComponentUpgrade_UpgradeStatus) StatusType {
 	switch statusType {
-	case rpc.ComponentUpgrade_SUCCESS:
+	case rpc.ComponentUpgrade_UpgradeStatus_SUCCESS:
 		return StatusSuccess
 	default:
 		return StatusFailure

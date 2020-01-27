@@ -99,12 +99,13 @@ var _ = Describe("send rest message", func() {
 		It("should correctly send component upgrade", func() {
 			img := &rpc.Image{Repository: "image-1", Tag: "1.1.0"}
 			rpcComp := &rpc.ComponentUpgrade{
-				Name:      "comp1",
-				Status:    rpc.ComponentUpgrade_FAILURE,
-				Image:     img,
-				TeamName:  "owner",
-				IssueType: rpc.ComponentUpgrade_IMAGE_MISSING,
-				Namespace: "owner-staging",
+				Name:       "comp1",
+				Status:     rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Image:      img,
+				TeamName:   "owner",
+				IssueType:  rpc.ComponentUpgrade_IssueType_IMAGE_MISSING,
+				Namespace:  "owner-staging",
+				IsReverify: true,
 			}
 
 			buildTypeID := "Teamcity_BuildTypeID"
@@ -113,8 +114,6 @@ var _ = Describe("send rest message", func() {
 				rpcComp,
 				internal.SamsahaiConfig{},
 				internal.WithTestRunner(testRunner),
-				internal.WithIsReverify(true),
-				internal.WithIsBuildSuccess(false),
 			)
 
 			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
@@ -139,8 +138,6 @@ var _ = Describe("send rest message", func() {
 					"teamcityURL should be empty")
 				g.Expect(gjson.GetBytes(body, "isReverify").String()).To(Equal("true"),
 					"isReverify should be matched")
-				g.Expect(gjson.GetBytes(body, "isBuildSuccess").String()).To(Equal("false"),
-					"isBuildSuccess should be matched")
 			})
 
 			defer server.Close()

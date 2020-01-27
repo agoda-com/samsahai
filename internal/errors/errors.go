@@ -52,7 +52,7 @@ const (
 	ErrCannotMarshalYAML   = Error("cannot marshal to yaml")
 	ErrCannotUnmarshalJSON = Error("cannot unmarshal from json")
 
-	ErrTestConfiigurationNotFound = Error("test confiiguration not found")
+	ErrTestConfigurationNotFound = Error("test configuration not found")
 )
 
 var (

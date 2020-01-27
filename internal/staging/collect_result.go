@@ -30,8 +30,6 @@ import (
 func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 	// check deploy and test result
 
-	isDeploySuccess, isTestSuccess, isReverify := queue.IsDeploySuccess(), queue.IsTestSuccess(), queue.IsReverify()
-
 	if queue.Status.KubeZipLog == "" {
 		logZip, err := c.createDeploymentZipLogs(queue)
 		if err != nil {
@@ -56,23 +54,9 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 		return err
 	}
 
-	// TODO: support sending component upgrade report from configuration
 	if !queue.IsActivePromotionQueue() {
-		if isDeploySuccess && isTestSuccess && !isReverify {
-			// success deploy and test without reverify state
-			// save to stable
-			if err := c.setStableComponent(queue); err != nil {
-				return err
-			}
-
-			if err := c.sendReport(rpc.ComponentUpgrade_SUCCESS, queue); err != nil {
-				return err
-			}
-
-		} else if isReverify {
-			if err := c.sendReport(rpc.ComponentUpgrade_FAILURE, queue); err != nil {
-				return err
-			}
+		if err := c.setStableAndSendReport(queue); err != nil {
+			return err
 		}
 	}
 
@@ -81,6 +65,27 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 
 	// made queue to clean after state
 	return c.updateQueueWithState(queue, s2hv1beta1.CleaningAfter)
+}
+
+func (c *controller) setStableAndSendReport(queue *s2hv1beta1.Queue) error {
+	isDeploySuccess, isTestSuccess, isReverify := queue.IsDeploySuccess(), queue.IsTestSuccess(), queue.IsReverify()
+
+	compUpgradeStatus := rpc.ComponentUpgrade_UpgradeStatus_FAILURE
+	if isDeploySuccess && isTestSuccess && !isReverify {
+		// success deploy and test without reverify state
+		// save to stable
+		if err := c.setStableComponent(queue); err != nil {
+			return err
+		}
+
+		compUpgradeStatus = rpc.ComponentUpgrade_UpgradeStatus_SUCCESS
+	}
+
+	if err := c.sendComponentUpgradeReport(compUpgradeStatus, queue); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
@@ -291,7 +296,7 @@ func execCommand(cmd string, args ...string) []byte {
 	return out
 }
 
-func (c *controller) sendReport(status rpc.ComponentUpgrade_UpgradeStatus, queue *s2hv1beta1.Queue) error {
+func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_UpgradeStatus, queue *s2hv1beta1.Queue) error {
 	var err error
 	headers := make(http.Header)
 	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
@@ -307,32 +312,50 @@ func (c *controller) sendReport(status rpc.ComponentUpgrade_UpgradeStatus, queue
 	}
 
 	comp := &rpc.ComponentUpgrade{
-		Status:           status,
-		Name:             queue.Spec.Name,
-		TeamName:         c.teamName,
-		Image:            &rpc.Image{Repository: queue.Spec.Repository, Tag: queue.Spec.Version},
-		QueueHistoryName: queue.Status.QueueHistoryName,
-		Namespace:        queue.Namespace,
-		ImageMissingList: outImgList,
-	}
-
-	switch {
-	case comp.ImageMissingList != nil && len(comp.ImageMissingList) > 0:
-		comp.IssueType = rpc.ComponentUpgrade_IMAGE_MISSING
-	case queue.IsReverify() && queue.IsDeploySuccess() && queue.IsTestSuccess():
-		comp.IssueType = rpc.ComponentUpgrade_DESIRED_VERSION_FAILED
-	case queue.IsReverify() && (!queue.IsDeploySuccess() || !queue.IsTestSuccess()):
-		comp.IssueType = rpc.ComponentUpgrade_ENVIRONMENT_ISSUE
-	default:
-		comp.IssueType = rpc.ComponentUpgrade_UNKNOWN
+		Status:               status,
+		Name:                 queue.Spec.Name,
+		TeamName:             c.teamName,
+		Image:                &rpc.Image{Repository: queue.Spec.Repository, Tag: queue.Spec.Version},
+		IssueType:            c.getIssueType(outImgList, queue),
+		QueueHistoryName:     queue.Status.QueueHistoryName,
+		Namespace:            queue.Namespace,
+		ImageMissingList:     outImgList,
+		Runs:                 int32(queue.Spec.NoOfRetry + 1),
+		IsReverify:           queue.IsReverify(),
+		ReverificationStatus: c.getReverificationStatus(queue),
 	}
 
 	if c.s2hClient != nil {
-		_, err = c.s2hClient.NotifyComponentUpgrade(ctx, comp)
+		_, err = c.s2hClient.RunPostComponentUpgrade(ctx, comp)
 		if err != nil {
 			return errors.Wrap(err, "cannot load send component upgrade report")
 		}
 	}
 
 	return nil
+}
+
+func (c *controller) getIssueType(imageMissingList []*rpc.Image, queue *s2hv1beta1.Queue) rpc.ComponentUpgrade_IssueType {
+	switch {
+	case len(imageMissingList) > 0:
+		return rpc.ComponentUpgrade_IssueType_IMAGE_MISSING
+	case queue.IsReverify() && queue.IsDeploySuccess() && queue.IsTestSuccess():
+		return rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED
+	case queue.IsReverify() && (!queue.IsDeploySuccess() || !queue.IsTestSuccess()):
+		return rpc.ComponentUpgrade_IssueType_ENVIRONMENT_ISSUE
+	default:
+		return rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED
+	}
+}
+
+func (c *controller) getReverificationStatus(queue *s2hv1beta1.Queue) rpc.ComponentUpgrade_ReverificationStatus {
+	if !queue.IsReverify() {
+		return rpc.ComponentUpgrade_ReverificationStatus_UNKNOWN
+	}
+
+	if queue.IsDeploySuccess() && queue.IsTestSuccess() {
+		return rpc.ComponentUpgrade_ReverificationStatus_SUCCESS
+	}
+
+	return rpc.ComponentUpgrade_ReverificationStatus_FAILURE
 }

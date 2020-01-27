@@ -246,6 +246,13 @@ definitions:
         items:
           type: string
         type: array
+      componentUpgrade:
+        properties:
+          criteria:
+            type: string
+          interval:
+            type: string
+        type: object
     type: object
   internal.Teamcity:
     properties:

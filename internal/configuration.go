@@ -149,9 +149,35 @@ type ReportOption struct {
 	Value string `json:"value" yaml:"value"`
 }
 
+// SlackInterval represents how often of sending component upgrade notification within a retry cycle
+type SlackInterval string
+
+const (
+	// IntervalEveryTime means sending slack notification in every component upgrade runs
+	IntervalEveryTime SlackInterval = "everytime"
+	// IntervalRetry means sending slack notification after retry only
+	IntervalRetry SlackInterval = "retry"
+)
+
+// SlackCriteria represents a criteria of sending component upgrade notification
+type SlackCriteria string
+
+const (
+	// CriteriaSuccess means sending slack notification when component upgrade is success only
+	CriteriaSuccess SlackCriteria = "success"
+	// CriteriaFailure means sending slack notification when component upgrade is failure only
+	CriteriaFailure SlackCriteria = "failure"
+	// CriteriaBoth means sending slack notification whether component upgrade is success or failure
+	CriteriaBoth SlackCriteria = "both"
+)
+
 // Slack defines a configuration of slack
 type Slack struct {
-	Channels []string `json:"channels" yaml:"channels"`
+	Channels         []string `json:"channels" yaml:"channels"`
+	ComponentUpgrade *struct {
+		Interval SlackInterval `json:"interval" yaml:"interval"`
+		Criteria SlackCriteria `json:"criteria" yaml:"criteria"`
+	} `json:"componentUpgrade" yaml:"componentUpgrade"`
 }
 
 // Email defines a configuration of email

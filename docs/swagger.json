@@ -1013,6 +1013,17 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "componentUpgrade": {
+                    "type": "object",
+                    "properties": {
+                        "criteria": {
+                            "type": "string"
+                        },
+                        "interval": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },

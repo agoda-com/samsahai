@@ -344,9 +344,9 @@ swag:
 #    			--service-account samsahai \
 #    			--service-account-namespace samsahai-system
 #
-#install-crds: generate manifests
-#	kubectl apply -f ./config/crds
-#	make lint
+install-crds: generate manifests
+	kubectl apply -f ./config/crds
+	make lint
 
 
 APP_NAME 		?=

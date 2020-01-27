@@ -5,6 +5,7 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
+	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/slack"
 	"github.com/agoda-com/samsahai/internal/util/template"
@@ -16,6 +17,9 @@ var logger = s2hlog.Log.WithName(ReporterName)
 const (
 	ReporterName = "slack"
 	username     = "Samsahai Notification"
+
+	componentUpgradeInterval = internal.IntervalRetry
+	componentUpgradeCriteria = internal.CriteriaFailure
 )
 
 type reporter struct {
@@ -62,13 +66,64 @@ func (r *reporter) GetName() string {
 
 // SendComponentUpgrade implements the reporter SendComponentUpgrade function
 func (r *reporter) SendComponentUpgrade(configMgr internal.ConfigManager, comp *internal.ComponentUpgradeReporter) error {
-	message := r.makeComponentUpgradeFailureReport(comp)
+	slackConfig, err := r.getSlackConfig(configMgr)
+	if err != nil {
+		return nil
+	}
+
+	if err := r.checkMatchingInterval(slackConfig, comp.IsReverify); err != nil {
+		return nil
+	}
+
+	if err := r.checkMatchingCriteria(slackConfig, comp.Status); err != nil {
+		return nil
+	}
+
+	message := r.makeComponentUpgradeReport(comp)
 	if len(comp.ImageMissingList) > 0 {
 		message += "\n"
 		message += r.makeImageMissingListReport(comp.ImageMissingList)
 	}
 
 	return r.post(configMgr, message, internal.ComponentUpgradeType)
+}
+
+func (r *reporter) checkMatchingInterval(slackConfig *internal.Slack, isReverify bool) error {
+	interval := componentUpgradeInterval
+	if slackConfig.ComponentUpgrade != nil && slackConfig.ComponentUpgrade.Interval != "" {
+		interval = slackConfig.ComponentUpgrade.Interval
+	}
+
+	switch interval {
+	case internal.IntervalEveryTime:
+	default:
+		if !isReverify {
+			return s2herrors.New("interval was not matched")
+		}
+	}
+
+	return nil
+}
+
+func (r *reporter) checkMatchingCriteria(slackConfig *internal.Slack, status rpc.ComponentUpgrade_UpgradeStatus) error {
+	criteria := componentUpgradeCriteria
+	if slackConfig.ComponentUpgrade != nil && slackConfig.ComponentUpgrade.Criteria != "" {
+		criteria = slackConfig.ComponentUpgrade.Criteria
+	}
+
+	switch criteria {
+	case internal.CriteriaBoth:
+	case internal.CriteriaSuccess:
+		if status != rpc.ComponentUpgrade_UpgradeStatus_SUCCESS {
+			return s2herrors.New("criteria was not matched")
+		}
+	default:
+		if status != rpc.ComponentUpgrade_UpgradeStatus_FAILURE {
+			return s2herrors.New("criteria was not matched")
+		}
+	}
+
+	return nil
 }
 
 // SendActivePromotionStatus implements the reporter SendActivePromotionStatus function
@@ -127,20 +182,23 @@ func (r *reporter) SendImageMissing(configMgr internal.ConfigManager, images *rp
 	return r.post(configMgr, message, internal.ImageMissingType)
 }
 
-func (r *reporter) makeComponentUpgradeFailureReport(comp *internal.ComponentUpgradeReporter) string {
+func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
 	message := `
-*Component Upgrade Failed*
+*Component Upgrade{{ if eq .Status 1 }} Successfully {{ else }} Failed {{ end }}*
+>*Owner:* {{ .TeamName }}
+>*Namespace:* {{ .Namespace }}
+>*Run:*{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}
 >*Component:* {{ .Name }}
 >*Version:* {{ .Image.Tag }}
 >*Repository:* {{ .Image.Repository }}
+{{- if eq .Status 0 }}
 >*Issue type:* {{ .IssueTypeStr }}
-{{- if .TestRunner.Teamcity.BuildURL }}
+  {{- if .TestRunner.Teamcity.BuildURL }}
 >*Teamcity url:* <{{ .TestRunner.Teamcity.BuildURL }}|Click here>
-{{- end }}
+  {{- end }}
 >*Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log|Download here>
 >*Deployment history:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}|Click here>
->*Owner:* {{ .TeamName }}
->*Namespace:* {{ .Namespace }}
+{{- end}}
 `
 	return strings.TrimSpace(template.TextRender("SlackComponentUpgradeFailure", message, comp))
 }
@@ -228,19 +286,28 @@ func (r *reporter) makeImageMissingListReport(images []*rpc.Image) string {
 }
 
 func (r *reporter) post(configMgr internal.ConfigManager, message string, event internal.EventType) error {
-	cfg := configMgr.Get()
-
-	// no slack configuration
-	if cfg.Reporter == nil || cfg.Reporter.Slack == nil {
+	slackConfig, err := r.getSlackConfig(configMgr)
+	if err != nil {
 		return nil
 	}
 
 	logger.Debug("start sending message to slack channels",
-		"event", event, "channels", cfg.Reporter.Slack.Channels)
-	for _, channel := range cfg.Reporter.Slack.Channels {
+		"event", event, "channels", slackConfig.Channels)
+	for _, channel := range slackConfig.Channels {
 		if _, _, err := r.slack.PostMessage(channel, message, username); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (r *reporter) getSlackConfig(configMgr internal.ConfigManager) (*internal.Slack, error) {
+	cfg := configMgr.Get()
+
+	// no slack configuration
+	if cfg.Reporter == nil || cfg.Reporter.Slack == nil {
+		return nil, s2herrors.New("slack configuration not found")
+	}
+
+	return cfg.Reporter.Slack, nil
 }

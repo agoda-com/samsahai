@@ -25,18 +25,20 @@ var _ = Describe("send slack message", func() {
 	g := NewGomegaWithT(GinkgoT())
 
 	Describe("send component upgrade", func() {
-		It("should correctly send component upgrade failure without image missing message", func() {
-			configMgr := newConfigMock()
+		It("should correctly send component upgrade failure with everytime interval", func() {
+			configMgr := newConfigMock(internal.IntervalEveryTime, "")
 			g.Expect(configMgr).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
 				Name:             "comp1",
-				Status:           rpc.ComponentUpgrade_FAILURE,
+				Status:           rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
 				Image:            &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
 				TeamName:         "owner",
-				IssueType:        rpc.ComponentUpgrade_DESIRED_VERSION_FAILED,
+				IssueType:        rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED,
 				Namespace:        "owner-staging",
 				QueueHistoryName: "comp1-1234",
+				IsReverify:       false,
+				Runs:             2,
 			}
 			mockSlackCli := &mockSlack{}
 			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
@@ -53,6 +55,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Component Upgrade Failed"))
 			// Should contain information
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("#2"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("comp1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("1.1.0"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("image-1"))
@@ -65,21 +68,55 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).ShouldNot(ContainSubstring("*Image Missing List*"))
 		})
 
+		It("should not send component upgrade failure with retry interval", func() {
+			configMgr := newConfigMock("", "")
+			g.Expect(configMgr).ShouldNot(BeNil())
+
+			rpcComp := &rpc.ComponentUpgrade{
+				Name:       "comp1",
+				Status:     rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				IsReverify: false,
+			}
+			mockSlackCli := &mockSlack{}
+			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
+			err := r.SendComponentUpgrade(configMgr, comp)
+			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(0))
+		})
+
+		It("should not send component upgrade failure with success criteria", func() {
+			configMgr := newConfigMock(internal.IntervalEveryTime, internal.CriteriaSuccess)
+			g.Expect(configMgr).ShouldNot(BeNil())
+
+			rpcComp := &rpc.ComponentUpgrade{
+				Name:   "comp1",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+			}
+			mockSlackCli := &mockSlack{}
+			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
+			err := r.SendComponentUpgrade(configMgr, comp)
+			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(0))
+		})
+
 		It("should correctly send component upgrade failure with image missing list message", func() {
-			configMgr := newConfigMock()
+			configMgr := newConfigMock("", "")
 			g.Expect(configMgr).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
 				Name:      "comp1",
-				Status:    rpc.ComponentUpgrade_FAILURE,
+				Status:    rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
 				Image:     &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
 				TeamName:  "owner",
-				IssueType: rpc.ComponentUpgrade_IMAGE_MISSING,
+				IssueType: rpc.ComponentUpgrade_IssueType_IMAGE_MISSING,
 				Namespace: "owner-staging",
 				ImageMissingList: []*rpc.Image{
 					{Repository: "image-2", Tag: "1.1.0"},
 					{Repository: "image-3", Tag: "1.2.0"},
 				},
+				IsReverify: true,
 			}
 			mockSlackCli := &mockSlack{}
 			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
@@ -90,6 +127,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Component Upgrade Failed"))
 			// Should contain information
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Reverify"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("comp1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Image missing"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("*Image Missing List*"))
@@ -100,7 +138,7 @@ var _ = Describe("send slack message", func() {
 
 	Describe("send active promotion", func() {
 		It("should correctly send active promotion success with outdated components message", func() {
-			configMgr := newConfigMock()
+			configMgr := newConfigMock("", "")
 			g.Expect(configMgr).ShouldNot(BeNil())
 
 			var comp1, repoComp1, comp2, repoComp2 = "comp1", "repo/comp1", "comp2", "repo/comp2"
@@ -149,7 +187,7 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should correctly send active promotion success without outdated components message", func() {
-			configMgr := newConfigMock()
+			configMgr := newConfigMock("", "")
 			g.Expect(configMgr).ShouldNot(BeNil())
 
 			timeNow := metav1.Now()
@@ -178,7 +216,7 @@ var _ = Describe("send slack message", func() {
 
 		It("should correctly send active promotion failure with outdated components/image missing message",
 			func() {
-				configMgr := newConfigMock()
+				configMgr := newConfigMock("", "")
 				g.Expect(configMgr).ShouldNot(BeNil())
 
 				var comp1, repoComp1, comp2, repoComp2 = "comp1", "repo/comp1", "comp2", "repo/comp2"
@@ -234,7 +272,7 @@ var _ = Describe("send slack message", func() {
 			})
 
 		It("should correctly send active promotion failure without outdated components message", func() {
-			configMgr := newConfigMock()
+			configMgr := newConfigMock("", "")
 			g.Expect(configMgr).ShouldNot(BeNil())
 
 			status := &s2hv1beta1.ActivePromotionStatus{
@@ -256,7 +294,7 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should correctly send active promotion/demotion failure with rollback timeout message", func() {
-			configMgr := newConfigMock()
+			configMgr := newConfigMock("", "")
 			g.Expect(configMgr).ShouldNot(BeNil())
 
 			status := &s2hv1beta1.ActivePromotionStatus{
@@ -284,7 +322,7 @@ var _ = Describe("send slack message", func() {
 
 	Describe("send image missing", func() {
 		It("should correctly send image missing message", func() {
-			configMgr := newConfigMock()
+			configMgr := newConfigMock("", "")
 			g.Expect(configMgr).ShouldNot(BeNil())
 
 			mockSlackCli := &mockSlack{}
@@ -314,7 +352,9 @@ var _ = Describe("send slack message", func() {
 		configMgr := newFailureConfig()
 		g.Expect(configMgr).ShouldNot(BeNil())
 
-		rpcComp := &rpc.ComponentUpgrade{}
+		rpcComp := &rpc.ComponentUpgrade{
+			IsReverify: true,
+		}
 		mockSlackCli := &mockSlack{}
 		r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
 		comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
@@ -345,14 +385,16 @@ func (s *mockSlack) PostMessage(channelNameOrID, message, username string) (chan
 	return channelNameOrID, "", nil
 }
 
-func newConfigMock() internal.ConfigManager {
+func newConfigMock(interval internal.SlackInterval, criteria internal.SlackCriteria) internal.ConfigManager {
 	configMgr := config.NewWithBytes([]byte(`
 report:
- slack:
-   channels:
-     - chan1
-     - chan2
-`))
+  slack:
+    channels:
+      - chan1
+      - chan2
+    componentUpgrade:
+      interval: ` + string(interval) + `
+      criteria: ` + string(criteria)))
 
 	return configMgr
 }

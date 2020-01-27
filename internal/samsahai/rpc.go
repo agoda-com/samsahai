@@ -15,7 +15,6 @@ import (
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
-	"github.com/agoda-com/samsahai/internal/reporter/slack"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
@@ -130,15 +129,9 @@ func (c *controller) getImageSource(comps map[string]*s2h.Component, name string
 	return source, true
 }
 
-func (c *controller) NotifyComponentUpgrade(ctx context.Context, comp *rpc.ComponentUpgrade) (*rpc.Empty, error) {
+func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.ComponentUpgrade) (*rpc.Empty, error) {
 	if err := c.authenticateRPC(ctx.Value(s2h.HTTPHeader(s2h.SamsahaiAuthHeader)).(string)); err != nil {
 		return nil, err
-	}
-
-	configMgr, ok := c.GetTeamConfigManager(comp.TeamName)
-	if !ok {
-		return &rpc.Empty{}, errors.Wrapf(s2herrors.ErrLoadConfiguration,
-			"cannot load configuration, team %s", comp.TeamName)
 	}
 
 	queueHist := &s2hv1beta1.QueueHistory{}
@@ -147,40 +140,11 @@ func (c *controller) NotifyComponentUpgrade(ctx context.Context, comp *rpc.Compo
 			"cannot get queue history, name: %s, namespace: %s", comp.QueueHistoryName, comp.Namespace)
 	}
 
-	isReverify := queueHist.Spec.IsReverify
-	isBuildSuccess := queueHist.Spec.IsTestSuccess && queueHist.Spec.IsDeploySuccess
-	for _, reporter := range c.reporters {
-		// TODO: user should be able to customize it via configuration
-		// send slack notification if component upgrade failed
-		if reporter.GetName() == slack.ReporterName {
-			if comp.Status == rpc.ComponentUpgrade_SUCCESS {
-				continue
-			}
-		}
-
-		qHist := queueHist
-		if comp.IssueType == rpc.ComponentUpgrade_DESIRED_VERSION_FAILED {
-			var err error
-			qHist, err = c.getLatestFailureQueueHistory(comp)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		qHistName := qHist.Name
-		testRunner := qHist.Spec.Queue.Status.TestRunner
-		upgradeComp := s2h.NewComponentUpgradeReporter(
-			comp,
-			c.configs,
-			s2h.WithIsReverify(isReverify),
-			s2h.WithIsBuildSuccess(isBuildSuccess),
-			s2h.WithTestRunner(testRunner),
-			s2h.WithQueueHistoryName(qHistName),
-		)
-		c.sendComponentUpgradeReport(configMgr, reporter, upgradeComp)
+	if err := c.sendComponentUpgradeReport(queueHist, comp); err != nil {
+		return nil, err
 	}
 
-	if comp.Status == rpc.ComponentUpgrade_SUCCESS {
+	if comp.Status == rpc.ComponentUpgrade_UpgradeStatus_SUCCESS {
 		if err := c.storeStableComponentsToTeam(ctx, comp); err != nil {
 			return nil, err
 		}
@@ -202,10 +166,43 @@ func (c *controller) NotifyComponentUpgrade(ctx context.Context, comp *rpc.Compo
 	return &rpc.Empty{}, nil
 }
 
-func (c *controller) sendComponentUpgradeReport(configMgr s2h.ConfigManager, r s2h.Reporter, comp *s2h.ComponentUpgradeReporter) {
-	if err := r.SendComponentUpgrade(configMgr, comp); err != nil {
-		logger.Error(err, "cannot send component upgrade failure report", "team", comp.TeamName)
+func (c *controller) sendComponentUpgradeReport(queueHist *s2hv1beta1.QueueHistory, comp *rpc.ComponentUpgrade) error {
+	configMgr, ok := c.GetTeamConfigManager(comp.TeamName)
+	if !ok {
+		return errors.Wrapf(s2herrors.ErrLoadConfiguration,
+			"cannot load configuration, team %s", comp.TeamName)
 	}
+
+	for _, reporter := range c.reporters {
+		qHist := queueHist
+		// in case of reverify, history will be the latest failure queue
+		if comp.IsReverify && comp.IssueType == rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED {
+			var err error
+			qHist, err = c.getLatestFailureQueueHistory(comp)
+			if err != nil {
+				return err
+			}
+		}
+
+		testRunner := s2hv1beta1.TestRunner{}
+		if qHist.Spec.Queue != nil {
+			testRunner = qHist.Spec.Queue.Status.TestRunner
+		}
+
+		upgradeComp := s2h.NewComponentUpgradeReporter(
+			comp,
+			c.configs,
+			s2h.WithTestRunner(testRunner),
+			s2h.WithQueueHistoryName(qHist.Name),
+		)
+
+		if err := reporter.SendComponentUpgrade(configMgr, upgradeComp); err != nil {
+			logger.Error(err, "cannot send component upgrade failure report",
+				"team", comp.TeamName)
+		}
+	}
+
+	return nil
 }
 
 func (c *controller) storeStableComponentsToTeam(ctx context.Context, comp *rpc.ComponentUpgrade) error {

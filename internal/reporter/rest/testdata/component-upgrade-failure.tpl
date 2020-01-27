@@ -8,6 +8,5 @@
     "imageTag": "{{ .Image.Tag }}",
     "namespace": "{{ .Namespace }}",
     "teamcityURL": "{{ .TestRunner.Teamcity.BuildURL }}",
-    "isReverify": "{{ .IsReverify }}",
-    "isBuildSuccess": "{{ .IsBuildSuccess }}"
+    "isReverify": "{{ .IsReverify }}"
 }

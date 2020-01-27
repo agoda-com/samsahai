@@ -5,7 +5,7 @@ option go_package = "rpc";
 
 service RPC {
     rpc GetConfiguration (Team) returns (Configuration);
-    rpc NotifyComponentUpgrade (ComponentUpgrade) returns (Empty);
+    rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
     rpc GetMissingVersion (TeamWithCurrentComponent) returns (ImageList);
 }
 
@@ -23,14 +23,19 @@ message Configuration {
 
 message ComponentUpgrade {
     enum UpgradeStatus {
-        FAILURE = 0;
-        SUCCESS = 1;
+        UpgradeStatus_FAILURE = 0;
+        UpgradeStatus_SUCCESS = 1;
     }
     enum IssueType {
-        UNKNOWN = 0;
-        DESIRED_VERSION_FAILED = 1;
-        IMAGE_MISSING = 2;
-        ENVIRONMENT_ISSUE = 3;
+        IssueType_UNKNOWN = 0;
+        IssueType_DESIRED_VERSION_FAILED = 1;
+        IssueType_IMAGE_MISSING = 2;
+        IssueType_ENVIRONMENT_ISSUE = 3;
+    }
+    enum ReverificationStatus {
+        ReverificationStatus_UNKNOWN = 0;
+        ReverificationStatus_FAILURE = 1;
+        ReverificationStatus_SUCCESS = 2;
     }
     UpgradeStatus status = 1;
     string name = 2;
@@ -41,6 +46,9 @@ message ComponentUpgrade {
     repeated Image imageMissingList = 7;
     string namespace = 8;
     string testBuildTypeID = 9;
+    int32 runs = 10;
+    bool isReverify = 11;
+    ReverificationStatus reverificationStatus = 12;
 }
 
 message Image {
