@@ -161,7 +161,7 @@ func SetQueueHistoriesMetric(queueHistoriesList *v1beta1.QueueHistoryList, Samsa
 			queueHist.Name,
 			queueHist.Spec.Queue.Spec.Version,
 			queueHistoriesResult,
-			SamsahaiURL+"/team/"+queueHist.Spec.Queue.Spec.TeamName+"/queue/histories/"+queueHist.Name+"/log",
+			SamsahaiURL+"/teams/"+queueHist.Spec.Queue.Spec.TeamName+"/queue/histories/"+queueHist.Name+"/log",
 			queueHist.Spec.Queue.Status.UpdatedAt.Format(time.RFC3339),
 		).Set(float64(queueHist.Spec.Queue.Status.NoOfProcessed))
 	}
@@ -221,7 +221,6 @@ func SetActivePromotionMetric(activePromotionList *v1beta1.ActivePromotionList) 
 		}
 	}
 }
-
 func SetActivePromotionHistoriesMetric(activePromotionHistories *v1beta1.ActivePromotionHistoryList) {
 	ActivePromotionHistoriesMetric.Reset()
 	for i := range activePromotionHistories.Items {

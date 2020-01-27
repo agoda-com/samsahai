@@ -161,7 +161,7 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 	if err := c.client.List(context.TODO(), queueHistoriesList); err != nil {
 		logger.Error(err, "cannot list all queue")
 	}
-	exporter.SetQueueHistoriesMetric(queueHistoriesList, c.configs.SamsahaiURL)
+	exporter.SetQueueHistoriesMetric(queueHistoriesList, c.configs.SamsahaiExternalURL)
 
 	return &rpc.Empty{}, nil
 }

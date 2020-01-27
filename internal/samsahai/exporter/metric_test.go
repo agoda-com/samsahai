@@ -325,7 +325,7 @@ var _ = Describe("Samsahai Exporter", func() {
 		defer close(done)
 		data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_queue_histories{component="testQHnameOld",date="2020-01-01T01:01:01Z",log="aaa/team/testQHTeamNameOld/queue/histories/testQHnameOld/log",result="success",teamName="testQHTeamNameOld",version="1.2.3.4-Old"} 9`)
+		expectedData := strings.Contains(string(data), `samsahai_queue_histories{component="testQHnameOld",date="2020-01-01T01:01:01Z",log="aaa/teams/testQHTeamNameOld/queue/histories/testQHnameOld/log",result="success",teamName="testQHTeamNameOld",version="1.2.3.4-Old"} 9`)
 		g.Expect(expectedData).To(BeTrue())
 		qh := &s2hv1beta1.QueueHistoryList{
 			Items: []s2hv1beta1.QueueHistory{
@@ -374,13 +374,13 @@ var _ = Describe("Samsahai Exporter", func() {
 		SetQueueHistoriesMetric(qh, SamsahaiURL)
 		data, err = http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
-		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHname1",date="2020-01-01T01:01:01Z",log="aaa/team/testQHTeamName1/queue/histories/testQHname1/log",result="success",teamName="testQHTeamName1",version="1.2.3.4"} 9`)
+		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHname1",date="2020-01-01T01:01:01Z",log="aaa/teams/testQHTeamName1/queue/histories/testQHname1/log",result="success",teamName="testQHTeamName1",version="1.2.3.4"} 9`)
 		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHname2",date="2020-01-01T01:01:01Z",log="aaa/team/testQHTeamName2/queue/histories/testQHname2/log",result="success",teamName="testQHTeamName2",version="4.3.2.1"} 9`)
+		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHname2",date="2020-01-01T01:01:01Z",log="aaa/teams/testQHTeamName2/queue/histories/testQHname2/log",result="success",teamName="testQHTeamName2",version="4.3.2.1"} 9`)
 		g.Expect(expectedData).To(BeTrue())
 		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="",`)
 		g.Expect(expectedData).To(BeFalse())
-		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHnameOld",date="2020-01-01T01:01:01Z",log="aaa/team/testQHTeamNameOld/queue/histories/testQHnameOld/log",result="success",teamName="testQHTeamNameOld",version="1.2.3.4-Old"} 9`)
+		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHnameOld",date="2020-01-01T01:01:01Z",log="aaa/teams/testQHTeamNameOld/queue/histories/testQHnameOld/log",result="success",teamName="testQHTeamNameOld",version="1.2.3.4-Old"} 9`)
 		g.Expect(expectedData).To(BeFalse())
 	}, timeout)
 

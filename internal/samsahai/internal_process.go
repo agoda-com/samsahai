@@ -470,7 +470,7 @@ func (c *controller) exportAllMetric() error {
 	if err := c.client.List(context.TODO(), queueHistoriesList); err != nil {
 		logger.Error(err, "cannot list all queue")
 	}
-	exporter.SetQueueHistoriesMetric(queueHistoriesList, c.configs.SamsahaiURL)
+	exporter.SetQueueHistoriesMetric(queueHistoriesList, c.configs.SamsahaiExternalURL)
 
 	//active Promotion
 	atpList := &s2hv1beta1.ActivePromotionList{}
