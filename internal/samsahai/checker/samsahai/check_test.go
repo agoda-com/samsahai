@@ -68,7 +68,7 @@ var _ = Describe("", func() {
 
 	BeforeEach(func(done Done) {
 		defer close(done)
-		configMgr, err := s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "..", "..", "..", "test", "data"))
+		configMgr, err := s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "..", "..", "..", "test", "data", "wordpress-redis"))
 		g.Expect(err).NotTo(HaveOccurred())
 		s2hConfig := s2h.SamsahaiConfig{SamsahaiCredential: s2h.SamsahaiCredential{InternalAuthToken: "123456"}}
 		s2hCtrl = samsahai.New(nil, namespace, s2hConfig,

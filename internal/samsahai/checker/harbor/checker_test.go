@@ -60,14 +60,6 @@ var _ = Describe("Harbor Checker", func() {
     "created": "2019-08-28T01:08:07.834151787Z",
     "config": {
       "labels": {
-        "io.agodadev.infra.baseimage": "docker.io/centos:latest",
-        "io.agodadev.infra.baseimage-builddate": "20190821",
-        "io.agodadev.infra.baseimage-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage-version": "1.408",
-        "io.agodadev.infra.baseimage.python3": "reg-hk.agodadev.io/infra/infra-centos7:latest",
-        "io.agodadev.infra.baseimage.python3-builddate": "20190821",
-        "io.agodadev.infra.baseimage.python3-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage.python3-version": "1.299",
         "maintainer": "it-devops-container@agoda.com",
         "org.label-schema.build-date": "20190801",
         "org.label-schema.license": "GPLv2",
@@ -116,14 +108,6 @@ var _ = Describe("Harbor Checker", func() {
     "created": "2019-05-30T06:58:54.369635773Z",
     "config": {
       "labels": {
-        "io.agodadev.infra.baseimage": "docker.io/centos:latest",
-        "io.agodadev.infra.baseimage-builddate": "20190409",
-        "io.agodadev.infra.baseimage-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage-version": "1.284",
-        "io.agodadev.infra.baseimage.python3": "reg-hk.agodadev.io/infra/infra-centos7:latest",
-        "io.agodadev.infra.baseimage.python3-builddate": "20190429",
-        "io.agodadev.infra.baseimage.python3-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage.python3-version": "1.196",
         "maintainer": "it-devops-container@agoda.com",
         "org.label-schema.build-date": "20190305",
         "org.label-schema.license": "GPLv2",
@@ -176,14 +160,6 @@ var _ = Describe("Harbor Checker", func() {
     "created": "2019-08-16T00:50:57.865244942Z",
     "config": {
       "labels": {
-        "io.agodadev.infra.baseimage": "docker.io/centos:latest",
-        "io.agodadev.infra.baseimage-builddate": "20190409",
-        "io.agodadev.infra.baseimage-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage-version": "1.284",
-        "io.agodadev.infra.baseimage.python3": "reg-hk.agodadev.io/infra/infra-centos7:latest",
-        "io.agodadev.infra.baseimage.python3-builddate": "20190429",
-        "io.agodadev.infra.baseimage.python3-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage.python3-version": "1.196",
         "maintainer": "it-devops-container@agoda.com",
         "org.label-schema.build-date": "20190305",
         "org.label-schema.license": "GPLv2",
@@ -232,14 +208,6 @@ var _ = Describe("Harbor Checker", func() {
     "created": "2019-08-16T00:50:57.865244942Z",
     "config": {
       "labels": {
-        "io.agodadev.infra.baseimage": "docker.io/centos:latest",
-        "io.agodadev.infra.baseimage-builddate": "20190409",
-        "io.agodadev.infra.baseimage-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage-version": "1.284",
-        "io.agodadev.infra.baseimage.python3": "reg-hk.agodadev.io/infra/infra-centos7:latest",
-        "io.agodadev.infra.baseimage.python3-builddate": "20190429",
-        "io.agodadev.infra.baseimage.python3-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage.python3-version": "1.196",
         "maintainer": "it-devops-container@agoda.com",
         "org.label-schema.build-date": "20190305",
         "org.label-schema.license": "GPLv2",
@@ -327,14 +295,6 @@ var _ = Describe("Harbor Checker", func() {
     "created": "2019-08-29T07:46:16.388165365Z",
     "config": {
       "labels": {
-        "io.agodadev.infra.baseimage": "docker.io/centos:latest",
-        "io.agodadev.infra.baseimage-builddate": "20190821",
-        "io.agodadev.infra.baseimage-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage-version": "1.408",
-        "io.agodadev.infra.baseimage.python3": "reg-hk.agodadev.io/infra/infra-centos7:latest",
-        "io.agodadev.infra.baseimage.python3-builddate": "20190821",
-        "io.agodadev.infra.baseimage.python3-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage.python3-version": "1.299",
         "maintainer": "it-devops-container@agoda.com",
         "org.label-schema.build-date": "20190801",
         "org.label-schema.license": "GPLv2",
@@ -383,14 +343,6 @@ var _ = Describe("Harbor Checker", func() {
     "created": "2019-08-29T07:46:16.388165365Z",
     "config": {
       "labels": {
-        "io.agodadev.infra.baseimage": "docker.io/centos:latest",
-        "io.agodadev.infra.baseimage-builddate": "20190821",
-        "io.agodadev.infra.baseimage-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage-version": "1.408",
-        "io.agodadev.infra.baseimage.python3": "reg-hk.agodadev.io/infra/infra-centos7:latest",
-        "io.agodadev.infra.baseimage.python3-builddate": "20190821",
-        "io.agodadev.infra.baseimage.python3-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage.python3-version": "1.299",
         "maintainer": "it-devops-container@agoda.com",
         "org.label-schema.build-date": "20190801",
         "org.label-schema.license": "GPLv2",
@@ -478,14 +430,6 @@ var _ = Describe("Harbor Checker", func() {
     "created": "2019-08-15T02:06:49.062773925Z",
     "config": {
       "labels": {
-        "io.agodadev.infra.baseimage": "docker.io/centos:latest",
-        "io.agodadev.infra.baseimage-builddate": "20190409",
-        "io.agodadev.infra.baseimage-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage-version": "1.284",
-        "io.agodadev.infra.baseimage.python3": "reg-hk.agodadev.io/infra/infra-centos7:latest",
-        "io.agodadev.infra.baseimage.python3-builddate": "20190429",
-        "io.agodadev.infra.baseimage.python3-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage.python3-version": "1.196",
         "maintainer": "it-devops-container@agoda.com",
         "org.label-schema.build-date": "20190305",
         "org.label-schema.license": "GPLv2",
@@ -534,14 +478,6 @@ var _ = Describe("Harbor Checker", func() {
     "created": "2019-06-21T07:30:15.942729727Z",
     "config": {
       "labels": {
-        "io.agodadev.infra.baseimage": "docker.io/centos:latest",
-        "io.agodadev.infra.baseimage-builddate": "20190409",
-        "io.agodadev.infra.baseimage-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage-version": "1.284",
-        "io.agodadev.infra.baseimage.python3": "reg-hk.agodadev.io/infra/infra-centos7:latest",
-        "io.agodadev.infra.baseimage.python3-builddate": "20190429",
-        "io.agodadev.infra.baseimage.python3-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage.python3-version": "1.196",
         "maintainer": "it-devops-container@agoda.com",
         "org.label-schema.build-date": "20190305",
         "org.label-schema.license": "GPLv2",
@@ -654,14 +590,6 @@ var _ = Describe("Harbor Checker", func() {
     "created": "2019-08-28T01:08:07.834151787Z",
     "config": {
       "labels": {
-        "io.agodadev.infra.baseimage": "docker.io/centos:latest",
-        "io.agodadev.infra.baseimage-builddate": "20190821",
-        "io.agodadev.infra.baseimage-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage-version": "1.408",
-        "io.agodadev.infra.baseimage.python3": "reg-hk.agodadev.io/infra/infra-centos7:latest",
-        "io.agodadev.infra.baseimage.python3-builddate": "20190821",
-        "io.agodadev.infra.baseimage.python3-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage.python3-version": "1.299",
         "maintainer": "it-devops-container@agoda.com",
         "org.label-schema.build-date": "20190801",
         "org.label-schema.license": "GPLv2",
@@ -710,14 +638,6 @@ var _ = Describe("Harbor Checker", func() {
     "created": "2019-05-30T06:58:54.369635773Z",
     "config": {
       "labels": {
-        "io.agodadev.infra.baseimage": "docker.io/centos:latest",
-        "io.agodadev.infra.baseimage-builddate": "20190409",
-        "io.agodadev.infra.baseimage-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage-version": "1.284",
-        "io.agodadev.infra.baseimage.python3": "reg-hk.agodadev.io/infra/infra-centos7:latest",
-        "io.agodadev.infra.baseimage.python3-builddate": "20190429",
-        "io.agodadev.infra.baseimage.python3-revision": "b0606764ad641927baa54997ea565a1799c9eedc",
-        "io.agodadev.infra.baseimage.python3-version": "1.196",
         "maintainer": "it-devops-container@agoda.com",
         "org.label-schema.build-date": "20190305",
         "org.label-schema.license": "GPLv2",

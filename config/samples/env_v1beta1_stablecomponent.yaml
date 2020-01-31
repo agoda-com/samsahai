@@ -1,9 +1,0 @@
-apiVersion: env.samsahai.io/v1beta1
-kind: StableComponent
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: stablecomponent-sample
-spec:
-  # Add fields here
-  foo: bar

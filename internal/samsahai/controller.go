@@ -70,8 +70,7 @@ const (
 )
 
 type controller struct {
-	scheme *runtime.Scheme
-
+	scheme        *runtime.Scheme
 	muTeamConfigs *sync.Mutex
 	client        client.Client
 	clientset     *kubernetes.Clientset
@@ -511,7 +510,7 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 	k8sObjects := []runtime.Object{
 		k8sobject.GetService(c.scheme, teamComp, namespace),
 		k8sobject.GetServiceAccount(teamComp, namespace),
-		k8sobject.GetRole(teamComp, namespace),
+		//k8sobject.GetRole(teamComp, namespace),
 		k8sobject.GetRoleBinding(teamComp, namespace),
 		k8sobject.GetSecret(c.scheme, teamComp, namespace, secretKVs...),
 	}

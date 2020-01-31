@@ -33,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
@@ -58,9 +57,7 @@ var (
 		Use:   "staging",
 		Short: "Staging Controller",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			l := zap.New(func(o *zap.Options) {
-				o.Development = viper.GetBool(s2h.VKDebug)
-			})
+			l := s2hlog.GetLogger(viper.GetBool(s2h.VKDebug))
 			logf.SetLogger(l)
 			s2hlog.SetLogger(l)
 		},

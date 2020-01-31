@@ -32,6 +32,7 @@ require (
 	github.com/tidwall/match v1.0.1 // indirect
 	github.com/twitchtv/twirp v5.10.0+incompatible
 	go.uber.org/atomic v1.4.0 // indirect
+	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20200108215511-5d647ca15757 // indirect
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect

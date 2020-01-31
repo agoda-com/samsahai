@@ -73,7 +73,7 @@ var _ = Describe("Samsahai Webhook", func() {
 
 	BeforeEach(func(done Done) {
 		defer close(done)
-		configMgr, err := s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "..", "..", "test", "data"))
+		configMgr, err := s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "..", "..", "test", "data", "wordpress-redis"))
 		g.Expect(err).NotTo(HaveOccurred())
 		s2hConfig := s2h.SamsahaiConfig{
 			PluginsDir: path.Join("..", "plugin"),

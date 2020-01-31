@@ -24,17 +24,6 @@ activePromotion:
 
 
 components:
-#  - name: agoda-in-a-box
-#    chart:
-#      repository: https://kubernetes-charts.storage.googleapis.com
-#      name: agoda-in-a-box
-#    image:
-#      repository: ""
-#    dependencies:
-#      - name: capi
-#        image:
-#          repository: reg-hk.agodadev.io/capi/winterfell
-#        source: agoda-cspider
   - name: redis
     chart:
       repository: https://kubernetes-charts.storage.googleapis.com
@@ -67,17 +56,17 @@ components:
           repository: bitnami/mariadb
           pattern: '10\.3.*debian-9.*'
         source: public-registry
-    values:
+#    values:
 #      ingress:
 #        enabled: false
 
-report:
-  reportmock: true
-  slack:
-    name: Samsahai Notification
-    secretKeyRef:
-      token:
-        name: mock-secret
-        key: slack-token
-    channels:
-      - samsahai
+#report:
+#  reportmock: true
+#  slack:
+#    name: Samsahai Notification
+#    secretKeyRef:
+#      token:
+#        name: mock-secret
+#        key: slack-token
+#    channels:
+#      - samsahai

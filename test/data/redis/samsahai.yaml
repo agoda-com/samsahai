@@ -3,7 +3,7 @@ staging:
   deployment:
     timeout: 5m
     componentCleanupTimeout: 2s
-    engine: flux-helm
+    engine: helm3
     testRunner:
       timeout: 5m
       pollingTime: 5s
@@ -16,7 +16,7 @@ activePromotion:
   tearDownDuration: 10s
   deployment:
     timeout: 5m
-    engine: flux-helm
+    engine: helm3
     testRunner:
       timeout: 5m
       pollingTime: 5s
@@ -38,15 +38,7 @@ components:
         pullPolicy: IfNotPresent
       cluster:
         enabled: false
-      clusterDomain: hkci-k8s-a.local
       usePassword: false
       master:
         persistence:
           enabled: false
-#        resources:
-#          requests:
-#            memory: 1Gi
-#            cpu: 1
-#          limits:
-#            memory: 1Gi
-#            cpu: 1

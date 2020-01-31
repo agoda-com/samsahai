@@ -21,7 +21,7 @@ var _ = Describe("config manager test [e2e]", func() {
 	gitUsername, gitPassword := os.Getenv("TEST_GIT_USERNAME"), os.Getenv("TEST_GIT_PASSWORD")
 
 	gitStorage := s2hv1beta1.GitStorage{
-		URL:          "https://github.agodadev.io/docker/samsahai-example.git",
+		URL:          "https://github.com/agoda-com/samsahai-example.git",
 		Path:         "configs",
 		CloneDepth:   1,
 		CloneTimeout: &metav1.Duration{Duration: 15 * time.Second},
@@ -37,14 +37,17 @@ var _ = Describe("config manager test [e2e]", func() {
 	AfterEach(func() {
 		By("Cleaning up git repo")
 		Expect(configMgr.Clean()).NotTo(HaveOccurred())
-	}, 5)
+	}, 20)
 
 	It("should create config manager with git client and sync successfully", func() {
 		By("Checking config manager has been created")
 		err := wait.PollImmediate(500*time.Millisecond, 15*time.Second, func() (ok bool, err error) {
 			configMgr, err = config.NewWithGit("samsahai-example", gitStorage, gitCred)
-			if err != nil && s2herrors.IsErrGitCloning(err) {
-				return false, nil
+			if err != nil {
+				if s2herrors.IsErrGitCloning(err) {
+					return false, nil
+				}
+				return false, err
 			}
 
 			return true, nil

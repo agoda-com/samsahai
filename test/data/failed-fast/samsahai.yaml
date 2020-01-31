@@ -2,7 +2,7 @@ staging:
   maxRetry: 0
   deployment:
     timeout: 10s
-    engine: flux-helm
+    engine: helm3
     testRunner:
       timeout: 30s
       pollingTime: 5s
@@ -15,7 +15,7 @@ activePromotion:
   tearDownDuration: 10s
   deployment:
     timeout: 10s
-    engine: flux-helm
+    engine: helm3
     testRunner:
       timeout: 30s
       pollingTime: 5s

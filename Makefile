@@ -24,7 +24,7 @@ K3S_DOCKER_NAME			?= s2h-k3s-server
 K3S_PORT				?= 7443
 K8S_VERSION				?= 1.15.7
 KUSTOMIZE_VERSION		?= 3.5.3
-HELM_VERSION			?= 2.13.1
+HELM_VERSION			?= 3.0.2
 POD_NAMESPACE			?= default
 
 GO111MODULE 			:= on
@@ -165,32 +165,16 @@ prepare-env-e2e:
 	\
 	echo install helm and helm-operator; \
 	\
-	$(KUBECTL) apply -f $(PWD)/scripts/helm-rbac.yaml; \
-	$(HELM) init --service-account tiller; \
+	$(HELM) repo add stable https://kubernetes-charts.storage.googleapis.com; \
+	$(HELM) repo add incubator https://kubernetes-charts-incubator.storage.googleapis.com; \
 	\
-	export CURRENTDIR=$(PWD); \
-	cd $$CURRENTDIR/config/$(HELM_OPERATOR_MANIFESTS); \
-	rm -f ./identity*; \
-	ssh-keygen -q -N "" -f ./identity; \
-	if [ ! -z "$(PASS_PROXY)" ]; then \
-		echo "passing proxy config"; \
-		echo "http_proxy=$(http_proxy)" > params.env; \
-		echo "https_proxy=$(https_proxy)" >> params.env; \
-		echo "no_proxy=$(no_proxy)" >> params.env; \
-		cat params.env; \
-	fi; \
-	$(KUSTOMIZE) build . | $(KUBECTL) apply -f -; \
-	rm -f ./identity*; \
-	rm -f out.yaml; \
-	cd $$CURRENTDIR; \
-	\
+	echo install ClusterRole; \
+	$(HELM) template $(PWD)/config/chart/samsahai -s templates/clusterrole-staging.yaml | $(KUBECTL) apply -f - ; \
+	$(KUBECTL) apply -f $(PWD)/config/manifests/flux.weave.works_clusterrole.yaml; \
 	\
 	echo $(PWD); \
 	$(KUBECTL) apply -f $(PWD)/config/crds; \
-	\
-	echo Wait tiller and helm-operator to be ready; \
-	$(KUBECTL) -n kube-system wait Pods -l app=helm --for=condition=Ready --timeout=5m; \
-	$(KUBECTL) -n kube-system wait Pods -l app=helm-operator --for=condition=Ready --timeout=5m;
+	$(KUBECTL) apply -f $(PWD)/config/manifests/flux.weave.works_crd.yaml;
 
 	echo done!
 
@@ -416,7 +400,7 @@ install-go:
 .install-helm: export _VERSION_ARGS 	= version --client --short
 .install-helm:
 	export _FILENAME="$(APP_NAME)-v$(HELM_VERSION)-$(OS)-$(ARCH)"; \
-	export _DOWNLOAD_URL="https://storage.googleapis.com/kubernetes-helm/$$_FILENAME.tar.gz"; \
+	export _DOWNLOAD_URL="https://get.helm.sh/$$_FILENAME.tar.gz"; \
 	export _MOVE_CMD="chmod +x $(TMP_DIR)/$(OS)-$(ARCH)/$(APP_NAME) && $(MV) $(TMP_DIR)/$(OS)-$(ARCH)/$(APP_NAME) $(_APP_CMD)"; \
 	$(MAKE) .install-archive
 

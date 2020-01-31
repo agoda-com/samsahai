@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"go.uber.org/zap"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/agoda-com/samsahai/internal"
 )
@@ -27,6 +29,15 @@ func init() {
 // a no-op logger before the promises are fulfilled).
 type DelegatingLogger struct {
 	logger *log.DelegatingLogger
+}
+
+func GetLogger(debug bool) logr.Logger {
+	l := crzap.New(func(o *crzap.Options) {
+		o.Development = debug
+		lvl := zap.NewAtomicLevelAt(zap.ErrorLevel)
+		o.StacktraceLevel = &lvl
+	})
+	return l
 }
 
 func NewS2hLogger(initial logr.Logger) *DelegatingLogger {

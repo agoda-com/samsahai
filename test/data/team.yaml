@@ -11,7 +11,7 @@ spec:
     cpu: 10
     memory: 10Gi
   gitStorage:
-    url: https://github.agodadev.io/docker/samsahai-example.git
+    url: https://github.com/agoda-com/samsahai-example.git
   credential:
     secretName: s2h-teamtest
     git:
@@ -19,12 +19,4 @@ spec:
         key: gitUser
       password:
         key: gitPassword
-#    teamcity: https://github.com/agoda-com/samsahai-example.git
-#      username:
-#        key: tcUser
-#      password:
-#        key: tcPass
-#    slack:
-#      token:
-#        key: slackToken
 

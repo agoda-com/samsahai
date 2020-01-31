@@ -38,7 +38,7 @@ var _ = Describe("Config Manager", func() {
 	)
 
 	BeforeEach(func() {
-		configMgr, err = config.NewWithGitClient(nil, "teamtest", path.Join("..", "..", "test", "data"))
+		configMgr, err = config.NewWithGitClient(nil, "teamtest", path.Join("..", "..", "test", "data", "wordpress-redis"))
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(configMgr.Sync()).NotTo(HaveOccurred())
 		g.Expect(configMgr).NotTo(BeNil())
@@ -50,12 +50,12 @@ var _ = Describe("Config Manager", func() {
 	})
 
 	It("should check changes correctly", func() {
-		configMgr, err = config.NewWithGitClient(&git.Client{}, "teamtest", path.Join("..", "..", "test", "data"))
+		configMgr, err = config.NewWithGitClient(&git.Client{}, "teamtest", path.Join("..", "..", "test", "data", "wordpress-redis"))
 		hasChanges := configMgr.HasGitChanges(s2hv1beta1.GitStorage{URL: "https://samsahai.org"})
 		Expect(hasChanges).To(BeTrue())
 
 		pwd, _ := os.Getwd()
-		hasChanges = configMgr.HasGitChanges(s2hv1beta1.GitStorage{Path: path.Join(pwd, "..", "..", "test", "data")})
+		hasChanges = configMgr.HasGitChanges(s2hv1beta1.GitStorage{Path: path.Join(pwd, "..", "..", "test", "data", "wordpress-redis")})
 		Expect(hasChanges).To(BeFalse())
 	})
 })

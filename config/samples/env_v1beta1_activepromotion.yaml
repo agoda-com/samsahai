@@ -1,9 +1,0 @@
-apiVersion: env.samsahai.io/v1beta1
-kind: ActivePromotion
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: teamviewer
-spec:
-  # Add fields here
-  name: teamviewer

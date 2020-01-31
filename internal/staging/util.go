@@ -14,21 +14,17 @@ import (
 
 func (c *controller) getDeployConfiguration(queue *s2hv1beta1.Queue) *internal.ConfigDeploy {
 	cfg := c.getConfiguration()
-	var deployConfig *internal.ConfigDeploy
-
-	if cfg.Staging != nil {
-		deployConfig = cfg.Staging.Deployment
-	}
 
 	if queue.IsActivePromotionQueue() {
-		if cfg.ActivePromotion != nil {
-			deployConfig = cfg.ActivePromotion.Deployment
-		} else {
-			deployConfig = &internal.ConfigDeploy{}
+		if cfg.ActivePromotion != nil && cfg.ActivePromotion.Deployment != nil {
+			return cfg.ActivePromotion.Deployment
 		}
+		return &internal.ConfigDeploy{}
 	}
-
-	return deployConfig
+	if cfg.Staging != nil {
+		return cfg.Staging.Deployment
+	}
+	return &internal.ConfigDeploy{}
 }
 
 func (c *controller) getTestConfiguration(queue *s2hv1beta1.Queue) *internal.ConfigTestRunner {

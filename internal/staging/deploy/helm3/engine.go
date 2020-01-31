@@ -42,11 +42,16 @@ type engine struct {
 }
 
 func New(ns string, debug bool) internal.DeployEngine {
+	prevNs := os.Getenv("HELM_NAMESPACE")
+	_ = os.Setenv("HELM_NAMESPACE", ns)
+	settings := cli.New()
+	_ = os.Setenv("HELM_NAMESPACE", prevNs)
+
 	e := engine{
 		namespace:      ns,
 		debug:          debug,
 		actionSettings: new(action.Configuration),
-		settings:       cli.New(),
+		settings:       settings,
 		helmDriver:     HelmDriver,
 	}
 	err := e.helmInit()
@@ -279,4 +284,30 @@ func (e *engine) helmPrepareChart(
 	}
 
 	return ch, nil
+}
+
+func (e *engine) helmList() ([]*release.Release, error) {
+	client := action.NewList(e.actionSettings)
+	client.All = true
+	releases, err := client.Run()
+	if err != nil {
+		return nil, err
+	}
+	return releases, nil
+}
+
+func DeleteAllReleases(ns string, debug bool) error {
+	e := New(ns, debug).(*engine)
+
+	releases, err := e.helmList()
+	if err != nil {
+		return err
+	}
+	for _, r := range releases {
+		err := e.Delete(r.Name)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

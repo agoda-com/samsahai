@@ -26,7 +26,7 @@ var _ = Describe("Apply Env Based Config", func() {
 	g := NewWithT(GinkgoT())
 
 	BeforeEach(func() {
-		configMgr, err = config.NewWithGitClient(nil, "teamtest", path.Join("..", "..", "test", "data"))
+		configMgr, err = config.NewWithGitClient(nil, "teamtest", path.Join("..", "..", "test", "data", "wordpress-redis"))
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(configMgr.Sync()).NotTo(HaveOccurred())
 	})

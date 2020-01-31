@@ -76,16 +76,18 @@ var _ = Describe("Samsahai Exporter", func() {
 	var chStop chan struct{}
 	var SamsahaiURL = "aaa"
 	var updatedDate = metav1.Date(2020, 01, 01, 01, 01, 01, 01, time.UTC)
-
-	configMgr, err := config.NewWithGitClient(&git.Client{}, "example", path.Join("..", "..", "..", "test", "data"))
-	g.Expect(err).NotTo(HaveOccurred())
-	g.Expect(configMgr).NotTo(BeNil())
+	var configMgr internal.ConfigManager
+	var err error
 
 	RegisterMetrics()
 
 	BeforeEach(func(done Done) {
-		defer close(done)
 		defer GinkgoRecover()
+		defer close(done)
+
+		configMgr, err = config.NewWithGitClient(&git.Client{}, "example", path.Join("..", "..", "..", "test", "data", "wordpress-redis"))
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(configMgr).NotTo(BeNil())
 
 		chStop = make(chan struct{})
 

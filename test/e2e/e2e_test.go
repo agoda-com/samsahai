@@ -12,7 +12,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -29,8 +28,6 @@ func TestE2E(t *testing.T) {
 
 	switch {
 	case os.Getenv("TEAMCITY_VERSION") != "":
-		//specReporters := []Reporter{reporters.NewTeamCityReporter(os.Stdout)}
-		//RunSpecsWithCustomReporters(t, "E2E", specReporters)
 		fallthrough
 	case os.Getenv("CIRCLECI") != "":
 		specReporters := []Reporter{reporters.NewJUnitReporter("e2e.unit-test.xml")}
@@ -45,12 +42,9 @@ var _ = BeforeSuite(func(done Done) {
 	var err error
 
 	if os.Getenv("DEBUG") == "1" {
-		log.SetLogger(zap.New(func(o *zap.Options) {
-			o.Development = true
-		}))
-		s2hlog.SetLogger(zap.New(func(o *zap.Options) {
-			o.Development = true
-		}))
+		l := s2hlog.GetLogger(true)
+		log.SetLogger(l)
+		s2hlog.SetLogger(l)
 	}
 
 	err = corev1.AddToScheme(scheme.Scheme)

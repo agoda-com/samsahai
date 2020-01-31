@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -59,12 +60,13 @@ var _ = Describe("Main Controller [e2e]", func() {
 		samsahaiServer       *httptest.Server
 		samsahaiAuthToken    string
 		samsahaiClient       samsahairpc.RPC
+		restCfg              *rest.Config
 	)
 
 	samsahaiAuthToken = "1234567890_"
 	samsahaiSystemNs := "samsahai-system"
 
-	teamName := "teamviewer"
+	teamName := "teamtest"
 	teamForQ1 := teamName + "-q1"
 	teamForQ2 := teamName + "-q2"
 	teamForQ3 := teamName + "-q3"
@@ -91,10 +93,9 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Spec: s2hv1beta1.TeamSpec{
 			Description: "team for testing",
 			Owners:      []string{"samsahai@samsahai.io"},
-			// TODO: change here when oss
 			GitStorage: s2hv1beta1.GitStorage{
-				URL:        "https://github.agodadev.io/docker/samsahai-example.git",
-				Path:       "activepromotion-configs",
+				URL:        "https://github.com/agoda-com/samsahai-example.git",
+				Path:       "atp",
 				CloneDepth: 1,
 			},
 			Credential: s2hv1beta1.Credential{
@@ -215,7 +216,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		chStop = make(chan struct{})
 
-		restCfg, err := config.GetConfig()
+		restCfg, err = config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
 
 		mgr, err = manager.New(restCfg, manager.Options{})
@@ -379,11 +380,11 @@ var _ = Describe("Main Controller [e2e]", func() {
 				return false, nil
 			}
 
-			role := rbacv1.Role{}
-			err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: stgNamespace}, &role)
-			if err != nil {
-				return false, nil
-			}
+			//role := rbacv1.Role{}
+			//err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: stgNamespace}, &role)
+			//if err != nil {
+			//	return false, nil
+			//}
 
 			roleBinding := rbacv1.RoleBinding{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: stgNamespace}, &roleBinding)
@@ -454,8 +455,32 @@ var _ = Describe("Main Controller [e2e]", func() {
 		{
 			cmgr, err := s2hconfig.NewWithSamsahaiClient(samsahaiClient, teamName, samsahaiAuthToken)
 			Expect(err).NotTo(HaveOccurred(), "should successfully get config from the server")
+
+			stagingCfg := rest.CopyConfig(restCfg)
+			stagingCfg.Username = ""
+			// get token
+			stagingSA := &corev1.ServiceAccount{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: preActiveNs}, stagingSA)
+			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get sa: %s", internal.StagingCtrlName))
+			Expect(len(stagingSA.Secrets)).To(BeNumerically(">=", 1))
+			stagingSecret := &corev1.Secret{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: preActiveNs, Name: stagingSA.Secrets[0].Name}, stagingSecret)
+			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get secret: %s", stagingSA.Secrets[0].Name))
+			stagingCfg.BearerToken = string(stagingSecret.Data["token"])
+
+			// create mgr from config
+			stagingMgr, err := manager.New(stagingCfg, manager.Options{
+				Namespace:          preActiveNs,
+				MetricsBindAddress: "0",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
 			qctrl := queue.New(preActiveNs, runtimeClient)
-			stagingPreActiveCtrl = staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient, mgr, qctrl, cmgr, "", "", "")
+			stagingPreActiveCtrl = staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient, stagingMgr, qctrl, cmgr, "", "", "")
+			go func() {
+				defer GinkgoRecover()
+				Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())
+			}()
 			go stagingPreActiveCtrl.Start(chStop)
 		}
 
@@ -1017,7 +1042,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		By("Creating Team/Updating Team")
 		team := mockTeam
-		team.Spec.GitStorage.Path = "image-missing-configs"
+		team.Spec.GitStorage.Path = "image-missing"
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Github webhook")

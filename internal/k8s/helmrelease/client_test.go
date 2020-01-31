@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 	}
 
 	t := &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "chart", "flux-helm-operator", "crds")},
+		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "manifests")},
 	}
 
 	err := v1beta1.SchemeBuilder.AddToScheme(scheme.Scheme)
