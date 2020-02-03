@@ -216,8 +216,25 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		chStop = make(chan struct{})
 
-		restCfg, err = config.GetConfig()
+		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
+
+		adminClient, err := crclient.New(adminRestConfig, crclient.Options{Scheme: scheme.Scheme})
+		Expect(err).NotTo(HaveOccurred(), "should create runtime client successfully")
+
+		ctx := context.TODO()
+		// get token for samsahai user
+		restCfg = rest.CopyConfig(adminRestConfig)
+		restCfg.Username = ""
+		// get token
+		samsahaiSA := &corev1.ServiceAccount{}
+		err = adminClient.Get(ctx, types.NamespacedName{Name: "samsahai", Namespace: samsahaiSystemNs}, samsahaiSA)
+		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get sa: %s/%s", samsahaiSystemNs, "samsahai"))
+		Expect(len(samsahaiSA.Secrets)).To(BeNumerically(">=", 1))
+		samsahaiSecret := &corev1.Secret{}
+		err = adminClient.Get(ctx, types.NamespacedName{Namespace: samsahaiSystemNs, Name: samsahaiSA.Secrets[0].Name}, samsahaiSecret)
+		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get secret: %s/%s", samsahaiSystemNs, samsahaiSA.Secrets[0].Name))
+		restCfg.BearerToken = string(samsahaiSecret.Data["token"])
 
 		mgr, err = manager.New(restCfg, manager.Options{})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
@@ -380,11 +397,11 @@ var _ = Describe("Main Controller [e2e]", func() {
 				return false, nil
 			}
 
-			//role := rbacv1.Role{}
-			//err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: stgNamespace}, &role)
-			//if err != nil {
-			//	return false, nil
-			//}
+			role := rbacv1.Role{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: stgNamespace}, &role)
+			if err != nil {
+				return false, nil
+			}
 
 			roleBinding := rbacv1.RoleBinding{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: stgNamespace}, &roleBinding)

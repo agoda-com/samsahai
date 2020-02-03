@@ -213,105 +213,144 @@ func GetService(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceName
 	return &service
 }
 
-//func GetRole(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
-//	teamName := teamComp.GetName()
-//	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
-//	role := rbacv1.Role{
-//		ObjectMeta: metav1.ObjectMeta{
-//			Name:      internal.StagingCtrlName,
-//			Namespace: namespaceName,
-//			Labels:    defaultLabelsWithVersion,
-//		},
-//		Rules: []rbacv1.PolicyRule{
-//			{
-//				APIGroups: []string{
-//					"env.samsahai.io",
-//				},
-//				Resources: []string{
-//					"desiredcomponents",
-//					"desiredcomponents/status",
-//					"queues",
-//					"queues/status",
-//					"queuehistories",
-//					"queuehistories/status",
-//					"stablecomponents",
-//					"stablecomponents/status",
-//				},
-//				Verbs: []string{"*"},
-//			},
-//			{
-//				APIGroups: []string{
-//					"flux.weave.works",
-//				},
-//				Resources: []string{
-//					"helmreleases",
-//				},
-//				Verbs: []string{"*"},
-//			},
-//			{
-//				APIGroups: []string{
-//					"",
-//				},
-//				Resources: []string{
-//					"pods",
-//					"pods/status",
-//					"pods/log",
-//					"services",
-//					"services/status",
-//					"persistentvolumeclaims",
-//					"persistentvolumeclaims/status",
-//				},
-//				Verbs: []string{"get", "list", "watch", "delete", "deletecollection"},
-//			},
-//			{
-//				APIGroups: []string{
-//					"apps",
-//				},
-//				Resources: []string{
-//					"deployments",
-//					"deployments/status",
-//					"statefulsets",
-//					"statefulsets/status",
-//					"replicasets",
-//					"replicasets/status",
-//				},
-//				Verbs: []string{"get", "list", "watch"},
-//			},
-//			{
-//				APIGroups: []string{
-//					"batch",
-//				},
-//				Resources: []string{
-//					"jobs",
-//					"jobs/status",
-//					"cronjobs",
-//					"cronjobs/status",
-//				},
-//				Verbs: []string{"get", "list", "watch"},
-//			},
-//			{
-//				APIGroups: []string{
-//					"extensions",
-//				},
-//				Resources: []string{
-//					"deployments",
-//					"deployments/status",
-//					"statefulsets",
-//					"statefulsets/status",
-//					"replicasets",
-//					"replicasets/status",
-//				},
-//				Verbs: []string{
-//					"get",
-//					"list",
-//					"watch",
-//				},
-//			},
-//		},
-//	}
-//
-//	return &role
-//}
+func GetRole(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
+	teamName := teamComp.GetName()
+	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
+	role := rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      internal.StagingCtrlName,
+			Namespace: namespaceName,
+			Labels:    defaultLabelsWithVersion,
+		},
+		Rules: []rbacv1.PolicyRule{
+			// samsahai
+			{
+				APIGroups: []string{
+					"env.samsahai.io",
+				},
+				Resources: []string{
+					"desiredcomponents",
+					"queues",
+					"queuehistories",
+					"stablecomponents",
+				},
+				Verbs: []string{"*"},
+			},
+			// flux - helm-operator
+			{
+				APIGroups: []string{
+					"flux.weave.works",
+				},
+				Resources: []string{
+					"helmreleases",
+				},
+				Verbs: []string{"*"},
+			},
+			// deploy
+			{
+				APIGroups: []string{
+					"",
+				},
+				Resources: []string{
+					"pods",
+					"services",
+					"endpoints",
+					"serviceaccounts",
+					"configmaps",
+					"secrets",
+					"persistentvolumeclaims",
+					"replicationcontrollers",
+				},
+				Verbs: []string{"*"},
+			},
+			{
+				APIGroups: []string{
+					"rbac.authorization.k8s.io",
+				},
+				Resources: []string{
+					"roles",
+					"rolebindings",
+				},
+				Verbs: []string{"*"},
+			},
+			{
+				APIGroups: []string{
+					"apps",
+				},
+				Resources: []string{
+					"deployments",
+					"statefulsets",
+					"replicasets",
+				},
+				Verbs: []string{"*"},
+			},
+			{
+				APIGroups: []string{
+					"autoscaling",
+				},
+				Resources: []string{
+					"horizontalpodautoscalers",
+				},
+				Verbs: []string{"*"},
+			},
+			{
+				APIGroups: []string{
+					"batch",
+				},
+				Resources: []string{
+					"jobs",
+					"cronjobs",
+				},
+				Verbs: []string{"*"},
+			},
+			{
+				APIGroups: []string{
+					"extensions",
+				},
+				Resources: []string{
+					"deployments",
+					"statefulsets",
+					"replicasets",
+					"ingresses",
+					"networkpolicies",
+				},
+				Verbs: []string{"*"},
+			},
+			{
+				APIGroups: []string{
+					"policy",
+				},
+				Resources: []string{
+					"poddisruptionbudgets",
+				},
+				Verbs: []string{"*"},
+			},
+			{
+				APIGroups: []string{
+					"networking.k8s.io",
+				},
+				Resources: []string{
+					"networkpolicies",
+				},
+				Verbs: []string{"*"},
+			},
+			{
+				APIGroups: []string{
+					"",
+				},
+				Resources: []string{
+					"bindings",
+					"events",
+					"namespaces",
+					"resourcequotas",
+				},
+				Verbs: []string{"get", "list", "watch"},
+			},
+		},
+	}
+
+	return &role
+}
 
 func GetRoleBinding(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
 	teamName := teamComp.GetName()
@@ -324,8 +363,8 @@ func GetRoleBinding(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Obj
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "ClusterRole",
-			Name:     "admin",
+			Kind:     "Role",
+			Name:     internal.StagingCtrlName,
 		},
 		Subjects: []rbacv1.Subject{
 			{

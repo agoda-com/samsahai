@@ -168,9 +168,9 @@ prepare-env-e2e:
 	$(HELM) repo add stable https://kubernetes-charts.storage.googleapis.com; \
 	$(HELM) repo add incubator https://kubernetes-charts-incubator.storage.googleapis.com; \
 	\
-	echo install ClusterRole; \
-	$(HELM) template $(PWD)/config/chart/samsahai -s templates/clusterrole-staging.yaml | $(KUBECTL) apply -f - ; \
-	$(KUBECTL) apply -f $(PWD)/config/manifests/flux.weave.works_clusterrole.yaml; \
+	echo create sa,clusterrole,clusterrolebinding for samsahai; \
+	$(HELM) template -n "samsahai-system" --set "fullnameOverride=samsahai" $(PWD)/config/chart/samsahai -s templates/sa.yaml | $(KUBECTL) apply -n samsahai-system -f - ; \
+	$(HELM) template -n "samsahai-system" --set "fullnameOverride=samsahai" $(PWD)/config/chart/samsahai -s templates/clusterrole-rbac.yaml | $(KUBECTL) apply -n samsahai-system -f - ; \
 	\
 	echo $(PWD); \
 	$(KUBECTL) apply -f $(PWD)/config/crds; \

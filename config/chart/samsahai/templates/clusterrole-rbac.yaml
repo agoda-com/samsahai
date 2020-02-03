@@ -18,21 +18,25 @@ rules:
     verbs:
       - "*"
   - apiGroups:
-      - ""
+      - flux.weave.works
     resources:
-      - namespaces
-      - services
-      - serviceaccounts
-      - secrets
-      - resourcequotas
+      - helmreleases
     verbs:
       - "*"
   - apiGroups:
-      - apps
-      - extensions
+      - ""
     resources:
-      - deployments
-      - statefulsets
+      - bindings
+      - configmaps
+      - limitranges
+      - persistentvolumeclaims
+      - pods
+      - namespaces
+      - resourcequotas
+      - services
+      - serviceaccounts
+      - secrets
+      - replicationcontrollers
     verbs:
       - "*"
   - apiGroups:
@@ -43,76 +47,65 @@ rules:
     verbs:
       - "*"
   - apiGroups:
-      - flux.weave.works
+      - apps
     resources:
-      - helmreleases
+      - deployments
+      - statefulsets
+      - replicasets
     verbs:
       - "*"
   - apiGroups:
-      - env.samsahai.io
+      - autoscaling
     resources:
-      - teams/status
-      - activepromotions/status
-      - activepromotionhistories/status
-      - desiredcomponents/status
-      - queues/status
-      - queuehistories/status
-      - stablecomponents/status
+      - horizontalpodautoscalers
     verbs:
-      - get
-      - update
-      - patch
-  - apiGroups:
-      - ""
-    resources:
-      - services
-      - services/status
-      - endpoints
-      - endpoints/status
-      - nodes
-      - nodes/status
-      - pods
-      - pods/log
-      - events
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - extensions
-    resources:
-      - ingresses
-      - ingresses/status
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-      - persistentvolumeclaims
-      - persistentvolumeclaims/status
-    verbs:
-      - get
-      - list
-      - watch
-      - delete
-      - deletecollection
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - pods/log
-    verbs:
-      - delete
-      - deletecollection
+      - "*"
   - apiGroups:
       - batch
     resources:
       - jobs
+      - cronjobs
     verbs:
-      - delete
-      - deletecollection
+      - "*"
+  - apiGroups:
+      - extensions
+    resources:
+      - deployments
+      - statefulsets
+      - replicasets
+      - ingresses
+      - networkpolicies
+    verbs:
+      - "*"
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - "*"
+  - apiGroups:
+      - "networking.k8s.io"
+    resources:
+      - networkpolicies
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
