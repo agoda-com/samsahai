@@ -139,6 +139,7 @@ func (e *engine) Delete(refName string) error {
 
 	cliUninstall := action.NewUninstall(e.actionSettings)
 	cliUninstall.Timeout = DefaultUninstallTimeout
+	cliUninstall.DisableVerify = true
 
 	logger.Debug("deleting release", "releaseName", refName)
 	_, err := cliUninstall.Run(refName)
@@ -147,6 +148,7 @@ func (e *engine) Delete(refName string) error {
 		case errors.Is(errors.Cause(err), driver.ErrReleaseNotFound):
 			return nil
 		}
+		logger.Error(err, "helm uninstall failed", "releaseName", refName)
 		return errors.Wrap(err, "error while deleting helm release")
 	}
 
@@ -196,14 +198,17 @@ func (e *engine) helmInstall(
 	client.ChartPathOptions = cpo
 	client.Namespace = e.namespace
 	client.ReleaseName = refName
+	client.DisableVerify = true
 
 	ch, err := e.helmPrepareChart(chartName, cpo)
 	if err != nil {
+		logger.Error(err, "helm prepare chart failed", "releaseName", refName, "chartName", chartName)
 		return err
 	}
 
 	_, err = client.Run(ch, values)
 	if err != nil {
+		logger.Error(err, "helm install failed", "releaseName", refName, "chartName", chartName)
 		return errors.Wrapf(err, "helm install failed")
 	}
 
@@ -222,14 +227,17 @@ func (e *engine) helmUpgrade(
 	client.ChartPathOptions = cpo
 	client.Namespace = e.namespace
 	client.Atomic = true
+	client.DisableVerify = true
 
 	ch, err := e.helmPrepareChart(chartName, cpo)
 	if err != nil {
+		logger.Error(err, "helm prepare chart failed", "releaseName", refName, "chartName", chartName)
 		return err
 	}
 
 	_, err = client.Run(refName, ch, values)
 	if err != nil {
+		logger.Error(err, "helm upgrade failed", "releaseName", refName, "chartName", chartName)
 		return errors.Wrapf(err, "helm upgrade failed")
 	}
 
