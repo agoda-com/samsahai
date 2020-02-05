@@ -19,7 +19,11 @@ import (
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-func (c *controller) authenticateRPC(authToken string) error {
+func (c *controller) authenticateRPC(ctx context.Context) error {
+	authToken, ok := ctx.Value(s2h.HTTPHeader(s2h.SamsahaiAuthHeader)).(string)
+	if !ok {
+		return s2herrors.ErrAuthTokenNotFound
+	}
 	isMatch := subtle.ConstantTimeCompare([]byte(authToken), []byte(c.configs.SamsahaiCredential.InternalAuthToken))
 	if isMatch != 1 {
 		return s2herrors.ErrUnauthorized
@@ -28,7 +32,7 @@ func (c *controller) authenticateRPC(authToken string) error {
 }
 
 func (c *controller) GetConfiguration(ctx context.Context, team *rpc.Team) (*rpc.Configuration, error) {
-	if err := c.authenticateRPC(ctx.Value(s2h.HTTPHeader(s2h.SamsahaiAuthHeader)).(string)); err != nil {
+	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 
@@ -45,7 +49,7 @@ func (c *controller) GetConfiguration(ctx context.Context, team *rpc.Team) (*rpc
 }
 
 func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWithCurrentComponent) (*rpc.ImageList, error) {
-	if err := c.authenticateRPC(ctx.Value(s2h.HTTPHeader(s2h.SamsahaiAuthHeader)).(string)); err != nil {
+	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 
@@ -130,7 +134,7 @@ func (c *controller) getImageSource(comps map[string]*s2h.Component, name string
 }
 
 func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.ComponentUpgrade) (*rpc.Empty, error) {
-	if err := c.authenticateRPC(ctx.Value(s2h.HTTPHeader(s2h.SamsahaiAuthHeader)).(string)); err != nil {
+	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 
@@ -254,7 +258,7 @@ func (c *controller) listQueueHistory(selectors map[string]string) (*s2hv1beta1.
 }
 
 func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.ComponentUpgrade) (*rpc.Empty, error) {
-	if err := c.authenticateRPC(ctx.Value(s2h.SamsahaiAuthHeader).(string)); err != nil {
+	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 

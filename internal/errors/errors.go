@@ -48,6 +48,7 @@ const (
 	ErrGitPulling           = Error("still pulling the repository")
 
 	ErrUnauthorized        = Error("unauthorized")
+	ErrAuthTokenNotFound   = Error("auth token not found")
 	ErrInvalidJSONData     = Error("invalid json data")
 	ErrCannotMarshalJSON   = Error("cannot marshal to json")
 	ErrCannotMarshalYAML   = Error("cannot marshal to yaml")
