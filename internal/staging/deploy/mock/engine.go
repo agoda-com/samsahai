@@ -56,6 +56,11 @@ func (e *engine) Delete(refName string) error {
 	return nil
 }
 
+func (e *engine) ForceDelete(refName string) error {
+	logger.Debug(fmt.Sprintf("force delete env with resource key: %s", refName))
+	return nil
+}
+
 func (e *engine) IsReady(queue *v1beta1.Queue) (bool, error) {
 	logger.Debug(fmt.Sprintf("env with resource key '%s' is ready", queue.Status.ReleaseName))
 	return true, nil

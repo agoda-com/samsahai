@@ -8,11 +8,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/agoda-com/samsahai/internal"
-	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/template"
 )
-
-var logger = s2hlog.S2HLog.WithName("Shell-util")
 
 // ExecuteCommand executes command at defined executed path
 func ExecuteCommand(ctx context.Context, exePath string, cmdObj *internal.CommandAndArgs) ([]byte, error) {
@@ -62,7 +59,6 @@ func execute(ctx context.Context, exePath, command string, args ...string) ([]by
 
 	out, err := cmd.Output()
 	if err != nil {
-		logger.Error(err, "cannot execute command", "command", command, "args", args)
 		return out, err
 	}
 

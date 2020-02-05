@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/twitchtv/twirp"
-	v1 "k8s.io/api/batch/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +39,7 @@ import (
 
 var logger = s2hlog.Log.WithName(internal.StagingCtrlName)
 
-const componentCleanupTimeout = 15 * time.Minute
+const DefaultCleanupTimeout = 15 * time.Minute
 
 type controller struct {
 	deployEngines map[string]internal.DeployEngine
@@ -328,22 +328,27 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 	deployEngine := c.getDeployEngine(queue)
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedBefore) {
 		for compName := range c.configMgr.GetParentComponents() {
-			refName := genReleaseName(c.teamName, c.namespace, compName)
+			refName := internal.GenReleaseName(c.teamName, c.namespace, compName)
 			if err := deployEngine.Delete(refName); err != nil {
 				return err
 			}
 		}
 	}
 
-	cleanupTimeout := &metav1.Duration{Duration: componentCleanupTimeout}
+	cleanupTimeout := time.Duration(0)
 	deployConfig := c.getDeployConfiguration(queue)
 	if deployConfig != nil {
-		cleanupTimeout = &deployConfig.ComponentCleanupTimeout
+		cleanupTimeout = deployConfig.ComponentCleanupTimeout.Duration
 	}
 
-	startedCleaningTime := queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningBeforeStarted)
-	isCleaned, err := WaitForComponentsCleaned(c.client, deployEngine, c.configMgr.GetParentComponents(),
-		c.teamName, c.namespace, startedCleaningTime, cleanupTimeout)
+	isCleaned, err := WaitForComponentsCleaned(
+		c.client,
+		deployEngine,
+		c.configMgr.GetParentComponents(),
+		c.teamName,
+		c.namespace,
+		queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningBeforeStarted),
+		cleanupTimeout)
 	if err != nil {
 		return err
 	} else if !isCleaned {
@@ -363,22 +368,27 @@ func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
 	deployEngine := c.getDeployEngine(queue)
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedAfter) {
 		for compName := range c.configMgr.GetParentComponents() {
-			refName := genReleaseName(c.teamName, c.namespace, compName)
+			refName := internal.GenReleaseName(c.teamName, c.namespace, compName)
 			if err := deployEngine.Delete(refName); err != nil {
 				return err
 			}
 		}
 	}
 
-	cleanupTimeout := &metav1.Duration{Duration: componentCleanupTimeout}
+	cleanupTimeout := time.Duration(0)
 	deployConfig := c.getDeployConfiguration(queue)
 	if deployConfig != nil {
-		cleanupTimeout = &deployConfig.ComponentCleanupTimeout
+		cleanupTimeout = deployConfig.ComponentCleanupTimeout.Duration
 	}
 
-	startedCleaningTime := queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningAfterStarted)
-	isCleaned, err := WaitForComponentsCleaned(c.client, deployEngine, c.configMgr.GetParentComponents(),
-		c.teamName, c.namespace, startedCleaningTime, cleanupTimeout)
+	isCleaned, err := WaitForComponentsCleaned(
+		c.client,
+		deployEngine,
+		c.configMgr.GetParentComponents(),
+		c.teamName,
+		c.namespace,
+		queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningAfterStarted),
+		cleanupTimeout)
 	if err != nil {
 		return err
 	} else if !isCleaned {
@@ -447,35 +457,46 @@ func WaitForComponentsCleaned(
 	parentComps map[string]*internal.Component,
 	teamName string,
 	namespace string,
-	startedCleanupTime *metav1.Time,
-	timeout *metav1.Duration,
+	startCleaningTime *metav1.Time,
+	cleanupTimeout time.Duration,
 ) (bool, error) {
 	if deployEngine.IsMocked() {
 		return true, nil
 	}
 
-	for _, comp := range parentComps {
-		selectors := deployEngine.GetLabelSelectors(genReleaseName(teamName, namespace, comp.Name))
-		listOpt := &client.ListOptions{Namespace: namespace, LabelSelector: labels.SelectorFromSet(selectors)}
+	forceClean := false
+	if IsCleanupTimeout(startCleaningTime, cleanupTimeout) {
+		forceClean = true
+	}
 
-		if startedCleanupTime == nil || timeout.Duration == 0 {
-			timeout = &metav1.Duration{Duration: componentCleanupTimeout}
-		}
-		if isTimeout := isCleanupTimeout(startedCleanupTime, timeout); isTimeout {
-			forceCleanupResources(c, namespace, selectors)
+	for compName := range parentComps {
+		refName := internal.GenReleaseName(teamName, namespace, compName)
+		selectors := deployEngine.GetLabelSelectors(refName)
+		listOpt := &client.ListOptions{Namespace: namespace, LabelSelector: labels.SelectorFromSet(selectors)}
+		log := logger.WithValues(
+			"refName", refName,
+			"namespace", namespace,
+			"component", compName,
+			"selectors", selectors)
+
+		if forceClean {
+			if err := deployEngine.ForceDelete(refName); err != nil {
+				log.Warnf("error while force delete: %v", err)
+			}
 		}
 
 		// check pods
 		pods := &corev1.PodList{}
 		err := c.List(context.TODO(), pods, listOpt)
 		if err != nil {
-			logger.Error(err, "list pods error",
-				"namespace", namespace, "selector", labels.SelectorFromSet(selectors).String())
-
+			log.Error(err, "list pods error")
 			return false, err
 		}
 
 		if len(pods.Items) > 0 {
+			if forceClean {
+				return false, forceCleanupPod(log, c, namespace, selectors)
+			}
 			return false, nil
 		}
 
@@ -483,12 +504,14 @@ func WaitForComponentsCleaned(
 		services := &corev1.ServiceList{}
 		err = c.List(context.TODO(), services, listOpt)
 		if err != nil {
-			logger.Error(err, "list services error",
-				"namespace", namespace, "selector", labels.SelectorFromSet(selectors).String())
+			logger.Error(err, "list services error")
 			return false, err
 		}
 
 		if len(services.Items) > 0 {
+			if forceClean {
+				return false, forceCleanupService(log, c, namespace, selectors)
+			}
 			return false, nil
 		}
 
@@ -496,21 +519,19 @@ func WaitForComponentsCleaned(
 		pvcs := &corev1.PersistentVolumeClaimList{}
 		err = c.List(context.TODO(), pvcs, listOpt)
 		if err != nil {
-			logger.Error(err, "list pvcs error",
-				"namespace", namespace, "selector", labels.SelectorFromSet(selectors).String())
+			log.Error(err, "list pvcs error")
 			return false, err
 		}
 
 		if len(pvcs.Items) > 0 {
-			logger.Debug("pvc found, deleting")
+			log.Debug("pvc found, deleting")
 			err = c.DeleteAllOf(context.TODO(), &corev1.PersistentVolumeClaim{},
 				client.InNamespace(namespace),
 				client.MatchingLabels(selectors),
 				client.PropagationPolicy(metav1.DeletePropagationBackground),
 			)
 			if err != nil {
-				logger.Warn(fmt.Sprintf("delete all pvc error: %+v", err),
-					"namespace", namespace, "selector", labels.SelectorFromSet(selectors).String())
+				log.Warnf("delete all pvc error: %+v", err)
 			}
 			return false, nil
 		}
@@ -519,38 +540,86 @@ func WaitForComponentsCleaned(
 	return true, nil
 }
 
-func isCleanupTimeout(startedTime *metav1.Time, timeout *metav1.Duration) bool {
+func IsCleanupTimeout(start *metav1.Time, timeout time.Duration) bool {
 	// if started time or timeout values are nil, no timeout
-	if startedTime == nil || timeout == nil {
+	if start == nil {
 		return false
 	}
 
+	if timeout == 0 {
+		timeout = DefaultCleanupTimeout
+	}
+
 	now := metav1.Now()
-	return now.Sub(startedTime.Time) > timeout.Duration
+	return now.Sub(start.Time) > timeout
 }
 
-func forceCleanupResources(c client.Client, namespace string, selectors map[string]string) {
-	logger.Debug("force cleaning up all pods", "namespace", namespace)
+func forceCleanupPod(log s2hlog.Logger, c client.Client, namespace string, selectors map[string]string) error {
+	ctx := context.Background()
+	var err error
 
-	// force delete pods and all jobs
-	err := c.DeleteAllOf(context.TODO(), &corev1.Pod{},
+	log.Warn("force delete deployment")
+	err = c.DeleteAllOf(ctx,
+		&appsv1.Deployment{},
+		client.InNamespace(namespace),
+		client.MatchingLabels(selectors),
+		client.PropagationPolicy(metav1.DeletePropagationBackground),
+	)
+	if err != nil {
+		log.Warnf("delete deployment error: %v", err)
+	}
+
+	log.Warn("force delete statefulset")
+	err = c.DeleteAllOf(ctx,
+		&appsv1.StatefulSet{},
+		client.InNamespace(namespace),
+		client.MatchingLabels(selectors),
+		client.PropagationPolicy(metav1.DeletePropagationBackground),
+	)
+	if err != nil {
+		log.Warnf("delete statefulset error: %v", err)
+	}
+
+	log.Warn("force delete daemonset")
+	err = c.DeleteAllOf(ctx,
+		&appsv1.DaemonSet{},
+		client.InNamespace(namespace),
+		client.MatchingLabels(selectors),
+		client.PropagationPolicy(metav1.DeletePropagationBackground),
+	)
+	if err != nil {
+		log.Warnf("delete daemonset error: %v", err)
+	}
+
+	log.Warn("force delete pod")
+	err = c.DeleteAllOf(ctx,
+		&corev1.Pod{},
 		client.InNamespace(namespace),
 		client.MatchingLabels(selectors),
 		client.GracePeriodSeconds(0),
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
 	)
 	if err != nil {
-		logger.Error(err, "cannot delete pods", "namespace", namespace)
+		log.Warnf("delete pod error: %v", err)
 	}
 
-	// to cleanup all jobs
-	logger.Debug("force cleaning up all jobs", "namespace", namespace)
+	return s2herrors.ErrForceDeletingComponents
+}
 
-	err = c.DeleteAllOf(context.TODO(), &v1.Job{},
+func forceCleanupService(log s2hlog.Logger, c client.Client, namespace string, selectors map[string]string) error {
+	ctx := context.Background()
+	var err error
+
+	log.Warn("force delete service")
+	err = c.DeleteAllOf(ctx,
+		&corev1.Service{},
 		client.InNamespace(namespace),
 		client.MatchingLabels(selectors),
+		client.PropagationPolicy(metav1.DeletePropagationBackground),
 	)
 	if err != nil {
-		logger.Error(err, "cannot delete jobs", "namespace", namespace)
+		log.Warnf("delete service error: %v", err)
 	}
+
+	return s2herrors.ErrForceDeletingComponents
 }

@@ -28,7 +28,7 @@ var logger = s2hlog.Log.WithName(EngineName)
 const (
 	EngineName              = "helm3"
 	HelmDriver              = "secrets"
-	DefaultUninstallTimeout = 60 * time.Second
+	DefaultUninstallTimeout = 300 * time.Second
 )
 
 type engine struct {
@@ -132,23 +132,40 @@ func (e *engine) Delete(refName string) error {
 	if refName == "" {
 		return nil
 	}
-
 	if err := e.helmInit(); err != nil {
 		return err
 	}
 
-	cliUninstall := action.NewUninstall(e.actionSettings)
-	cliUninstall.Timeout = DefaultUninstallTimeout
-	cliUninstall.DisableVerify = true
-
 	logger.Debug("deleting release", "releaseName", refName)
-	_, err := cliUninstall.Run(refName)
+	if err := e.helmUninstall(refName, false); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *engine) ForceDelete(refName string) error {
+	// delete release
+	if err := e.helmUninstall(refName, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *engine) helmUninstall(refName string, disableHooks bool) error {
+	log := logger.WithValues("refName", refName)
+	client := action.NewUninstall(e.actionSettings)
+	client.Timeout = DefaultUninstallTimeout
+	client.DisableVerify = true
+	client.DisableHooks = disableHooks
+
+	log.Debug("deleting release")
+	_, err := client.Run(refName)
 	if err != nil {
 		switch {
 		case errors.Is(errors.Cause(err), driver.ErrReleaseNotFound):
 			return nil
 		}
-		logger.Error(err, "helm uninstall failed", "releaseName", refName)
+		log.Error(err, "helm uninstall failed")
 		return errors.Wrap(err, "error while deleting helm release")
 	}
 
@@ -304,6 +321,7 @@ func (e *engine) helmList() ([]*release.Release, error) {
 	return releases, nil
 }
 
+// DeleteAllReleases deletes all releases in the namespace
 func DeleteAllReleases(ns string, debug bool) error {
 	e := New(ns, debug).(*engine)
 

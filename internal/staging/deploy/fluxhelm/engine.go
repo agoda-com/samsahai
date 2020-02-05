@@ -99,6 +99,15 @@ func (e *engine) Delete(refName string) error {
 	return nil
 }
 
+func (e *engine) ForceDelete(refName string) error {
+	// delete release
+	if err := e.Delete(refName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (e *engine) IsReady(queue *v1beta1.Queue) (bool, error) {
 	// check helm release exist
 	hr, err := e.hrClient.Get(queue.Status.ReleaseName, metav1.GetOptions{})

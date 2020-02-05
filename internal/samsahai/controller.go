@@ -259,6 +259,7 @@ func (c *controller) loadPlugins(dir string) {
 	for _, file := range files {
 		p, err := plugin.New(file)
 		if err != nil {
+			logger.Warnf("cannot load plugin: %v", err)
 			continue
 		}
 		if _, ok := c.plugins[p.GetName()]; ok {

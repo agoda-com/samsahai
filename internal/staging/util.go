@@ -129,22 +129,29 @@ func (c *controller) deleteQueue(q *s2hv1beta1.Queue) error {
 func (c *controller) updateQueueWithState(q *s2hv1beta1.Queue, state s2hv1beta1.QueueState) error {
 	q.SetState(state)
 	logger.Debug(fmt.Sprintf("queue %s/%s update to state: %s", q.GetNamespace(), q.GetName(), q.Status.State))
-	comp := &rpc.ComponentUpgrade{
-		Name:      q.Spec.Name,
-		Namespace: q.Namespace,
-	}
-	if c.s2hClient != nil {
+
+	if c.s2hClient != nil && !q.IsActivePromotionQueue() {
+		comp := &rpc.ComponentUpgrade{
+			Status:               rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+			Name:                 q.Spec.Name,
+			TeamName:             c.teamName,
+			Image:                &rpc.Image{Repository: q.Spec.Repository, Tag: q.Spec.Version},
+			IssueType:            rpc.ComponentUpgrade_IssueType_UNKNOWN,
+			QueueHistoryName:     q.Status.QueueHistoryName,
+			Namespace:            q.Namespace,
+			ImageMissingList:     nil,
+			Runs:                 int32(q.Spec.NoOfRetry + 1),
+			IsReverify:           q.IsReverify(),
+			ReverificationStatus: rpc.ComponentUpgrade_ReverificationStatus_UNKNOWN,
+		}
 		if _, err := c.s2hClient.SendUpdateStateQueueMetric(context.TODO(), comp); err != nil {
-			logger.Error(err, "cannot send updateQueueWithState queue metric")
+			logger.Error(err, "cannot send updateQueueWithState queue metric", "comp", comp)
 		}
 	}
+
 	return c.updateQueue(q)
 }
 
 func (c *controller) genReleaseName(comp *internal.Component) string {
-	return genReleaseName(c.teamName, c.namespace, comp.Name)
-}
-
-func genReleaseName(teamName, namespace, compName string) string {
-	return teamName + "-" + namespace + "-" + compName
+	return internal.GenReleaseName(c.teamName, c.namespace, comp.Name)
 }

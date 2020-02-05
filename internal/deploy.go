@@ -14,6 +14,9 @@ type DeployEngine interface {
 	// Delete deletes environment
 	Delete(refName string) error
 
+	// ForceDelete deletes environment when timeout
+	ForceDelete(refName string) error
+
 	// IsReady checks the environment is ready to use or not
 	IsReady(queue *v1beta1.Queue) (bool, error)
 
@@ -24,4 +27,18 @@ type DeployEngine interface {
 	//
 	// Skipped function: WaitForComponentsCleaned
 	IsMocked() bool
+}
+
+const (
+	MaxReleaseNameLength = 200
+)
+
+// GenReleaseName returns the release name for deploying components
+func GenReleaseName(teamName, namespace, compName string) string {
+	refName := teamName + "-" + namespace + "-" + compName
+	if len(refName) > MaxReleaseNameLength {
+		// component name is more important than team name
+		return refName[len(refName)-MaxReleaseNameLength:]
+	}
+	return refName
 }

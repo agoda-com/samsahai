@@ -2,6 +2,7 @@ package activepromotion
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -98,7 +99,7 @@ func (c *controller) destroyActiveEnvironment(ctx context.Context, atpComp *s2hv
 }
 
 func (c *controller) ensureDestroyEnvironment(ctx context.Context, envType envType, teamName, ns string, startedCleanupTime *metav1.Time) error {
-	if err := c.deleteAllHelmReleasesInNamespace(teamName, ns, startedCleanupTime); err != nil {
+	if err := c.deleteAllComponentsInNamespace(teamName, ns, startedCleanupTime); err != nil {
 		if s2herrors.IsDeletingReleases(err) || s2herrors.IsLoadingConfiguration(err) {
 			return s2herrors.ErrEnsureNamespaceDestroyed
 		}
@@ -156,18 +157,30 @@ func (c *controller) ensureNamespaceDestroyed(ctx context.Context, teamName, ns 
 	return s2herrors.ErrEnsureNamespaceDestroyed
 }
 
-func (c *controller) deleteAllHelmReleasesInNamespace(teamName, ns string, startedCleanupTime *metav1.Time) error {
-	hrClient := helmrelease.New(ns, c.client)
-	_, err := hrClient.List(metav1.ListOptions{})
+func (c *controller) deleteAllComponentsInNamespace(teamName, ns string, startedCleanupTime *metav1.Time) error {
+	configMgr, err := c.getTeamConfiguration(teamName)
 	if err != nil {
-		return errors.Wrapf(err, "cannot list helmreleases in namespace %s", ns)
+		return err
+	}
+	deployEngine := c.getDeployEngine(configMgr, ns)
+
+	for compName := range configMgr.GetParentComponents() {
+		refName := internal.GenReleaseName(teamName, ns, compName)
+		if err := deployEngine.Delete(refName); err != nil {
+			return err
+		}
 	}
 
-	if err := hrClient.DeleteCollection(nil, metav1.ListOptions{}); err != nil {
-		return errors.Wrapf(err, "cannot delete helmreleases in namespace %s", ns)
-	}
+	cleanupTimeout := c.getComponentCleanupTimeout(configMgr)
 
-	ok, err := c.waitForComponentsCleaned(teamName, ns, startedCleanupTime)
+	ok, err := staging.WaitForComponentsCleaned(
+		c.client,
+		deployEngine,
+		configMgr.GetParentComponents(),
+		teamName,
+		ns,
+		startedCleanupTime,
+		cleanupTimeout.Duration)
 	if err != nil {
 		return err
 	}
@@ -179,24 +192,12 @@ func (c *controller) deleteAllHelmReleasesInNamespace(teamName, ns string, start
 	return nil
 }
 
-func (c *controller) waitForComponentsCleaned(teamName, ns string, startedCleanupTime *metav1.Time) (bool, error) {
-	configMgr, err := c.getTeamConfiguration(teamName)
-	if err != nil {
-		return false, err
-	}
-
-	deployEngine := c.getDeployEngine(configMgr, ns)
-
-	return staging.WaitForComponentsCleaned(c.client, deployEngine, configMgr.GetParentComponents(),
-		teamName, ns, startedCleanupTime, c.getComponentCleanupTimeout(configMgr))
-}
-
 func (c *controller) getComponentCleanupTimeout(configMgr internal.ConfigManager) *metav1.Duration {
 	cfg := configMgr.Get()
 	atpConfig := cfg.ActivePromotion
 
 	if atpConfig == nil || atpConfig.Deployment == nil {
-		return &metav1.Duration{Duration: 0}
+		return &metav1.Duration{Duration: 15 * time.Minute}
 	}
 
 	return &atpConfig.Deployment.ComponentCleanupTimeout

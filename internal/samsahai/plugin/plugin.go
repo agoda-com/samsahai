@@ -103,6 +103,10 @@ func (p *plugin) EnsureVersion(repository, name, version string) error {
 }
 
 func (p *plugin) GetComponentName(name string) string {
+	if name == "" {
+		return ""
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), p.getVersionTimeout)
 	defer cancel()
 

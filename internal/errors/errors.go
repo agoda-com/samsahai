@@ -36,6 +36,7 @@ const (
 	ErrLoadConfiguration              = Error("cannot load configuration")
 	ErrLoadingConfiguration           = Error("configuration has been being loaded")
 	ErrDeletingReleases               = Error("deleting releases")
+	ErrForceDeletingComponents        = Error("force deleting components")
 	ErrRollingBackActivePromotion     = Error("rolling back active promotion process")
 
 	ErrGitCloneTimeout = Error("git clone timeout")

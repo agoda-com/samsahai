@@ -155,7 +155,7 @@ func (l *DelegatingLogger) WithName(name string) Logger {
 
 // WithValues implements logr.Logger
 func (l *DelegatingLogger) WithValues(tags ...interface{}) Logger {
-	ln := l.logger.WithValues(tags)
+	ln := l.logger.WithValues(tags...)
 	delegatingLn, ok := ln.(*log.DelegatingLogger)
 	if !ok {
 		delegatingLn = log.NewDelegatingLogger(log.NullLogger{})
