@@ -10,6 +10,7 @@ import (
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
+	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 func (c *controller) getDeployConfiguration(queue *s2hv1beta1.Queue) *internal.ConfigDeploy {
@@ -128,6 +129,15 @@ func (c *controller) deleteQueue(q *s2hv1beta1.Queue) error {
 func (c *controller) updateQueueWithState(q *s2hv1beta1.Queue, state s2hv1beta1.QueueState) error {
 	q.SetState(state)
 	logger.Debug(fmt.Sprintf("queue %s/%s update to state: %s", q.GetNamespace(), q.GetName(), q.Status.State))
+	comp := &rpc.ComponentUpgrade{
+		Name:      q.Spec.Name,
+		Namespace: q.Namespace,
+	}
+	if c.s2hClient != nil {
+		if _, err := c.s2hClient.SendUpdateStateQueueMetric(context.TODO(), comp); err != nil {
+			logger.Error(err, "cannot send updateQueueWithState queue metric")
+		}
+	}
 	return c.updateQueue(q)
 }
 

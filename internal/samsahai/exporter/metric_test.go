@@ -94,434 +94,99 @@ var _ = Describe("Samsahai Exporter", func() {
 		mgr, err := manager.New(cfg, manager.Options{Namespace: namespace, MetricsBindAddress: ":8008"})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
-		tOld := map[string]internal.ConfigManager{
-			"testOldTeamName": configMgr,
+		t := map[string]internal.ConfigManager{
+			"testQTeamName1": configMgr,
 		}
-
-		qOld := &s2hv1beta1.QueueList{
-			Items: []s2hv1beta1.Queue{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "qNameOld",
-						Namespace: namespace,
-					},
+		q := &s2hv1beta1.Queue{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "qName1",
+				Namespace: namespace,
+			},
+			Spec: s2hv1beta1.QueueSpec{
+				TeamName:  "testQTeamName1",
+				Version:   "10.9.8.7",
+				NoOfOrder: 0,
+			},
+			Status: s2hv1beta1.QueueStatus{
+				NoOfProcessed: 1,
+				State:         "waiting",
+			},
+		}
+		qh := &s2hv1beta1.QueueHistory{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "testQHname1",
+				Namespace: namespace,
+			},
+			Spec: s2hv1beta1.QueueHistorySpec{
+				Queue: &s2hv1beta1.Queue{
 					Spec: s2hv1beta1.QueueSpec{
-						TeamName:  "testQTeamNameOld",
-						Version:   "10.9.8.7-Old",
-						NoOfOrder: 0,
+						TeamName: "testQHTeamName1",
+						Version:  "1.2.3.4",
 					},
 					Status: s2hv1beta1.QueueStatus{
-						NoOfProcessed: 1,
-						State:         "waiting",
+						UpdatedAt:     &updatedDate,
+						NoOfProcessed: 9,
 					},
 				},
+				IsDeploySuccess: true,
+				IsTestSuccess:   true,
 			},
 		}
-
-		qhOld := &s2hv1beta1.QueueHistoryList{
-			Items: []s2hv1beta1.QueueHistory{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testQHnameOld",
-						Namespace: namespace,
-					},
-					Spec: s2hv1beta1.QueueHistorySpec{
-						Queue: &s2hv1beta1.Queue{
-							Spec: s2hv1beta1.QueueSpec{
-								TeamName: "testQHTeamNameOld",
-								Version:  "1.2.3.4-Old",
-							},
-							Status: s2hv1beta1.QueueStatus{
-								UpdatedAt:     &updatedDate,
-								NoOfProcessed: 9,
-							},
-						},
-						IsDeploySuccess: true,
-						IsTestSuccess:   true,
-					},
-				},
-			},
-		}
-
-		apOld := &s2hv1beta1.ActivePromotionList{
-			Items: []s2hv1beta1.ActivePromotion{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testAPNameOld",
-						Namespace: namespace,
-					},
-					Status: s2hv1beta1.ActivePromotionStatus{
-						State: s2hv1beta1.ActivePromotionFinished,
-					},
-				},
-			},
-		}
-
-		aphOld := &s2hv1beta1.ActivePromotionHistoryList{
-			Items: []s2hv1beta1.ActivePromotionHistory{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testAPHNameOld",
-						Namespace: namespace,
-						Labels: map[string]string{
-							"samsahai.io/teamname": "testAPHTeamnameOld",
-						},
-					},
-					Spec: s2hv1beta1.ActivePromotionHistorySpec{
-						ActivePromotion: &s2hv1beta1.ActivePromotion{
-							Status: s2hv1beta1.ActivePromotionStatus{
-								State:     s2hv1beta1.ActivePromotionDestroyingPreActive,
-								StartedAt: startDate(2019, 12, 10, 2, 22, 02),
-								PreActiveQueue: s2hv1beta1.QueueStatus{
-									Conditions: []s2hv1beta1.QueueCondition{
-										{
-											Type:               "QueueDeployed",
-											LastTransitionTime: date(2019, 12, 10, 3, 3, 36),
-										},
-									},
-								},
-								Conditions: []s2hv1beta1.ActivePromotionCondition{
-									{
-										Type:               "ActivePromotionStarted",
-										LastTransitionTime: date(2019, 12, 10, 2, 22, 02),
-									},
-									{
-										Type:               "PreActiveVerified",
-										LastTransitionTime: date(2019, 12, 10, 3, 38, 21),
-									},
-									{
-										Type:               "ActivePromoted",
-										LastTransitionTime: date(2019, 12, 10, 3, 39, 01),
-									},
-									{
-										Type:               "Finished",
-										LastTransitionTime: date(2019, 12, 10, 4, 11, 13),
-									},
-								},
-								Result: s2hv1beta1.ActivePromotionSuccess,
-							},
-						},
-					},
-				},
-			},
-		}
-
-		ocOld := &s2hv1beta1.ActivePromotion{
+		ap := &s2hv1beta1.ActivePromotion{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "testOCTeamNameOld",
+				Name:      "testAPName1",
+				Namespace: namespace,
 			},
 			Status: s2hv1beta1.ActivePromotionStatus{
-				OutdatedComponents: []*s2hv1beta1.OutdatedComponent{
-					{
-						Name: "testOCNameOld",
-						CurrentImage: &s2hv1beta1.Image{
-							Tag: "2019.12.07.00-Old",
-						},
-						LatestImage: &s2hv1beta1.Image{
-							Tag: "2019.12.10.00-Old",
-						},
-						OutdatedDuration: 99540000000000,
-					},
-				},
+				State: s2hv1beta1.ActivePromotionWaiting,
 			},
 		}
-
-		SetTeamNameMetric(tOld)
-		SetQueueMetric(qOld, tOld)
-		SetQueueHistoriesMetric(qhOld, SamsahaiURL)
-		SetActivePromotionMetric(apOld)
-		SetActivePromotionHistoriesMetric(aphOld)
-		SetOutdatedComponentMetric(ocOld)
-		SetHealthStatusMetric("9.9.9.8", "777888999", 234000)
-
-		wgStop = &sync.WaitGroup{}
-		wgStop.Add(1)
-		go func() {
-			defer wgStop.Done()
-			Expect(mgr.Start(chStop)).To(BeNil())
-		}()
-	}, timeout)
-
-	AfterEach(func(done Done) {
-		defer close(done)
-		close(chStop)
-		wgStop.Wait()
-	}, timeout)
-
-	It("Should show team name correctly ", func() {
-		data, err := http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_team{teamName="testOldTeamName"} 1`)
-		g.Expect(expectedData).To(BeTrue())
-
-		t := map[string]internal.ConfigManager{
-			"testQTeamName1": configMgr,
-		}
-		SetTeamNameMetric(t)
-		data, err = http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData = strings.Contains(string(data), `samsahai_team{teamName="testQTeamName1"} 1`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_team{teamName="testOldTeamName"} 1`)
-		g.Expect(expectedData).To(BeFalse())
-	}, timeout)
-
-	It("Should show queue metric correctly  ", func(done Done) {
-		defer close(done)
-		data, err := http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_queue{component="qNameOld",no_of_processed="1",order="0",state="waiting",teamName="testQTeamNameOld",version="10.9.8.7-Old"} 1`)
-		g.Expect(expectedData).To(BeTrue())
-
-		t := map[string]internal.ConfigManager{
-			"testQTeamName1": configMgr,
-		}
-		q := &s2hv1beta1.QueueList{
-			Items: []s2hv1beta1.Queue{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "qName1",
-						Namespace: namespace,
-					},
-					Spec: s2hv1beta1.QueueSpec{
-						TeamName:  "testQTeamName1",
-						Version:   "10.9.8.7",
-						NoOfOrder: 0,
-					},
-					Status: s2hv1beta1.QueueStatus{
-						NoOfProcessed: 1,
-						State:         "waiting",
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "qName2",
-						Namespace: namespace,
-					},
-					Spec: s2hv1beta1.QueueSpec{
-						TeamName:  "testQTeamName2",
-						Version:   "7.8.9.10",
-						NoOfOrder: 0,
-					},
-					Status: s2hv1beta1.QueueStatus{
-						NoOfProcessed: 1,
-						State:         "waiting",
-					},
-				},
+		aph := &s2hv1beta1.ActivePromotionHistory{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "testAPHName1",
+				Namespace: namespace,
 			},
-		}
-		SetQueueMetric(q, t)
-		data, err = http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData = strings.Contains(string(data), `samsahai_queue{component="qName1",no_of_processed="1",order="0",state="waiting",teamName="testQTeamName1",version="10.9.8.7"} 1`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_queue{component="qName2",no_of_processed="1",order="0",state="waiting",teamName="testQTeamName2",version="7.8.9.10"} 1`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_queue{component="",`)
-		g.Expect(expectedData).To(BeFalse())
-		expectedData = strings.Contains(string(data), `samsahai_queue{component="qNameOld",no_of_processed="1",order="0",state="waiting",teamName="testQTeamNameOld",version="10.9.8.7-Old"} 1`)
-		g.Expect(expectedData).To(BeFalse())
-	}, timeout)
-
-	It("Should show queue histories metric correctly ", func(done Done) {
-		defer close(done)
-		data, err := http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_queue_histories{component="testQHnameOld",date="2020-01-01T01:01:01Z",log="aaa/teams/testQHTeamNameOld/queue/histories/testQHnameOld/log",result="success",teamName="testQHTeamNameOld",version="1.2.3.4-Old"} 9`)
-		g.Expect(expectedData).To(BeTrue())
-		qh := &s2hv1beta1.QueueHistoryList{
-			Items: []s2hv1beta1.QueueHistory{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testQHname1",
-						Namespace: namespace,
-					},
-					Spec: s2hv1beta1.QueueHistorySpec{
-						Queue: &s2hv1beta1.Queue{
-							Spec: s2hv1beta1.QueueSpec{
-								TeamName: "testQHTeamName1",
-								Version:  "1.2.3.4",
-							},
-							Status: s2hv1beta1.QueueStatus{
-								UpdatedAt:     &updatedDate,
-								NoOfProcessed: 9,
-							},
-						},
-						IsDeploySuccess: true,
-						IsTestSuccess:   true,
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testQHname2",
-						Namespace: namespace,
-					},
-					Spec: s2hv1beta1.QueueHistorySpec{
-						Queue: &s2hv1beta1.Queue{
-							Spec: s2hv1beta1.QueueSpec{
-								TeamName: "testQHTeamName2",
-								Version:  "4.3.2.1",
-							},
-							Status: s2hv1beta1.QueueStatus{
-								UpdatedAt:     &updatedDate,
-								NoOfProcessed: 9,
-							},
-						},
-						IsDeploySuccess: true,
-						IsTestSuccess:   true,
-					},
-				},
-			},
-		}
-		SetQueueHistoriesMetric(qh, SamsahaiURL)
-		data, err = http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHname1",date="2020-01-01T01:01:01Z",log="aaa/teams/testQHTeamName1/queue/histories/testQHname1/log",result="success",teamName="testQHTeamName1",version="1.2.3.4"} 9`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHname2",date="2020-01-01T01:01:01Z",log="aaa/teams/testQHTeamName2/queue/histories/testQHname2/log",result="success",teamName="testQHTeamName2",version="4.3.2.1"} 9`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="",`)
-		g.Expect(expectedData).To(BeFalse())
-		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="testQHnameOld",date="2020-01-01T01:01:01Z",log="aaa/teams/testQHTeamNameOld/queue/histories/testQHnameOld/log",result="success",teamName="testQHTeamNameOld",version="1.2.3.4-Old"} 9`)
-		g.Expect(expectedData).To(BeFalse())
-	}, timeout)
-
-	It("Should show active promotion correctly", func(done Done) {
-		defer close(done)
-		data, err := http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_active_promotion{state="destroying",teamName="testAPNameOld"} 1`)
-		g.Expect(expectedData).To(BeTrue())
-
-		ap := &s2hv1beta1.ActivePromotionList{
-			Items: []s2hv1beta1.ActivePromotion{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testAPName1",
-						Namespace: namespace,
-					},
+			Spec: s2hv1beta1.ActivePromotionHistorySpec{
+				TeamName: "testAPHTeamname1",
+				ActivePromotion: &s2hv1beta1.ActivePromotion{
 					Status: s2hv1beta1.ActivePromotionStatus{
-						State: s2hv1beta1.ActivePromotionWaiting,
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testAPName2",
-						Namespace: namespace,
-					},
-					Status: s2hv1beta1.ActivePromotionStatus{
-						State: s2hv1beta1.ActivePromotionFinished,
-					},
-				},
-			},
-		}
-		SetActivePromotionMetric(ap)
-		data, err = http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion{state="destroying",teamName="testAPName2"} 1`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion{state="waiting",teamName="testAPName1"} 1`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion{state="destroying",teamName="testAPNameOld"} 1`)
-		g.Expect(expectedData).To(BeFalse())
-	}, timeout)
-
-	It("Should show active promotion histories correctly", func(done Done) {
-		defer close(done)
-		data, err := http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHNameOld",result="Success",startTime="2019-12-10T02:22:02Z",state="deploying",teamName="testAPHTeamnameOld"} 2494`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHNameOld",result="Success",startTime="2019-12-10T02:22:02Z",state="destroying",teamName="testAPHTeamnameOld"} 1932`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHNameOld",result="Success",startTime="2019-12-10T02:22:02Z",state="promoting",teamName="testAPHTeamnameOld"} 40`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHNameOld",result="Success",startTime="2019-12-10T02:22:02Z",state="testing",teamName="testAPHTeamnameOld"} 2085`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHNameOld",result="Success",startTime="2019-12-10T02:22:02Z",state="waiting",teamName="testAPHTeamnameOld"} 0`)
-		g.Expect(expectedData).To(BeTrue())
-
-		aph := &s2hv1beta1.ActivePromotionHistoryList{
-			Items: []s2hv1beta1.ActivePromotionHistory{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testAPHName1",
-						Namespace: namespace,
-						Labels: map[string]string{
-							"samsahai.io/teamname": "testAPHTeamname1",
-						},
-					},
-					Spec: s2hv1beta1.ActivePromotionHistorySpec{
-						ActivePromotion: &s2hv1beta1.ActivePromotion{
-							Status: s2hv1beta1.ActivePromotionStatus{
-								State:     s2hv1beta1.ActivePromotionDestroyingPreActive,
-								StartedAt: startDate(2019, 12, 10, 2, 22, 02),
-								PreActiveQueue: s2hv1beta1.QueueStatus{
-									Conditions: []s2hv1beta1.QueueCondition{
-										{
-											Type:               "QueueDeployed",
-											LastTransitionTime: date(2019, 12, 10, 3, 3, 36),
-										},
-									},
+						State:     s2hv1beta1.ActivePromotionDestroyingPreActive,
+						StartedAt: startDate(2019, 12, 10, 2, 22, 02),
+						PreActiveQueue: s2hv1beta1.QueueStatus{
+							Conditions: []s2hv1beta1.QueueCondition{
+								{
+									Type:               "QueueDeployed",
+									LastTransitionTime: date(2019, 12, 10, 3, 3, 36),
 								},
-								Conditions: []s2hv1beta1.ActivePromotionCondition{
-									{
-										Type:               "ActivePromotionStarted",
-										LastTransitionTime: date(2019, 12, 10, 2, 22, 02),
-									},
-									{
-										Type:               "PreActiveVerified",
-										LastTransitionTime: date(2019, 12, 10, 3, 38, 21),
-									},
-									{
-										Type:               "ActivePromoted",
-										LastTransitionTime: date(2019, 12, 10, 3, 39, 01),
-									},
-									{
-										Type:               "Finished",
-										LastTransitionTime: date(2019, 12, 10, 4, 11, 13),
-									},
-								},
-								Result: s2hv1beta1.ActivePromotionSuccess,
 							},
 						},
+						Conditions: []s2hv1beta1.ActivePromotionCondition{
+							{
+								Type:               "ActivePromotionStarted",
+								LastTransitionTime: date(2019, 12, 10, 2, 22, 02),
+								Message:            "reason message",
+							},
+							{
+								Type:               "PreActiveVerified",
+								LastTransitionTime: date(2019, 12, 10, 3, 38, 21),
+								Message:            "reason message",
+							},
+							{
+								Type:               "ActivePromoted",
+								LastTransitionTime: date(2019, 12, 10, 3, 39, 01),
+								Message:            "reason message",
+							},
+							{
+								Type:               "Finished",
+								LastTransitionTime: date(2019, 12, 10, 4, 11, 13),
+								Message:            "reason message",
+							},
+						},
+						Result: s2hv1beta1.ActivePromotionSuccess,
 					},
 				},
 			},
 		}
-		SetActivePromotionHistoriesMetric(aph)
-		data, err = http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHName1",result="Success",startTime="2019-12-10T02:22:02Z",state="deploying",teamName="testAPHTeamname1"} 2494`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHName1",result="Success",startTime="2019-12-10T02:22:02Z",state="destroying",teamName="testAPHTeamname1"} 1932`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHName1",result="Success",startTime="2019-12-10T02:22:02Z",state="promoting",teamName="testAPHTeamname1"} 40`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHName1",result="Success",startTime="2019-12-10T02:22:02Z",state="testing",teamName="testAPHTeamname1"} 2085`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHName1",result="Success",startTime="2019-12-10T02:22:02Z",state="waiting",teamName="testAPHTeamname1"} 0`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHNameOld",result="Success",startTime="2019-12-10T02:22:02Z",state="deploying",teamName="testAPHTeamnameOld"} 2494`)
-		g.Expect(expectedData).To(BeFalse())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHNameOld",result="Success",startTime="2019-12-10T02:22:02Z",state="destroying",teamName="testAPHTeamnameOld"} 1932`)
-		g.Expect(expectedData).To(BeFalse())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHNameOld",result="Success",startTime="2019-12-10T02:22:02Z",state="promoting",teamName="testAPHTeamnameOld"} 40`)
-		g.Expect(expectedData).To(BeFalse())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHNameOld",result="Success",startTime="2019-12-10T02:22:02Z",state="testing",teamName="testAPHTeamnameOld"} 2085`)
-		g.Expect(expectedData).To(BeFalse())
-		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{name="testAPHNameOld",result="Success",startTime="2019-12-10T02:22:02Z",state="waiting",teamName="testAPHTeamnameOld"} 0`)
-		g.Expect(expectedData).To(BeFalse())
-	}, timeout)
-
-	It("Should show outdated component correctly", func(done Done) {
-		defer close(done)
-		data, err := http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_outdated_component{component="testOCNameOld",currentVer="2019.12.07.00-Old",desiredVer="2019.12.10.00-Old",teamName="testOCTeamNameOld"} 1`)
-		g.Expect(expectedData).To(BeTrue())
-		OutdatedComponentMetric.Reset()
-
 		oc := &s2hv1beta1.ActivePromotion{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "testOCTeamName",
@@ -551,16 +216,86 @@ var _ = Describe("Samsahai Exporter", func() {
 				},
 			},
 		}
+		SetTeamNameMetric(t)
+		SetQueueMetric(q)
+		SetQueueHistoriesMetric(qh, SamsahaiURL)
+		SetActivePromotionMetric(ap)
+		SetActivePromotionHistoriesMetric(aph)
 		SetOutdatedComponentMetric(oc)
-		data, err = http.Get("http://localhost:8008/metrics")
-		g.Expect(err).NotTo(HaveOccurred())
-		expectedData = strings.Contains(string(data), `samsahai_outdated_component{component="testOCName1",currentVer="2019.12.07.00",desiredVer="2019.12.10.00",teamName="testOCTeamName"} 1`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_outdated_component{component="testOCName2",currentVer="2019.12.07.00",desiredVer="2019.12.10.00",teamName="testOCTeamName"} 1`)
-		g.Expect(expectedData).To(BeTrue())
-		expectedData = strings.Contains(string(data), `samsahai_outdated_component{component="testOCNameOld",currentVer="2019.12.07.00-Old",desiredVer="2019.12.10.00-Old",teamName="testOCTeamNameOld"} 1`)
-		g.Expect(expectedData).To(BeFalse())
+		SetHealthStatusMetric("9.9.9.8", "777888999", 234000)
 
+		wgStop = &sync.WaitGroup{}
+		wgStop.Add(1)
+		go func() {
+			defer wgStop.Done()
+			Expect(mgr.Start(chStop)).To(BeNil())
+		}()
+	}, timeout)
+
+	AfterEach(func(done Done) {
+		defer close(done)
+		close(chStop)
+		wgStop.Wait()
+	}, timeout)
+
+	It("Should show team name correctly ", func() {
+		data, err := http.Get("http://localhost:8008/metrics")
+		g.Expect(err).NotTo(HaveOccurred())
+		expectedData := strings.Contains(string(data), `samsahai_team{teamName="testQTeamName1"} 1`)
+		g.Expect(expectedData).To(BeTrue())
+	}, timeout)
+
+	It("Should show queue metric correctly  ", func(done Done) {
+		defer close(done)
+		data, err := http.Get("http://localhost:8008/metrics")
+		g.Expect(err).NotTo(HaveOccurred())
+		expectedData := strings.Contains(string(data), `samsahai_queue{component="qName1",no_of_processed="1",order="0",state="waiting",teamName="testQTeamName1",version="10.9.8.7"} 1`)
+		g.Expect(expectedData).To(BeTrue())
+		expectedData = strings.Contains(string(data), `samsahai_queue{component="",`)
+		g.Expect(expectedData).To(BeFalse())
+	}, timeout)
+
+	It("Should show queue histories metric correctly ", func(done Done) {
+		defer close(done)
+		data, err := http.Get("http://localhost:8008/metrics")
+		g.Expect(err).NotTo(HaveOccurred())
+		expectedData := strings.Contains(string(data), `samsahai_queue_histories{component="testQHname1",date="2020-01-01T01:01:01Z",log="aaa/teams/testQHTeamName1/queue/histories/testQHname1/log",result="success",teamName="testQHTeamName1",version="1.2.3.4"} 9`)
+		g.Expect(expectedData).To(BeTrue())
+		expectedData = strings.Contains(string(data), `samsahai_queue_histories{component="",`)
+		g.Expect(expectedData).To(BeFalse())
+	}, timeout)
+
+	It("Should show active promotion correctly", func(done Done) {
+		defer close(done)
+		data, err := http.Get("http://localhost:8008/metrics")
+		g.Expect(err).NotTo(HaveOccurred())
+		expectedData := strings.Contains(string(data), `samsahai_active_promotion{state="waiting",teamName="testAPName1"} 1`)
+		g.Expect(expectedData).To(BeTrue())
+
+	}, timeout)
+
+	It("Should show active promotion histories correctly", func(done Done) {
+		defer close(done)
+		data, err := http.Get("http://localhost:8008/metrics")
+		g.Expect(err).NotTo(HaveOccurred())
+		expectedData := strings.Contains(string(data), `samsahai_active_promotion_histories{failureReason="reason message",name="testAPHName1",result="Success",startTime="2019-12-10T02:22:02Z",state="deploying",teamName="testAPHTeamname1"} 2494`)
+		g.Expect(expectedData).To(BeTrue())
+		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{failureReason="reason message",name="testAPHName1",result="Success",startTime="2019-12-10T02:22:02Z",state="destroying",teamName="testAPHTeamname1"} 1932`)
+		g.Expect(expectedData).To(BeTrue())
+		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{failureReason="reason message",name="testAPHName1",result="Success",startTime="2019-12-10T02:22:02Z",state="promoting",teamName="testAPHTeamname1"} 40`)
+		g.Expect(expectedData).To(BeTrue())
+		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{failureReason="reason message",name="testAPHName1",result="Success",startTime="2019-12-10T02:22:02Z",state="testing",teamName="testAPHTeamname1"} 2085`)
+		g.Expect(expectedData).To(BeTrue())
+		expectedData = strings.Contains(string(data), `samsahai_active_promotion_histories{failureReason="reason message",name="testAPHName1",result="Success",startTime="2019-12-10T02:22:02Z",state="waiting",teamName="testAPHTeamname1"} 0`)
+		g.Expect(expectedData).To(BeTrue())
+	}, timeout)
+
+	It("Should show outdated component correctly", func(done Done) {
+		defer close(done)
+		data, err := http.Get("http://localhost:8008/metrics")
+		g.Expect(err).NotTo(HaveOccurred())
+		expectedData := strings.Contains(string(data), `samsahai_outdated_component{component="testOCName1",currentVer="2019.12.07.00",desiredVer="2019.12.10.00",teamName="testOCTeamName"} 1`)
+		g.Expect(expectedData).To(BeTrue())
 	}, timeout)
 
 	It("Should show health metric correctly", func(done Done) {
@@ -570,5 +305,4 @@ var _ = Describe("Samsahai Exporter", func() {
 		expectedData := strings.Contains(string(data), `samsahai_health{gitCommit="777888999",version="9.9.9.8"} 234000`)
 		g.Expect(expectedData).To(BeTrue())
 	}, timeout)
-
 })

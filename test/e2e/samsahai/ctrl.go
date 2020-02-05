@@ -236,7 +236,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get secret: %s/%s", samsahaiSystemNs, samsahaiSA.Secrets[0].Name))
 		restCfg.BearerToken = string(samsahaiSecret.Data["token"])
 
-		mgr, err = manager.New(restCfg, manager.Options{})
+		mgr, err = manager.New(restCfg, manager.Options{MetricsBindAddress: "0"})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
 		runtimeClient, err = crclient.New(restCfg, crclient.Options{Scheme: scheme.Scheme})

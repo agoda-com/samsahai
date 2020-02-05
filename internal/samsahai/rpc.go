@@ -149,19 +149,20 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 			return nil, err
 		}
 	}
-
 	// Add metric updateQueueMetric & histories
-	queueList := &s2hv1beta1.QueueList{}
-	if err := c.client.List(context.TODO(), queueList); err != nil {
-		logger.Error(err, "cannot list all queue")
+	queue := &s2hv1beta1.Queue{}
+	if err := c.client.Get(context.TODO(), types.NamespacedName{
+		Namespace: comp.GetNamespace(),
+		Name:      comp.GetName()}, queue); err != nil {
+		logger.Error(err, "cannot get the queue")
 	}
-	exporter.SetQueueMetric(queueList, c.teamConfigs)
+	exporter.SetQueueMetric(queue)
 
-	queueHistoriesList := &s2hv1beta1.QueueHistoryList{}
-	if err := c.client.List(context.TODO(), queueHistoriesList); err != nil {
-		logger.Error(err, "cannot list all queue")
+	queueHistories := &s2hv1beta1.QueueHistory{}
+	if err := c.client.Get(context.TODO(), client.ObjectKey{Namespace: comp.GetNamespace(), Name: comp.GetQueueHistoryName()}, queueHistories); err != nil {
+		logger.Error(err, "cannot get the queue")
 	}
-	exporter.SetQueueHistoriesMetric(queueHistoriesList, c.configs.SamsahaiExternalURL)
+	exporter.SetQueueHistoriesMetric(queueHistories, c.configs.SamsahaiExternalURL)
 
 	return &rpc.Empty{}, nil
 }
@@ -250,4 +251,20 @@ func (c *controller) listQueueHistory(selectors map[string]string) (*s2hv1beta1.
 	err := c.client.List(context.TODO(), queueHists, listOpt)
 	queueHists.SortDESC()
 	return queueHists, err
+}
+
+func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.ComponentUpgrade) (*rpc.Empty, error) {
+	if err := c.authenticateRPC(ctx.Value(s2h.SamsahaiAuthHeader).(string)); err != nil {
+		return nil, err
+	}
+
+	queue := &s2hv1beta1.Queue{}
+	if err := c.client.Get(context.TODO(), types.NamespacedName{
+		Namespace: comp.GetNamespace(),
+		Name:      comp.GetName()}, queue); err != nil {
+		logger.Error(err, "cannot get the queue")
+	}
+	exporter.SetQueueMetric(queue)
+
+	return &rpc.Empty{}, nil
 }

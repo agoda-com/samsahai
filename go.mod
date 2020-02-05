@@ -30,7 +30,7 @@ require (
 	github.com/swaggo/swag v1.6.3
 	github.com/tidwall/gjson v1.2.1
 	github.com/tidwall/match v1.0.1 // indirect
-	github.com/twitchtv/twirp v5.10.0+incompatible
+	github.com/twitchtv/twirp v5.10.1+incompatible
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20200108215511-5d647ca15757 // indirect
