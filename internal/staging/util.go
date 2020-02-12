@@ -10,7 +10,6 @@ import (
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
-	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 func (c *controller) getDeployConfiguration(queue *s2hv1beta1.Queue) *internal.ConfigDeploy {
@@ -129,25 +128,6 @@ func (c *controller) deleteQueue(q *s2hv1beta1.Queue) error {
 func (c *controller) updateQueueWithState(q *s2hv1beta1.Queue, state s2hv1beta1.QueueState) error {
 	q.SetState(state)
 	logger.Debug(fmt.Sprintf("queue %s/%s update to state: %s", q.GetNamespace(), q.GetName(), q.Status.State))
-
-	if c.s2hClient != nil && !q.IsActivePromotionQueue() {
-		comp := &rpc.ComponentUpgrade{
-			Status:               rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
-			Name:                 q.Spec.Name,
-			TeamName:             c.teamName,
-			Image:                &rpc.Image{Repository: q.Spec.Repository, Tag: q.Spec.Version},
-			IssueType:            rpc.ComponentUpgrade_IssueType_UNKNOWN,
-			QueueHistoryName:     q.Status.QueueHistoryName,
-			Namespace:            q.Namespace,
-			ImageMissingList:     nil,
-			Runs:                 int32(q.Spec.NoOfRetry + 1),
-			IsReverify:           q.IsReverify(),
-			ReverificationStatus: rpc.ComponentUpgrade_ReverificationStatus_UNKNOWN,
-		}
-		if _, err := c.s2hClient.SendUpdateStateQueueMetric(context.TODO(), comp); err != nil {
-			logger.Error(err, "cannot send updateQueueWithState queue metric", "comp", comp)
-		}
-	}
 
 	return c.updateQueue(q)
 }

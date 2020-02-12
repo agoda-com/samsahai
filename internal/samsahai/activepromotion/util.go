@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -20,15 +19,12 @@ func (c *controller) updateActivePromotion(ctx context.Context, atpComp *s2hv1be
 		return errors.Wrapf(err, "cannot update activepromotion %s", atpComp.Name)
 	}
 
-	// Add metric activepromotion , activepromotionhistories
-	exporter.SetActivePromotionMetric(atpComp)
-
-	if atpComp.Status.State == s2hv1beta1.ActivePromotionFinished {
-		atpHis := &s2hv1beta1.ActivePromotionHistory{}
-		if err := c.client.Get(context.TODO(), client.ObjectKey{Name: atpComp.Status.ActivePromotionHistoryName}, atpHis); err != nil {
-			logger.Error(err, "cannot list all active promotion histories")
-		}
-		exporter.SetActivePromotionHistoriesMetric(atpHis)
+	// Add metric activepromotion
+	atpList := &s2hv1beta1.ActivePromotionList{}
+	if err := c.client.List(context.TODO(), atpList); err != nil {
+		logger.Error(err, "cannot list all active promotion")
+	} else {
+		exporter.SetActivePromotionMetric(atpList)
 	}
 
 	return nil

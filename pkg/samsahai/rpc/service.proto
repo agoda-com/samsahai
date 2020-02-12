@@ -7,7 +7,6 @@ service RPC {
     rpc GetConfiguration (Team) returns (Configuration);
     rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
     rpc GetMissingVersion (TeamWithCurrentComponent) returns (ImageList);
-    rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
 }
 
 message Empty {

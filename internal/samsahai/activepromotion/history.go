@@ -13,6 +13,7 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
+	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 )
 
 func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) (string, error) {
@@ -66,6 +67,14 @@ func (c *controller) updateActivePromotionHistory(ctx context.Context, histName 
 	if err := c.client.Update(ctx, atpHist); err != nil {
 		return errors.Wrapf(err, "cannot update activepromotionhistory %s", histName)
 	}
+
+	atpHisList := &s2hv1beta1.ActivePromotionHistoryList{}
+	if err := c.client.List(context.TODO(), atpHisList); err != nil {
+		logger.Error(err, "cannot list all active promotion histories")
+	} else {
+		exporter.SetActivePromotionHistoriesMetric(atpHisList)
+	}
+
 	return nil
 }
 
