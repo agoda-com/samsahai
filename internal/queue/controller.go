@@ -81,6 +81,10 @@ func (c *controller) First() (*v1beta1.Queue, error) {
 	}
 
 	q := list.First()
+	c.resetQueueOrderWithCurrentQueue(list, q)
+	if err := c.updateQueueList(list); err != nil {
+		return nil, err
+	}
 
 	if q == nil {
 		return nil, nil
@@ -231,6 +235,7 @@ func (c *controller) SetReverifyQueueAtFirst(q *v1beta1.Queue) error {
 	if err != nil {
 		return err
 	}
+
 	now := metav1.Now()
 	q.Status = v1beta1.QueueStatus{
 		CreatedAt:     &now,
@@ -247,6 +252,7 @@ func (c *controller) SetRetryQueue(q *v1beta1.Queue, noOfRetry int, nextAt time.
 	if err != nil {
 		return err
 	}
+
 	now := metav1.Now()
 	q.Status = v1beta1.QueueStatus{
 		CreatedAt:     &now,
@@ -258,6 +264,30 @@ func (c *controller) SetRetryQueue(q *v1beta1.Queue, noOfRetry int, nextAt time.
 	q.Spec.Type = v1beta1.QueueTypeUpgrade
 	q.Spec.NoOfOrder = list.LastQueueOrder()
 	return c.client.Update(context.TODO(), q)
+}
+
+func (c *controller) updateQueueList(ql *v1beta1.QueueList) error {
+	for i := range ql.Items {
+		if err := c.client.Update(context.TODO(), &ql.Items[i]); err != nil {
+			return errors.Wrapf(err, "cannot update queue %s in %s", ql.Items[i].Name, ql.Items[i].Namespace)
+		}
+	}
+
+	return nil
+}
+
+// resetQueueOrderWithCurrentQueue resets order of all queues to start with 1 respectively
+func (c *controller) resetQueueOrderWithCurrentQueue(ql *v1beta1.QueueList, currentQueue *v1beta1.Queue) {
+	ql.Sort()
+	count := 2
+	for i := range ql.Items {
+		if ql.Items[i].Name == currentQueue.Name {
+			ql.Items[i].Spec.NoOfOrder = 1
+			continue
+		}
+		ql.Items[i].Spec.NoOfOrder = count
+		count++
+	}
 }
 
 // EnsurePreActiveComponents ensures that components with were deployed with `pre-active` config and tested

@@ -366,6 +366,15 @@ func (ql *QueueList) First() *Queue {
 	}
 
 	// return the first Queue
+	now := metav1.Now()
+	for i, q := range ql.Items {
+		if q.Spec.NextProcessAt != nil && q.Spec.NextProcessAt.Before(&now) {
+			return &ql.Items[i]
+		}
+		if q.Spec.NextProcessAt == nil {
+			return &ql.Items[i]
+		}
+	}
 	return &ql.Items[0]
 }
 
@@ -378,19 +387,15 @@ type ByNoOfOrder []Queue
 
 func (q ByNoOfOrder) Len() int { return len(q) }
 func (q ByNoOfOrder) Less(i, j int) bool {
-	if q[i].Spec.NextProcessAt == nil {
-		if q[j].Spec.NextProcessAt == nil {
-			return q[i].Spec.NoOfOrder < q[j].Spec.NoOfOrder
+	if q[i].Spec.NoOfOrder == q[j].Spec.NoOfOrder {
+		if q[i].Spec.NextProcessAt == nil {
+			return true
+		} else if q[j].Spec.NextProcessAt == nil {
+			return false
 		}
-		// i always less
-		return true
-	} else if q[j].Spec.NextProcessAt == nil {
-		// j always less if i not nil
-		return false
-	} else if q[i].Spec.NextProcessAt.Time.Equal(q[j].Spec.NextProcessAt.Time) {
-		return q[i].Spec.NoOfOrder < q[j].Spec.NoOfOrder
+		return q[i].Spec.NextProcessAt.Time.Before(q[j].Spec.NextProcessAt.Time)
 	}
-	return q[i].Spec.NextProcessAt.Time.Before(q[j].Spec.NextProcessAt.Time)
+	return q[i].Spec.NoOfOrder < q[j].Spec.NoOfOrder
 }
 
 func (q ByNoOfOrder) Swap(i, j int) { q[i], q[j] = q[j], q[i] }

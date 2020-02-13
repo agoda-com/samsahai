@@ -7,10 +7,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/util/outdated"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type outdatedComponentTime struct {
@@ -124,7 +124,7 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta
 	return nil
 }
 
-func (o *outdatedComponentTime)getAllOutdatedComponent(atpHisList s2hv1beta1.ActivePromotionHistoryList) map[string]outdatedComponentTime {
+func (o *outdatedComponentTime) getAllOutdatedComponent(atpHisList s2hv1beta1.ActivePromotionHistoryList) map[string]outdatedComponentTime {
 	oc := map[string]outdatedComponentTime{}
 	for _, atpHistories := range atpHisList.Items {
 		teamName := atpHistories.Spec.TeamName

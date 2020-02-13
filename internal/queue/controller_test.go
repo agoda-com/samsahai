@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
@@ -47,5 +48,56 @@ var _ = Describe("Queue Controller", func() {
 
 		g.Expect(len(queueList.Items)).To(Equal(1))
 		g.Expect(len(removing)).To(Equal(2))
+	})
+
+	Describe("Reset Queue order", func() {
+		It("Should reset order of all Queues correctly", func() {
+			g := NewWithT(GinkgoT())
+
+			c := controller{}
+
+			queue := &v1beta1.Queue{
+				ObjectMeta: metav1.ObjectMeta{Name: "comp1"},
+				Spec:       v1beta1.QueueSpec{NoOfOrder: 4},
+			}
+			queueList := &v1beta1.QueueList{
+				Items: []v1beta1.Queue{
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: "comp1"},
+						Spec:       v1beta1.QueueSpec{NoOfOrder: 4},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: "comp2"},
+						Spec:       v1beta1.QueueSpec{NoOfOrder: -1},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: "comp3"},
+						Spec:       v1beta1.QueueSpec{NoOfOrder: 10},
+					},
+				},
+			}
+
+			c.resetQueueOrderWithCurrentQueue(queueList, queue)
+
+			g.Expect(len(queueList.Items)).To(Equal(3))
+			g.Expect(queueList.Items).To(ContainElement(
+				v1beta1.Queue{
+					ObjectMeta: metav1.ObjectMeta{Name: "comp1"},
+					Spec:       v1beta1.QueueSpec{NoOfOrder: 1},
+				},
+			))
+			g.Expect(queueList.Items).To(ContainElement(
+				v1beta1.Queue{
+					ObjectMeta: metav1.ObjectMeta{Name: "comp2"},
+					Spec:       v1beta1.QueueSpec{NoOfOrder: 2},
+				},
+			))
+			g.Expect(queueList.Items).To(ContainElement(
+				v1beta1.Queue{
+					ObjectMeta: metav1.ObjectMeta{Name: "comp3"},
+					Spec:       v1beta1.QueueSpec{NoOfOrder: 3},
+				},
+			))
+		})
 	})
 })

@@ -149,7 +149,6 @@ func (c *rPCProtobufClient) GetMissingVersion(ctx context.Context, in *TeamWithC
 	return out, nil
 }
 
-
 // ===============
 // RPC JSON Client
 // ===============
@@ -245,7 +244,6 @@ func (c *rPCJSONClient) GetMissingVersion(ctx context.Context, in *TeamWithCurre
 
 	return out, nil
 }
-
 
 // ==================
 // RPC Server Handler
