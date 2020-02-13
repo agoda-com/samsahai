@@ -58,7 +58,7 @@ func (c *controller) ensureActiveEnvironmentPromoted(ctx context.Context, teamNa
 		return err
 	}
 
-	if teamComp.Status.Namespace.Active != targetNs {
+	if err := c.ensureTeamNamespaceUpdated(teamComp.Status.Namespace.Active, targetNs); err != nil {
 		return s2herrors.ErrEnsureActivePromoted
 	}
 
@@ -67,6 +67,15 @@ func (c *controller) ensureActiveEnvironmentPromoted(ctx context.Context, teamNa
 
 func (c *controller) createPreActiveEnvironment(ctx context.Context, teamName, preActiveNs string) error {
 	if err := c.s2hCtrl.CreatePreActiveEnvironment(teamName, preActiveNs); err != nil && !k8serrors.IsAlreadyExists(err) {
+		return err
+	}
+
+	teamComp, err := c.getTeam(ctx, teamName)
+	if err != nil {
+		return err
+	}
+
+	if err := c.ensureTeamNamespaceUpdated(teamComp.Status.Namespace.PreActive, preActiveNs); err != nil {
 		return err
 	}
 
@@ -132,6 +141,14 @@ func (c *controller) deployStableComponentObjects(ctx context.Context, comps *s2
 				return errors.Wrapf(err, "cannot deploy stable components into target namespace %s", targetNS)
 			}
 		}
+	}
+
+	return nil
+}
+
+func (c *controller) ensureTeamNamespaceUpdated(teamNs, atpNs string) error {
+	if teamNs != atpNs {
+		return fmt.Errorf("team pre-active namespace was not updated, expected: %s, actual: %s", atpNs, teamNs)
 	}
 
 	return nil
