@@ -1129,6 +1129,13 @@
         "v1beta1.ActivePromotionStatus": {
             "type": "object",
             "properties": {
+                "activeComponents": {
+                    "description": "ActiveComponents represents a list of promoted active components\n+optional",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1beta1.StableComponent"
+                    }
+                },
                 "activePromotionHistoryName": {
                     "description": "ActivePromotionHistoryName represents created ActivePromotionHistoryName name\n+optional",
                     "type": "string"
@@ -1615,18 +1622,18 @@
         "v1beta1.TeamStatus": {
             "type": "object",
             "properties": {
+                "activeComponents": {
+                    "description": "ActiveComponents represents a list of stable components in active namespace\n+optional",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1beta1.StableComponent"
+                    }
+                },
                 "conditions": {
                     "description": "Conditions contains observations of the resource's state e.g.,\nTeam namespace is created, destroyed\n+optional\n+patchMergeKey=type\n+patchStrategy=merge",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v1beta1.TeamCondition"
-                    }
-                },
-                "currentActiveComponents": {
-                    "description": "CurrentActiveComponents represents a list of stable components in current active namespace\n+optional",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1beta1.StableComponent"
                     }
                 },
                 "desiredComponentImageCreatedTime": {

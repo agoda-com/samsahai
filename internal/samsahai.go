@@ -121,7 +121,7 @@ type SamsahaiController interface {
 	CreatePreActiveEnvironment(teamName, namespace string) error
 
 	// PromoteActiveEnvironment switches environment from pre-active to active and stores current active components
-	PromoteActiveEnvironment(teamComp *s2hv1beta1.Team, namespace string) error
+	PromoteActiveEnvironment(teamComp *s2hv1beta1.Team, namespace string, comps []s2hv1beta1.StableComponent) error
 
 	// DestroyActiveEnvironment destroys active environment when active demotion is failure.
 	DestroyActiveEnvironment(teamName, namespace string) error

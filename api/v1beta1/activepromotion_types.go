@@ -159,6 +159,9 @@ type ActivePromotionStatus struct {
 	// IsTimeout defines whether the active promotion has been timeout or not
 	// +optional
 	IsTimeout bool `json:"isTimeout,omitempty"`
+	// ActiveComponents represents a list of promoted active components
+	// +optional
+	ActiveComponents []StableComponent `json:"activeComponents,omitempty"`
 	// OutdatedComponents represents list of outdated components
 	// +optional
 	OutdatedComponents []*OutdatedComponent `json:"outdatedComponents,omitempty"`
@@ -211,6 +214,16 @@ func (s *ActivePromotionStatus) SetActivePromotionHistoryName(atpHistName string
 
 func (s *ActivePromotionStatus) SetPreActiveQueue(qs QueueStatus) {
 	s.PreActiveQueue = qs
+}
+
+func (s *ActivePromotionStatus) SetActiveComponents(comps []StableComponent) {
+	s.ActiveComponents = make([]StableComponent, 0)
+	for _, currentComp := range comps {
+		s.ActiveComponents = append(s.ActiveComponents, StableComponent{
+			Spec:   currentComp.Spec,
+			Status: currentComp.Status,
+		})
+	}
 }
 
 func (s *ActivePromotionStatus) GetConditionLatestTime(cond ActivePromotionConditionType) *metav1.Time {

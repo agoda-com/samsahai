@@ -344,12 +344,16 @@ func (c *controller) CreatePreActiveEnvironment(teamName, namespace string) erro
 	return c.createNamespace(teamName, withTeamPreActiveNamespaceStatus(namespace))
 }
 
-func (c *controller) PromoteActiveEnvironment(teamComp *s2hv1beta1.Team, namespace string) error {
+func (c *controller) PromoteActiveEnvironment(
+	teamComp *s2hv1beta1.Team,
+	namespace string,
+	comps []s2hv1beta1.StableComponent,
+) error {
 	preActiveNamespace := teamComp.Status.Namespace.PreActive
 	activeNamespace := teamComp.Status.Namespace.Active
 	if namespace == preActiveNamespace {
-		if err := c.storeCurrentActiveComponentsToTeam(teamComp, namespace); err != nil {
-			return errors.Wrapf(err, "cannot store current active components of %s into team %s",
+		if err := c.storeActiveComponentsToTeam(teamComp, comps); err != nil {
+			return errors.Wrapf(err, "cannot store active components of %s into team %s",
 				namespace, teamComp.Name)
 		}
 
@@ -389,13 +393,8 @@ func (c *controller) PromoteActiveEnvironment(teamComp *s2hv1beta1.Team, namespa
 		preActiveNamespace + " (team pre-active namespace), so this pre-active namespace cannot be switched")
 }
 
-func (c *controller) storeCurrentActiveComponentsToTeam(teamComp *s2hv1beta1.Team, namespace string) error {
-	stableList := &s2hv1beta1.StableComponentList{}
-	if err := c.client.List(context.TODO(), stableList, &client.ListOptions{Namespace: namespace}); err != nil {
-		return errors.Wrapf(err, "cannot get list of stable components, namespace %s", namespace)
-	}
-
-	teamComp.Status.SetCurrentActiveComponents(stableList.Items)
+func (c *controller) storeActiveComponentsToTeam(teamComp *s2hv1beta1.Team, comps []s2hv1beta1.StableComponent) error {
+	teamComp.Status.SetActiveComponents(comps)
 	return nil
 }
 

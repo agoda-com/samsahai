@@ -25,7 +25,7 @@ func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv
 		return err
 	}
 
-	if err := c.ensureActiveEnvironmentPromoted(ctx, teamName, targetNs); err != nil {
+	if err := c.ensureActiveEnvironmentPromoted(ctx, atpComp); err != nil {
 		return err
 	}
 

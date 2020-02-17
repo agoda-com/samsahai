@@ -32,7 +32,7 @@ func (c *controller) createPreActiveEnvAndDeployStableCompObjects(ctx context.Co
 	}
 
 	stagingNs := teamComp.Status.Namespace.Staging
-	if err = c.copyStableComponentObjectsToTargetNamespace(ctx, stagingNs, targetNs); err != nil {
+	if err = c.copyStableComponentObjectsToTargetNamespace(ctx, atpComp, stagingNs, targetNs); err != nil {
 		return err
 	}
 
@@ -48,13 +48,16 @@ func (c *controller) createPreActiveEnvAndDeployStableCompObjects(ctx context.Co
 	return nil
 }
 
-func (c *controller) ensureActiveEnvironmentPromoted(ctx context.Context, teamName, targetNs string) error {
-	teamComp, err := c.getTeam(ctx, teamName)
+func (c *controller) ensureActiveEnvironmentPromoted(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+	targetNs := atpComp.Status.TargetNamespace
+
+	teamComp, err := c.getTeam(ctx, atpComp.Name)
 	if err != nil {
 		return err
 	}
 
-	if err := c.s2hCtrl.PromoteActiveEnvironment(teamComp, targetNs); err != nil && k8serrors.IsAlreadyExists(err) {
+	err = c.s2hCtrl.PromoteActiveEnvironment(teamComp, targetNs, atpComp.Status.ActiveComponents)
+	if err != nil && k8serrors.IsAlreadyExists(err) {
 		return err
 	}
 
@@ -86,7 +89,11 @@ func (c *controller) createPreActiveEnvironment(ctx context.Context, teamName, p
 	return nil
 }
 
-func (c *controller) copyStableComponentObjectsToTargetNamespace(ctx context.Context, baseNs, targetNs string) error {
+func (c *controller) copyStableComponentObjectsToTargetNamespace(
+	ctx context.Context,
+	atpComp *s2hv1beta1.ActivePromotion,
+	baseNs, targetNs string,
+) error {
 	stableComps, err := c.getStableComponentObjects(ctx, baseNs)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return errors.Wrapf(err, "cannot get stable components from staging namespace %s", baseNs)
@@ -95,6 +102,8 @@ func (c *controller) copyStableComponentObjectsToTargetNamespace(ctx context.Con
 	if err = c.deployStableComponentObjects(ctx, stableComps, targetNs); err != nil {
 		return err
 	}
+
+	atpComp.Status.SetActiveComponents(stableComps.Items)
 
 	return nil
 }

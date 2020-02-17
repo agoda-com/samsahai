@@ -562,7 +562,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		teamComp = s2hv1beta1.Team{}
 		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
 		Expect(err).To(BeNil())
-		Expect(len(teamComp.Status.CurrentActiveComponents)).ToNot(BeZero())
+		Expect(len(teamComp.Status.ActiveComponents)).ToNot(BeZero())
 
 		By("Public API")
 		{
@@ -933,7 +933,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		teamComp := s2hv1beta1.Team{}
 		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
 		Expect(err).To(BeNil())
-		Expect(len(teamComp.Status.CurrentActiveComponents)).To(BeZero())
+		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
 	}, 60)
 
 	It("should rollback active environment timeout", func(done Done) {

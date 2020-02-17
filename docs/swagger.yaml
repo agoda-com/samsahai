@@ -325,6 +325,13 @@ definitions:
     type: object
   v1beta1.ActivePromotionStatus:
     properties:
+      activeComponents:
+        description: |-
+          ActiveComponents represents a list of promoted active components
+          +optional
+        items:
+          $ref: '#/definitions/v1beta1.StableComponent'
+        type: array
       activePromotionHistoryName:
         description: |-
           ActivePromotionHistoryName represents created ActivePromotionHistoryName name
@@ -745,6 +752,13 @@ definitions:
     type: object
   v1beta1.TeamStatus:
     properties:
+      activeComponents:
+        description: |-
+          ActiveComponents represents a list of stable components in active namespace
+          +optional
+        items:
+          $ref: '#/definitions/v1beta1.StableComponent'
+        type: array
       conditions:
         description: |-
           Conditions contains observations of the resource's state e.g.,
@@ -754,13 +768,6 @@ definitions:
           +patchStrategy=merge
         items:
           $ref: '#/definitions/v1beta1.TeamCondition'
-        type: array
-      currentActiveComponents:
-        description: |-
-          CurrentActiveComponents represents a list of stable components in current active namespace
-          +optional
-        items:
-          $ref: '#/definitions/v1beta1.StableComponent'
         type: array
       desiredComponentImageCreatedTime:
         description: |-
