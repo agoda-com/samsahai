@@ -143,6 +143,8 @@ func (c *controller) checkActivePromotionTimeout(ctx context.Context, atpComp *s
 		atpComp.Status.SetResult(s2hv1beta1.ActivePromotionFailure)
 
 		if c.isToRollbackState(atpComp) {
+			atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondActivePromoted, corev1.ConditionFalse,
+				"Active environment has not been promoted")
 			atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondRollbackStarted, corev1.ConditionTrue,
 				"Rollback process has been started due to promoting timeout")
 			atpComp.SetState(s2hv1beta1.ActivePromotionRollback, "Active promotion has been timeout")
@@ -219,6 +221,8 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, atpComp *s
 			atpComp.Status.SetResult(s2hv1beta1.ActivePromotionCanceled)
 
 			if c.isToRollbackState(atpComp) {
+				atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondActivePromoted, corev1.ConditionFalse,
+					"Active environment has not been promoted")
 				atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondRollbackStarted, corev1.ConditionTrue,
 					"Rollback process has been started due to canceling")
 				atpComp.SetState(s2hv1beta1.ActivePromotionRollback, "Active promotion has been canceled")

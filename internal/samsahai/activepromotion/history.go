@@ -28,9 +28,7 @@ func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *
 
 	history := &s2hv1beta1.ActivePromotionHistory{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s",
-				atpComp.Name,
-				now.Format("20060102-150405")),
+			Name:   generateHistoryName(atpComp.Name, atpComp.CreationTimestamp),
 			Labels: atpLabels,
 		},
 		Spec: s2hv1beta1.ActivePromotionHistorySpec{
@@ -116,4 +114,8 @@ func (c *controller) deleteActivePromotionHistoryIfOutOfRange(ctx context.Contex
 		}
 	}
 	return nil
+}
+
+func generateHistoryName(atpName string, startTime metav1.Time) string {
+	return fmt.Sprintf("%s-%s", atpName, startTime.Format("20060102-150405"))
 }

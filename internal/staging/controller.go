@@ -32,7 +32,6 @@ import (
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/testmock"
-	"github.com/agoda-com/samsahai/internal/util/random"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 	stagingrpc "github.com/agoda-com/samsahai/pkg/staging/rpc"
 )
@@ -312,7 +311,7 @@ func (c *controller) syncQueueWithK8s() error {
 func (c *controller) initQueue(q *s2hv1beta1.Queue) error {
 	deployConfig := c.getDeployConfiguration(q)
 	q.Status.NoOfProcessed++
-	q.Status.QueueHistoryName = q.Name + "-" + random.GenerateRandomString(10)
+	q.Status.QueueHistoryName = generateQueueHistoryName(q.Name)
 	if deployConfig.Engine != nil {
 		if _, ok := c.deployEngines[*deployConfig.Engine]; ok {
 			q.Status.DeployEngine = *deployConfig.Engine
@@ -622,4 +621,9 @@ func forceCleanupService(log s2hlog.Logger, c client.Client, namespace string, s
 	}
 
 	return s2herrors.ErrForceDeletingComponents
+}
+
+func generateQueueHistoryName(queueName string) string {
+	now := metav1.Now()
+	return fmt.Sprintf("%s-%s", queueName, now.Format("20060102-150405"))
 }
