@@ -41,7 +41,7 @@ func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1beta1.Acti
 		atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondResultCollected, corev1.ConditionTrue,
 			"Result has been collected")
 		atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondActivePromoted, corev1.ConditionFalse,
-			"Active environment has not been promoted")
+			c.getActivePromotionVerificationReason(atpComp))
 		atpComp.SetState(s2hv1beta1.ActivePromotionDestroyingPreActive, "Destroying pre-active environment")
 
 		return nil
@@ -52,4 +52,18 @@ func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1beta1.Acti
 	atpComp.SetState(s2hv1beta1.ActivePromotionDemoting, "Demoting an active environment")
 
 	return nil
+}
+
+func (c *controller) getActivePromotionVerificationReason(atpComp *s2hv1beta1.ActivePromotion) string {
+	if atpComp.Status.IsTimeout {
+		return "Active promotion has been timeout"
+	}
+
+	for _, cond := range atpComp.Status.Conditions {
+		if cond.Type == s2hv1beta1.ActivePromotionCondVerified {
+			return cond.Message
+		}
+	}
+
+	return "Active environment has not been promoted"
 }

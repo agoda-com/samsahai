@@ -8,7 +8,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 )
@@ -67,7 +67,7 @@ func SetTeamNameMetric(teamList map[string]internal.ConfigManager) {
 	}
 }
 
-func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.ConfigManager) {
+func SetQueueMetric(queueList *s2hv1beta1.QueueList, teamList map[string]internal.ConfigManager) {
 	QueueMetric.Reset()
 	for teamName := range teamList {
 		componentList := teamList[teamName].GetComponents()
@@ -84,7 +84,7 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 				queueStateList := map[string]float64{"waiting": 0, "testing": 0, "finished": 0, "deploying": 0, "cleaning": 0}
 				queue := queueList.Items[i]
 				switch queue.Status.State {
-				case v1beta1.Waiting:
+				case s2hv1beta1.Waiting:
 					queueStateList["waiting"] = 1
 					for state, val := range queueStateList {
 						QueueMetric.WithLabelValues(
@@ -95,7 +95,7 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 							state,
 							strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
 					}
-				case v1beta1.Testing, v1beta1.Collecting:
+				case s2hv1beta1.Testing, s2hv1beta1.Collecting:
 					queueStateList["testing"] = 1
 					for state, val := range queueStateList {
 						QueueMetric.WithLabelValues(
@@ -106,7 +106,7 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 							state,
 							strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
 					}
-				case v1beta1.Finished:
+				case s2hv1beta1.Finished:
 					queueStateList["finished"] = 1
 					for state, val := range queueStateList {
 						QueueMetric.WithLabelValues(
@@ -117,7 +117,7 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 							state,
 							strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
 					}
-				case v1beta1.DetectingImageMissing, v1beta1.Creating:
+				case s2hv1beta1.DetectingImageMissing, s2hv1beta1.Creating:
 					queueStateList["deploying"] = 1
 					for state, val := range queueStateList {
 						QueueMetric.WithLabelValues(
@@ -128,7 +128,7 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 							state,
 							strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
 					}
-				case v1beta1.CleaningBefore, v1beta1.CleaningAfter:
+				case s2hv1beta1.CleaningBefore, s2hv1beta1.CleaningAfter:
 					queueStateList["cleaning"] = 1
 					for state, val := range queueStateList {
 						QueueMetric.WithLabelValues(
@@ -145,7 +145,7 @@ func SetQueueMetric(queueList *v1beta1.QueueList, teamList map[string]internal.C
 	}
 }
 
-func SetQueueHistoriesMetric(queueHistoriesList *v1beta1.QueueHistoryList, SamsahaiExternalURL string) {
+func SetQueueHistoriesMetric(queueHistoriesList *s2hv1beta1.QueueHistoryList, SamsahaiExternalURL string) {
 	QueueHistoriesMetric.Reset()
 	for i := range queueHistoriesList.Items {
 		queueHistoriesResult := "failed"
@@ -174,7 +174,7 @@ func SetHealthStatusMetric(version, gitCommit string, ts float64) {
 		gitCommit).Set(ts)
 }
 
-func SetActivePromotionMetric(activePromotionList *v1beta1.ActivePromotionList) {
+func SetActivePromotionMetric(activePromotionList *s2hv1beta1.ActivePromotionList) {
 	ActivePromotionMetric.Reset()
 	for i := range activePromotionList.Items {
 		activePromStateList := map[string]float64{"waiting": 0, "deploying": 0, "testing": 0, "promoting": 0, "destroying": 0}
@@ -182,35 +182,35 @@ func SetActivePromotionMetric(activePromotionList *v1beta1.ActivePromotionList) 
 		atpState := activeProm.Status.State
 		if atpState != "" {
 			switch atpState {
-			case v1beta1.ActivePromotionWaiting:
+			case s2hv1beta1.ActivePromotionWaiting:
 				activePromStateList["waiting"] = 1
 				for state, val := range activePromStateList {
 					ActivePromotionMetric.WithLabelValues(
 						activeProm.Name,
 						state).Set(val)
 				}
-			case v1beta1.ActivePromotionDeployingComponents, v1beta1.ActivePromotionCreatingPreActive:
+			case s2hv1beta1.ActivePromotionDeployingComponents, s2hv1beta1.ActivePromotionCreatingPreActive:
 				activePromStateList["deploying"] = 1
 				for state, val := range activePromStateList {
 					ActivePromotionMetric.WithLabelValues(
 						activeProm.Name,
 						state).Set(val)
 				}
-			case v1beta1.ActivePromotionTestingPreActive, v1beta1.ActivePromotionCollectingPreActiveResult:
+			case s2hv1beta1.ActivePromotionTestingPreActive, s2hv1beta1.ActivePromotionCollectingPreActiveResult:
 				activePromStateList["testing"] = 1
 				for state, val := range activePromStateList {
 					ActivePromotionMetric.WithLabelValues(
 						activeProm.Name,
 						state).Set(val)
 				}
-			case v1beta1.ActivePromotionActiveEnvironment, v1beta1.ActivePromotionDemoting:
+			case s2hv1beta1.ActivePromotionActiveEnvironment, s2hv1beta1.ActivePromotionDemoting:
 				activePromStateList["promoting"] = 1
 				for state, val := range activePromStateList {
 					ActivePromotionMetric.WithLabelValues(
 						activeProm.Name,
 						state).Set(val)
 				}
-			case v1beta1.ActivePromotionDestroyingPreActive, v1beta1.ActivePromotionDestroyingPreviousActive, v1beta1.ActivePromotionFinished:
+			case s2hv1beta1.ActivePromotionDestroyingPreActive, s2hv1beta1.ActivePromotionDestroyingPreviousActive, s2hv1beta1.ActivePromotionFinished:
 				activePromStateList["destroying"] = 1
 				for state, val := range activePromStateList {
 					ActivePromotionMetric.WithLabelValues(
@@ -222,7 +222,7 @@ func SetActivePromotionMetric(activePromotionList *v1beta1.ActivePromotionList) 
 	}
 }
 
-func SetActivePromotionHistoriesMetric(activePromotionHistories *v1beta1.ActivePromotionHistoryList) {
+func SetActivePromotionHistoriesMetric(activePromotionHistories *s2hv1beta1.ActivePromotionHistoryList) {
 	ActivePromotionHistoriesMetric.Reset()
 	var failureCause string
 	for i := range activePromotionHistories.Items {
@@ -238,7 +238,7 @@ func SetActivePromotionHistoriesMetric(activePromotionHistories *v1beta1.ActiveP
 		atpConDict := map[string]v1.Time{}
 		for _, o := range atpHistories.Spec.ActivePromotion.Status.Conditions {
 			atpConDict[string(o.Type)] = o.LastTransitionTime
-			if o.Type == "PreActiveVerified" {
+			if o.Type == s2hv1beta1.ActivePromotionCondActivePromoted {
 				failureCause = o.Message
 			}
 		}
@@ -248,15 +248,15 @@ func SetActivePromotionHistoriesMetric(activePromotionHistories *v1beta1.ActiveP
 		}
 		//waiting time
 		var waitingDuration time.Duration
-		if t1, ok := atpConDict["ActivePromotionStarted"]; ok {
+		if t1, ok := atpConDict[string(s2hv1beta1.ActivePromotionCondStarted)]; ok {
 			waitingDuration = duration(startTime.Time, t1.Time) / time.Second
 		} else {
 			waitingDuration = 0
 		}
 		// deploy time
 		var deployDuration time.Duration
-		if t1, ok := atpConDict["ActivePromotionStarted"]; ok {
-			if t2, ok := preAtpConDict["QueueDeployed"]; ok {
+		if t1, ok := atpConDict[string(s2hv1beta1.ActivePromotionCondStarted)]; ok {
+			if t2, ok := preAtpConDict[string(s2hv1beta1.QueueDeployed)]; ok {
 				deployDuration = duration(t1.Time, t2.Time) / time.Second
 			} else {
 				deployDuration = 0
@@ -264,8 +264,8 @@ func SetActivePromotionHistoriesMetric(activePromotionHistories *v1beta1.ActiveP
 		}
 		// test time
 		var testDuration time.Duration
-		if t1, ok := preAtpConDict["QueueDeployed"]; ok {
-			if t2, ok := atpConDict["PreActiveVerified"]; ok {
+		if t1, ok := preAtpConDict[string(s2hv1beta1.QueueDeployed)]; ok {
+			if t2, ok := atpConDict[string(s2hv1beta1.ActivePromotionCondVerified)]; ok {
 				testDuration = duration(t1.Time, t2.Time) / time.Second
 			} else {
 				testDuration = 0
@@ -273,8 +273,8 @@ func SetActivePromotionHistoriesMetric(activePromotionHistories *v1beta1.ActiveP
 		}
 		// promote time
 		var promoteDuration time.Duration
-		if t1, ok := atpConDict["PreActiveVerified"]; ok {
-			if t2, ok := atpConDict["ActivePromoted"]; ok {
+		if t1, ok := atpConDict[string(s2hv1beta1.ActivePromotionCondVerified)]; ok {
+			if t2, ok := atpConDict[string(s2hv1beta1.ActivePromotionCondActivePromoted)]; ok {
 				promoteDuration = duration(t1.Time, t2.Time) / time.Second
 			} else {
 				promoteDuration = 0
@@ -282,8 +282,8 @@ func SetActivePromotionHistoriesMetric(activePromotionHistories *v1beta1.ActiveP
 		}
 		// destroy time
 		var destroyDuration time.Duration
-		if t1, ok := atpConDict["ActivePromoted"]; ok {
-			if t2, ok := atpConDict["Finished"]; ok {
+		if t1, ok := atpConDict[string(s2hv1beta1.ActivePromotionCondActivePromoted)]; ok {
+			if t2, ok := atpConDict[string(s2hv1beta1.ActivePromotionCondFinished)]; ok {
 				destroyDuration = duration(t1.Time, t2.Time) / time.Second
 			} else {
 				destroyDuration = 0
@@ -329,7 +329,7 @@ func SetActivePromotionHistoriesMetric(activePromotionHistories *v1beta1.ActiveP
 	}
 }
 
-func SetOutdatedComponentMetric(outdatedComponent *v1beta1.ActivePromotion) {
+func SetOutdatedComponentMetric(outdatedComponent *s2hv1beta1.ActivePromotion) {
 	teamName := outdatedComponent.Name
 	for i := range outdatedComponent.Status.OutdatedComponents {
 		outdated := outdatedComponent.Status.OutdatedComponents[i]
@@ -351,7 +351,7 @@ func duration(start, end time.Time) time.Duration {
 	return d
 }
 
-func isExist(slice []v1beta1.Queue, comName, teamName string) bool {
+func isExist(slice []s2hv1beta1.Queue, comName, teamName string) bool {
 	for _, item := range slice {
 		if item.Name == comName && item.Spec.TeamName == teamName {
 			return true

@@ -208,7 +208,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 *Active Promotion:* {{ .Result }}
 {{- if ne .Result "Success" }}
 {{- range .Conditions }}
-  {{- if eq .Type "PreActiveVerified" }}
+  {{- if eq .Type "` + string(s2hv1beta1.ActivePromotionCondActivePromoted) + `" }}
 *Reason:* {{ .Message }}
   {{- end }}
 {{- end }}
