@@ -11,7 +11,9 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -89,6 +91,12 @@ func (c *controller) setStableAndSendReport(queue *s2hv1beta1.Queue) error {
 }
 
 func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
+	ctx := context.TODO()
+
+	if err := c.deleteQueueHistoryOutOfRange(ctx, c.namespace); err != nil {
+		return err
+	}
+
 	now := metav1.Now()
 	spec := s2hv1beta1.QueueHistorySpec{
 		Queue: &s2hv1beta1.Queue{
@@ -113,7 +121,7 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 	}
 
 	fetched := &s2hv1beta1.QueueHistory{}
-	err := c.client.Get(context.TODO(), types.NamespacedName{Name: history.Name, Namespace: history.Namespace}, fetched)
+	err := c.client.Get(ctx, types.NamespacedName{Name: history.Name, Namespace: history.Namespace}, fetched)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			if err := c.client.Create(context.TODO(), history); err != nil {
@@ -125,6 +133,51 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 		}
 		logger.Error(err, "cannot get history")
 		return err
+	}
+
+	return nil
+}
+
+func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace string) error {
+	queueHists := s2hv1beta1.QueueHistoryList{}
+	if err := c.client.List(ctx, &queueHists, &client.ListOptions{Namespace: namespace}); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+
+		return errors.Wrapf(err, "cannot list queuehistories in %s", namespace)
+	}
+
+	maxHistDays := c.configs.MaxHistoryDays
+
+	// get configuration
+	configMgr := c.getConfigManager()
+	if cfg := configMgr.Get(); cfg.Staging != nil && cfg.Staging.MaxHistoryDays != 0 {
+		maxHistDays = cfg.Staging.MaxHistoryDays
+	}
+
+	// parse max stored queue histories in day to time duration
+	maxHistDuration, err := time.ParseDuration(strconv.Itoa(maxHistDays*24) + "h")
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("cannot parse time duration of %d", maxHistDays))
+		return nil
+	}
+
+	queueHists.SortDESC()
+	now := metav1.Now()
+	for i := len(queueHists.Items) - 1; i > 0; i-- {
+		if now.Sub(queueHists.Items[i].CreationTimestamp.Time) >= maxHistDuration {
+			if err := c.client.Delete(ctx, &queueHists.Items[i]); err != nil {
+				if k8serrors.IsNotFound(err) {
+					continue
+				}
+
+				return errors.Wrapf(err, "cannot delete queuehistories %s", queueHists.Items[i].Name)
+			}
+			continue
+		}
+
+		break
 	}
 
 	return nil

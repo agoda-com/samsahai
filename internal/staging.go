@@ -7,6 +7,12 @@ import (
 	stagingrpc "github.com/agoda-com/samsahai/pkg/staging/rpc"
 )
 
+// StagingConfig represents configuration of Staging
+type StagingConfig struct {
+	// MaxHistoryDays defines maximum days of QueueHistory stored
+	MaxHistoryDays int `json:"maxHistoryDays" yaml:"maxHistoryDays"`
+}
+
 type StagingTestRunner interface {
 	// GetName returns type of test runner
 	GetName() string

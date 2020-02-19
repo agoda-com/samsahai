@@ -80,6 +80,9 @@ type ConfigStaging struct {
 
 	// MaxRetry defines max retry counts of component upgrade
 	MaxRetry int `json:"maxRetry,omitempty" yaml:"maxRetry"`
+
+	// MaxHistoryDays defines maximum days of QueueHistory stored
+	MaxHistoryDays int `json:"maxHistoryDays,omitempty" yaml:"maxHistoryDays"`
 }
 
 // ConfigTestRunner represents configuration about how to test the environment

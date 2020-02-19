@@ -841,6 +841,10 @@
                     "type": "object",
                     "$ref": "#/definitions/internal.ConfigDeploy"
                 },
+                "maxHistoryDays": {
+                    "description": "MaxHistoryDays defines maximum days of QueueHistory stored",
+                    "type": "integer"
+                },
                 "maxRetry": {
                     "description": "MaxRetry defines max retry counts of component upgrade",
                     "type": "integer"

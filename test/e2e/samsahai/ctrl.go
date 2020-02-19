@@ -493,7 +493,9 @@ var _ = Describe("Main Controller [e2e]", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			qctrl := queue.New(preActiveNs, runtimeClient)
-			stagingPreActiveCtrl = staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient, stagingMgr, qctrl, cmgr, "", "", "")
+			stagingPreActiveCtrl = staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient,
+				stagingMgr, qctrl, cmgr, "", "", "",
+				internal.StagingConfig{})
 			go func() {
 				defer GinkgoRecover()
 				Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())

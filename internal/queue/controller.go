@@ -118,7 +118,7 @@ func (c *controller) add(ctx context.Context, queue *v1beta1.Queue, atTop bool) 
 		return nil
 	}
 
-	var pQueue *v1beta1.Queue
+	pQueue := &v1beta1.Queue{}
 	isAlreadyInQueue := false
 	for i, q := range queueList.Items {
 		if q.IsSame(queue) {

@@ -229,7 +229,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		configMgr, err = s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "data", "redis"))
 
 		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, configMgr,
-			"", "", "")
+			"", "", "", internal.StagingConfig{})
 
 		go stagingCtrl.Start(chStop)
 
@@ -386,7 +386,8 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 		samsahaiClient := samsahairpc.NewRPCProtobufClient(server.URL, &http.Client{})
 
-		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl, configMgr, "", "", "")
+		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl, configMgr,
+			"", "", "", internal.StagingConfig{})
 		go stagingCtrl.Start(chStop)
 
 		redis := queue.NewUpgradeQueue(teamName, namespace, "redis", "bitnami/redis", "5.0.5-debian-9-r160")
@@ -424,7 +425,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		configMgr, err = s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "data", "redis"))
 
 		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, configMgr,
-			"", "", "")
+			"", "", "", internal.StagingConfig{})
 
 		go stagingCtrl.Start(chStop)
 
@@ -473,7 +474,8 @@ var _ = Describe("Staging Controller [e2e]", func() {
 			configMgr, err = s2hconfig.NewWithSamsahaiClient(samsahaiClient, teamName, authToken)
 			Expect(err).ToNot(HaveOccurred())
 
-			stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl, configMgr, "", "", "")
+			stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl,
+				configMgr, "", "", "", internal.StagingConfig{})
 			server := httptest.NewServer(stagingCtrl)
 			defer server.Close()
 
@@ -510,7 +512,8 @@ var _ = Describe("Staging Controller [e2e]", func() {
 			configMgr, err = s2hconfig.NewWithSamsahaiClient(samsahaiClient, teamName, authToken)
 			Expect(err).ToNot(HaveOccurred())
 
-			stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl, configMgr, "", "", "")
+			stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl,
+				configMgr, "", "", "", internal.StagingConfig{})
 			server := httptest.NewServer(stagingCtrl)
 			defer server.Close()
 

@@ -70,6 +70,8 @@ type controller struct {
 	teamcityBaseURL  string
 	teamcityUsername string
 	teamcityPassword string
+
+	configs internal.StagingConfig
 }
 
 func NewController(
@@ -83,6 +85,7 @@ func NewController(
 	teamcityBaseURL string,
 	teamcityUsername string,
 	teamcityPassword string,
+	configs internal.StagingConfig,
 ) internal.StagingController {
 	if queueCtrl == nil {
 		logger.Error(s2herrors.ErrInternalError, "queue ctrl cannot be nil")
@@ -109,6 +112,7 @@ func NewController(
 		teamcityBaseURL:         teamcityBaseURL,
 		teamcityUsername:        teamcityUsername,
 		teamcityPassword:        teamcityPassword,
+		configs:                 configs,
 	}
 
 	c.rpcHandler = stagingrpc.NewRPCServer(c, nil)

@@ -153,7 +153,9 @@ func startCtrlCmd() *cobra.Command {
 			tcBaseURL := viper.GetString(s2h.VKTeamcityURL)
 			tcUsername := viper.GetString(s2h.VKTeamcityUsername)
 			tcPassword := viper.GetString(s2h.VKTeamcityPassword)
-			stagingCtrl := stagingctrl.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl, configManager, tcBaseURL, tcUsername, tcPassword)
+			maxQueueHistDays := viper.GetInt(s2h.VKQueueMaxHistoryDays)
+			stagingCtrl := stagingctrl.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl,
+				configManager, tcBaseURL, tcUsername, tcPassword, s2h.StagingConfig{MaxHistoryDays: maxQueueHistDays})
 
 			logger.Info("setup signal handler")
 			stop := signals.SetupSignalHandler()
@@ -196,6 +198,7 @@ func startCtrlCmd() *cobra.Command {
 	cmd.Flags().String(s2h.VKTeamcityPassword, "", "Teamcity password.")
 	cmd.Flags().String(s2h.VKServerHTTPPort, "8090", "The port for http server to listens to.")
 	cmd.Flags().String(s2h.VKMetricHTTPPort, "8091", "The port for prometheus metric to binds to.")
+	cmd.Flags().Int(s2h.VKQueueMaxHistoryDays, 7, "Max stored queue histories in day.")
 
 	return cmd
 }

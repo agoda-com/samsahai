@@ -41,6 +41,7 @@ const (
 	VKActivePromotionRollbackTimeout  = "active-promotion-rollback-timeout"
 	VKActivePromotionTearDownDuration = "active-promotion-teardown-duration"
 	VKActivePromotionMaxHistories     = "active-promotion-max-histories"
+	VKQueueMaxHistoryDays             = "queue-max-history-days"
 )
 
 type ConfigurationJSON struct {

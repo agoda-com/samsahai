@@ -18,7 +18,7 @@ import (
 
 func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) (string, error) {
 	defaultLabels := internal.GetDefaultLabels(atpComp.Name)
-	if err := c.deleteActivePromotionHistoryIfOutOfRange(ctx, atpComp.Name, defaultLabels); err != nil {
+	if err := c.deleteActivePromotionHistoryOutOfRange(ctx, atpComp.Name, defaultLabels); err != nil {
 		return "", err
 	}
 
@@ -41,8 +41,6 @@ func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *
 			CreatedAt: &now,
 		},
 	}
-
-	// TODO: store values file
 
 	if err := c.client.Create(ctx, history); err != nil && !k8serrors.IsNotFound(err) {
 		return "", errors.Wrapf(err, "cannot create activepromotionhistory of %s", atpComp.Name)
@@ -76,7 +74,7 @@ func (c *controller) updateActivePromotionHistory(ctx context.Context, histName 
 	return nil
 }
 
-func (c *controller) deleteActivePromotionHistoryIfOutOfRange(ctx context.Context, teamName string, selectors map[string]string) error {
+func (c *controller) deleteActivePromotionHistoryOutOfRange(ctx context.Context, teamName string, selectors map[string]string) error {
 	atpHists := s2hv1beta1.ActivePromotionHistoryList{}
 	listOpt := client.ListOptions{LabelSelector: labels.SelectorFromSet(selectors)}
 	if err := c.client.List(ctx, &atpHists, &listOpt); err != nil {
