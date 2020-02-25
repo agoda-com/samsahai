@@ -148,11 +148,6 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 		return nil, err
 	}
 
-	if comp.Status == rpc.ComponentUpgrade_UpgradeStatus_SUCCESS {
-		if err := c.storeStableComponentsToTeam(ctx, comp); err != nil {
-			return nil, err
-		}
-	}
 	// Add metric updateQueueMetric & histories
 	queueList := &s2hv1beta1.QueueList{}
 	if err := c.client.List(context.TODO(), queueList); err != nil {
@@ -205,25 +200,6 @@ func (c *controller) sendComponentUpgradeReport(queueHist *s2hv1beta1.QueueHisto
 			logger.Error(err, "cannot send component upgrade failure report",
 				"team", comp.TeamName)
 		}
-	}
-
-	return nil
-}
-
-func (c *controller) storeStableComponentsToTeam(ctx context.Context, comp *rpc.ComponentUpgrade) error {
-	stableList := &s2hv1beta1.StableComponentList{}
-	if err := c.client.List(ctx, stableList, &client.ListOptions{Namespace: comp.Namespace}); err != nil {
-		return errors.Wrapf(err, "cannot get list of stable components, namespace %s", comp.Namespace)
-	}
-
-	teamComp := &s2hv1beta1.Team{}
-	if err := c.getTeam(comp.TeamName, teamComp); err != nil {
-		return errors.Wrapf(err, "cannot get of team %s", comp.TeamName)
-	}
-
-	teamComp.Status.SetStableComponents(stableList.Items)
-	if err := c.updateTeam(teamComp); err != nil {
-		return errors.Wrapf(err, "cannot update team %s", comp.TeamName)
 	}
 
 	return nil

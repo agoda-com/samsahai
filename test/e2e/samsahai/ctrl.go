@@ -35,6 +35,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/samsahai/activepromotion"
 	s2hobject "github.com/agoda-com/samsahai/internal/samsahai/k8sobject"
 	s2hhttp "github.com/agoda-com/samsahai/internal/samsahai/webhook"
+	"github.com/agoda-com/samsahai/internal/stablecomponent"
 	"github.com/agoda-com/samsahai/internal/staging"
 	utilhttp "github.com/agoda-com/samsahai/internal/util/http"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
@@ -49,6 +50,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 	)
 
 	var (
+		stableComponentCtrl  internal.StableComponentController
 		activePromotionCtrl  internal.ActivePromotionController
 		samsahaiCtrl         internal.SamsahaiController
 		stagingPreActiveCtrl internal.StagingController
@@ -263,6 +265,9 @@ var _ = Describe("Main Controller [e2e]", func() {
 		activePromotionCtrl = activepromotion.New(mgr, samsahaiCtrl, s2hConfig)
 		Expect(activePromotionCtrl).ToNot(BeNil())
 
+		stableComponentCtrl = stablecomponent.New(mgr, samsahaiCtrl)
+		Expect(stableComponentCtrl).ToNot(BeNil())
+
 		wgStop = &sync.WaitGroup{}
 		wgStop.Add(1)
 		go func() {
@@ -432,6 +437,15 @@ var _ = Describe("Main Controller [e2e]", func() {
 		smd := stableMariaDB
 		Expect(runtimeClient.Create(ctx, &smd)).To(BeNil())
 
+		time.Sleep(1 * time.Second)
+		By("Checking stable component has been set")
+		teamComp := s2hv1beta1.Team{}
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
+		teamSpecStableComps := teamComp.Status.StableComponents[0].Spec
+		Expect(teamSpecStableComps.Name).To(Equal(stableAtvMariaDB.Spec.Name))
+		Expect(teamSpecStableComps.Repository).To(Equal(stableAtvMariaDB.Spec.Repository))
+		Expect(teamSpecStableComps.Version).To(Equal(stableAtvMariaDB.Spec.Version))
+
 		By("Creating ActivePromotionHistory 1")
 		atpHist := activePromotionHistory
 		atpHist.Name = atpHist.Name + "-1"
@@ -504,7 +518,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 		}
 
 		By("Checking pre-active namespace has been set")
-		teamComp := s2hv1beta1.Team{}
 		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: atp.Name}, &teamComp))
 
 		Expect(teamComp.Status.Namespace.PreActive).ToNot(BeEmpty())

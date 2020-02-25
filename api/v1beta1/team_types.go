@@ -144,14 +144,45 @@ type TeamStatus struct {
 }
 
 // SetStableComponents sets stable components
-func (ts *TeamStatus) SetStableComponents(stableComps []StableComponent) {
-	ts.StableComponents = make([]StableComponent, 0)
-	for _, stableComp := range stableComps {
+func (ts *TeamStatus) SetStableComponents(stableComp *StableComponent, isDeleted bool) (isChanged bool) {
+	if stableComp == nil {
+		return false
+	}
+
+	for i := 0; i < len(ts.StableComponents); i++ {
+		comp := ts.StableComponents[i]
+		if isDeleted {
+			if comp.Spec.Name == stableComp.Spec.Name {
+				ts.StableComponents[i] = ts.StableComponents[len(ts.StableComponents)-1]
+				ts.StableComponents = ts.StableComponents[:len(ts.StableComponents)-1]
+				return true
+			}
+
+			continue
+		}
+
+		if comp.Spec.Name == stableComp.Spec.Name {
+			if comp.Spec.Repository != stableComp.Spec.Repository ||
+				comp.Spec.Version != stableComp.Spec.Version {
+				ts.StableComponents[i].Spec = stableComp.Spec
+				ts.StableComponents[i].Status = stableComp.Status
+				return true
+			}
+
+			return false
+		}
+	}
+
+	if !isDeleted {
+		// add new stable component
 		ts.StableComponents = append(ts.StableComponents, StableComponent{
 			Spec:   stableComp.Spec,
 			Status: stableComp.Status,
 		})
+		return true
 	}
+
+	return false
 }
 
 // SetActiveComponents sets active components

@@ -158,6 +158,9 @@ type SamsahaiController interface {
 	// GetTeams returns list of teams in Samsahai
 	GetTeams() (*s2hv1beta1.TeamList, error)
 
+	// GetTeamNames returns map of team names in Samsahai
+	GetTeamNames() map[string]struct{}
+
 	// GetQueueHistories returns QueueHistoryList of the namespace
 	GetQueueHistories(namespace string) (*s2hv1beta1.QueueHistoryList, error)
 
@@ -196,6 +199,9 @@ type Connection struct {
 type ActivePromotionController interface {
 }
 
+type StableComponentController interface {
+}
+
 // GitInfo represents git repo, branch info. for process the update
 type GitInfo struct {
 	Name         string
@@ -210,4 +216,9 @@ type PostNamespaceCreation struct {
 	Namespace string          `json:"namespace"`
 	Team      s2hv1beta1.Team `json:"team"`
 	SamsahaiConfig
+}
+
+// GenStagingNamespace returns the name of staging namespace by team name
+func GenStagingNamespace(teamName string) string {
+	return AppPrefix + teamName
 }

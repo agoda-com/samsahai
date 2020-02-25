@@ -50,6 +50,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/samsahai/activepromotion"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	s2hhttp "github.com/agoda-com/samsahai/internal/samsahai/webhook"
+	"github.com/agoda-com/samsahai/internal/stablecomponent"
 	"github.com/agoda-com/samsahai/internal/util"
 	"github.com/agoda-com/samsahai/internal/util/random"
 )
@@ -170,6 +171,7 @@ func startCtrlCmd() *cobra.Command {
 
 			s2hCtrl := samsahai.New(mgr, namespace, configs)
 			activepromotion.New(mgr, s2hCtrl, configs)
+			stablecomponent.New(mgr, s2hCtrl)
 
 			logger.Info("setup signal handler")
 			stop := signals.SetupSignalHandler()

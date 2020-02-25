@@ -36,16 +36,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2hconfig "github.com/agoda-com/samsahai/internal/config"
 	desiredctrl "github.com/agoda-com/samsahai/internal/desiredcomponent"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/queue"
-	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
-
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	stagingctrl "github.com/agoda-com/samsahai/internal/staging"
 	"github.com/agoda-com/samsahai/internal/util"
+	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 var (
@@ -138,8 +137,6 @@ func startCtrlCmd() *cobra.Command {
 			}
 
 			logger.Info("setting up internal components")
-
-			//isShuttingDown := false
 
 			samsahaiClient := rpc.NewRPCProtobufClient(viper.GetString(s2h.VKS2HServerURL), &http.Client{})
 			configManager, err := s2hconfig.NewWithSamsahaiClient(samsahaiClient, teamName, viper.GetString(s2h.VKS2HAuthToken))

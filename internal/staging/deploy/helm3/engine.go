@@ -222,12 +222,14 @@ func (e *engine) helmInstall(
 		logger.Error(err, "helm prepare chart failed", "releaseName", refName, "chartName", chartName)
 		return err
 	}
+	logger.Debug("helm prepare chart", "releaseName", refName, "chartName", chartName)
 
 	_, err = client.Run(ch, values)
 	if err != nil {
 		logger.Error(err, "helm install failed", "releaseName", refName, "chartName", chartName)
 		return errors.Wrapf(err, "helm install failed")
 	}
+	logger.Debug("helm install completed", "releaseName", refName, "chartName", chartName)
 
 	return nil
 }

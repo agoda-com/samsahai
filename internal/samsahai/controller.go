@@ -21,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crctrl "sigs.k8s.io/controller-runtime/pkg/controller"
@@ -73,7 +72,6 @@ type controller struct {
 	scheme        *runtime.Scheme
 	muTeamConfigs *sync.Mutex
 	client        client.Client
-	clientset     *kubernetes.Clientset
 	teamConfigs   map[string]internal.ConfigManager
 	namespace     string
 
@@ -132,14 +130,6 @@ func New(
 	if mgr != nil {
 		// create runtime client
 		c.client = mgr.GetClient()
-
-		// creates clientset
-		clientset, err := kubernetes.NewForConfig(mgr.GetConfig())
-		if err != nil {
-			logger.Error(errors.ErrInternalError, "cannot create clientset")
-			panic(errors.ErrInternalError)
-		}
-		c.clientset = clientset
 
 		if err := add(mgr, c); err != nil {
 			logger.Error(err, "cannot add samsahai controller to manager")
@@ -629,6 +619,10 @@ func (c *controller) destroyNamespaces(teamComp *s2hv1beta1.Team, teamNsOpts ...
 			continue
 		}
 
+		if err := c.destroyAllStableComponents(namespace); err != nil {
+			return errors.Wrap(err, "cannot delete all stable components")
+		}
+
 		namespaceObj := corev1.Namespace{}
 		err := c.client.Get(ctx, types.NamespacedName{Name: namespace}, &namespaceObj)
 		if err != nil && k8serrors.IsNotFound(err) {
@@ -884,6 +878,14 @@ func (c *controller) GetTeams() (v *s2hv1beta1.TeamList, err error) {
 	return v, errors.Wrap(err, "cannot list teams")
 }
 
+func (c *controller) GetTeamNames() map[string]struct{} {
+	teams := map[string]struct{}{}
+	for t := range c.teamConfigs {
+		teams[t] = struct{}{}
+	}
+	return teams
+}
+
 func (c *controller) GetQueueHistories(namespace string) (v *s2hv1beta1.QueueHistoryList, err error) {
 	v = &s2hv1beta1.QueueHistoryList{}
 	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})
@@ -959,6 +961,10 @@ func getNodeIP(nodes *corev1.NodeList) string {
 		return externalIP
 	}
 	return hostName
+}
+
+func (c *controller) destroyAllStableComponents(namespace string) error {
+	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.StableComponent{}, client.InNamespace(namespace))
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -1126,7 +1132,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	teamName := teamComp.GetName()
-	if err := c.CreateStagingEnvironment(teamName, internal.AppPrefix+teamName); err != nil {
+	if err := c.CreateStagingEnvironment(teamName, internal.GenStagingNamespace(teamName)); err != nil {
 		if errors.IsNamespaceStillCreating(err) {
 			return reconcile.Result{
 				Requeue:      true,
