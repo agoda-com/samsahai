@@ -30,6 +30,10 @@ type StableComponentSpec struct {
 
 	// Version represents Docker image tag version
 	Version string `json:"version"`
+
+	// UpdatedBy represents a person who updated the StableComponent
+	// +optional
+	UpdatedBy string `json:"updatedBy,omitempty"`
 }
 
 // StableComponentStatus defines the observed state of StableComponent

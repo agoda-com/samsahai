@@ -185,6 +185,8 @@ func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace
 
 // setStableComponent creates or updates StableComponent to match with Queue
 func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
+	const updatedBy = "samsahai"
+
 	stableComp := &s2hv1beta1.StableComponent{}
 	err = c.client.Get(
 		context.TODO(),
@@ -204,6 +206,7 @@ func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 				Name:       queue.Spec.Name,
 				Version:    queue.Spec.Version,
 				Repository: queue.Spec.Repository,
+				UpdatedBy:  updatedBy,
 			},
 			Status: s2hv1beta1.StableComponentStatus{
 				CreatedAt: &now,
@@ -231,6 +234,7 @@ func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 
 	stableComp.Spec.Repository = queue.Spec.Repository
 	stableComp.Spec.Version = queue.Spec.Version
+	stableComp.Spec.UpdatedBy = updatedBy
 
 	err = c.client.Update(context.TODO(), stableComp)
 	if err != nil {
