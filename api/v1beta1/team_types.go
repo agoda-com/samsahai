@@ -162,8 +162,7 @@ func (ts *TeamStatus) SetStableComponents(stableComp *StableComponent, isDeleted
 		}
 
 		if comp.Spec.Name == stableComp.Spec.Name {
-			if comp.Spec.Repository != stableComp.Spec.Repository ||
-				comp.Spec.Version != stableComp.Spec.Version {
+			if comp.Spec != stableComp.Spec {
 				ts.StableComponents[i].Spec = stableComp.Spec
 				ts.StableComponents[i].Status = stableComp.Status
 				return true
