@@ -3,17 +3,19 @@ package stablecomponent
 import (
 	"context"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cr "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 var logger = s2hlog.Log.WithName(CtrlName)
@@ -184,6 +186,16 @@ func (r *reconciler) Reconcile(req cr.Request) (cr.Result, error) {
 		return reconcile.Result{}, err
 	}
 
+	if ok := r.detectSpecChanged(stableComp, team); !ok {
+		return reconcile.Result{}, nil
+	}
+
+	now := metav1.Now()
+	stableComp.Status.UpdatedAt = &now
+	if stableComp.Status.CreatedAt == nil {
+		stableComp.Status.CreatedAt = &now
+	}
+
 	// Update team if stable component has changes
 	if team.Status.SetStableComponents(stableComp, false) {
 		if err := r.updateTeam(team); err != nil {
@@ -191,5 +203,23 @@ func (r *reconciler) Reconcile(req cr.Request) (cr.Result, error) {
 		}
 	}
 
+	// Update stable component status
+	if err := r.updateStable(stableComp); err != nil {
+		return cr.Result{}, err
+	}
+
 	return cr.Result{}, nil
+}
+
+func (r *reconciler) detectSpecChanged(stableComp *s2hv1beta1.StableComponent, teamComp *s2hv1beta1.Team) bool {
+	if stableComp != nil {
+		teamStableComp := teamComp.Status.GetStableComponent(stableComp.Name)
+		if teamStableComp != nil {
+			if teamStableComp.Spec == stableComp.Spec {
+				return false
+			}
+		}
+	}
+
+	return true
 }

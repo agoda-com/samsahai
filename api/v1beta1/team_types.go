@@ -143,6 +143,17 @@ type TeamStatus struct {
 	DesiredComponentImageCreatedTime map[string]map[string]DesiredImageTime `json:"desiredComponentImageCreatedTime,omitempty"`
 }
 
+func (ts *TeamStatus) GetStableComponent(stableCompName string) *StableComponent {
+	for i := 0; i < len(ts.StableComponents); i++ {
+		comp := ts.StableComponents[i]
+		if comp.Spec.Name == stableCompName {
+			return &comp
+		}
+	}
+
+	return nil
+}
+
 // SetStableComponents sets stable components
 func (ts *TeamStatus) SetStableComponents(stableComp *StableComponent, isDeleted bool) (isChanged bool) {
 	if stableComp == nil {
