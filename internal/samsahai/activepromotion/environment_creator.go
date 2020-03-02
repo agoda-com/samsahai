@@ -22,6 +22,7 @@ func (c *controller) createPreActiveEnvAndDeployStableCompObjects(ctx context.Co
 	suffix := c.randomToken(tokenLength, atpComp.CreationTimestamp.UnixNano())
 	targetNs := fmt.Sprintf("%s%s-%s", internal.AppPrefix, teamName, suffix)
 
+	logger.Debug("start creating pre-active environment", "team", teamName, "namespace", targetNs)
 	if err := c.createPreActiveEnvironment(ctx, teamName, targetNs); err != nil {
 		return err
 	}
@@ -31,6 +32,8 @@ func (c *controller) createPreActiveEnvAndDeployStableCompObjects(ctx context.Co
 		return err
 	}
 
+	logger.Debug("start copying stable component objects into target namespace",
+		"team", teamName, "namespace", targetNs)
 	stagingNs := teamComp.Status.Namespace.Staging
 	if err = c.copyStableComponentObjectsToTargetNamespace(ctx, atpComp, stagingNs, targetNs); err != nil {
 		return err

@@ -413,6 +413,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 	err := c.client.Get(ctx, types.NamespacedName{Name: namespace}, &namespaceObj)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
+			logger.Debug("start creating namespace", "team", teamComp.Name, "namespace", namespace)
 			if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
 				if err := controllerutil.SetControllerReference(teamComp, &namespaceObj, c.scheme); err != nil {
 					return err
@@ -429,6 +430,8 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 		return err
 	}
 
+	logger.Debug("start creating s2h environment objects",
+		"team", teamComp.Name, "namespace", namespace)
 	err = c.createEnvironmentObjects(teamComp, namespace)
 	if err != nil {
 		return err
@@ -448,6 +451,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 			corev1.ConditionTrue,
 			fmt.Sprintf("%s namespace is created and staging ctrl is deployed", namespace))
 
+		logger.Debug("start updating team namespace", "team", teamComp.Name, "namespace", namespace)
 		if err := c.updateTeamNamespacesStatus(teamComp, teamNsOpt); err != nil {
 			return errors.Wrap(err, "cannot update team conditions when create namespace success")
 		}
