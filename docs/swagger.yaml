@@ -377,11 +377,9 @@ definitions:
         type: string
       outdatedComponents:
         description: |-
-          OutdatedComponents represents list of outdated components
+          OutdatedComponents represents map of outdated components
           +optional
-        items:
-          $ref: '#/definitions/v1beta1.OutdatedComponent'
-        type: array
+        type: object
       preActiveQueue:
         $ref: '#/definitions/v1beta1.QueueStatus'
         description: |-
@@ -481,19 +479,6 @@ definitions:
       repository:
         type: string
       tag:
-        type: string
-    type: object
-  v1beta1.OutdatedComponent:
-    properties:
-      currentImage:
-        $ref: '#/definitions/v1beta1.Image'
-        type: object
-      latestImage:
-        $ref: '#/definitions/v1beta1.Image'
-        type: object
-      name:
-        type: string
-      outdatedDuration:
         type: string
     type: object
   v1beta1.Queue:

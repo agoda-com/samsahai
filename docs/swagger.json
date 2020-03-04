@@ -1172,11 +1172,8 @@
                     "type": "string"
                 },
                 "outdatedComponents": {
-                    "description": "OutdatedComponents represents list of outdated components\n+optional",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1beta1.OutdatedComponent"
-                    }
+                    "description": "OutdatedComponents represents map of outdated components\n+optional",
+                    "type": "object"
                 },
                 "preActiveQueue": {
                     "description": "PreActiveQueue represents a pre-active queue status\n+optional",
@@ -1272,25 +1269,6 @@
                     "type": "string"
                 },
                 "tag": {
-                    "type": "string"
-                }
-            }
-        },
-        "v1beta1.OutdatedComponent": {
-            "type": "object",
-            "properties": {
-                "currentImage": {
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.Image"
-                },
-                "latestImage": {
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.Image"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "outdatedDuration": {
                     "type": "string"
                 }
             }

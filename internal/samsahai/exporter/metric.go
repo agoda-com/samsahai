@@ -331,14 +331,13 @@ func SetActivePromotionHistoriesMetric(activePromotionHistories *s2hv1beta1.Acti
 
 func SetOutdatedComponentMetric(outdatedComponent *s2hv1beta1.ActivePromotion) {
 	teamName := outdatedComponent.Name
-	for i := range outdatedComponent.Status.OutdatedComponents {
-		outdated := outdatedComponent.Status.OutdatedComponents[i]
+	for name, outdated := range outdatedComponent.Status.OutdatedComponents {
 		outdatedDays := outdated.OutdatedDuration / (24 * time.Hour)
 		OutdatedComponentMetric.WithLabelValues(
 			teamName,
-			outdated.Name,
+			name,
 			outdated.CurrentImage.Tag,
-			outdated.LatestImage.Tag,
+			outdated.DesiredImage.Tag,
 		).Set(float64(outdatedDays))
 	}
 }

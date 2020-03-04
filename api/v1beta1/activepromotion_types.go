@@ -162,9 +162,9 @@ type ActivePromotionStatus struct {
 	// ActiveComponents represents a list of promoted active components
 	// +optional
 	ActiveComponents []StableComponent `json:"activeComponents,omitempty"`
-	// OutdatedComponents represents list of outdated components
+	// OutdatedComponents represents map of outdated components
 	// +optional
-	OutdatedComponents []*OutdatedComponent `json:"outdatedComponents,omitempty"`
+	OutdatedComponents map[string]OutdatedComponent `json:"outdatedComponents,omitempty"`
 	// RollbackStatus represents a status of the rollback process
 	// +optional
 	RollbackStatus ActivePromotionRollbackStatus `json:"rollbackStatus,omitempty"`
@@ -325,9 +325,8 @@ func (a ActivePromotionByCreatedTimeASC) Swap(i, j int) { a[i], a[j] = a[j], a[i
 
 // OutdatedComponent defines properties of outdated component
 type OutdatedComponent struct {
-	Name             string        `json:"name"`
 	CurrentImage     *Image        `json:"currentImage"`
-	LatestImage      *Image        `json:"latestImage"`
+	DesiredImage     *Image        `json:"desiredImage"`
 	OutdatedDuration time.Duration `json:"outdatedDuration"`
 }
 

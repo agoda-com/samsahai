@@ -31,6 +31,10 @@ func New(cfg *internal.Configuration, desiredComps map[string]map[string]s2hv1be
 }
 
 func (o Outdated) SetOutdatedDuration(atpCompStatus *s2hv1beta1.ActivePromotionStatus) {
+	if atpCompStatus.OutdatedComponents == nil {
+		atpCompStatus.OutdatedComponents = make(map[string]s2hv1beta1.OutdatedComponent)
+	}
+
 	for _, stableComp := range o.stableComps {
 		stableCompSpec := stableComp.Spec
 		stableName := stableCompSpec.Name
@@ -46,7 +50,7 @@ func (o Outdated) SetOutdatedDuration(atpCompStatus *s2hv1beta1.ActivePromotionS
 		latestDesiredImageTime := descCreatedTime[0].ImageTime
 		if strings.EqualFold(latestDesiredImage, stableImage) {
 			outdatedComp := getOutdatedComponent(stableCompSpec, latestDesiredImageTime, 0)
-			atpCompStatus.OutdatedComponents = append(atpCompStatus.OutdatedComponents, outdatedComp)
+			atpCompStatus.OutdatedComponents[stableName] = outdatedComp
 			continue
 		}
 
@@ -65,7 +69,7 @@ func (o Outdated) SetOutdatedDuration(atpCompStatus *s2hv1beta1.ActivePromotionS
 			}
 
 			outdatedComp := getOutdatedComponent(stableComp.Spec, latestDesiredImageTime, outdatedDuration)
-			atpCompStatus.OutdatedComponents = append(atpCompStatus.OutdatedComponents, outdatedComp)
+			atpCompStatus.OutdatedComponents[stableName] = outdatedComp
 		}
 	}
 }
@@ -123,14 +127,13 @@ func (o Outdated) getWeekendDuration(atpStableDesiredTime time.Time) time.Durati
 func getOutdatedComponent(
 	stableComp s2hv1beta1.StableComponentSpec,
 	latestVersion s2hv1beta1.DesiredImageTime,
-	outdatedDuration time.Duration) *s2hv1beta1.OutdatedComponent {
-	return &s2hv1beta1.OutdatedComponent{
-		Name: stableComp.Name,
+	outdatedDuration time.Duration) s2hv1beta1.OutdatedComponent {
+	return s2hv1beta1.OutdatedComponent{
 		CurrentImage: &s2hv1beta1.Image{
 			Repository: stableComp.Repository,
 			Tag:        stableComp.Version,
 		},
-		LatestImage: &s2hv1beta1.Image{
+		DesiredImage: &s2hv1beta1.Image{
 			Repository: latestVersion.Repository,
 			Tag:        latestVersion.Tag,
 		},

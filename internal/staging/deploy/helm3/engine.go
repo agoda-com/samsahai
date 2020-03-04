@@ -162,7 +162,7 @@ func (e *engine) helmUninstall(refName string, disableHooks bool) error {
 	_, err := client.Run(refName)
 	if err != nil {
 		switch {
-		case errors.Is(errors.Cause(err), driver.ErrReleaseNotFound):
+		case errors.Is(errors.Cause(err), driver.ErrReleaseNotFound): // nolint
 			return nil
 		}
 		log.Error(err, "helm uninstall failed")

@@ -227,21 +227,21 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 	return strings.TrimSpace(template.TextRender("SlackActivePromotionStatus", message, comp))
 }
 
-func (r *reporter) makeOutdatedComponentsReport(comps []*s2hv1beta1.OutdatedComponent) string {
+func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1beta1.OutdatedComponent) string {
 	var message = `
 *Outdated Components:*
-{{- range .Components }}
+{{- range $name, $component := .Components }}
 {{- if gt .OutdatedDuration 0 }}
-*{{ .Name }}*
+*{{ $name }}*
 >Not update for {{ .OutdatedDuration | FmtDurationToStr }}
 >Current Version: <{{ .CurrentImage.Repository | ConcatHTTPStr }}|{{ .CurrentImage.Tag }}>
->Latest Version: <{{ .LatestImage.Repository | ConcatHTTPStr }}|{{ .LatestImage.Tag }}>
+>Latest Version: <{{ .DesiredImage.Repository | ConcatHTTPStr }}|{{ .DesiredImage.Tag }}>
 {{- end }}
 {{- end }}
 `
 
 	ocObj := struct {
-		Components []*s2hv1beta1.OutdatedComponent
+		Components map[string]s2hv1beta1.OutdatedComponent
 	}{Components: comps}
 	return strings.TrimSpace(template.TextRender("SlackOutdatedComponents", message, ocObj))
 }

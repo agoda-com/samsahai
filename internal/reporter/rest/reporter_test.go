@@ -48,17 +48,15 @@ var _ = Describe("send rest message", func() {
 			status := &s2hv1beta1.ActivePromotionStatus{
 				Result:               s2hv1beta1.ActivePromotionSuccess,
 				HasOutdatedComponent: true,
-				OutdatedComponents: []*s2hv1beta1.OutdatedComponent{
-					{
-						Name:             comp1,
+				OutdatedComponents: map[string]s2hv1beta1.OutdatedComponent{
+					comp1: {
 						CurrentImage:     &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
-						LatestImage:      &s2hv1beta1.Image{Repository: repoComp1, Tag: v112},
+						DesiredImage:     &s2hv1beta1.Image{Repository: repoComp1, Tag: v112},
 						OutdatedDuration: time.Duration(86400000000000), // 1d0h0m
 					},
-					{
-						Name:             comp2,
+					comp2: {
 						CurrentImage:     &s2hv1beta1.Image{Repository: repoComp2, Tag: v201811},
-						LatestImage:      &s2hv1beta1.Image{Repository: repoComp2, Tag: v201811},
+						DesiredImage:     &s2hv1beta1.Image{Repository: repoComp2, Tag: v201811},
 						OutdatedDuration: time.Duration(0),
 					},
 				},
@@ -79,12 +77,12 @@ var _ = Describe("send rest message", func() {
 
 				_outdated := gjson.GetBytes(body, "outdatedComponents")
 				g.Expect(_outdated.Exists()).To(BeTrue(), "outdatedComponents keys should exist")
-				g.Expect(_outdated.IsArray()).To(BeTrue(), "outdatedComponents should be an array")
-				g.Expect(_outdated.Array()[0].Raw).To(Equal(
-					`{"name":"comp1","currentImage":{"repository":"repo/comp1","tag":"1.1.0"},"latestImage":{"repository":"repo/comp1","tag":"1.1.2"},"outdatedDuration":86400000000000}`),
+				g.Expect(_outdated.IsObject()).To(BeTrue(), "outdatedComponents should be a map object")
+				g.Expect(_outdated.Map()["comp1"].Raw).To(Equal(
+					`{"currentImage":{"repository":"repo/comp1","tag":"1.1.0"},"desiredImage":{"repository":"repo/comp1","tag":"1.1.2"},"outdatedDuration":86400000000000}`),
 					"json should be matched")
-				g.Expect(_outdated.Array()[1].Raw).To(Equal(
-					`{"name":"comp2","currentImage":{"repository":"repo/comp2","tag":"2018.1.1"},"latestImage":{"repository":"repo/comp2","tag":"2018.1.1"},"outdatedDuration":0}`),
+				g.Expect(_outdated.Map()["comp2"].Raw).To(Equal(
+					`{"currentImage":{"repository":"repo/comp2","tag":"2018.1.1"},"desiredImage":{"repository":"repo/comp2","tag":"2018.1.1"},"outdatedDuration":0}`),
 					"json should be matched")
 			})
 			defer server.Close()

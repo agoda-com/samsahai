@@ -130,14 +130,14 @@ var _ = Describe("set outdated duration when active stable version is eq to late
 		oMock.SetOutdatedDuration(atpRpt)
 		g.Expect(atpRpt.HasOutdatedComponent).To(BeFalse(), "should not have outdated duration")
 
-		outdatedComp1 := atpRpt.OutdatedComponents[0]
+		outdatedComp1 := atpRpt.OutdatedComponents[comp1]
 		g.Expect(outdatedComp1.CurrentImage.Tag).To(Equal(v110))
-		g.Expect(outdatedComp1.LatestImage.Tag).To(Equal(v110))
+		g.Expect(outdatedComp1.DesiredImage.Tag).To(Equal(v110))
 		g.Expect(outdatedComp1.OutdatedDuration).To(Equal(time.Duration(0)))
 
-		outdatedComp2 := atpRpt.OutdatedComponents[1]
+		outdatedComp2 := atpRpt.OutdatedComponents[comp2]
 		g.Expect(outdatedComp2.CurrentImage.Tag).To(Equal(v212))
-		g.Expect(outdatedComp2.LatestImage.Tag).To(Equal(v212))
+		g.Expect(outdatedComp2.DesiredImage.Tag).To(Equal(v212))
 		g.Expect(outdatedComp2.OutdatedDuration).To(Equal(time.Duration(0)))
 	})
 
@@ -175,9 +175,9 @@ var _ = Describe("set outdated duration when active stable version is eq to late
 		oMock.SetOutdatedDuration(atpRpt)
 		g.Expect(atpRpt.HasOutdatedComponent).To(BeFalse(), "should not have outdated duration")
 
-		outdatedComp1 := atpRpt.OutdatedComponents[0]
+		outdatedComp1 := atpRpt.OutdatedComponents[comp1]
 		g.Expect(outdatedComp1.CurrentImage.Tag).To(Equal(v113))
-		g.Expect(outdatedComp1.LatestImage.Tag).To(Equal(v113))
+		g.Expect(outdatedComp1.DesiredImage.Tag).To(Equal(v113))
 		g.Expect(outdatedComp1.OutdatedDuration).To(Equal(time.Duration(0)))
 	})
 })
@@ -237,14 +237,14 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 		oMock.SetOutdatedDuration(atpRpt)
 		g.Expect(atpRpt.HasOutdatedComponent).To(BeTrue(), "should have outdated components")
 
-		outdatedComp1 := atpRpt.OutdatedComponents[0]
+		outdatedComp1 := atpRpt.OutdatedComponents[comp1]
 		g.Expect(outdatedComp1.CurrentImage.Tag).To(Equal(v110))
-		g.Expect(outdatedComp1.LatestImage.Tag).To(Equal(v113))
+		g.Expect(outdatedComp1.DesiredImage.Tag).To(Equal(v113))
 		g.Expect(outdatedComp1.OutdatedDuration).To(Equal(time.Duration(25260000000000))) // 0d7h1m
 
-		outdatedComp2 := atpRpt.OutdatedComponents[1]
+		outdatedComp2 := atpRpt.OutdatedComponents[comp2]
 		g.Expect(outdatedComp2.CurrentImage.Tag).To(Equal(v210))
-		g.Expect(outdatedComp2.LatestImage.Tag).To(Equal(v212))
+		g.Expect(outdatedComp2.DesiredImage.Tag).To(Equal(v212))
 		g.Expect(outdatedComp2.OutdatedDuration).To(Equal(time.Duration(111660000000000))) // 1d7h1m
 	})
 
@@ -290,9 +290,9 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 		oMock.SetOutdatedDuration(atpRpt)
 		g.Expect(atpRpt.HasOutdatedComponent).To(BeTrue(), "should have outdated components")
 
-		outdatedComp1 := atpRpt.OutdatedComponents[0]
+		outdatedComp1 := atpRpt.OutdatedComponents[comp1]
 		g.Expect(outdatedComp1.CurrentImage.Tag).To(Equal(v114))
-		g.Expect(outdatedComp1.LatestImage.Tag).To(Equal(v116))
+		g.Expect(outdatedComp1.DesiredImage.Tag).To(Equal(v116))
 		g.Expect(outdatedComp1.OutdatedDuration).To(Equal(time.Duration(151260000000000))) // 1d18h1m
 	})
 
@@ -334,9 +334,9 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 		oMock.SetOutdatedDuration(atpRpt)
 		g.Expect(atpRpt.HasOutdatedComponent).To(BeTrue(), "should have outdated components")
 
-		outdatedComp1 := atpRpt.OutdatedComponents[0]
+		outdatedComp1 := atpRpt.OutdatedComponents[comp1]
 		g.Expect(outdatedComp1.CurrentImage.Tag).To(Equal(v114))
-		g.Expect(outdatedComp1.LatestImage.Tag).To(Equal(v115))
+		g.Expect(outdatedComp1.DesiredImage.Tag).To(Equal(v115))
 		g.Expect(outdatedComp1.OutdatedDuration).To(Equal(time.Duration(10860000000000))) // 0d3h1m
 	})
 
@@ -374,9 +374,9 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 		oMock.SetOutdatedDuration(atpRpt)
 		g.Expect(atpRpt.HasOutdatedComponent).To(BeTrue(), "should have outdated components")
 
-		outdatedComp1 := atpRpt.OutdatedComponents[0]
+		outdatedComp1 := atpRpt.OutdatedComponents[comp1]
 		g.Expect(outdatedComp1.CurrentImage.Tag).To(Equal(v113))
-		g.Expect(outdatedComp1.LatestImage.Tag).To(Equal(v114))
+		g.Expect(outdatedComp1.DesiredImage.Tag).To(Equal(v114))
 		g.Expect(outdatedComp1.OutdatedDuration).To(Equal(time.Duration(60000000000))) // 0d0h1m
 	})
 
@@ -409,11 +409,11 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 		oMock.SetOutdatedDuration(atpRpt)
 		g.Expect(atpRpt.HasOutdatedComponent).To(BeTrue(), "should have outdated components")
 
-		outdatedComp1 := atpRpt.OutdatedComponents[0]
+		outdatedComp1 := atpRpt.OutdatedComponents[comp1]
 		g.Expect(outdatedComp1.CurrentImage.Repository).To(Equal(repoComp1))
 		g.Expect(outdatedComp1.CurrentImage.Tag).To(Equal(v110))
-		g.Expect(outdatedComp1.LatestImage.Repository).To(Equal(repoComp11))
-		g.Expect(outdatedComp1.LatestImage.Tag).To(Equal(v110))
+		g.Expect(outdatedComp1.DesiredImage.Repository).To(Equal(repoComp11))
+		g.Expect(outdatedComp1.DesiredImage.Tag).To(Equal(v110))
 		g.Expect(outdatedComp1.OutdatedDuration).To(Equal(time.Duration(25260000000000))) // 0d7h1m
 	})
 })
@@ -458,9 +458,9 @@ var _ = Describe("set outdated duration when exceed duration configuration is 24
 		oMock.SetOutdatedDuration(atpRpt)
 		g.Expect(atpRpt.HasOutdatedComponent).To(BeFalse(), "should not have outdated components")
 
-		outdatedComp1 := atpRpt.OutdatedComponents[0]
+		outdatedComp1 := atpRpt.OutdatedComponents[comp1]
 		g.Expect(outdatedComp1.CurrentImage.Tag).To(Equal(v110))
-		g.Expect(outdatedComp1.LatestImage.Tag).To(Equal(v113))
+		g.Expect(outdatedComp1.DesiredImage.Tag).To(Equal(v113))
 		g.Expect(outdatedComp1.OutdatedDuration).To(Equal(time.Duration(0))) // 0d0h0m
 	})
 
@@ -513,14 +513,14 @@ var _ = Describe("set outdated duration when exceed duration configuration is 24
 		oMock.SetOutdatedDuration(atpRpt)
 		g.Expect(atpRpt.HasOutdatedComponent).To(BeTrue(), "should have outdated components")
 
-		outdatedComp1 := atpRpt.OutdatedComponents[0]
+		outdatedComp1 := atpRpt.OutdatedComponents[comp1]
 		g.Expect(outdatedComp1.CurrentImage.Tag).To(Equal(v110))
-		g.Expect(outdatedComp1.LatestImage.Tag).To(Equal(v113))
+		g.Expect(outdatedComp1.DesiredImage.Tag).To(Equal(v113))
 		g.Expect(outdatedComp1.OutdatedDuration).To(Equal(time.Duration(0))) // 0d0h0m
 
-		outdatedComp2 := atpRpt.OutdatedComponents[1]
+		outdatedComp2 := atpRpt.OutdatedComponents[comp2]
 		g.Expect(outdatedComp2.CurrentImage.Tag).To(Equal(v210))
-		g.Expect(outdatedComp2.LatestImage.Tag).To(Equal(v212))
+		g.Expect(outdatedComp2.DesiredImage.Tag).To(Equal(v212))
 		g.Expect(outdatedComp2.OutdatedDuration).To(Equal(time.Duration(111660000000000))) // 1d7h1m
 	})
 })

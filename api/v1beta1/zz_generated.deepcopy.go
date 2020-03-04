@@ -264,13 +264,9 @@ func (in *ActivePromotionStatus) DeepCopyInto(out *ActivePromotionStatus) {
 	}
 	if in.OutdatedComponents != nil {
 		in, out := &in.OutdatedComponents, &out.OutdatedComponents
-		*out = make([]*OutdatedComponent, len(*in))
-		for i := range *in {
-			if (*in)[i] != nil {
-				in, out := &(*in)[i], &(*out)[i]
-				*out = new(OutdatedComponent)
-				(*in).DeepCopyInto(*out)
-			}
+		*out = make(map[string]OutdatedComponent, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	in.PreActiveQueue.DeepCopyInto(&out.PreActiveQueue)
@@ -510,8 +506,8 @@ func (in *OutdatedComponent) DeepCopyInto(out *OutdatedComponent) {
 		*out = new(Image)
 		**out = **in
 	}
-	if in.LatestImage != nil {
-		in, out := &in.LatestImage, &out.LatestImage
+	if in.DesiredImage != nil {
+		in, out := &in.DesiredImage, &out.DesiredImage
 		*out = new(Image)
 		**out = **in
 	}

@@ -147,17 +147,15 @@ var _ = Describe("send slack message", func() {
 			status := &s2hv1beta1.ActivePromotionStatus{
 				Result:               s2hv1beta1.ActivePromotionSuccess,
 				HasOutdatedComponent: true,
-				OutdatedComponents: []*s2hv1beta1.OutdatedComponent{
-					{
-						Name:             comp1,
+				OutdatedComponents: map[string]s2hv1beta1.OutdatedComponent{
+					comp1: {
 						CurrentImage:     &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
-						LatestImage:      &s2hv1beta1.Image{Repository: repoComp1, Tag: v112},
+						DesiredImage:     &s2hv1beta1.Image{Repository: repoComp1, Tag: v112},
 						OutdatedDuration: time.Duration(86400000000000), // 1d0h0m
 					},
-					{
-						Name:             comp2,
+					comp2: {
 						CurrentImage:     &s2hv1beta1.Image{Repository: repoComp2, Tag: v110},
-						LatestImage:      &s2hv1beta1.Image{Repository: repoComp2, Tag: v110},
+						DesiredImage:     &s2hv1beta1.Image{Repository: repoComp2, Tag: v110},
 						OutdatedDuration: time.Duration(0),
 					},
 				},
@@ -231,17 +229,15 @@ var _ = Describe("send slack message", func() {
 							{Repository: "repo2", Tag: "2.xx"},
 						},
 					},
-					OutdatedComponents: []*s2hv1beta1.OutdatedComponent{
-						{
-							Name:             comp1,
+					OutdatedComponents: map[string]s2hv1beta1.OutdatedComponent{
+						comp1: {
 							CurrentImage:     &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
-							LatestImage:      &s2hv1beta1.Image{Repository: repoComp1, Tag: v112},
+							DesiredImage:     &s2hv1beta1.Image{Repository: repoComp1, Tag: v112},
 							OutdatedDuration: time.Duration(86400000000000), // 1d0h0m
 						},
-						{
-							Name:             comp2,
+						comp2: {
 							CurrentImage:     &s2hv1beta1.Image{Repository: repoComp2, Tag: v110},
-							LatestImage:      &s2hv1beta1.Image{Repository: repoComp2, Tag: v110},
+							DesiredImage:     &s2hv1beta1.Image{Repository: repoComp2, Tag: v110},
 							OutdatedDuration: time.Duration(0),
 						},
 					},

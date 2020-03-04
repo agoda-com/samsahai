@@ -208,16 +208,24 @@ var _ = Describe("Samsahai Exporter", func() {
 				Name: "testOCTeamNameOld",
 			},
 			Status: s2hv1beta1.ActivePromotionStatus{
-				OutdatedComponents: []*s2hv1beta1.OutdatedComponent{
-					{
-						Name: "testOCNameOld",
+				OutdatedComponents: map[string]s2hv1beta1.OutdatedComponent{
+					"testOCNameOld": {
 						CurrentImage: &s2hv1beta1.Image{
 							Tag: "2019.12.07.00-Old",
 						},
-						LatestImage: &s2hv1beta1.Image{
+						DesiredImage: &s2hv1beta1.Image{
 							Tag: "2019.12.10.00-Old",
 						},
 						OutdatedDuration: 99540000000000,
+					},
+					"testOCName2": {
+						CurrentImage: &s2hv1beta1.Image{
+							Tag: "2019.12.07.00",
+						},
+						DesiredImage: &s2hv1beta1.Image{
+							Tag: "2019.12.10.00",
+						},
+						OutdatedDuration: 99599999999999,
 					},
 				},
 			},
@@ -519,7 +527,8 @@ var _ = Describe("Samsahai Exporter", func() {
 		defer close(done)
 		data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_outdated_component{component="testOCNameOld",currentVer="2019.12.07.00-Old",desiredVer="2019.12.10.00-Old",teamName="testOCTeamNameOld"} 1`)
+		data2 := string(data)
+		expectedData := strings.Contains(data2, `samsahai_outdated_component{component="testOCNameOld",currentVer="2019.12.07.00-Old",desiredVer="2019.12.10.00-Old",teamName="testOCTeamNameOld"} 1`)
 		g.Expect(expectedData).To(BeTrue())
 		OutdatedComponentMetric.Reset()
 
@@ -528,23 +537,21 @@ var _ = Describe("Samsahai Exporter", func() {
 				Name: "testOCTeamName",
 			},
 			Status: s2hv1beta1.ActivePromotionStatus{
-				OutdatedComponents: []*s2hv1beta1.OutdatedComponent{
-					{
-						Name: "testOCName1",
+				OutdatedComponents: map[string]s2hv1beta1.OutdatedComponent{
+					"testOCName1": {
 						CurrentImage: &s2hv1beta1.Image{
 							Tag: "2019.12.07.00",
 						},
-						LatestImage: &s2hv1beta1.Image{
+						DesiredImage: &s2hv1beta1.Image{
 							Tag: "2019.12.10.00",
 						},
 						OutdatedDuration: 99540000000000,
 					},
-					{
-						Name: "testOCName2",
+					"testOCName2": {
 						CurrentImage: &s2hv1beta1.Image{
 							Tag: "2019.12.07.00",
 						},
-						LatestImage: &s2hv1beta1.Image{
+						DesiredImage: &s2hv1beta1.Image{
 							Tag: "2019.12.10.00",
 						},
 						OutdatedDuration: 99599999999999,
