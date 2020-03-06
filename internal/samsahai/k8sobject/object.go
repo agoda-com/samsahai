@@ -59,15 +59,52 @@ func GetResourceQuota(teamComp *s2hv1beta1.Team, namespaceName string) runtime.O
 	return &resourceQuota
 }
 
-func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceName, samsahaiURL, samsahaiImage string) runtime.Object {
+func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceName string, configs *internal.SamsahaiConfig) runtime.Object {
 	teamName := teamComp.GetName()
 
+	samsahaiImage := configs.SamsahaiImage
 	if teamComp.Spec.StagingCtrl != nil && !strings.EqualFold((*teamComp.Spec.StagingCtrl).Image, "") {
 		samsahaiImage = (*teamComp.Spec.StagingCtrl).Image
 	}
 
 	defaultLabels := getDefaultLabels(teamName)
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
+
+	envVars := []corev1.EnvVar{
+		{
+			Name:  "S2H_SERVER_URL",
+			Value: configs.SamsahaiURL,
+		},
+		{
+			Name:  "S2H_TEAM_NAME",
+			Value: teamName,
+		},
+		{
+			Name:  "POD_NAMESPACE",
+			Value: namespaceName,
+		},
+	}
+
+	if configs.SamsahaiHTTPProxy != "" {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "HTTP_PROXY",
+			Value: configs.SamsahaiHTTPProxy,
+		})
+	}
+
+	if configs.SamsahaiHTTPSProxy != "" {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "HTTPS_PROXY",
+			Value: configs.SamsahaiHTTPSProxy,
+		})
+	}
+
+	if configs.SamsahaiNoProxy != "" {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "NO_PROXY",
+			Value: configs.SamsahaiNoProxy,
+		})
+	}
 
 	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -99,20 +136,7 @@ func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceN
 									Protocol:      "TCP",
 								},
 							},
-							Env: []corev1.EnvVar{
-								{
-									Name:  "S2H_SERVER_URL",
-									Value: samsahaiURL,
-								},
-								{
-									Name:  "S2H_TEAM_NAME",
-									Value: teamName,
-								},
-								{
-									Name:  "POD_NAMESPACE",
-									Value: namespaceName,
-								},
-							},
+							Env: envVars,
 							LivenessProbe: &corev1.Probe{
 								InitialDelaySeconds: int32(20),
 								TimeoutSeconds:      int32(1),

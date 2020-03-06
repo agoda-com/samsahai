@@ -512,7 +512,7 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 	if teamComp.Spec.StagingCtrl != nil && !(*teamComp.Spec.StagingCtrl).IsDeploy {
 		logger.Warn("skip deploying the staging controller deployment")
 	} else {
-		deploymentObj := k8sobject.GetDeployment(c.scheme, teamComp, namespace, c.configs.SamsahaiURL, c.configs.SamsahaiImage)
+		deploymentObj := k8sobject.GetDeployment(c.scheme, teamComp, namespace, &c.configs)
 		k8sObjects = append(k8sObjects, deploymentObj)
 	}
 
