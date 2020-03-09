@@ -20,6 +20,7 @@ extraEnvs: {}
 configs:
   S2H_CONFIG_PATH: "samsahai.yaml"
   S2H_SERVICE_NAME: '{{ include "samsahai.fullname" . }}'
+  NO_PROXY: '.{{ .Release.Namespace }}'
 # existingSecret: ""
 
 fileConfigs:
