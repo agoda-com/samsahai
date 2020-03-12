@@ -20,12 +20,7 @@ func (c *controller) updateActivePromotion(ctx context.Context, atpComp *s2hv1be
 	}
 
 	// Add metric activepromotion
-	atpList := &s2hv1beta1.ActivePromotionList{}
-	if err := c.client.List(context.TODO(), atpList); err != nil {
-		logger.Error(err, "cannot list all active promotion")
-	} else {
-		exporter.SetActivePromotionMetric(atpList)
-	}
+	exporter.SetActivePromotionMetric(atpComp)
 
 	return nil
 }

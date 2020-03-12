@@ -191,14 +191,8 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, atpComp *s
 				if err = c.removeFinalizerObject(ctx, atpComp); err != nil {
 					return
 				}
-
 				// Add metric activePromotion
-				atpList := &s2hv1beta1.ActivePromotionList{}
-				if err := c.client.List(context.TODO(), atpList); err != nil {
-					logger.Error(err, "cannot list all active promotion")
-				} else {
-					exporter.SetActivePromotionMetric(atpList)
-				}
+				exporter.SetActivePromotionMetric(atpComp)
 
 				// active promotion process has been finished
 				return true, nil

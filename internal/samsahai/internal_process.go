@@ -107,7 +107,7 @@ func (c *controller) process() bool {
 	case updateHealth:
 		err = c.updateHealthMetric()
 	case exportMetric:
-		err = c.exportAllMetric()
+		err = c.exportTeamMetric()
 	default:
 		c.queue.Forget(obj)
 		return true
@@ -271,11 +271,13 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	}
 
 	// Add matric updateQueueMetric
-	queueList := &s2hv1beta1.QueueList{}
-	if err = c.client.List(context.TODO(), queueList); err != nil {
-		logger.Error(err, "cannot list all queue")
+	queue := &s2hv1beta1.Queue{}
+	if err = c.client.Get(ctx, types.NamespacedName{
+		Name:      compName,
+		Namespace: compNs}, queue); err != nil {
+		logger.Error(err, "cannot get the queue")
 	} else {
-		exporter.SetQueueMetric(queueList, c.teamConfigs)
+		exporter.SetQueueMetric(queue)
 	}
 
 	return nil
@@ -449,75 +451,9 @@ func convertDesiredMapToDesiredTimeList(desiredMap map[string]s2hv1beta1.Desired
 	return out
 }
 
-type outdatedComponentTime struct {
-	Component   *s2hv1beta1.ActivePromotion
-	CreatedTime *metav1.Time
-}
-
-func (c *controller) exportAllMetric() error {
+func (c *controller) exportTeamMetric() error {
 	//team name
 	exporter.SetTeamNameMetric(c.teamConfigs)
-
-	//queue
-	queueList := &s2hv1beta1.QueueList{}
-	if err := c.client.List(context.TODO(), queueList); err != nil {
-		logger.Error(err, "cannot list all queue")
-	} else {
-		exporter.SetQueueMetric(queueList, c.teamConfigs)
-	}
-
-	//queue histories
-	queueHistoriesList := &s2hv1beta1.QueueHistoryList{}
-	if err := c.client.List(context.TODO(), queueHistoriesList); err != nil {
-		logger.Error(err, "cannot list all queue histories")
-	} else {
-		exporter.SetQueueHistoriesMetric(queueHistoriesList, c.configs.SamsahaiExternalURL)
-	}
-
-	//active Promotion
-	atpList := &s2hv1beta1.ActivePromotionList{}
-	if err := c.client.List(context.TODO(), atpList); err != nil {
-		logger.Error(err, "cannot list all active promotion")
-	} else {
-		exporter.SetActivePromotionMetric(atpList)
-	}
-
-	//active Promotion histories
-	atpHisList := &s2hv1beta1.ActivePromotionHistoryList{}
-	if err := c.client.List(context.TODO(), atpHisList); err != nil {
-		logger.Error(err, "Cannot list all active promotion histories")
-	} else {
-		exporter.SetActivePromotionHistoriesMetric(atpHisList)
-	}
-
-	//outdated component
-	oc := map[string]outdatedComponentTime{}
-	for _, atpHistories := range atpHisList.Items {
-		teamName := atpHistories.Spec.TeamName
-		if teamName == "" {
-			teamName = atpHistories.Labels["samsahai.io/teamname"]
-		}
-		if atpHistories.Spec.ActivePromotion == nil {
-			continue
-		}
-		if atpHistories.Spec.ActivePromotion.Status.Result == s2hv1beta1.ActivePromotionCanceled {
-			continue
-		}
-		itemCreateTime := atpHistories.CreationTimestamp
-		if obj, ok := oc[teamName]; ok {
-			if !obj.CreatedTime.Before(&itemCreateTime) {
-				continue
-			}
-		}
-		atpHistories.Spec.ActivePromotion.Name = teamName
-		oc[teamName] = outdatedComponentTime{
-			atpHistories.Spec.ActivePromotion,
-			&itemCreateTime,
-		}
-	}
-	for _, obj := range oc {
-		exporter.SetOutdatedComponentMetric(obj.Component)
-	}
 
 	return nil
 }

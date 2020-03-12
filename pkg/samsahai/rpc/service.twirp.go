@@ -51,6 +51,8 @@ type RPC interface {
 	RunPostComponentUpgrade(context.Context, *ComponentUpgrade) (*Empty, error)
 
 	GetMissingVersion(context.Context, *TeamWithCurrentComponent) (*ImageList, error)
+
+	SendUpdateStateQueueMetric(context.Context, *ComponentUpgrade) (*Empty, error)
 }
 
 // ===================
@@ -59,7 +61,7 @@ type RPC interface {
 
 type rPCProtobufClient struct {
 	client HTTPClient
-	urls   [3]string
+	urls   [4]string
 	opts   twirp.ClientOptions
 }
 
@@ -76,10 +78,11 @@ func NewRPCProtobufClient(addr string, client HTTPClient, opts ...twirp.ClientOp
 	}
 
 	prefix := urlBase(addr) + RPCPathPrefix
-	urls := [3]string{
+	urls := [4]string{
 		prefix + "GetConfiguration",
 		prefix + "RunPostComponentUpgrade",
 		prefix + "GetMissingVersion",
+		prefix + "SendUpdateStateQueueMetric",
 	}
 
 	return &rPCProtobufClient{
@@ -149,13 +152,33 @@ func (c *rPCProtobufClient) GetMissingVersion(ctx context.Context, in *TeamWithC
 	return out, nil
 }
 
+func (c *rPCProtobufClient) SendUpdateStateQueueMetric(ctx context.Context, in *ComponentUpgrade) (*Empty, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "samsahai.io.samsahai")
+	ctx = ctxsetters.WithServiceName(ctx, "RPC")
+	ctx = ctxsetters.WithMethodName(ctx, "SendUpdateStateQueueMetric")
+	out := new(Empty)
+	err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
 // ===============
 // RPC JSON Client
 // ===============
 
 type rPCJSONClient struct {
 	client HTTPClient
-	urls   [3]string
+	urls   [4]string
 	opts   twirp.ClientOptions
 }
 
@@ -172,10 +195,11 @@ func NewRPCJSONClient(addr string, client HTTPClient, opts ...twirp.ClientOption
 	}
 
 	prefix := urlBase(addr) + RPCPathPrefix
-	urls := [3]string{
+	urls := [4]string{
 		prefix + "GetConfiguration",
 		prefix + "RunPostComponentUpgrade",
 		prefix + "GetMissingVersion",
+		prefix + "SendUpdateStateQueueMetric",
 	}
 
 	return &rPCJSONClient{
@@ -231,6 +255,26 @@ func (c *rPCJSONClient) GetMissingVersion(ctx context.Context, in *TeamWithCurre
 	ctx = ctxsetters.WithMethodName(ctx, "GetMissingVersion")
 	out := new(ImageList)
 	err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[2], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *rPCJSONClient) SendUpdateStateQueueMetric(ctx context.Context, in *ComponentUpgrade) (*Empty, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "samsahai.io.samsahai")
+	ctx = ctxsetters.WithServiceName(ctx, "RPC")
+	ctx = ctxsetters.WithMethodName(ctx, "SendUpdateStateQueueMetric")
+	out := new(Empty)
+	err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
 	if err != nil {
 		twerr, ok := err.(twirp.Error)
 		if !ok {
@@ -301,6 +345,9 @@ func (s *rPCServer) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	case "/twirp/samsahai.io.samsahai.RPC/GetMissingVersion":
 		s.serveGetMissingVersion(ctx, resp, req)
+		return
+	case "/twirp/samsahai.io.samsahai.RPC/SendUpdateStateQueueMetric":
+		s.serveSendUpdateStateQueueMetric(ctx, resp, req)
 		return
 	default:
 		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
@@ -674,6 +721,135 @@ func (s *rPCServer) serveGetMissingVersionProtobuf(ctx context.Context, resp htt
 	}
 	if respContent == nil {
 		s.writeError(ctx, resp, twirp.InternalError("received a nil *ImageList and nil error while calling GetMissingVersion. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *rPCServer) serveSendUpdateStateQueueMetric(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.serveSendUpdateStateQueueMetricJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.serveSendUpdateStateQueueMetricProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *rPCServer) serveSendUpdateStateQueueMetricJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "SendUpdateStateQueueMetric")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	reqContent := new(ComponentUpgrade)
+	unmarshaler := jsonpb.Unmarshaler{AllowUnknownFields: true}
+	if err = unmarshaler.Unmarshal(req.Body, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the json request could not be decoded"))
+		return
+	}
+
+	// Call service method
+	var respContent *Empty
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = s.RPC.SendUpdateStateQueueMetric(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *Empty and nil error while calling SendUpdateStateQueueMetric. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	var buf bytes.Buffer
+	marshaler := &jsonpb.Marshaler{OrigName: true}
+	if err = marshaler.Marshal(&buf, respContent); err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	respBytes := buf.Bytes()
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *rPCServer) serveSendUpdateStateQueueMetricProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "SendUpdateStateQueueMetric")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to read request body"))
+		return
+	}
+	reqContent := new(ComponentUpgrade)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	// Call service method
+	var respContent *Empty
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = s.RPC.SendUpdateStateQueueMetric(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *Empty and nil error while calling SendUpdateStateQueueMetric. nil responses are not supported"))
 		return
 	}
 
