@@ -67,7 +67,7 @@ jobs:
 
       - installing_s2h_deps
 
-#       run unit test
+      #       run unit test
       - run:
           name: "Run Unit Test"
           command: |
@@ -83,7 +83,7 @@ jobs:
           command: |
             make prepare-env-e2e-k3d
 
-#       run e2e test
+      #       run e2e test
       - run:
           name: "Run E2E Test"
           command: |
@@ -98,8 +98,7 @@ jobs:
           name: "E2E Test Coverage"
           command: |
             make overall-coverage
-
-            bash <(curl -s https://codecov.io/bash)
+            curl -s https://codecov.io/bash | bash -s - -t $CODECOV_TOKEN
 
       - run:
           name: Save test results
