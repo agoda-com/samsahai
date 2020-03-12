@@ -97,7 +97,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 			Owners:      []string{"samsahai@samsahai.io"},
 			GitStorage: s2hv1beta1.GitStorage{
 				URL:        "https://github.com/agoda-com/samsahai-example.git",
-				Path:       "atp",
+				Path:       "configs",
 				CloneDepth: 1,
 			},
 			Credential: s2hv1beta1.Credential{
@@ -1078,12 +1078,11 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Github webhook")
-		// TODO: change here when OSS
 		jsonData, err := json.Marshal(map[string]interface{}{
 			"ref": "master",
 			"repository": map[string]interface{}{
 				"name":      "samsahai-example",
-				"full_name": "docker/samsahai-example",
+				"full_name": "agoda-com/samsahai-example",
 			},
 		})
 		Expect(err).NotTo(HaveOccurred())

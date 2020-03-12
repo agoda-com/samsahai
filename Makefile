@@ -1,5 +1,5 @@
-DOCKER_REPO				?= "agoda-com/samsahai"
-DOCKER_REGISTRY			?= "docker.io"
+DOCKER_REPO				?= "quay.io/samsahai/samsahai"
+DOCKER_REGISTRY			?= "quay.io"
 DOCKER_USER				?=
 DOCKER_PASSWORD			?=
 
@@ -79,7 +79,7 @@ format:
 
 .PHONY: lint
 lint: format tidy
-	GO111MODULE=on $(GOLANGCI_LINT) run
+	GO111MODULE=on $(GOLANGCI_LINT) run --timeout 5m
 
 .PHONY: tidy
 tidy:
@@ -304,30 +304,6 @@ generate-rpc:
 swag:
 	$(SWAG) init -g cmd/samsahai/main.go
 
-# Generate code
-#generate:
-#ifndef GOPATH
-#	$(error GOPATH not defined, please define GOPATH. Run "go help gopath" to learn more about GOPATH)
-#endif
-#	export GO111MODULE=on; \
-#	go get k8s.io/code-generator@v0.0.0-20181117043124-c2090bec4d9b || echo 'ignore error.'; \
-#	go generate ./pkg/apis/...
-
-#manifests: controller-tools="github.com/phantomnat/controller-tools@v0.1.11-1/cmd/controller-gen/main.go"
-#manifests:
-#	go get sigs.k8s.io/controller-tools@v0.1.11
-#	go run $$GOPATH/pkg/mod/$(controller-tools) crd --apis-path pkg/apis
-#	go run $$GOPATH/pkg/mod/$(controller-tools) rbac \
-#			--name desired-component \
-#			--input-dir internal/desiredcomponent \
-#			--output-dir config/rbac/desiredcomponent
-#	go run $$GOPATH/pkg/mod/$(controller-tools) rbac \
-#    			--name samsahai \
-#    			--input-dir internal/samsahai \
-#    			--output-dir config/rbac/samsahai \
-#    			--service-account samsahai \
-#    			--service-account-namespace samsahai-system
-#
 install-crds: generate manifests
 	kubectl apply -f ./config/crds
 	make lint

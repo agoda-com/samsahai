@@ -11,6 +11,41 @@ commands:
               echo "Nothing to do for forked PRs, so marking this step successful"
               circleci step halt
             fi
+  installing_s2h_deps:
+    description: >
+      Install samsahai required tools and dependencies
+    steps:
+      - checkout
+      - restore_cache:
+          key: gopkg-1.13.6-{{ .Branch }}-{{ checksum "go.mod" }}
+          paths:
+            - /home/circleci/go/pkg/mod
+      - run:
+          name: Install Go
+          command: |
+            go version
+            go env GOROOT
+            mkdir tmp
+            cd tmp
+            sudo rm -rf /usr/local/go
+            wget https://storage.googleapis.com/golang/go$GOVERSION.$OS-$ARCH.tar.gz
+            sudo tar -C /usr/local -xzf go$GOVERSION.$OS-$ARCH.tar.gz
+            go version
+      - run:
+          name: "Install Dependencies"
+          command: |
+            make install-dep SUDO="sudo " DEBUG=1
+
+            echo 'export GO111MODULE="on"' >> $BASH_ENV
+            echo 'export PATH=$PATH:/usr/local/go/bin:/usr/local/kubebuilder/bin:$GOPATH/bin' >> $BASH_ENV
+
+            export GO111MODULE=on
+            go mod tidy
+      - save_cache:
+          key: gopkg-1.13.6-{{ .Branch }}-{{ checksum "go.mod" }}
+          paths:
+            - /home/circleci/go/pkg/mod
+
 
 version: 2.1
 jobs:
@@ -23,55 +58,16 @@ jobs:
       GOPATH: /home/circleci/go
       INSTALL_DIR: /home/circleci/go/bin/
       POD_NAMESPACE: default
-      GOVERSION: 1.12.7
+      GOVERSION: 1.13.6
       OS: linux
       ARCH: amd64
 
     working_directory: /home/circleci/go/src/github.com/agoda-com/samsahai
     steps:
 
-      - checkout
+      - installing_s2h_deps
 
-      - restore_cache:
-          key: gopkg-1.12.7-{{ .Branch }}-{{ checksum "go.mod" }}
-          paths:
-            - /home/circleci/go/pkg/mod
-
-      - run:
-          name: Install Go
-          command: |
-            go version
-            go env GOROOT
-            mkdir tmp
-            cd tmp
-            sudo rm -rf /usr/local/go
-            wget https://storage.googleapis.com/golang/go$GOVERSION.$OS-$ARCH.tar.gz
-            sudo tar -C /usr/local -xzf go$GOVERSION.$OS-$ARCH.tar.gz
-            go version
-
-      - run:
-          name: Prepared Env vars.
-          command: |
-            echo 'export docker_user="$QUAY_DOCKER_USER"' >> $BASH_ENV
-            echo 'export docker_registry="$QUAY_DOCKER_REGISTRY"' >> $BASH_ENV
-            echo 'export docker_image_repo="phantomnat/samsahai"' >> $BASH_ENV
-
-      - run:
-          name: "Install Dependencies"
-          command: |
-            make install-dep SUDO="sudo " DEBUG=1
-
-            echo 'export GO111MODULE="on"' >> $BASH_ENV
-            echo 'export PATH=$PATH:/usr/local/go/bin:/usr/local/kubebuilder/bin:$GOPATH/bin' >> $BASH_ENV
-
-            export GO111MODULE=on
-            go mod tidy
-
-      - save_cache:
-          key: gopkg-1.12.7-{{ .Branch }}-{{ checksum "go.mod" }}
-          paths:
-            - /home/circleci/go/pkg/mod
-
+#       run unit test
       - run:
           name: "Run Unit Test"
           command: |
@@ -87,7 +83,7 @@ jobs:
           command: |
             make prepare-env-e2e-k3d
 
-      # run e2e test
+#       run e2e test
       - run:
           name: "Run E2E Test"
           command: |
@@ -119,36 +115,45 @@ jobs:
       - store_artifacts:
           path: ./test/result
 
-      # TODO: build binary
-
-#      - persist_to_workspace:
-#          root: /home/circleci/
-#          paths:
-#            - go
-
-  # TODO: release to github with go release
   release:
     machine:
       image: ubuntu-1604:201903-01
 
     environment:
+      KUBECONFIG: /tmp/s2h/k3s-kubeconfig
       GOPATH: /home/circleci/go
+      INSTALL_DIR: /home/circleci/go/bin/
+      POD_NAMESPACE: default
+      GOVERSION: 1.13.6
+      OS: linux
+      ARCH: amd64
 
     working_directory: /home/circleci/go/src/github.com/agoda-com/samsahai
     steps:
       - early_return_for_forked_pull_requests
-      - setup_remote_docker
-      - attach_workspace:
-          at: /home/circleci/
+      - installing_s2h_deps
+
       - run:
-          name: "verify"
+          name: Prepared Env vars.
           command: |
-            set -x
-            echo GOPATH=$GOPATH
-            echo PATH=$PATH
+            echo 'export DOCKER_USER="$QUAY_DOCKER_USER"' >> $BASH_ENV
+            echo 'export DOCKER_PASSWORD="$QUAY_DOCKER_TOKEN"' >> $BASH_ENV
+            echo 'export GITHUB_TOKEN="$GITHUB_TOKEN"' >> $BASH_ENV
+            echo 'export GITHUB_REPO="agoda-com/samsahai"' >> $BASH_ENV
+            echo 'export INSTALL_DIR="$(pwd)/bin/"' >> $BASH_ENV
+
+      - run:
+          name: Release
+          command: |
             ls -al
-            ls -al $GOPATH/bin
-            ls -al out
+            rm -rf tmp
+            make auto-release
+
+      - run:
+          name: Docker logout
+          when: on_fail
+          command: |
+            make .docker-logout
 
 workflows:
   version: 2
@@ -160,6 +165,5 @@ workflows:
             - build
           filters:
             branches:
-              ignore: /.*/
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
+              only:
+                - master

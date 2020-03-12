@@ -35,11 +35,6 @@ checksum:
 dist: out
 #release:
 #  disable: true
-github_urls:
-  api: https://github.agodadev.io/api/v3/
-  upload: https://github.agodadev.io/api/uploads/
-  download: https://github.agodadev.io/
-  skip_tls_verify: true
 changelog:
   sort: asc
   filters:
