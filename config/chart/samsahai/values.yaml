@@ -2,18 +2,20 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 1
-
 image:
   repository: quay.io/samsahai/samsahai
   tag: latest
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+
+replicaCount: 1
 
 debug: false
+
+nameOverride: ""
+
+fullnameOverride: "samsahai"
 
 extraEnvs: {}
 
@@ -21,53 +23,57 @@ configs:
   S2H_CONFIG_PATH: "samsahai.yaml"
   S2H_SERVICE_NAME: '{{ include "samsahai.fullname" . }}'
   NO_PROXY: '.{{ .Release.Namespace }}'
-# existingSecret: ""
 
 fileConfigs:
   s2hImage: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'
   clusterDomain: "cluster.local"
-#  teamcityURL: ""
-#  s2hExternalURL: ""
 
+  # activePromotion global config
   activePromotion:
+    # how many active promotions can run in parallel?
     concurrences: 3
+
+    # how long for active promotion flow?
     timeout: "30m"
-    rollbackTimeout: "5m"
+
+    # how many max histories of active promotion?
+    maxHistories: 10
+
+    # how long before destroying previous active namespace?
+    # this is for successful active promotion
     teardownDuration: "10m"
-    maxHistories: 14
+
+    # how long for demotion flow?
+    # this is for successful active promotion
     # demotion timeout should be less than rollback timeout
     demotionTimeout: "3m"
 
-#  postNamespaceCreation:
-#    command: ["/bin/sh", "-c"]
-#    args:
-#      - |
-#        {{ `echo {{ .Namespace }}` }}
+    # how long for rollback flow when promotion flow has problem?
+    # this is for failed active promotion
+    rollbackTimeout: "5m"
 
-credentials:
-  S2H_AUTH_TOKEN: "please_change_this"
-  TEAMCITY_USERNAME:
-  TEAMCITY_PASSWORD:
-  SLACK_TOKEN:
+# the value in this field should be base64 encoder
+credentials: null
+#  # this is the token for GRPC communication between samsahai and staging controller
+#  S2H_AUTH_TOKEN: "base64_auth_token"
+#  SLACK_TOKEN: "base64_slack_token"
 
 service:
-  type: ClusterIP
+  type: NodePort
   http: 8080
 
 exporter:
-  port: 8081
   enabled: false
-
+  port: 8081
 
 ingress:
   enabled: false
   annotations: {}
-  # kubernetes.io/ingress.class: nginx
-  # kubernetes.io/tls-acme: "true"
+#    kubernetes.io/ingress.class: nginx
+#    kubernetes.io/tls-acme: "true"
   hosts:
     - host: chart-example.local
       paths: []
-
   tls: []
   #  - secretName: chart-example-tls
   #    hosts:

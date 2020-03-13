@@ -73,9 +73,7 @@ install-dep: .install-kubectl .install-kustomize .install-golangci-lint .install
 .PHONY: format
 format:
 	export GO111MODULE=off; \
-	hash goimports &> /dev/null || go get golang.org/x/tools/cmd/goimports; \
-	gofmt -w .; \
-	goimports -w .;
+	gofmt -w .;
 
 .PHONY: lint
 lint: format tidy
@@ -305,7 +303,7 @@ swag:
 	$(SWAG) init -g cmd/samsahai/main.go
 
 install-crds: generate manifests
-	kubectl apply -f ./config/crds
+	$(KUBECTL) apply -f ./config/crds
 	make lint
 
 

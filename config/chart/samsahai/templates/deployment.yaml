@@ -18,10 +18,10 @@ spec:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum | quote }}
     spec:
-    {{- with .Values.imagePullSecrets }}
+      {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{ toYaml . | indent 8 | trim }}
-    {{- end }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -46,7 +46,7 @@ spec:
               value: "1"
             {{- end }}
           {{- with .Values.extraEnvs }}
-            {{ tpl (toYaml .) $root | indent 12 | trim }}
+          {{ tpl (toYaml .) $root | indent 12 | trim }}
           {{- end }}
           envFrom:
             - secretRef:
@@ -71,18 +71,18 @@ spec:
             {{ toYaml . | indent 12 | trim }}
           {{- end }}
       serviceAccountName: {{ template "samsahai.fullname" . }}
-    {{- with .Values.nodeSelector }}
+      {{- with .Values.nodeSelector }}
       nodeSelector:
         {{ toYaml . | indent 8 | trim }}
-    {{- end }}
-    {{- with .Values.affinity }}
+      {{- end }}
+      {{- with .Values.affinity }}
       affinity:
         {{ toYaml . | indent 8 | trim }}
-    {{- end }}
-    {{- with .Values.tolerations }}
+      {{- end }}
+      {{- with .Values.tolerations }}
       tolerations:
         {{ toYaml . | indent 8 | trim }}
-    {{- end }}
+      {{- end }}
       volumes:
         - name: configdir
           configMap:

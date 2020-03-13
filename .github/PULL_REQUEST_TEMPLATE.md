@@ -1,17 +1,4 @@
-### Pull request description in brief :
+<!-- Please fill this template. -->
+**What's the change or impact of this PR?**:
 
-- What's change/impact of this pr
-
-### Pull request acceptance criteria:
-    
-- [ ] Code reviewed
-- [ ] Unit / Integration tests and coverage
-
-### Code reviewer checklist :
-
-- [ ] Code style
-    * Naming conventions
-    * No hardcoding of config params
-    * Swagger comments
-- [ ] Unit tests exist
-- [ ] Functional tests exist
+**Related issue link**:
