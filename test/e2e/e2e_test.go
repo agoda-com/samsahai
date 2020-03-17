@@ -29,7 +29,7 @@ func TestE2E(t *testing.T) {
 	switch {
 	case os.Getenv("TEAMCITY_VERSION") != "":
 		fallthrough
-	case os.Getenv("CIRCLECI") != "":
+	case os.Getenv("CI") != "":
 		specReporters := []Reporter{reporters.NewJUnitReporter("e2e.unit-test.xml")}
 		RunSpecsWithCustomReporters(t, "E2E", specReporters)
 	default:

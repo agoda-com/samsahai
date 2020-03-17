@@ -8,6 +8,7 @@ GITHUB_TOKEN			?=
 GITHUB_REPO				?= agoda-com/samsahai
 GO_VERSION          	?= 1.13.6
 GOLANGCI_LINT_VERSION 	?= 1.22.2
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -41,6 +42,10 @@ TMP_DIR					?= /tmp/samsahai
 MV 						= $(SUDO)mv
 RM 						= $(SUDO)rm
 MKDIR					= $(SUDO)mkdir
+CHMOD					= $(SUDO)chmod
+CHOWN 					= $(SUDO)chown
+CURL					= $(SUDO)curl
+TAR						= $(SUDO)tar
 DOCKER					?= docker
 K3S_EXEC				= $(DOCKER) exec -i $(K3S_DOCKER_NAME)
 KUBECTL					= $(INSTALL_DIR)kubectl
@@ -72,8 +77,7 @@ install-dep: .install-kubectl .install-kustomize .install-golangci-lint .install
 
 .PHONY: format
 format:
-	export GO111MODULE=off; \
-	gofmt -w .;
+	GO111MODULE=off gofmt -w .
 
 .PHONY: lint
 lint: format tidy
@@ -85,7 +89,7 @@ tidy:
 
 .PHONY: golangci-lint-check-version
 golangci-lint-check-version:
-	@if golangci-lint --version | grep "$(GOLANGCI_LINT_VERSION)" > /dev/null; then \
+	@if $(GOLANGCI_LINT) --version | grep "$(GOLANGCI_LINT_VERSION)" > /dev/null; then \
 		echo; \
 	else \
 		echo "golangci-lint version mismatch"; \
@@ -118,7 +122,7 @@ e2e-test:
 e2e-test-k3d: e2e-test
 
 k3s-get-kubeconfig:
-	mkdir -p $(shell dirname $(KUBECONFIG))
+	$(MKDIR) -p $(shell dirname $(KUBECONFIG))
 	$(K3S_EXEC) cat /output/kubeconfig > $(KUBECONFIG)
 	@echo export KUBECONFIG=$(KUBECONFIG)
 
@@ -148,7 +152,7 @@ prepare-env-e2e:
 
 	set -e; \
 	export KUBECONFIG=$(KUBECONFIG); \
-	mkdir -p $$(dirname $(KUBECONFIG)); \
+	$(MKDIR) -p $$(dirname $(KUBECONFIG)); \
 	$(K3S_EXEC) cat /output/kubeconfig > $(KUBECONFIG); \
 	$(KUBECTL) version; \
 	\
@@ -228,7 +232,7 @@ endif
 	if [ ! -z "$(GITHUB_TOKEN)" ]; then \
 		export CURL_ARGS="-H 'Authorization: Bearer $(GITHUB_TOKEN)'"; \
 	fi; \
-	export LATEST_VERSION=$$(eval curl --silent -X GET $(GITHUB_API_URL)/repos/$(GITHUB_REPO)/releases/latest $$CURL_ARGS | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
+	export LATEST_VERSION=$$(eval $(CURL) --silent -X GET $(GITHUB_API_URL)/repos/$(GITHUB_REPO)/releases/latest $$CURL_ARGS | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
 	if [ -z $$LATEST_VERSION ]; then \
 		echo Latest version not found, using v0.1.0; \
 		LATEST_VERSION="v0.1.0"; \
@@ -251,7 +255,7 @@ endif
 	export http_proxy="$(http_proxy)"; \
 	export https_proxy="$(https_proxy)"; \
 	export no_proxy="$(no_proxy)"; \
-	eval $(GORELEASER) --rm-dist $$GORELEASER_FLAGS;
+	eval $(GORELEASER) --rm-dist --debug $$GORELEASER_FLAGS;
 
 .git-tag:
 ifndef DRYRUN
@@ -338,10 +342,11 @@ install-go:
 .install-kubectl-linux: export APP_VERSION		= $(K8S_VERSION)
 .install-kubectl-linux: export _DOWNLOAD_URL	= https://storage.googleapis.com/kubernetes-release/release/v$(K8S_VERSION)/bin/linux/amd64/kubectl
 .install-kubectl-linux:
-	mkdir -p $$(dirname $(_APP_CMD)); \
-	curl -sLo $(APP_NAME) $(_DOWNLOAD_URL); \
-	chmod +x $(APP_NAME); \
-	$(MV) $(APP_NAME) $(_APP_CMD);
+	$(MKDIR) -p $$(dirname $(_APP_CMD)); \
+	$(CURL) -sLo $(APP_NAME) $(_DOWNLOAD_URL); \
+	$(CHMOD) +x $(APP_NAME); \
+	$(MV) $(APP_NAME) $(_APP_CMD); \
+	$(CHOWN) -R $(USER):$(USER) $(_APP_CMD);
 
 .install-kustomize: export APP_NAME 		= kustomize
 .install-kustomize: export APP_VERSION 		= $(KUSTOMIZE_VERSION)
@@ -375,7 +380,7 @@ install-go:
 .install-helm:
 	export _FILENAME="$(APP_NAME)-v$(HELM_VERSION)-$(OS)-$(ARCH)"; \
 	export _DOWNLOAD_URL="https://get.helm.sh/$$_FILENAME.tar.gz"; \
-	export _MOVE_CMD="chmod +x $(TMP_DIR)/$(OS)-$(ARCH)/$(APP_NAME) && $(MV) $(TMP_DIR)/$(OS)-$(ARCH)/$(APP_NAME) $(_APP_CMD)"; \
+	export _MOVE_CMD="$(CHMOD) +x $(TMP_DIR)/$(OS)-$(ARCH)/$(APP_NAME) && $(MV) $(TMP_DIR)/$(OS)-$(ARCH)/$(APP_NAME) $(_APP_CMD)"; \
 	$(MAKE) .install-archive
 
 .install-goreleaser: export APP_NAME 			= goreleaser
@@ -384,7 +389,7 @@ install-go:
 .install-goreleaser:
 	export _FILENAME="$(APP_NAME)_$(OS)_$(ARCHx86)"; \
 	export _DOWNLOAD_URL="https://github.com/goreleaser/goreleaser/releases/download/v$(APP_VERSION)/$$_FILENAME.tar.gz"; \
-	export _MOVE_CMD="chmod +x $(TMP_DIR)/$(APP_NAME) && $(MV) $(TMP_DIR)/$(APP_NAME) $(_APP_CMD)"; \
+	export _MOVE_CMD="$(CHMOD) +x $(TMP_DIR)/$(APP_NAME) && $(MV) $(TMP_DIR)/$(APP_NAME) $(_APP_CMD)"; \
 	$(MAKE) .install-archive;
 
 .install-swag: export APP_NAME 			= swag
@@ -393,7 +398,7 @@ install-go:
 .install-swag:
 	export _FILENAME="$(APP_NAME)_$(APP_VERSION)_$(shell uname)_$(ARCHx86)"; \
 	export _DOWNLOAD_URL="https://github.com/swaggo/swag/releases/download/v$(APP_VERSION)/$$_FILENAME.tar.gz"; \
-	export _MOVE_CMD="chmod +x $(TMP_DIR)/$(APP_NAME) && $(MV) $(TMP_DIR)/$(APP_NAME) $(_APP_CMD)"; \
+	export _MOVE_CMD="$(CHMOD) +x $(TMP_DIR)/$(APP_NAME) && $(MV) $(TMP_DIR)/$(APP_NAME) $(_APP_CMD)"; \
 	$(MAKE) .install-archive;
 
 .install-protoc: export APP_NAME 		= protoc
@@ -403,7 +408,7 @@ install-go:
 .install-protoc:
 	export _FILENAME="$(APP_NAME)-$(APP_VERSION)-$(OS2)-$(ARCHx86)"; \
 	export _DOWNLOAD_URL="https://github.com/protocolbuffers/protobuf/releases/download/v$(APP_VERSION)/$$_FILENAME.zip"; \
-	export _MOVE_CMD="chmod +x $(TMP_DIR)/$$_FILENAME/bin/$(APP_NAME)"; \
+	export _MOVE_CMD="$(CHMOD) +x $(TMP_DIR)/$$_FILENAME/bin/$(APP_NAME)"; \
 	export _MOVE_CMD="$$_MOVE_CMD && $(MV) $(TMP_DIR)/$$_FILENAME/bin/$(APP_NAME) $(_APP_CMD)"; \
 	export _MOVE_CMD="$$_MOVE_CMD && $(MV) $(TMP_DIR)/$$_FILENAME/include $(INSTALL_DIR)"; \
 	$(MAKE) .install-archive;
@@ -425,13 +430,13 @@ endif
 	if $(_APP_CMD) $(_VERSION_ARGS) | grep $(APP_VERSION); then \
 		echo $(APP_NAME) $(APP_VERSION) already installed; \
 	else \
-		mkdir -p $(TMP_DIR); \
-		mkdir -p $$(dirname $(_APP_CMD)); \
-		curl -sLo $(TMP_DIR)/$(APP_NAME) $(_DOWNLOAD_URL); \
-		chmod +x $(TMP_DIR)/$(APP_NAME); \
+		$(MKDIR) -p $(TMP_DIR); \
+		$(MKDIR) -p $$(dirname $(_APP_CMD)); \
+		$(CURL) -sLo $(TMP_DIR)/$(APP_NAME) $(_DOWNLOAD_URL); \
+		$(CHMOD) +x $(TMP_DIR)/$(APP_NAME); \
 		$(MV) $(TMP_DIR)/$(APP_NAME) $(_APP_CMD); \
 		$(_APP_CMD) $(_VERSION_ARGS) | grep $(APP_VERSION) >/dev/null && echo $(APP_NAME) $(APP_VERSION) installed; \
-		rm -rf $(TMP_DIR); \
+		$(RM) -rf $(TMP_DIR); \
 	fi;
 
 .install-archive:
@@ -447,17 +452,17 @@ ifdef DEBUG
 endif
 	echo installing... $(APP_NAME) $(APP_VERSION)
 	if [ ! -f $(_APP_CMD) ] || $(_APP_CMD) $(_VERSION_ARGS) | grep -v $(APP_VERSION); then \
-		mkdir -p $(TMP_DIR); \
-		curl -sLo $(TMP_DIR)/$(_FILENAME)$(ARCHIVE_EXT) $(_DOWNLOAD_URL); \
+		$(MKDIR) -p $(TMP_DIR); \
+		$(CURL) -sLo $(TMP_DIR)/$(_FILENAME)$(ARCHIVE_EXT) $(_DOWNLOAD_URL); \
 		if [ "$(ARCHIVE_EXT)" = ".tar.gz" ]; then \
-			tar -zxf $(TMP_DIR)/$(_FILENAME)$(ARCHIVE_EXT) -C $(TMP_DIR); \
+			$(TAR) -zxf $(TMP_DIR)/$(_FILENAME)$(ARCHIVE_EXT) -C $(TMP_DIR); \
 		elif [ "$(ARCHIVE_EXT)" = ".zip" ]; then \
 			unzip $(TMP_DIR)/$(_FILENAME)$(ARCHIVE_EXT) -d $(TMP_DIR)/$(_FILENAME); \
 		else \
 			echo $(ARCHIVE_EXT) is not support!; \
 		fi; \
 		\
-		mkdir -p $$(dirname $(_APP_CMD)); \
+		$(MKDIR) -p $$(dirname $(_APP_CMD)); \
 		$(_MOVE_CMD); \
 		\
 		\
@@ -467,7 +472,7 @@ endif
 	fi;
 
 .install-gotools:
-	@echo install gotools
+	@echo installing gotools
 	@GO111MODULE=off go get -u \
 		golang.org/x/tools/cmd/goimports \
 		github.com/golang/protobuf/protoc-gen-go \

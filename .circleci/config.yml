@@ -32,8 +32,11 @@ commands:
             sudo tar -C /usr/local -xzf go$GOVERSION.$OS-$ARCH.tar.gz
             go version
       - run:
-          name: "Install Dependencies"
+          name: Install Dependencies
           command: |
+            sudo mkdir -p $GOPATH/bin
+            sudo chmod -R ugo+rw $GOPATH/bin
+
             make install-dep SUDO="sudo " DEBUG=1
 
             echo 'export GO111MODULE="on"' >> $BASH_ENV
@@ -54,6 +57,7 @@ jobs:
       image: ubuntu-1604:201903-01
 
     environment:
+      CI: true
       KUBECONFIG: /tmp/s2h/k3s-kubeconfig
       GOPATH: /home/circleci/go
       INSTALL_DIR: /home/circleci/go/bin/
@@ -69,12 +73,12 @@ jobs:
 
       #       run unit test
       - run:
-          name: "Run Unit Test"
+          name: Run Unit Test
           command: |
             make unit-test
 
       - run:
-          name: "Unit Test Coverage"
+          name: Unit Test Coverage
           command: |
             make overall-coverage
 
@@ -85,7 +89,7 @@ jobs:
 
       #       run e2e test
       - run:
-          name: "Run E2E Test"
+          name: Run E2E Test
           command: |
             kubectl version
             kubectl cluster-info
@@ -95,7 +99,7 @@ jobs:
           no_output_timeout: 30m
 
       - run:
-          name: "E2E Test Coverage"
+          name: E2E Test Coverage
           command: |
             make overall-coverage
             curl -s https://codecov.io/bash | bash -s - -t $CODECOV_TOKEN
@@ -119,6 +123,7 @@ jobs:
       image: ubuntu-1604:201903-01
 
     environment:
+      CI: true
       KUBECONFIG: /tmp/s2h/k3s-kubeconfig
       GOPATH: /home/circleci/go
       INSTALL_DIR: /home/circleci/go/bin/
@@ -150,7 +155,7 @@ jobs:
 
       - run:
           name: Docker logout
-          when: on_fail
+          when: always
           command: |
             make .docker-logout
 
@@ -159,10 +164,10 @@ workflows:
   build-deploy:
     jobs:
       - build
-      - release:
-          requires:
-            - build
-          filters:
-            branches:
-              only:
-                - master
+#      - release:
+#          requires:
+#            - build
+#          filters:
+#            branches:
+#              only:
+#                - master

@@ -1,0 +1,141 @@
+name: Samsahai
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build-test-release:
+    name: Build & Test & Release
+    runs-on: ubuntu-16.04
+    env:
+      CI: true
+      KUBECONFIG: /tmp/s2h/k3s-kubeconfig
+      POD_NAMESPACE: default
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      TEST_GIT_USERNAME: ${{ secrets.TEST_GIT_USERNAME }}
+      TEST_GIT_PASSWORD: ${{ secrets.TEST_GIT_PASSWORD }}
+    steps:
+      - name: Checking credentials
+        run: |
+          if [ -z "$TEST_GIT_USERNAME" ]; then
+            echo "No TEST_GIT_USERNAME env variable set"
+            exit 1
+          elif [ -z "$TEST_GIT_PASSWORD" ]; then
+            echo "No TEST_GIT_PASSWORD env variable set"
+            exit 1
+          fi
+
+      # BUILD
+      - uses: actions/setup-go@v1
+        with:
+          go-version: '1.13.6'
+
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+          path: go/src/github.com/agoda-com/samsahai
+
+      - uses: webfactory/ssh-agent@v0.2.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Prepare ENV
+        run: |
+          export GOPATH=/home/runner/work/samsahai/go
+          echo "::set-env name=GOROOT::$GOROOT"
+          echo "::set-env name=GOPATH::$GOPATH"
+          echo "::set-env name=INSTALL_DIR::$GOPATH/bin/"
+
+      - uses: actions/cache@v1
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install Dependencies
+        run: |
+          sudo mkdir -p $GOPATH/bin
+          sudo chmod -R ugo+rw $GOPATH/bin
+
+          make install-dep SUDO="sudo " DEBUG=1
+
+          echo "::set-env name=GO111MODULE::on"
+          echo "::add-path::/usr/local/kubebuilder/bin:$GOPATH/bin:$GOROOT/bin"
+
+          go mod tidy
+
+      # TEST
+      ## run unit test
+      - name: Run Unit Test
+        if: github.event_name == 'pull_request'
+        run: |
+          make unit-test
+
+      - name: Unit Test Coverage
+        if: github.event_name == 'pull_request'
+        run: |
+          make overall-coverage
+
+      ## run e2e test
+      - name: Prepare E2E Test Environment
+        if: github.event_name == 'pull_request'
+        run: |
+          make prepare-env-e2e-k3d
+
+      - name: Run E2E Test
+        if: github.event_name == 'pull_request'
+        run: |
+          kubectl version
+          kubectl cluster-info
+          helm version
+
+          make e2e-test-k3d DEBUG=1
+        timeout-minutes: 30
+
+      - name: E2E Test Coverage
+        if: github.event_name == 'pull_request'
+        run: |
+          make overall-coverage
+          curl -s https://codecov.io/bash | bash -s - -t $CODECOV_TOKEN
+
+      - name: Save test results
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          mkdir -p ./test/result/
+          find . -type f -regex "./.*unit-test.xml" -exec cp {} ./test/result/ \;
+          ls -al ./test/result/
+
+      - name: Store artifacts
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v1
+        with:
+          name: test-result
+          path: ./test/result
+
+      # RELEASE
+      - name: Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        env:
+          GITHUB_TOKEN: ${{ secrets.TEST_GIT_PASSWORD }}
+          GITHUB_REPO: agoda-com/samsahai
+          DOCKER_USER: ${{ secrets.QUAY_DOCKER_USER }}
+          DOCKER_PASSWORD: ${{ secrets.QUAY_DOCKER_TOKEN }}
+        run: |
+          export INSTALL_DIR="$(pwd)/bin/"
+
+          git config --global url."ssh://git@github.com".insteadOf "https://github.com" || true
+          git config --global gc.auto 0 || true
+
+          ls -al
+          rm -rf tmp
+          make auto-release SUDO="sudo "
+
+      - name: Docker logout
+        if: always()
+        run: |
+          make .docker-logout

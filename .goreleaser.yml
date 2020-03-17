@@ -35,6 +35,7 @@ checksum:
 dist: out
 #release:
 #  disable: true
+
 changelog:
   sort: asc
   filters:

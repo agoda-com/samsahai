@@ -23,8 +23,8 @@ ginkgo \
 tail -n +2 coverage.out >> coverage.txt || exit 255
 rm coverage.out
 
-CIRCLECI=${CIRCLECI:-}
-if [[ ! -z "$CIRCLECI" ]]; then
+CI=${CI:-}
+if [[ ! -z "$CI" ]]; then
   mkdir -p ./test/result/
   find . -type f -regex "./test/e2e/.*unit-test.xml" -exec cp {} ./test/result/ \;
   find . -type f -regex "./test/e2e/.*unit-test.xml" -exec rm {} +;

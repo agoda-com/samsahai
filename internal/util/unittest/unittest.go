@@ -36,7 +36,7 @@ func InitGinkgo(t *testing.T, desc string) {
 		//specReporters := []ginkgo.Reporter{reporters.NewTeamCityReporter(os.Stdout)}
 		//ginkgo.RunSpecsWithCustomReporters(t, desc, specReporters)
 		fallthrough
-	case os.Getenv("CIRCLECI") != "":
+	case os.Getenv("CI") != "":
 		specReporters := []ginkgo.Reporter{reporters.NewJUnitReporter(slugName + ".unit-test.xml")}
 		ginkgo.RunSpecsWithCustomReporters(t, desc, specReporters)
 	default:
