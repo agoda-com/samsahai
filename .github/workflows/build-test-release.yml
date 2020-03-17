@@ -36,7 +36,6 @@ jobs:
 
       - uses: actions/checkout@v1
         with:
-          fetch-depth: 1
           path: go/src/github.com/agoda-com/samsahai
 
       - uses: webfactory/ssh-agent@v0.2.0
@@ -72,23 +71,19 @@ jobs:
       # TEST
       ## run unit test
       - name: Run Unit Test
-        if: github.event_name == 'pull_request'
         run: |
           make unit-test
 
       - name: Unit Test Coverage
-        if: github.event_name == 'pull_request'
         run: |
           make overall-coverage
 
       ## run e2e test
       - name: Prepare E2E Test Environment
-        if: github.event_name == 'pull_request'
         run: |
           make prepare-env-e2e-k3d
 
       - name: Run E2E Test
-        if: github.event_name == 'pull_request'
         run: |
           kubectl version
           kubectl cluster-info
@@ -98,20 +93,19 @@ jobs:
         timeout-minutes: 30
 
       - name: E2E Test Coverage
-        if: github.event_name == 'pull_request'
         run: |
           make overall-coverage
           curl -s https://codecov.io/bash | bash -s - -t $CODECOV_TOKEN
 
       - name: Save test results
-        if: always() && github.event_name == 'pull_request'
+        if: always()
         run: |
           mkdir -p ./test/result/
           find . -type f -regex "./.*unit-test.xml" -exec cp {} ./test/result/ \;
           ls -al ./test/result/
 
       - name: Store artifacts
-        if: always() && github.event_name == 'pull_request'
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: test-result

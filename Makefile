@@ -255,7 +255,7 @@ endif
 	export http_proxy="$(http_proxy)"; \
 	export https_proxy="$(https_proxy)"; \
 	export no_proxy="$(no_proxy)"; \
-	eval $(GORELEASER) --rm-dist --debug $$GORELEASER_FLAGS;
+	eval $(GORELEASER) --rm-dist $$GORELEASER_FLAGS;
 
 .git-tag:
 ifndef DRYRUN
