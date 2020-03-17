@@ -8,6 +8,9 @@ type DeployEngine interface {
 	// GetName returns name of deploy engine
 	GetName() string
 
+	// GetValues returns yaml values of release deployment
+	GetValues() (map[string][]byte, error)
+
 	// Create creates environment
 	Create(refName string, comp *Component, parentComp *Component, values map[string]interface{}) error
 

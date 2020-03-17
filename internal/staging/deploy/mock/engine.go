@@ -61,6 +61,11 @@ func (e *engine) ForceDelete(refName string) error {
 	return nil
 }
 
+func (e *engine) GetValues() (map[string][]byte, error) {
+	logger.Debug("get yaml values of release")
+	return nil, nil
+}
+
 func (e *engine) IsReady(queue *v1beta1.Queue) (bool, error) {
 	logger.Debug(fmt.Sprintf("env with resource key '%s' is ready", queue.Status.ReleaseName))
 	return true, nil

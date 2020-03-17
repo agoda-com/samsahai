@@ -220,7 +220,7 @@ func startCtrlCmd() *cobra.Command {
 	}
 	defaultImage := "quay.io/samsahai/samsahai:latest"
 	if s2h.Version != "" {
-		defaultImage = "quay.io/samsahai/samsahai:v" + s2h.Version
+		defaultImage = "quay.io/samsahai/samsahai:" + s2h.Version
 	}
 	cmd.Flags().String(s2h.VKPodNamespace, "default", "Namespace that the controller works on.")
 	cmd.Flags().String(s2h.VKS2HConfigPath, "samsahai.yaml", "Samsahai configuration file path.")

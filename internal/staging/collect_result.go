@@ -269,9 +269,25 @@ func (c *controller) createDeploymentZipLogs(q *s2hv1beta1.Queue) (string, error
 	kubeGetAll := execCommand("kubectl", strings.Split("get po,svc,deploy,sts,rs,job -o wide"+extraArg, " ")...)
 	appendFileToZip(zipw, "kube.get.all.txt", kubeGetAll)
 
-	appendFileToZip(zipw, "env.txt", execCommand("env"))
+	deployEngine := c.getDeployEngine(q)
+	yamlValues, _ := deployEngine.GetValues()
+	for release, yaml := range yamlValues {
+		fileName := fmt.Sprintf("%s-values.yaml", release)
+		appendFileToZip(zipw, fileName, yaml)
+	}
+
 	for i := range pods.Items {
 		pod := pods.Items[i]
+
+		isPodStagingCtrl := strings.Contains(pod.Name, internal.StagingCtrlName)
+		if isPodStagingCtrl {
+			cmdLogStagingPod := "logs %s --tail=1000 --timestamps%s"
+			podLog := execCommand("kubectl",
+				strings.Split(fmt.Sprintf(cmdLogStagingPod, pod.Name, extraArg), " ")...)
+			appendFileToZip(zipw, fmt.Sprintf("pod.log.%s.txt", pod.Name), podLog)
+			continue
+		}
+
 		isPodRunning := pod.Status.Phase == corev1.PodRunning
 		isPodCompleted := pod.Status.Phase == corev1.PodSucceeded
 		for _, container := range pod.Status.ContainerStatuses {
@@ -302,6 +318,7 @@ func (c *controller) createDeploymentZipLogs(q *s2hv1beta1.Queue) (string, error
 				appendFileToZip(zipw, fmt.Sprintf("pod.pre-log.%s.init-container.%s.txt", pod.Name, container.Name), podPrevLog)
 			}
 		}
+
 		for _, container := range pod.Status.ContainerStatuses {
 			if container.RestartCount > 0 || !container.Ready {
 				podLog := execCommand("kubectl",
@@ -313,9 +330,11 @@ func (c *controller) createDeploymentZipLogs(q *s2hv1beta1.Queue) (string, error
 			}
 		}
 	}
+
 	if err = zipw.Close(); err != nil {
 		logger.Warn("error while closing zip: %+v", err)
 	}
+
 	if err := file.Close(); err != nil {
 		logger.Warn("error while closing file: %+v", err)
 	}

@@ -1,9 +1,11 @@
 package fluxhelm
 
 import (
+	"encoding/json"
 	"reflect"
 
 	fluxv1beta1 "github.com/fluxcd/flux/integrations/apis/flux.weave.works/v1beta1"
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -96,6 +98,7 @@ func (e *engine) Delete(refName string) error {
 		}
 		return err
 	}
+
 	return nil
 }
 
@@ -106,6 +109,31 @@ func (e *engine) ForceDelete(refName string) error {
 	}
 
 	return nil
+}
+
+func (e *engine) GetValues() (map[string][]byte, error) {
+	hr, err := e.hrClient.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	valuesYaml := make(map[string][]byte)
+	for _, r := range hr.Items {
+		values := r.Spec.HelmValues.AsMap()
+		valuesData, err := json.Marshal(values)
+		if err != nil {
+			return nil, err
+		}
+
+		yaml, err := yaml.JSONToYAML(valuesData)
+		if err != nil {
+			return nil, err
+		}
+
+		valuesYaml[r.Name] = yaml
+	}
+
+	return valuesYaml, nil
 }
 
 func (e *engine) IsReady(queue *v1beta1.Queue) (bool, error) {

@@ -1,6 +1,7 @@
 package helm3
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -8,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ghodss/yaml"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -149,6 +151,15 @@ func (e *engine) ForceDelete(refName string) error {
 		return err
 	}
 	return nil
+}
+
+func (e *engine) GetValues() (map[string][]byte, error) {
+	valuesYaml, err := e.helmGetValues()
+	if err != nil {
+		return nil, err
+	}
+
+	return valuesYaml, nil
 }
 
 func (e *engine) helmUninstall(refName string, disableHooks bool) error {
@@ -321,6 +332,36 @@ func (e *engine) helmList() ([]*release.Release, error) {
 		return nil, err
 	}
 	return releases, nil
+}
+
+func (e *engine) helmGetValues() (map[string][]byte, error) {
+	releases, err := e.helmList()
+	if err != nil {
+		return nil, err
+	}
+
+	valuesYaml := make(map[string][]byte)
+	for _, r := range releases {
+		client := action.NewGetValues(e.actionSettings)
+		values, err := client.Run(r.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		valuesData, err := json.Marshal(values)
+		if err != nil {
+			return nil, err
+		}
+
+		yaml, err := yaml.JSONToYAML(valuesData)
+		if err != nil {
+			return nil, err
+		}
+
+		valuesYaml[r.Name] = yaml
+	}
+
+	return valuesYaml, nil
 }
 
 // DeleteAllReleases deletes all releases in the namespace
