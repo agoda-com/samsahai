@@ -3,9 +3,11 @@ package staging
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/twitchtv/twirp"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -127,17 +129,27 @@ func (c *controller) deleteQueue(q *s2hv1beta1.Queue) error {
 }
 
 func (c *controller) updateQueueWithState(q *s2hv1beta1.Queue, state s2hv1beta1.QueueState) error {
+	headers := make(http.Header)
+	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
+	ctx := context.TODO()
+	ctx, err := twirp.WithHTTPRequestHeaders(ctx, headers)
+	if err != nil {
+		return errors.Wrap(err, "cannot set request header")
+	}
+
 	q.SetState(state)
 	logger.Debug(fmt.Sprintf("queue %s/%s update to state: %s", q.GetNamespace(), q.GetName(), q.Status.State))
 	comp := &rpc.ComponentUpgrade{
 		Name:      q.Spec.Name,
 		Namespace: q.Namespace,
 	}
+
 	if c.s2hClient != nil {
-		if _, err := c.s2hClient.SendUpdateStateQueueMetric(context.TODO(), comp); err != nil {
+		if _, err := c.s2hClient.SendUpdateStateQueueMetric(ctx, comp); err != nil {
 			logger.Error(err, "cannot send updateQueueWithState queue metric")
 		}
 	}
+
 	return c.updateQueue(q)
 }
 

@@ -282,9 +282,9 @@ func (c *controller) createDeploymentZipLogs(q *s2hv1beta1.Queue) (string, error
 		isPodStagingCtrl := strings.Contains(pod.Name, internal.StagingCtrlName)
 		if isPodStagingCtrl {
 			cmdLogStagingPod := "logs %s --tail=1000 --timestamps%s"
-			podLog := execCommand("kubectl",
+			podStagingCtrlLog := execCommand("kubectl",
 				strings.Split(fmt.Sprintf(cmdLogStagingPod, pod.Name, extraArg), " ")...)
-			appendFileToZip(zipw, fmt.Sprintf("pod.log.%s.txt", pod.Name), podLog)
+			appendFileToZip(zipw, fmt.Sprintf("pod.log.%s.txt", pod.Name), podStagingCtrlLog)
 			continue
 		}
 
