@@ -1,5 +1,4 @@
 # Samsahai (S2H)
-[![CircleCI](https://circleci.com/gh/agoda-com/samsahai.svg?style=svg)](https://circleci.com/gh/agoda-com/samsahai)
 ![Samsahai](https://github.com/agoda-com/samsahai/workflows/Samsahai/badge.svg)
 [![codecov](https://codecov.io/gh/agoda-com/samsahai/branch/master/graph/badge.svg?token=mt0oLjFy0k)](https://codecov.io/gh/agoda-com/samsahai)
 [![Docker Repository on Quay](https://quay.io/repository/samsahai/samsahai/status "Docker Repository on Quay")](https://quay.io/repository/samsahai/samsahai)
