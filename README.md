@@ -1,6 +1,9 @@
 # Samsahai (S2H)
-[![CircleCI](https://circleci.com/gh/agoda-com/samsahai.svg?style=svg)](https://circleci.com/gh/agoda-com/samsahai) ![Samsahai](https://github.com/agoda-com/samsahai/workflows/Samsahai/badge.svg) [![codecov](https://codecov.io/gh/agoda-com/samsahai/branch/master/graph/badge.svg?token=mt0oLjFy0k)](https://codecov.io/gh/agoda-com/samsahai) [![Docker Repository on Quay](https://quay.io/repository/samsahai/samsahai/status "Docker Repository on Quay")](https://quay.io/repository/samsahai/samsahai) ![GitHub](https://img.shields.io/github/license/agoda-com/samsahai)
-
+[![CircleCI](https://circleci.com/gh/agoda-com/samsahai.svg?style=svg)](https://circleci.com/gh/agoda-com/samsahai)
+![Samsahai](https://github.com/agoda-com/samsahai/workflows/Samsahai/badge.svg)
+[![codecov](https://codecov.io/gh/agoda-com/samsahai/branch/master/graph/badge.svg?token=mt0oLjFy0k)](https://codecov.io/gh/agoda-com/samsahai)
+[![Docker Repository on Quay](https://quay.io/repository/samsahai/samsahai/status "Docker Repository on Quay")](https://quay.io/repository/samsahai/samsahai)
+[![License](https://img.shields.io/badge/Licence-Apache%202.0-blue.svg)](./LICENSE)
 
 Dependencies verification system with Kubernetes Operator
 
@@ -249,10 +252,10 @@ After this step, you can see the result following [minikube promote new active](
 ## Contribution Policy
 Samsahai is an open source project, and depends on its users to improve it. We are more than happy to find you are interested in taking the project forward.
 
-Kindly refer to the [Contribution Guidelines](https://github.com/agoda-com/samsahai/blob/master/CONTRIBUTING) for detailed information.
+Kindly refer to the [Contribution Guidelines](https://github.com/agoda-com/samsahai/blob/master/CONTRIBUTING.md) for detailed information.
 
 ## Code of Conduct
-Please refer to [Code of Conduct](https://github.com/agoda-com/samsahai/blob/master/CODE_OF_CONDUCT) document.
+Please refer to [Code of Conduct](https://github.com/agoda-com/samsahai/blob/master/CODE_OF_CONDUCT.md) document.
 
 ## License
 Samsahai is open source and available under the [Apache License, Version 2.0](https://github.com/agoda-com/samsahai/blob/master/LICENSE).

@@ -29,6 +29,7 @@ rules:
       - bindings
       - configmaps
       - limitranges
+      - logs
       - persistentvolumeclaims
       - pods
       - namespaces

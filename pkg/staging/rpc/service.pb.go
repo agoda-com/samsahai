@@ -5,9 +5,8 @@ package rpc
 
 import (
 	fmt "fmt"
-	math "math"
-
 	proto "github.com/golang/protobuf/proto"
+	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -104,7 +103,9 @@ func init() {
 	proto.RegisterType((*Configuration)(nil), "samsahai.io.staging.Configuration")
 }
 
-func init() { proto.RegisterFile("pkg/staging/rpc/service.proto", fileDescriptor_3896b0de76041e06) }
+func init() {
+	proto.RegisterFile("pkg/staging/rpc/service.proto", fileDescriptor_3896b0de76041e06)
+}
 
 var fileDescriptor_3896b0de76041e06 = []byte{
 	// 182 bytes of a gzipped FileDescriptorProto
