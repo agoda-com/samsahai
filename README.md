@@ -1,6 +1,9 @@
 # Samsahai (S2H)
-[![CircleCI](https://circleci.com/gh/agoda-com/samsahai.svg?style=svg)](https://circleci.com/gh/agoda-com/samsahai) ![Samsahai](https://github.com/agoda-com/samsahai/workflows/Samsahai/badge.svg) [![codecov](https://codecov.io/gh/agoda-com/samsahai/branch/master/graph/badge.svg?token=mt0oLjFy0k)](https://codecov.io/gh/agoda-com/samsahai) [![Docker Repository on Quay](https://quay.io/repository/samsahai/samsahai/status "Docker Repository on Quay")](https://quay.io/repository/samsahai/samsahai) ![GitHub](https://img.shields.io/github/license/agoda-com/samsahai)
-
+[![CircleCI](https://circleci.com/gh/agoda-com/samsahai.svg?style=svg)](https://circleci.com/gh/agoda-com/samsahai)
+![Samsahai](https://github.com/agoda-com/samsahai/workflows/Samsahai/badge.svg)
+[![codecov](https://codecov.io/gh/agoda-com/samsahai/branch/master/graph/badge.svg?token=mt0oLjFy0k)](https://codecov.io/gh/agoda-com/samsahai)
+[![Docker Repository on Quay](https://quay.io/repository/samsahai/samsahai/status "Docker Repository on Quay")](https://quay.io/repository/samsahai/samsahai)
+[![License](https://img.shields.io/badge/Licence-Apache%202.0-blue.svg)](./LICENSE)
 
 Dependencies verification system with Kubernetes Operator
 
