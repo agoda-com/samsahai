@@ -276,8 +276,8 @@ func GetRole(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
 					"",
 				},
 				Resources: []string{
-					"logs",
 					"pods",
+					"pods/log",
 					"services",
 					"endpoints",
 					"serviceaccounts",

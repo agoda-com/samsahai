@@ -490,7 +490,7 @@ manifests: controller-gen
 
 # Generate code
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths="./..."
+	$(CONTROLLER_GEN) object:headerFile=./builder/boilerplate.go.txt paths="./..."
 
 # find or download controller-gen
 # download controller-gen if necessary
