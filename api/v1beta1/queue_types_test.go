@@ -57,19 +57,23 @@ var _ = Describe("Sort by no of order", func() {
 	It("should sort queue list correctly in case of orders are the same", func() {
 		queueList := s2hv1beta1.QueueList{
 			Items: []s2hv1beta1.Queue{
-				{Spec: s2hv1beta1.QueueSpec{Name: "comp1", NoOfOrder: 2}},
-				{Spec: s2hv1beta1.QueueSpec{Name: "comp2", NoOfOrder: 1, NextProcessAt: &beforeNow}},
-				{Spec: s2hv1beta1.QueueSpec{Name: "comp3", NoOfOrder: 1,
+				{Spec: s2hv1beta1.QueueSpec{Name: "comp1", NoOfOrder: 1}},
+				{Spec: s2hv1beta1.QueueSpec{Name: "comp2-2", NoOfOrder: 2}},
+				{Spec: s2hv1beta1.QueueSpec{Name: "comp2-4", NoOfOrder: 2, NextProcessAt: &beforeNow}},
+				{Spec: s2hv1beta1.QueueSpec{Name: "comp2-3", NoOfOrder: 2,
 					NextProcessAt: &metav1.Time{Time: beforeNow.Add(-10 * time.Minute)}}},
+				{Spec: s2hv1beta1.QueueSpec{Name: "comp2-1", NoOfOrder: 2}},
 			},
 		}
 
 		expectedQueueList := s2hv1beta1.QueueList{
 			Items: []s2hv1beta1.Queue{
-				{Spec: s2hv1beta1.QueueSpec{Name: "comp3", NoOfOrder: 1,
+				{Spec: s2hv1beta1.QueueSpec{Name: "comp1", NoOfOrder: 1}},
+				{Spec: s2hv1beta1.QueueSpec{Name: "comp2-1", NoOfOrder: 2}},
+				{Spec: s2hv1beta1.QueueSpec{Name: "comp2-2", NoOfOrder: 2}},
+				{Spec: s2hv1beta1.QueueSpec{Name: "comp2-3", NoOfOrder: 2,
 					NextProcessAt: &metav1.Time{Time: beforeNow.Add(-10 * time.Minute)}}},
-				{Spec: s2hv1beta1.QueueSpec{Name: "comp2", NoOfOrder: 1, NextProcessAt: &beforeNow}},
-				{Spec: s2hv1beta1.QueueSpec{Name: "comp1", NoOfOrder: 2}},
+				{Spec: s2hv1beta1.QueueSpec{Name: "comp2-4", NoOfOrder: 2, NextProcessAt: &beforeNow}},
 			},
 		}
 
