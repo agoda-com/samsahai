@@ -387,6 +387,8 @@ type ByNoOfOrder []Queue
 
 func (q ByNoOfOrder) Len() int { return len(q) }
 func (q ByNoOfOrder) Less(i, j int) bool {
+	now := metav1.Now()
+
 	if q[i].Spec.NoOfOrder == q[j].Spec.NoOfOrder {
 		if q[i].Spec.NextProcessAt == nil {
 			return true
@@ -395,6 +397,23 @@ func (q ByNoOfOrder) Less(i, j int) bool {
 		}
 		return q[i].Spec.NextProcessAt.Time.Before(q[j].Spec.NextProcessAt.Time)
 	}
+
+	// if next process at is after now, means that the reverify process has been finished
+	// moves to the last of queue
+	if q[i].Spec.NextProcessAt != nil && q[i].Spec.NextProcessAt.After(now.Time) &&
+		q[j].Spec.NextProcessAt != nil && q[j].Spec.NextProcessAt.After(now.Time) {
+		return q[i].Spec.NextProcessAt.Time.Before(q[j].Spec.NextProcessAt.Time)
+	}
+
+	if q[i].Spec.NextProcessAt != nil && q[i].Spec.NextProcessAt.After(now.Time) {
+		return false
+	}
+
+	if q[j].Spec.NextProcessAt != nil && q[j].Spec.NextProcessAt.After(now.Time) {
+		return true
+	}
+
+	// sort by order
 	return q[i].Spec.NoOfOrder < q[j].Spec.NoOfOrder
 }
 
