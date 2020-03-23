@@ -1,22 +1,23 @@
-# Samsahai (S2H)
-![Samsahai](https://github.com/agoda-com/samsahai/workflows/Samsahai/badge.svg)
-[![codecov](https://codecov.io/gh/agoda-com/samsahai/branch/master/graph/badge.svg?token=mt0oLjFy0k)](https://codecov.io/gh/agoda-com/samsahai)
-[![Docker Repository on Quay](https://quay.io/repository/samsahai/samsahai/status "Docker Repository on Quay")](https://quay.io/repository/samsahai/samsahai)
-[![License](https://img.shields.io/badge/Licence-Apache%202.0-blue.svg)](./LICENSE)
+Samsahai (S2H)
+==============
+[![Samsahai Actions status badge]][Actions workflow results]
+[![codecov status badge]](https://codecov.io/gh/agoda-com/samsahai)
+[![Quay.io badge]](https://quay.io/repository/samsahai/samsahai)
+[![License badge]](./LICENSE)
 
 Dependencies verification system with Kubernetes Operator
 
 ## Introduction
-Imagine if your testing environment is downstream and to make your environment to be ready, you need to spawn many services and their dependencies together. And our challenge requirement is not only providing the environment for testing but also providing the up to date dependencies. This is why we are introducing Samsahai. The system that will make your ready environment with freshness dependencies.
+Imagine if your testing environment is downstream and to make your environment ready, you need to spawn many services and their dependencies together. And our challenge requirement is not only providing the environment for testing but also providing the up to date dependencies. This is why we are introducing Samsahai. The system that will make your ready environment with freshness dependencies.
 
-![](docs/images/samsahai-icon.png)
+![Samsahai's logo](docs/images/samsahai-icon.png)
 
 ## Overview
 ### Technology
 Go, ETCD, Kubernetes, Helm
 
 ### Staging Workflow
-![](docs/images/flow-staging.png)
+![Staging Workflow flowchart diagram](docs/images/flow-staging.png)
 
 This flow is for verifying your new component version by running regression tests against staging environment.
   - Once the testing is passed, the verified version will be marked as `stable`.
@@ -24,7 +25,7 @@ This flow is for verifying your new component version by running regression test
 If it is still failed until reaching the retry limits (configurable), the component upgrade notification will be sent.
 
 ### Active Promotion Workflow
-![](docs/images/flow-active.png)
+![Active Promotion Workflow flowchart diagram](docs/images/flow-active.png)
 
 This flow is for promoting new ready active environment of all stable components.
 By the way, before becoming to be an active namespace, Samsahai will call the new namespace as `pre-active` first.
@@ -39,7 +40,7 @@ So your `old active` namespace is still there as it is.
 > So we let the `pre-active` namespace setting up finished, then we destroy `previous active` namespace without downtime.
 
 ## Installation
-### Prerequisite
+### Prerequisites
 1. Install and setup [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), please use the version below v1.16.0.
     ```
     curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.15.10/bin/darwin/amd64/kubectl
@@ -114,7 +115,7 @@ Find more configuration information in [samsahai-example](https://www.github.com
     ```
     > Now, `s2h-example` staging namespace should be created.
 
-##### Upgrade Component
+##### Upgrade Components
 1. Upgrade `redis` and `mariadb` components by using Swagger `http://<minikube_ip>:<node_port>/swagger/index.html#`
     - `POST /webhook/component`
     ```
@@ -215,7 +216,7 @@ To save the cluster resources once every upgrade component verification has fini
     ```
     > Now, `s2h-example` staging namespace should be created.
 
-##### Upgrade Component
+##### Upgrade Components
 1. Run `staging controller` by using go build with following configurations:
     ```
     File: ${GOPATH}/src/github.com/agoda-com/samsahai/cmd/staging/main.go
@@ -254,7 +255,14 @@ Samsahai is an open source project, and depends on its users to improve it. We a
 Kindly refer to the [Contribution Guidelines](https://github.com/agoda-com/samsahai/blob/master/CONTRIBUTING.md) for detailed information.
 
 ## Code of Conduct
-Please refer to [Code of Conduct](https://github.com/agoda-com/samsahai/blob/master/CODE_OF_CONDUCT.md) document.
+Please refer to [Code of Conduct](./CODE_OF_CONDUCT.md) document.
 
 ## License
-Samsahai is open source and available under the [Apache License, Version 2.0](https://github.com/agoda-com/samsahai/blob/master/LICENSE).
+Samsahai is open source and available under the [Apache License, Version 2.0](./LICENSE).
+
+
+[Samsahai Actions status badge]: https://github.com/agoda-com/samsahai/workflows/Samsahai/badge.svg
+[Actions workflow results]: https://github.com/agoda-com/samsahai/actions?query=workflow%3ASamsahai
+[codecov status badge]: https://codecov.io/gh/agoda-com/samsahai/branch/master/graph/badge.svg?token=mt0oLjFy0k
+[Quay.io badge]: https://quay.io/repository/samsahai/samsahai/status "Docker Repository on Quay"
+[License badge]: https://img.shields.io/badge/License-Apache%202.0-blue.svg
