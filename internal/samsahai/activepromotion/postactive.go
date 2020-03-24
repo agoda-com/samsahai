@@ -72,7 +72,9 @@ func (c *controller) sendReport(ctx context.Context, atpComp *s2hv1beta1.ActiveP
 		currentNs,
 		internal.WithCredential(teamComp.Spec.Credential),
 	)
-	return c.s2hCtrl.NotifyActivePromotion(atpRpt)
+	c.s2hCtrl.NotifyActivePromotion(atpRpt)
+
+	return nil
 }
 
 func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
@@ -82,11 +84,7 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta
 		return err
 	}
 
-	configMgr, err := c.getTeamConfiguration(teamName)
-	if err != nil {
-		return err
-	}
-
+	configCtrl := c.s2hCtrl.GetConfigController()
 	atpNs := atpComp.Status.TargetNamespace
 	if atpComp.Status.Result != s2hv1beta1.ActivePromotionSuccess {
 		atpNs = atpComp.Status.PreviousActiveNamespace
@@ -100,7 +98,13 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta
 
 	desiredCompsImageCreatedTime := teamComp.Status.DesiredComponentImageCreatedTime
 	stableComps := stableCompList.Items
-	o := outdated.New(configMgr.Get(), desiredCompsImageCreatedTime, stableComps)
+
+	cfg, err := configCtrl.Get(teamName)
+	if err != nil {
+		return err
+	}
+
+	o := outdated.New(cfg, desiredCompsImageCreatedTime, stableComps)
 	atpStatus := &atpComp.Status
 	o.SetOutdatedDuration(atpStatus)
 	return nil

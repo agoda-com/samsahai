@@ -25,8 +25,8 @@ var _ = Describe("shell command reporter", func() {
 
 	Describe("success path", func() {
 		It("should correctly execute component upgrade", func() {
-			testCmdObj := &internal.CommandAndArgs{}
-			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *internal.CommandAndArgs) ([]byte, error) {
+			testCmdObj := &s2hv1beta1.CommandAndArgs{}
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
 				testCmdObj = cmdObj
 				return []byte{}, nil
 			}
@@ -43,8 +43,8 @@ var _ = Describe("shell command reporter", func() {
 		})
 
 		It("should correctly execute active promotion", func() {
-			testCmdObj := &internal.CommandAndArgs{}
-			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *internal.CommandAndArgs) ([]byte, error) {
+			testCmdObj := &s2hv1beta1.CommandAndArgs{}
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
 				testCmdObj = cmdObj
 				return []byte{}, nil
 			}
@@ -65,8 +65,8 @@ var _ = Describe("shell command reporter", func() {
 		})
 
 		It("should correctly execute image missing", func() {
-			testCmdObj := &internal.CommandAndArgs{}
-			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *internal.CommandAndArgs) ([]byte, error) {
+			testCmdObj := &s2hv1beta1.CommandAndArgs{}
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
 				testCmdObj = cmdObj
 				return []byte{}, nil
 			}
@@ -95,7 +95,7 @@ var _ = Describe("shell command reporter", func() {
 
 		It("should not execute command if not define shell reporter configuration", func() {
 			calls := 0
-			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *internal.CommandAndArgs) ([]byte, error) {
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
 				calls++
 				return []byte{}, nil
 			}

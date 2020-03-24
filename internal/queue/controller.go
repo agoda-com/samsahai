@@ -294,7 +294,7 @@ func (c *controller) resetQueueOrderWithCurrentQueue(ql *v1beta1.QueueList, curr
 func EnsurePreActiveComponents(c client.Client, teamName, namespace string) (q *v1beta1.Queue, err error) {
 	q = &v1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      internal.EnvPreActive,
+			Name:      string(v1beta1.EnvPreActive),
 			Namespace: namespace,
 		},
 		Spec: v1beta1.QueueSpec{
@@ -311,7 +311,7 @@ func EnsurePreActiveComponents(c client.Client, teamName, namespace string) (q *
 func EnsurePromoteToActiveComponents(c client.Client, teamName, namespace string) (q *v1beta1.Queue, err error) {
 	q = &v1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      internal.EnvActive,
+			Name:      string(v1beta1.EnvActive),
 			Namespace: namespace,
 		},
 		Spec: v1beta1.QueueSpec{
@@ -327,7 +327,7 @@ func EnsurePromoteToActiveComponents(c client.Client, teamName, namespace string
 func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace string) (q *v1beta1.Queue, err error) {
 	q = &v1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      internal.EnvDeActive,
+			Name:      string(v1beta1.EnvDeActive),
 			Namespace: namespace,
 		},
 		Spec: v1beta1.QueueSpec{
@@ -340,15 +340,15 @@ func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace strin
 }
 
 func DeletePreActiveQueue(c client.Client, ns string) error {
-	return deleteQueue(c, ns, internal.EnvPreActive)
+	return deleteQueue(c, ns, string(v1beta1.EnvPreActive))
 }
 
 func DeletePromoteToActiveQueue(c client.Client, ns string) error {
-	return deleteQueue(c, ns, internal.EnvActive)
+	return deleteQueue(c, ns, string(v1beta1.EnvActive))
 }
 
 func DeleteDemoteFromActiveQueue(c client.Client, ns string) error {
-	return deleteQueue(c, ns, internal.EnvDeActive)
+	return deleteQueue(c, ns, string(v1beta1.EnvDeActive))
 }
 
 // deleteQueue removes Queue in target namespace by name

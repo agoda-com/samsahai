@@ -128,7 +128,7 @@ func (h *handler) getTeam(w http.ResponseWriter, r *http.Request, params httprou
 	h.JSON(w, http.StatusOK, &data)
 }
 
-type teamComponentsJSON map[string]*internal.Component
+type teamComponentsJSON map[string]*v1beta1.Component
 
 // getTeamComponent godoc
 // @Summary Get Team Component
@@ -142,12 +142,15 @@ func (h *handler) getTeamComponent(w http.ResponseWriter, r *http.Request, param
 	var data teamComponentsJSON
 	teamName := params.ByName("team")
 
-	configMgr, ok := h.samsahai.GetTeamConfigManager(teamName)
-	if !ok {
-		h.errorf(w, http.StatusNotFound, "team config %s not found", teamName)
+	configCtrl := h.samsahai.GetConfigController()
+
+	var err error
+	data, err = configCtrl.GetComponents(teamName)
+	if err != nil {
+		h.error(w, http.StatusInternalServerError, fmt.Errorf("cannot get conponents of team: %+v", err))
 		return
 	}
-	data = configMgr.GetComponents()
+
 	h.JSON(w, http.StatusOK, data)
 }
 
@@ -291,13 +294,14 @@ func (h *handler) getTeamComponentStableValues(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		return
 	}
-	configMgr, ok := h.samsahai.GetTeamConfigManager(team.Name)
-	if !ok {
-		h.errorf(w, http.StatusBadRequest, "team config not found: %s", team.Name)
+
+	componentName := params.ByName("component")
+	parentComps, err := h.samsahai.GetConfigController().GetParentComponents(team.Name)
+	if err != nil {
+		h.errorf(w, http.StatusBadRequest, "cannot get parent components from config of team: %s", team.Name)
 		return
 	}
-	componentName := params.ByName("component")
-	parentComps := configMgr.GetParentComponents()
+
 	comp, ok := parentComps[componentName]
 	if !ok {
 		h.errorf(w, http.StatusBadRequest, "invalid component name: %s", componentName)
@@ -329,7 +333,7 @@ func (h *handler) getTeamComponentStableValues(w http.ResponseWriter, r *http.Re
 // @Tags GET
 // @Param team path string true "Team name"
 // @Param accept header string true "Accept" enums(application/json, application/x-yaml)
-// @Success 200 {string} internal.Configuration
+// @Success 200 {string} v1beta1.ConfigSpec
 // @Failure 404 {object} errResp "Team not found"
 // @Failure 500 {object} errResp
 // @Router /teams/{team}/config [get]
@@ -338,8 +342,10 @@ func (h *handler) getTeamConfig(w http.ResponseWriter, r *http.Request, params h
 	if err != nil {
 		return
 	}
-	configMgr, ok := h.samsahai.GetTeamConfigManager(team.Name)
-	if !ok {
+
+	configCtrl := h.samsahai.GetConfigController()
+	cfg, err := configCtrl.Get(team.Name)
+	if err != nil {
 		h.errorf(w, http.StatusBadRequest, "team config not found: %s", team.Name)
 		return
 	}
@@ -348,10 +354,10 @@ func (h *handler) getTeamConfig(w http.ResponseWriter, r *http.Request, params h
 	case "application/x-yaml":
 		fallthrough
 	case "text/yaml":
-		h.YAML(w, http.StatusOK, configMgr.Get())
+		h.YAML(w, http.StatusOK, cfg)
 		return
 	default:
-		h.JSON(w, http.StatusOK, configMgr.Get())
+		h.JSON(w, http.StatusOK, cfg)
 	}
 }
 

@@ -3,7 +3,6 @@ package samsahai
 import (
 	"context"
 	"crypto/subtle"
-	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -31,31 +30,9 @@ func (c *controller) authenticateRPC(ctx context.Context) error {
 	return nil
 }
 
-func (c *controller) GetConfiguration(ctx context.Context, team *rpc.Team) (*rpc.Configuration, error) {
-	if err := c.authenticateRPC(ctx); err != nil {
-		return nil, err
-	}
-
-	teamName := team.Name
-	cfg, ok := c.GetTeamConfigManager(teamName)
-	if !ok {
-		return nil, s2herrors.ErrTeamNotFound
-	}
-	data, err := json.Marshal(cfg.Get())
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot marshal configuration, team %s", teamName)
-	}
-	return &rpc.Configuration{Config: data, GitRevision: cfg.GetGitLatestRevision()}, nil
-}
-
 func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWithCurrentComponent) (*rpc.ImageList, error) {
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
-	}
-
-	configMgr, ok := c.GetTeamConfigManager(teamInfo.TeamName)
-	if !ok {
-		return nil, s2herrors.ErrTeamNotFound
 	}
 
 	teamComp := &s2hv1beta1.Team{}
@@ -77,7 +54,11 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 	}
 
 	imgList := &rpc.ImageList{}
-	comps := configMgr.GetComponents()
+	comps, err := c.GetConfigController().GetComponents(teamComp.Name)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get components of team %s", teamComp.Name)
+	}
+
 	for _, stable := range stableList.Items {
 		source, ok := c.getImageSource(comps, stable.Name)
 		if !ok {
@@ -101,7 +82,7 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 	return imgList, nil
 }
 
-func (c *controller) detectAndAddImageMissing(source s2h.UpdatingSource, repo, name, version string, imgList *rpc.ImageList) {
+func (c *controller) detectAndAddImageMissing(source s2hv1beta1.UpdatingSource, repo, name, version string, imgList *rpc.ImageList) {
 	checker := c.checkers[string(source)]
 	if err := checker.EnsureVersion(repo, name, version); err != nil {
 		if s2herrors.IsImageNotFound(err) || s2herrors.IsErrRequestTimeout(err) {
@@ -116,7 +97,7 @@ func (c *controller) detectAndAddImageMissing(source s2h.UpdatingSource, repo, n
 	}
 }
 
-func (c *controller) getImageSource(comps map[string]*s2h.Component, name string) (*s2h.UpdatingSource, bool) {
+func (c *controller) getImageSource(comps map[string]*s2hv1beta1.Component, name string) (*s2hv1beta1.UpdatingSource, bool) {
 	if _, ok := comps[name]; !ok {
 		return nil, false
 	}
@@ -161,11 +142,7 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 }
 
 func (c *controller) sendComponentUpgradeReport(queueHist *s2hv1beta1.QueueHistory, comp *rpc.ComponentUpgrade) error {
-	configMgr, ok := c.GetTeamConfigManager(comp.TeamName)
-	if !ok {
-		return errors.Wrapf(s2herrors.ErrLoadConfiguration,
-			"cannot load configuration, team %s", comp.TeamName)
-	}
+	configCtrl := c.GetConfigController()
 
 	for _, reporter := range c.reporters {
 		qHist := queueHist
@@ -190,7 +167,7 @@ func (c *controller) sendComponentUpgradeReport(queueHist *s2hv1beta1.QueueHisto
 			s2h.WithQueueHistoryName(qHist.Name),
 		)
 
-		if err := reporter.SendComponentUpgrade(configMgr, upgradeComp); err != nil {
+		if err := reporter.SendComponentUpgrade(configCtrl, upgradeComp); err != nil {
 			logger.Error(err, "cannot send component upgrade failure report",
 				"team", comp.TeamName)
 		}

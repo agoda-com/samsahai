@@ -40,7 +40,6 @@ import (
 	"github.com/agoda-com/samsahai/internal/staging"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
-	stagingrpc "github.com/agoda-com/samsahai/pkg/staging/rpc"
 )
 
 var _ = Describe("Staging Controller [e2e]", func() {
@@ -593,7 +592,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 			wgUpgrade.Add(cfg.Staging.MaxRetry + 1)
 			wgReverify.Add(1)
 
-			mockDeployEngine := mock.NewWithCallback(func(refName string, comp *internal.Component, parentComp *internal.Component, values map[string]interface{}) {
+			mockDeployEngine := mock.NewWithCallback(func(refName string, comp *s2hv1beta1.Component, parentComp *s2hv1beta1.Component, values map[string]interface{}) {
 				defer GinkgoRecover()
 
 				//if q.Spec.Type == v1beta1.QueueTypeReverify {
@@ -632,7 +631,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 			Eventually(stagingCtrl.IsBusy, time.Second, 50*time.Millisecond).Should(BeFalse())
 
-			mockDeployEngine := mock.NewWithCallback(func(refName string, comp *internal.Component, parentComp *internal.Component, values map[string]interface{}) {
+			mockDeployEngine := mock.NewWithCallback(func(refName string, comp *s2hv1beta1.Component, parentComp *s2hv1beta1.Component, values map[string]interface{}) {
 				defer GinkgoRecover()
 				// skip other components that aren't Queue
 				if comp.Name != mariadbq.Name {

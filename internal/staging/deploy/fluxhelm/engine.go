@@ -26,17 +26,17 @@ const (
 )
 
 type engine struct {
-	configMgr              internal.ConfigManager
+	configCtrl             internal.ConfigController
 	hrClient               internal.HelmReleaseClient
 	lastAction             Action
 	lastObservedGeneration int64
 }
 
 // New creates a new teamcity test runner
-func New(configMgr internal.ConfigManager, hrClient internal.HelmReleaseClient) internal.DeployEngine {
+func New(configCtrl internal.ConfigController, hrClient internal.HelmReleaseClient) internal.DeployEngine {
 	return &engine{
-		configMgr: configMgr,
-		hrClient:  hrClient,
+		configCtrl: configCtrl,
+		hrClient:   hrClient,
 	}
 }
 
@@ -46,8 +46,8 @@ func (e *engine) GetName() string {
 
 func (e *engine) Create(
 	refName string,
-	_ *internal.Component,
-	parentComp *internal.Component,
+	_ *v1beta1.Component,
+	parentComp *v1beta1.Component,
 	values map[string]interface{},
 ) error {
 	hr := fluxv1beta1.HelmRelease{

@@ -11,10 +11,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	//deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
-
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
+	configctrl "github.com/agoda-com/samsahai/internal/config"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/third_party/k8s.io/kubernetes/deployment/util"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
@@ -35,8 +34,8 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 		return err
 	}
 
-	var comp *internal.Component
-	var parentComp *internal.Component
+	var comp *s2hv1beta1.Component
+	var parentComp *s2hv1beta1.Component
 
 	switch queue.Spec.Type {
 	case s2hv1beta1.QueueTypePreActive, s2hv1beta1.QueueTypePromoteToActive, s2hv1beta1.QueueTypeDemoteFromActive:
@@ -50,7 +49,10 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 			return err
 		}
 
-		comps := c.getConfigManager().GetComponents()
+		comps, err := c.getConfigController().GetComponents(c.teamName)
+		if err != nil {
+			return err
+		}
 		comp = comps[queue.Spec.Name]
 		parentComp = comp
 
@@ -138,7 +140,7 @@ func (c *controller) checkDeployTimeout(queue *s2hv1beta1.Queue, deployTimeout m
 }
 
 //
-func (c *controller) createReleaseName(queue *s2hv1beta1.Queue, parentCom *internal.Component) error {
+func (c *controller) createReleaseName(queue *s2hv1beta1.Queue, parentCom *s2hv1beta1.Component) error {
 	if queue.Status.ReleaseName == "" {
 		queue.Status.ReleaseName = c.genReleaseName(parentCom)
 		if err := c.updateQueue(queue); err != nil {
@@ -150,7 +152,11 @@ func (c *controller) createReleaseName(queue *s2hv1beta1.Queue, parentCom *inter
 
 // validateQueue checks if Queue exist in Configuration.
 func (c *controller) validateQueue(queue *s2hv1beta1.Queue) error {
-	comps := c.getConfigManager().GetComponents()
+	comps, err := c.getConfigController().GetComponents(c.teamName)
+	if err != nil {
+		return err
+	}
+
 	var isCompExist bool
 
 	if _, isCompExist = comps[queue.Spec.Name]; !isCompExist {
@@ -186,27 +192,30 @@ func genCompValueFromQueue(queue *s2hv1beta1.Queue) map[string]interface{} {
 
 // applyEnvBaseConfig applies input values with specific env. configuration based on Queue.Spec.Type
 func applyEnvBaseConfig(
-	cfg *internal.Configuration,
+	cfg *s2hv1beta1.ConfigSpec,
 	values map[string]interface{},
 	qt s2hv1beta1.QueueType,
-	comp *internal.Component,
+	comp *s2hv1beta1.Component,
 ) map[string]interface{} {
-	var target map[string]internal.ComponentValues
-	var envOK bool
+	var target map[string]s2hv1beta1.ComponentValues
+	var err error
 
 	switch qt {
 	case s2hv1beta1.QueueTypePreActive:
-		target, envOK = cfg.Envs[internal.EnvPreActive]
+		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvPreActive)
 	case s2hv1beta1.QueueTypePromoteToActive:
-		target, envOK = cfg.Envs[internal.EnvActive]
+		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvActive)
 	case s2hv1beta1.QueueTypeUpgrade, s2hv1beta1.QueueTypeReverify:
-		target, envOK = cfg.Envs[internal.EnvStaging]
+		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvStaging)
 	case s2hv1beta1.QueueTypeDemoteFromActive:
 		return values
 	default:
 		return values
 	}
-	if !envOK {
+	if err != nil {
+		logger.Error(err, "cannot get env values")
+		return values
+	} else if len(target) == 0 {
 		// env not found in config
 		return values
 	} else if _, compOK := target[comp.Name]; !compOK {
@@ -221,8 +230,8 @@ func applyEnvBaseConfig(
 func (c *controller) deployComponents(
 	deployEngine internal.DeployEngine,
 	queue *s2hv1beta1.Queue,
-	comp *internal.Component,
-	parentComp *internal.Component,
+	comp *s2hv1beta1.Component,
+	parentComp *s2hv1beta1.Component,
 ) error {
 
 	stableMap, err := c.getStableComponentsMap()
@@ -256,13 +265,22 @@ func (c *controller) isUpgradeRelatedQueue(q *s2hv1beta1.Queue) bool {
 func (c *controller) deployComponentsExceptQueue(
 	deployEngine internal.DeployEngine,
 	queue *s2hv1beta1.Queue,
-	queueParentComp *internal.Component,
+	queueParentComp *s2hv1beta1.Component,
 	stableMap map[string]s2hv1beta1.StableComponent,
 ) error {
-	parentComps := c.getConfigManager().GetParentComponents()
+	parentComps, err := c.getConfigController().GetParentComponents(c.teamName)
+	if err != nil {
+		return err
+	}
+
 	queueParentCompName := ""
 	if queueParentComp != nil {
 		queueParentCompName = queueParentComp.Name
+	}
+
+	cfg, err := c.getConfiguration()
+	if err != nil {
+		return err
 	}
 
 	for name, comp := range parentComps {
@@ -271,15 +289,19 @@ func (c *controller) deployComponentsExceptQueue(
 			continue
 		}
 
+		baseValues, err := configctrl.GetEnvComponentValues(cfg, name, s2hv1beta1.EnvBase)
+		if err != nil {
+			return err
+		}
+
 		values := valuesutil.GenStableComponentValues(
 			comp,
 			stableMap,
-			c.getConfiguration().Envs["base"][name])
+			baseValues)
 
-		values = applyEnvBaseConfig(c.getConfiguration(), values, queue.Spec.Type, comp)
+		values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, comp)
 
-		err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values)
-		if err != nil {
+		if err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values); err != nil {
 			return err
 		}
 	}
@@ -290,15 +312,25 @@ func (c *controller) deployComponentsExceptQueue(
 func (c *controller) deployQueueComponent(
 	deployEngine internal.DeployEngine,
 	queue *s2hv1beta1.Queue,
-	comp *internal.Component,
-	parentComp *internal.Component,
+	comp *s2hv1beta1.Component,
+	parentComp *s2hv1beta1.Component,
 	stableMap map[string]s2hv1beta1.StableComponent,
 ) error {
+	cfg, err := c.getConfiguration()
+	if err != nil {
+		return err
+	}
+
+	baseValues, err := configctrl.GetEnvComponentValues(cfg, parentComp.Name, s2hv1beta1.EnvBase)
+	if err != nil {
+		return err
+	}
+
 	values := valuesutil.GenStableComponentValues(
 		parentComp,
 		stableMap,
-		c.getConfiguration().Envs["base"][parentComp.Name])
-
+		baseValues,
+	)
 	if queue.Spec.Type == s2hv1beta1.QueueTypeUpgrade {
 		// merge stable only matched component or dependencies
 		v := genCompValueFromQueue(queue)
@@ -313,9 +345,8 @@ func (c *controller) deployQueueComponent(
 		}
 	}
 
-	values = applyEnvBaseConfig(c.getConfiguration(), values, queue.Spec.Type, parentComp)
-	err := deployEngine.Create(c.genReleaseName(parentComp), comp, parentComp, values)
-	if err != nil {
+	values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, parentComp)
+	if err := deployEngine.Create(c.genReleaseName(parentComp), comp, parentComp, values); err != nil {
 		return err
 	}
 
@@ -323,7 +354,10 @@ func (c *controller) deployQueueComponent(
 }
 
 func (c *controller) waitForComponentsReady(deployEngine internal.DeployEngine) (bool, error) {
-	parentComps := c.getConfigManager().GetParentComponents()
+	parentComps, err := c.getConfigController().GetParentComponents(c.teamName)
+	if err != nil {
+		return false, err
+	}
 
 	for _, comp := range parentComps {
 		selectors := deployEngine.GetLabelSelectors(c.genReleaseName(comp))

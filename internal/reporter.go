@@ -122,13 +122,13 @@ type Reporter interface {
 	GetName() string
 
 	// SendComponentUpgrade sends details of component upgrade
-	SendComponentUpgrade(configMgr ConfigManager, comp *ComponentUpgradeReporter) error
+	SendComponentUpgrade(configCtrl ConfigController, comp *ComponentUpgradeReporter) error
 
 	// SendActivePromotionStatus sends active promotion status
-	SendActivePromotionStatus(configMgr ConfigManager, atpRpt *ActivePromotionReporter) error
+	SendActivePromotionStatus(configCtrl ConfigController, atpRpt *ActivePromotionReporter) error
 
 	// SendImageMissing sends image missing
-	SendImageMissing(configMgr ConfigManager, images *rpc.Image) error
+	SendImageMissing(teamName string, configCtrl ConfigController, images *rpc.Image) error
 }
 
 func convertIssueType(issueType rpc.ComponentUpgrade_IssueType) IssueType {

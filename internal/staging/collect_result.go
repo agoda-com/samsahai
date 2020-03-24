@@ -151,8 +151,12 @@ func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace
 	maxHistDays := c.configs.MaxHistoryDays
 
 	// get configuration
-	configMgr := c.getConfigManager()
-	if cfg := configMgr.Get(); cfg.Staging != nil && cfg.Staging.MaxHistoryDays != 0 {
+	cfg, err := c.getConfiguration()
+	if err != nil {
+		return err
+	}
+
+	if cfg.Staging != nil && cfg.Staging.MaxHistoryDays != 0 {
 		maxHistDays = cfg.Staging.MaxHistoryDays
 	}
 

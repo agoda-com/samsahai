@@ -42,17 +42,26 @@ func (c *checker) GetVersion(repository, name, pattern string) (string, error) {
 		return "", err
 	}
 
-	teamConfigs := c.samsahai.GetTeamConfigManagers()
+	configCtrl := c.samsahai.GetConfigController()
+
+	teamList, err := c.samsahai.GetTeams()
+	if err != nil {
+		return "", err
+	}
 
 	var matchedTags []string
 
-	for teamName, configMgr := range teamConfigs {
+	for _, teamComp := range teamList.Items {
 		// Check if team name matched with pattern
-		if !matcher.MatchString(teamName) {
+		if !matcher.MatchString(teamComp.Name) {
 			continue
 		}
 
-		comps := configMgr.GetComponents()
+		// TODO: pohfy, change here
+		comps, err := configCtrl.GetComponents(teamComp.Name)
+		if err != nil {
+			return "", errors.Wrap(err, "cannot get config controller")
+		}
 		comp, ok := comps[name]
 
 		// Check if component exist in configuration
@@ -68,8 +77,7 @@ func (c *checker) GetVersion(repository, name, pattern string) (string, error) {
 
 		// Get team
 		team := &v1beta1.Team{}
-		err := c.samsahai.GetTeam(teamName, team)
-		if err != nil {
+		if err = c.samsahai.GetTeam(teamComp.Name, team); err != nil {
 			if k8serrors.IsNotFound(err) {
 				// ignore team not found
 				continue

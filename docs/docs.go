@@ -891,7 +891,7 @@ var doc = `{
                 }
             }
         },
-        "internal.Configuration": {
+        "v1beta1.ConfigSpec": {
             "type": "object",
             "properties": {
                 "activePromotion": {

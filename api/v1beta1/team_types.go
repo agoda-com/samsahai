@@ -38,9 +38,6 @@ type TeamSpec struct {
 	// +optional
 	Resources corev1.ResourceList `json:"resources,omitempty"`
 
-	// GitStorage represents git as storage for retrieving configuration, etc.
-	GitStorage GitStorage `json:"gitStorage"`
-
 	// StagingCtrl represents configuration about the staging controller.
 	// For easier for developing, debugging and testing purposes
 	// +optional
@@ -64,41 +61,9 @@ type StagingCtrl struct {
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
-type GitStorage struct {
-	// URL represents git url
-	URL string `json:"url"`
-
-	// Ref represents git ref
-	// +optional
-	Ref string `json:"ref,omitempty"`
-
-	// Path represents a directory path in git repo
-	// +optional
-	Path string `json:"path,omitempty"`
-
-	// CloneDepth limits fetching to the specified number of commits
-	// +optional
-	CloneDepth int `json:"cloneDepth,omitempty"`
-
-	// CloneTimeout represents timeout duration of git clone
-	// +optional
-	CloneTimeout *metav1.Duration `json:"cloneTimeout,omitempty"`
-
-	// PullTimeout represents timeout duration of git pull
-	// +optional
-	PullTimeout *metav1.Duration `json:"pullTimeout,omitempty"`
-
-	// PushTimeout represents timeout duration of git push
-	// +optional
-	PushTimeout *metav1.Duration `json:"pushTimeout,omitempty"`
-}
-
 type Credential struct {
 	// SecretName
 	SecretName string `json:"secretName,omitempty"`
-
-	// Git
-	Git *UsernamePasswordCredential `json:"git,omitempty"`
 
 	// Teamcity
 	// +optional
@@ -264,7 +229,6 @@ const (
 	TeamNamespacePreActiveCreated      TeamConditionType = "TeamNamespacePreActiveCreated"
 	TeamNamespacePreviousActiveCreated TeamConditionType = "TeamNamespacePreviousActiveCreated"
 	TeamNamespaceActiveCreated         TeamConditionType = "TeamNamespaceActiveCreated"
-	TeamGitCheckoutUpToDate            TeamConditionType = "TeamGitCheckoutUpToDate"
 )
 
 func (ts *TeamStatus) IsConditionTrue(cond TeamConditionType) bool {

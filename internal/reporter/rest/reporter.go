@@ -3,8 +3,6 @@ package rest
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,7 +11,6 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/http"
-	"github.com/agoda-com/samsahai/internal/util/template"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -93,19 +90,25 @@ func (r *reporter) GetName() string {
 }
 
 // SendComponentUpgrade send details of component upgrade via http POST
-func (r *reporter) SendComponentUpgrade(configMgr internal.ConfigManager, comp *internal.ComponentUpgradeReporter) error {
-	cfg := configMgr.Get()
+func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
+	cfg, err := configCtrl.Get(comp.TeamName)
+	if err != nil {
+		return err
+	}
+
 	if cfg.Reporter == nil || cfg.Reporter.Rest == nil || cfg.Reporter.Rest.ComponentUpgrade == nil {
 		return nil
 	}
 
-	configPath := configMgr.GetGitConfigPath()
-	var err error
-	var body string
 	for _, ep := range cfg.Reporter.Rest.ComponentUpgrade.Endpoints {
 		restObj := &componentUpgradeRest{NewReporterJSON(), *comp}
-		body = r.renderBodyFromTemplate(configPath, ep.Template, restObj)
-		if err = r.send(ep.URL, []byte(body), internal.ComponentUpgradeType); err != nil {
+		body, err := json.Marshal(restObj)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", body))
+			return err
+		}
+
+		if err = r.send(ep.URL, body, internal.ComponentUpgradeType); err != nil {
 			return err
 		}
 	}
@@ -114,18 +117,24 @@ func (r *reporter) SendComponentUpgrade(configMgr internal.ConfigManager, comp *
 }
 
 // SendActivePromotionStatus send active promotion status via http POST
-func (r *reporter) SendActivePromotionStatus(configMgr internal.ConfigManager, atpRpt *internal.ActivePromotionReporter) error {
-	cfg := configMgr.Get()
+func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigController, atpRpt *internal.ActivePromotionReporter) error {
+	cfg, err := configCtrl.Get(atpRpt.TeamName)
+	if err != nil {
+		return err
+	}
+
 	if cfg.Reporter == nil || cfg.Reporter.Rest == nil || cfg.Reporter.Rest.ActivePromotion == nil {
 		return nil
 	}
 
-	configPath := configMgr.GetGitConfigPath()
-	var err error
-	var body string
 	for _, ep := range cfg.Reporter.Rest.ActivePromotion.Endpoints {
 		restObj := &activePromotionRest{NewReporterJSON(), *atpRpt}
-		body = r.renderBodyFromTemplate(configPath, ep.Template, restObj)
+		body, err := json.Marshal(restObj)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", body))
+			return err
+		}
+
 		if err = r.send(ep.URL, []byte(body), internal.ActivePromotionType); err != nil {
 			return err
 		}
@@ -135,18 +144,24 @@ func (r *reporter) SendActivePromotionStatus(configMgr internal.ConfigManager, a
 }
 
 // SendImageMissing implements the reporter SendImageMissing function
-func (r *reporter) SendImageMissing(configMgr internal.ConfigManager, img *rpc.Image) error {
-	cfg := configMgr.Get()
+func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, img *rpc.Image) error {
+	cfg, err := configCtrl.Get(teamName)
+	if err != nil {
+		return err
+	}
+
 	if cfg.Reporter == nil || cfg.Reporter.Rest == nil || cfg.Reporter.Rest.ImageMissing == nil {
 		return nil
 	}
 
-	configPath := configMgr.GetGitConfigPath()
-	var err error
-	var body string
 	for _, ep := range cfg.Reporter.Rest.ImageMissing.Endpoints {
 		restObj := &imageMissingRest{NewReporterJSON(), *img}
-		body = r.renderBodyFromTemplate(configPath, ep.Template, restObj)
+		body, err := json.Marshal(restObj)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", body))
+			return err
+		}
+
 		if err = r.send(ep.URL, []byte(body), internal.ImageMissingType); err != nil {
 			return err
 		}
@@ -168,35 +183,6 @@ func (r *reporter) send(url string, body []byte, event internal.EventType) error
 	}
 
 	return nil
-}
-
-func (r *reporter) loadTemplate(path string) ([]byte, error) {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	return data, nil
-}
-
-func (r *reporter) renderBodyFromTemplate(configPath, tplPath string, dataObj interface{}) string {
-	if tplPath == "" {
-		body, err := json.Marshal(dataObj)
-		if err != nil {
-			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", dataObj))
-			return ""
-		}
-
-		return string(body)
-	}
-
-	path := filepath.Join(configPath, tplPath)
-	tpl, err := r.loadTemplate(path)
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("cannot load template from %s", path))
-	}
-
-	return template.TextRender("rest", string(tpl), dataObj)
 }
 
 func generateUUID() string {

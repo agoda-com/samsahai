@@ -87,11 +87,12 @@ func (c *controller) setup(ctx context.Context, atpComp *s2hv1beta1.ActivePromot
 	if atpComp.Spec.TearDownDuration == nil {
 		duration := c.configs.ActivePromotion.TearDownDuration
 
-		configMgr, err := c.getTeamConfiguration(atpComp.Name)
+		cfg, err := c.s2hCtrl.GetConfigController().Get(atpComp.Name)
 		if err != nil {
 			return err
 		}
-		if cfg := configMgr.Get(); cfg.ActivePromotion != nil && cfg.ActivePromotion.TearDownDuration.Duration != 0 {
+
+		if cfg.ActivePromotion != nil && cfg.ActivePromotion.TearDownDuration.Duration != 0 {
 			duration = cfg.ActivePromotion.TearDownDuration
 		}
 

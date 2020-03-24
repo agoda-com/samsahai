@@ -29,6 +29,7 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
+	configctrl "github.com/agoda-com/samsahai/internal/config"
 	s2hconfig "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/internal/samsahai"
@@ -51,6 +52,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 	var (
 		stableComponentCtrl  internal.StableComponentController
+		configCtrl           internal.ConfigController
 		activePromotionCtrl  internal.ActivePromotionController
 		samsahaiCtrl         internal.SamsahaiController
 		stagingPreActiveCtrl internal.StagingController
@@ -259,7 +261,10 @@ var _ = Describe("Main Controller [e2e]", func() {
 				InternalAuthToken: samsahaiAuthToken,
 			},
 		}
-		samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig)
+		configCtrl = configctrl.New(mgr)
+		Expect(configCtrl).ToNot(BeNil())
+
+		samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig, configCtrl)
 		Expect(samsahaiCtrl).ToNot(BeNil())
 
 		activePromotionCtrl = activepromotion.New(mgr, samsahaiCtrl, s2hConfig)
@@ -1090,7 +1095,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Verifying namespace and configuration have been created")
-		var components map[string]*internal.Component
+		var components map[string]*s2hv1beta1.Component
 		err = wait.PollImmediate(1*time.Second, verifyConfigTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {

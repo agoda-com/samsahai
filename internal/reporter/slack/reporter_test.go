@@ -26,7 +26,7 @@ var _ = Describe("send slack message", func() {
 
 	Describe("send component upgrade", func() {
 		It("should correctly send component upgrade failure with everytime interval", func() {
-			configMgr := newConfigMock(internal.IntervalEveryTime, "")
+			configMgr := newConfigMock(s2hv1beta1.IntervalEveryTime, "")
 			g.Expect(configMgr).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -86,7 +86,7 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should not send component upgrade failure with success criteria", func() {
-			configMgr := newConfigMock(internal.IntervalEveryTime, internal.CriteriaSuccess)
+			configMgr := newConfigMock(s2hv1beta1.IntervalEveryTime, s2hv1beta1.CriteriaSuccess)
 			g.Expect(configMgr).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -381,7 +381,7 @@ func (s *mockSlack) PostMessage(channelNameOrID, message, username string) (chan
 	return channelNameOrID, "", nil
 }
 
-func newConfigMock(interval internal.SlackInterval, criteria internal.SlackCriteria) internal.ConfigManager {
+func newConfigMock(interval s2hv1beta1.SlackInterval, criteria s2hv1beta1.SlackCriteria) internal.ConfigManager {
 	configMgr := config.NewWithBytes([]byte(`
 report:
   slack:
