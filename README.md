@@ -10,7 +10,7 @@ Dependencies verification system with Kubernetes Operator
 ## Introduction
 Imagine if your testing environment is downstream and to make your environment ready, you need to spawn many services and their dependencies together. And our challenge requirement is not only providing the environment for testing but also providing the up to date dependencies. This is why we are introducing Samsahai. The system that will make your ready environment with freshness dependencies.
 
-**Find out more about Samsahai on [Medium](https://medium.com/agoda-engineering/testing-against-a-forest-of-dependencies-by-separating-them-into-trees-utilizing-k8s-operator-9047418ff208)**
+**Read more about Samsahai on [Medium](https://medium.com/agoda-engineering/testing-against-a-forest-of-dependencies-by-separating-them-into-trees-utilizing-k8s-operator-9047418ff208)**
 
 ![Samsahai's logo](docs/images/samsahai-icon.png)
 
