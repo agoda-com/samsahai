@@ -16,7 +16,4 @@ type ConfigController interface {
 
 	// Delete delete Config CRD
 	Delete(configName string) error
-
-	//// GetEnvValues returns component values by env type
-	//GetEnvValues(teamName, compName string, envType s2hv1beta1.EnvType) (s2hv1beta1.ComponentValues, error)
 }

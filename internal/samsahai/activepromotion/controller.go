@@ -313,12 +313,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	isSkipped, err := c.deleteFinalizerWhenFinished(ctx, atpComp)
 	if err != nil {
-		if s2herrors.IsLoadingConfiguration(err) {
-			return reconcile.Result{
-				Requeue:      true,
-				RequeueAfter: 1 * time.Second,
-			}, nil
-		}
 		return reconcile.Result{}, err
 	}
 	if isSkipped {
@@ -326,7 +320,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if err := c.checkActivePromotionTimeout(ctx, atpComp); err != nil {
-		if s2herrors.IsLoadingConfiguration(err) || s2herrors.IsErrActivePromotionTimeout(err) {
+		if s2herrors.IsErrActivePromotionTimeout(err) {
 			return reconcile.Result{
 				Requeue:      true,
 				RequeueAfter: 1 * time.Second,
@@ -339,12 +333,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	case "":
 		logger.Info("activepromotion has been created", "team", atpComp.Name)
 		if err := c.setup(ctx, atpComp); err != nil {
-			if s2herrors.IsLoadingConfiguration(err) {
-				return reconcile.Result{
-					Requeue:      true,
-					RequeueAfter: 1 * time.Second,
-				}, nil
-			}
 			return reconcile.Result{}, err
 		}
 

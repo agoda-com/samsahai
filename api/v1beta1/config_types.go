@@ -152,9 +152,6 @@ type OutdatedNotification struct {
 	ExcludeWeekendCalculation bool            `json:"excludeWeekendCalculation"`
 }
 
-// ComponentsValues represents values of component charts
-type ComponentsValues map[string]ComponentValues
-
 // ConfigReporter represents configuration about sending notification
 type ConfigReporter struct {
 	// +optional

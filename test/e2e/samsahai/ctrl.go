@@ -30,7 +30,6 @@ import (
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
-	s2hconfig "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/internal/samsahai"
 	"github.com/agoda-com/samsahai/internal/samsahai/activepromotion"
@@ -45,14 +44,14 @@ import (
 
 var _ = Describe("Main Controller [e2e]", func() {
 	const (
-		verifyTimeout10     = 10 * time.Second
-		verifyConfigTimeout = 15 * time.Second
-		promoteTimeOut      = 180 * time.Second
+		verifyTimeout10        = 10 * time.Second
+		verifyNSCreatedTimeout = 15 * time.Second
+		promoteTimeOut         = 220 * time.Second
 	)
 
 	var (
 		stableComponentCtrl  internal.StableComponentController
-		configCtrl           internal.ConfigController
+		cfgCtrl              internal.ConfigController
 		activePromotionCtrl  internal.ActivePromotionController
 		samsahaiCtrl         internal.SamsahaiController
 		stagingPreActiveCtrl internal.StagingController
@@ -87,8 +86,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 		"created-for": "s2h-testing",
 	}
 
-	gitUsername, gitPassword := os.Getenv("TEST_GIT_USERNAME"), os.Getenv("TEST_GIT_PASSWORD")
-
 	mockTeam := s2hv1beta1.Team{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
@@ -97,16 +94,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Spec: s2hv1beta1.TeamSpec{
 			Description: "team for testing",
 			Owners:      []string{"samsahai@samsahai.io"},
-			GitStorage: s2hv1beta1.GitStorage{
-				URL:        "https://github.com/agoda-com/samsahai-example.git",
-				Path:       "configs",
-				CloneDepth: 1,
-			},
 			Credential: s2hv1beta1.Credential{
-				Git: &s2hv1beta1.UsernamePasswordCredential{
-					UsernameRef: &corev1.SecretKeySelector{Key: "gitUsername"},
-					PasswordRef: &corev1.SecretKeySelector{Key: "gitPassword"},
-				},
 				SecretName: s2hobject.GetTeamSecretName(teamName),
 			},
 			StagingCtrl: &s2hv1beta1.StagingCtrl{
@@ -208,11 +196,117 @@ var _ = Describe("Main Controller [e2e]", func() {
 			Name:      s2hobject.GetTeamSecretName(teamName),
 			Namespace: samsahaiSystemNs,
 		},
-		Data: map[string][]byte{
-			"gitUsername": []byte(gitUsername),
-			"gitPassword": []byte(gitPassword),
-		},
+		Data: map[string][]byte{},
 		Type: "Opaque",
+	}
+
+	engine := "helm3"
+	deployConfig := s2hv1beta1.ConfigDeploy{
+		Timeout: metav1.Duration{Duration: 5 * time.Minute},
+		Engine:  &engine,
+		TestRunner: &s2hv1beta1.ConfigTestRunner{
+			TestMock: &s2hv1beta1.ConfigTestMock{
+				Result: true,
+			},
+		},
+	}
+	compSource := s2hv1beta1.UpdatingSource("public-registry")
+	redisConfigComp := s2hv1beta1.Component{
+		Name: "redis",
+		Chart: s2hv1beta1.ComponentChart{
+			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Name:       "redis",
+		},
+		Image: s2hv1beta1.ComponentImage{
+			Repository: "bitnami/redis",
+			Pattern:    "5.*debian-9.*",
+		},
+		Source: &compSource,
+		Values: s2hv1beta1.ComponentValues{
+			"image": map[string]interface{}{
+				"repository": "bitnami/redis",
+				"pullPolicy": "IfNotPresent",
+			},
+			"cluster": map[string]interface{}{
+				"enabled": false,
+			},
+			"usePassword": false,
+			"master": map[string]interface{}{
+				"persistence": map[string]interface{}{
+					"enabled": false,
+				},
+			},
+		},
+	}
+	wordpressConfigComp := s2hv1beta1.Component{
+		Name: "wordpress",
+		Chart: s2hv1beta1.ComponentChart{
+			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Name:       "wordpress",
+		},
+		Image: s2hv1beta1.ComponentImage{
+			Repository: "bitnami/wordpress",
+			Pattern:    "5\\.2.*debian-9.*",
+		},
+		Source: &compSource,
+		Dependencies: []*s2hv1beta1.Component{
+			{
+				Name: "mariadb",
+				Image: s2hv1beta1.ComponentImage{
+					Repository: "bitnami/mariadb",
+					Pattern:    "10\\.3.*debian-9.*",
+				},
+			},
+		},
+		Values: s2hv1beta1.ComponentValues{
+			"resources": nil,
+			"service": map[string]interface{}{
+				"type": "NodePort",
+			},
+			"persistence": map[string]interface{}{
+				"enabled": false,
+			},
+			"mariadb": map[string]interface{}{
+				"enabled": true,
+				"replication": map[string]interface{}{
+					"enabled": false,
+				},
+				"master": map[string]interface{}{
+					"persistence": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			},
+		},
+	}
+
+	mockConfig := s2hv1beta1.Config{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   teamName,
+			Labels: testLabels,
+		},
+		Spec: s2hv1beta1.ConfigSpec{
+			Staging: &s2hv1beta1.ConfigStaging{
+				Deployment: &deployConfig,
+			},
+			ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+				Timeout:          metav1.Duration{Duration: 10 * time.Minute},
+				MaxHistories:     2,
+				TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+				OutdatedNotification: &s2hv1beta1.OutdatedNotification{
+					ExceedDuration:            metav1.Duration{Duration: 24 * time.Hour},
+					ExcludeWeekendCalculation: true,
+				},
+				Deployment: &deployConfig,
+			},
+			Reporter: &s2hv1beta1.ConfigReporter{
+				ReportMock: true,
+			},
+			Components: []*s2hv1beta1.Component{
+				&redisConfigComp,
+				&wordpressConfigComp,
+			},
+		},
 	}
 
 	BeforeEach(func(done Done) {
@@ -261,10 +355,10 @@ var _ = Describe("Main Controller [e2e]", func() {
 				InternalAuthToken: samsahaiAuthToken,
 			},
 		}
-		configCtrl = configctrl.New(mgr)
-		Expect(configCtrl).ToNot(BeNil())
+		cfgCtrl = configctrl.New(mgr)
+		Expect(cfgCtrl).ToNot(BeNil())
 
-		samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig, configCtrl)
+		samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig, cfgCtrl)
 		Expect(samsahaiCtrl).ToNot(BeNil())
 
 		activePromotionCtrl = activepromotion.New(mgr, samsahaiCtrl, s2hConfig)
@@ -316,7 +410,25 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 			return false, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Delete all teams error")
+		Expect(err).NotTo(HaveOccurred(), "Delete all Teams error")
+
+		By("Deleting all Configs")
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Config{}, crclient.MatchingLabels(testLabels))
+		Expect(err).NotTo(HaveOccurred())
+		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+			configList := s2hv1beta1.ConfigList{}
+			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
+			err = runtimeClient.List(ctx, &configList, listOpt)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			if len(configList.Items) == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Deleting all Configs error")
 
 		By("Deleting active namespace")
 		atvNs := activeNamespace
@@ -379,8 +491,12 @@ var _ = Describe("Main Controller [e2e]", func() {
 		team.Status.Namespace.Active = atvNamespace
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
 		By("Verifying staging related objects has been created")
-		err = wait.PollImmediate(1*time.Second, verifyConfigTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace)
 			if err != nil {
@@ -425,8 +541,9 @@ var _ = Describe("Main Controller [e2e]", func() {
 				return false, nil
 			}
 
-			configMgr, ok := samsahaiCtrl.GetTeamConfigManager(teamName)
-			if !ok || configMgr == nil {
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
 				return false, nil
 			}
 
@@ -489,9 +606,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("Start staging controller for pre-active")
 		preActiveNs = atpRes.Status.TargetNamespace
 		{
-			cmgr, err := s2hconfig.NewWithSamsahaiClient(samsahaiClient, teamName, samsahaiAuthToken)
-			Expect(err).NotTo(HaveOccurred(), "should successfully get config from the server")
-
 			stagingCfg := rest.CopyConfig(restCfg)
 			stagingCfg.Username = ""
 			// get token
@@ -513,7 +627,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 			qctrl := queue.New(preActiveNs, runtimeClient)
 			stagingPreActiveCtrl = staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient,
-				stagingMgr, qctrl, cmgr, "", "", "",
+				stagingMgr, qctrl, cfgCtrl, "", "", "",
 				internal.StagingConfig{})
 			go func() {
 				defer GinkgoRecover()
@@ -606,14 +720,15 @@ var _ = Describe("Main Controller [e2e]", func() {
 			{
 				_, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue/histories/" + "unknown")
 				Expect(err).To(HaveOccurred())
-				//Expect(data).NotTo(BeNil())
 			}
 
 			By("Get Stable Values")
 			{
-				configMgr, _ := samsahaiCtrl.GetTeamConfigManager(team.Name)
+				parentComps, err := cfgCtrl.GetParentComponents(team.Name)
+				Expect(err).NotTo(HaveOccurred())
+
 				compName := ""
-				for c := range configMgr.GetParentComponents() {
+				for c := range parentComps {
 					compName = c
 				}
 
@@ -635,25 +750,30 @@ var _ = Describe("Main Controller [e2e]", func() {
 		team.Status.Namespace.Active = atvNamespace
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
 		By("Creating active namespace")
 		atvNs := activeNamespace
 		Expect(runtimeClient.Create(ctx, &atvNs)).To(BeNil())
 
-		By("Verifying namespace and configuration have been created")
-		err = wait.PollImmediate(1*time.Second, verifyConfigTimeout, func() (ok bool, err error) {
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
 			}
 
-			configMgr, ok := samsahaiCtrl.GetTeamConfigManager(teamName)
-			if !ok || configMgr == nil {
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
 				return false, nil
 			}
 
 			return true, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Verify namespace and configuration error")
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
 		By("Creating ActivePromotion with `DemotingActiveEnvironment` state")
 		atp := activePromotion
@@ -683,49 +803,36 @@ var _ = Describe("Main Controller [e2e]", func() {
 		defer close(done)
 		ctx := context.TODO()
 
-		By("Creating Team")
+		By("Creating Team for Q1")
 		team1 := mockTeam
 		team1.Name = teamForQ1
 		Expect(runtimeClient.Create(ctx, &team1)).To(BeNil())
 
-		By("Verifying configuration has been created")
-		err = wait.PollImmediate(1*time.Second, verifyConfigTimeout, func() (ok bool, err error) {
-			configMgr, ok := samsahaiCtrl.GetTeamConfigManager(team1.GetName())
-			if !ok || configMgr == nil {
-				return false, nil
-			}
+		By("Creating Config for Q1")
+		config1 := mockConfig
+		config1.Name = teamForQ1
+		Expect(runtimeClient.Create(ctx, &config1)).To(BeNil())
 
-			return true, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Verify configuration for Team1 error")
-
+		By("Creating Team for Q2")
 		team2 := mockTeam
 		team2.Name = teamForQ2
 		Expect(runtimeClient.Create(ctx, &team2)).To(BeNil())
-		By("Verifying configuration has been created")
-		err = wait.PollImmediate(1*time.Second, verifyConfigTimeout, func() (ok bool, err error) {
-			configMgr, ok := samsahaiCtrl.GetTeamConfigManager(team2.GetName())
-			if !ok || configMgr == nil {
-				return false, nil
-			}
 
-			return true, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Verify configuration for Team2 error")
+		By("Creating Config for Q2")
+		config2 := mockConfig
+		config2.Name = teamForQ2
+		Expect(runtimeClient.Create(ctx, &config2)).To(BeNil())
 
+		By("Creating Team for Q3")
 		team3 := mockTeam
 		team3.Name = teamForQ3
 		Expect(runtimeClient.Create(ctx, &team3)).To(BeNil())
 		By("Verifying configuration has been created")
-		err = wait.PollImmediate(1*time.Second, verifyConfigTimeout, func() (ok bool, err error) {
-			configMgr, ok := samsahaiCtrl.GetTeamConfigManager(team3.GetName())
-			if !ok || configMgr == nil {
-				return false, nil
-			}
 
-			return true, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Verify configuration for Team3 error")
+		By("Creating Config for Q3")
+		config3 := mockConfig
+		config3.Name = teamForQ3
+		Expect(runtimeClient.Create(ctx, &config3)).To(BeNil())
 
 		By("Verifying all teams have been created")
 		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
@@ -736,6 +843,15 @@ var _ = Describe("Main Controller [e2e]", func() {
 			}
 
 			if len(teamList.Items) == 3 {
+				return true, nil
+			}
+
+			configList := s2hv1beta1.ConfigList{}
+			if err := runtimeClient.List(ctx, &configList, listOpt); err != nil {
+				return false, nil
+			}
+
+			if len(configList.Items) == 3 {
 				return true, nil
 			}
 
@@ -836,8 +952,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 				return false, nil
 			}
 
-			if atpTemp.Status.State == s2hv1beta1.ActivePromotionCreatingPreActive ||
-				atpTemp.Status.State == s2hv1beta1.ActivePromotionDeployingComponents {
+			if atpTemp.Status.State == s2hv1beta1.ActivePromotionDeployingComponents {
 				return true, nil
 			}
 
@@ -857,6 +972,10 @@ var _ = Describe("Main Controller [e2e]", func() {
 		team.Status.Namespace.Active = atvNamespace
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
 		By("Creating active namespace")
 		atvNs := activeNamespace
 		Expect(runtimeClient.Create(ctx, &atvNs)).To(BeNil())
@@ -865,21 +984,22 @@ var _ = Describe("Main Controller [e2e]", func() {
 		smd := stableAtvMariaDB
 		Expect(runtimeClient.Create(ctx, &smd)).To(BeNil())
 
-		By("Verifying namespace and configuration have been created")
-		err = wait.PollImmediate(1*time.Second, verifyConfigTimeout, func() (ok bool, err error) {
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
 			}
 
-			configMgr, ok := samsahaiCtrl.GetTeamConfigManager(teamName)
-			if !ok || configMgr == nil {
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
 				return false, nil
 			}
 
 			return true, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Verify namespace and configuration error")
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
 		By("Creating ActivePromotion")
 		atp := activePromotion
@@ -965,21 +1085,26 @@ var _ = Describe("Main Controller [e2e]", func() {
 		team := mockTeam
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
-		By("Verifying namespace and configuration have been created")
-		err = wait.PollImmediate(1*time.Second, verifyConfigTimeout, func() (ok bool, err error) {
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
 			}
 
-			configMgr, ok := samsahaiCtrl.GetTeamConfigManager(teamName)
-			if !ok || configMgr == nil {
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
 				return false, nil
 			}
 
 			return true, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Verify namespace and configuration error")
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
 		By("Creating ActivePromotion with `Rollback` state")
 		atp := activePromotion
@@ -1002,6 +1127,58 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
 	}, 30)
 
+	It("should successfully delete config when delete team", func(done Done) {
+		defer close(done)
+
+		ctx := context.TODO()
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			team := s2hv1beta1.Team{}
+			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
+				return false, nil
+			}
+
+			if len(team.ObjectMeta.Finalizers) == 0 {
+				return false, nil
+			}
+
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Deleting Team")
+		_ = runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &team)
+		Expect(runtimeClient.Delete(ctx, &team)).To(BeNil())
+
+		By("Verifying Config should be deleted")
+		err = wait.PollImmediate(1*time.Second, 15*time.Second, func() (ok bool, err error) {
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &config)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Config should be deleted")
+
+	}, 30)
+
 	It("should create DesiredComponent on team staging namespace", func(done Done) {
 		defer close(done)
 
@@ -1021,21 +1198,26 @@ var _ = Describe("Main Controller [e2e]", func() {
 		team := mockTeam
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
-		By("Verifying namespace and configuration have been created")
-		err = wait.PollImmediate(1*time.Second, verifyConfigTimeout, func() (ok bool, err error) {
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
 			}
 
-			configMgr, ok := samsahaiCtrl.GetTeamConfigManager(teamName)
-			if !ok || configMgr == nil {
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
 				return false, nil
 			}
 
 			return true, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Verify namespace and configuration error")
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
 		By("Send webhook")
 		component := "redis"
@@ -1046,20 +1228,18 @@ var _ = Describe("Main Controller [e2e]", func() {
 		_, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Get Team")
-		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &team)).NotTo(HaveOccurred())
-
 		By("Verifying DesiredComponent has been created")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(1*time.Second, 30*time.Second, func() (ok bool, err error) {
+			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonData)
+
 			dc := s2hv1beta1.DesiredComponent{}
-			stgNs := team.Status.Namespace.Staging
-			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: component, Namespace: stgNs}, &dc); err != nil {
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: component, Namespace: stgNamespace}, &dc); err != nil {
 				return false, nil
 			}
 
 			return true, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Verify namespace and configuration error")
+		Expect(err).NotTo(HaveOccurred(), "Verify DesiredComponent error")
 	}, 60)
 
 	It("should detect image missing and not create desired component", func(done Done) {
@@ -1077,48 +1257,49 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		ctx := context.TODO()
 
-		By("Creating Team/Updating Team")
+		By("Creating Team")
 		team := mockTeam
-		team.Spec.GitStorage.Path = "image-missing"
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
-		By("Github webhook")
-		jsonData, err := json.Marshal(map[string]interface{}{
-			"ref": "master",
-			"repository": map[string]interface{}{
-				"name":      "samsahai-example",
-				"full_name": "agoda-com/samsahai-example",
+		By("Creating Config")
+		config := mockConfig
+		redisComp := redisConfigComp
+		redisComp.Image.Repository = "bitnami/rediss"
+		redisComp.Image.Pattern = "image-missing"
+		redisComp.Values = map[string]interface{}{
+			"image": map[string]interface{}{
+				"repository": "bitnami/rediss",
 			},
-		})
-		Expect(err).NotTo(HaveOccurred())
-		_, err = utilhttp.Post(server.URL+"/webhook/github", jsonData)
-		Expect(err).NotTo(HaveOccurred())
+		}
+		config.Spec.Components = []*s2hv1beta1.Component{&redisComp}
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
-		By("Verifying namespace and configuration have been created")
-		var components map[string]*s2hv1beta1.Component
-		err = wait.PollImmediate(1*time.Second, verifyConfigTimeout, func() (ok bool, err error) {
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
 			}
 
-			var configMgr internal.ConfigManager
-			configMgr, ok = samsahaiCtrl.GetTeamConfigManager(teamName)
-			if !ok || configMgr == nil {
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
 				return false, nil
 			}
 
-			components = configMgr.GetComponents()
 			return true, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Verify namespace and configuration error")
-		Expect(components).NotTo(Equal(nil))
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		components, err := cfgCtrl.GetComponents(team.Name)
+		Expect(err).NotTo(HaveOccurred())
 
 		By("Send webhook")
 		component := "redis"
-		jsonData, err = json.Marshal(map[string]interface{}{
+		jsonData, err := json.Marshal(map[string]interface{}{
 			"component": component,
 		})
+
 		componentRepository := components[component].Image.Repository
 		Expect(err).NotTo(HaveOccurred())
 		_, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
@@ -1188,25 +1369,30 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		ctx := context.TODO()
 
-		By("Creating Team/Updating Team")
+		By("Creating Team")
 		team := mockTeam
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
-		By("Verifying namespace and configuration have been created")
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
 		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
 			}
 
-			configMgr, ok := samsahaiCtrl.GetTeamConfigManager(teamName)
-			if !ok || configMgr == nil {
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
 				return false, nil
 			}
 
 			return true, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Verify namespace and configuration error")
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
 		By("Creating StableComponent")
 		smd := stableMariaDB

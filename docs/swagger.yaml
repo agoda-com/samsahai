@@ -1,274 +1,4 @@
 definitions:
-  internal.CommandAndArgs:
-    properties:
-      args:
-        items:
-          type: string
-        type: array
-      command:
-        items:
-          type: string
-        type: array
-    type: object
-  internal.Component:
-    properties:
-      chart:
-        $ref: '#/definitions/internal.ComponentChart'
-        type: object
-      dependencies:
-        items:
-          $ref: '#/definitions/internal.Component'
-        type: array
-      image:
-        $ref: '#/definitions/internal.ComponentImage'
-        type: object
-      name:
-        type: string
-      parent:
-        type: string
-      source:
-        type: string
-      values:
-        type: object
-    type: object
-  internal.ComponentChart:
-    properties:
-      name:
-        type: string
-      repository:
-        type: string
-      version:
-        type: string
-    type: object
-  internal.ComponentImage:
-    properties:
-      pattern:
-        type: string
-      repository:
-        type: string
-      tag:
-        type: string
-    type: object
-  internal.ComponentValues:
-    additionalProperties:
-      type: object
-    type: object
-  internal.ConfigActivePromotion:
-    properties:
-      demotionTimeout:
-        description: DemotionTimeout defines maximum duration for doing active demotion
-        type: string
-      deployment:
-        $ref: '#/definitions/internal.ConfigDeploy'
-        description: Deployment represents configuration about deploy
-        type: object
-      maxHistories:
-        description: MaxHistories defines maximum length of ActivePromotionHistory
-          stored per team
-        type: integer
-      outdatedNotification:
-        $ref: '#/definitions/internal.OutdatedNotification'
-        type: object
-      rollbackTimeout:
-        description: RollbackTimeout defines maximum duration for rolling back active
-          promotion
-        type: string
-      tearDownDuration:
-        description: TearDownDuration defines duration before teardown the previous
-          active namespace
-        type: string
-      timeout:
-        description: Timeout defines maximum duration for doing active promotion
-        type: string
-    type: object
-  internal.ConfigDeploy:
-    properties:
-      componentCleanupTimeout:
-        description: ComponentCleanupTimeout defines timeout duration of component
-          cleaning up
-        type: string
-      engine:
-        description: |-
-          Engine defines method of deploying
-
-          mock - for test only, always return success
-
-          flux-helm - create HelmRelease for Helm Operator from Flux
-        type: string
-      testRunner:
-        $ref: '#/definitions/internal.ConfigTestRunner'
-        description: TestRunner represents configuration about test
-        type: object
-      timeout:
-        description: Timeout defines maximum duration for deploying environment
-        type: string
-    type: object
-  internal.ConfigReporter:
-    properties:
-      cmd:
-        $ref: '#/definitions/internal.Shell'
-        type: object
-      email:
-        $ref: '#/definitions/internal.Email'
-        type: object
-      optionals:
-        items:
-          $ref: '#/definitions/internal.ReportOption'
-        type: array
-      reportMock:
-        type: boolean
-      rest:
-        $ref: '#/definitions/internal.Rest'
-        type: object
-      slack:
-        $ref: '#/definitions/internal.Slack'
-        type: object
-    type: object
-  internal.ConfigStaging:
-    properties:
-      deployment:
-        $ref: '#/definitions/internal.ConfigDeploy'
-        description: Deployment represents configuration about deploy
-        type: object
-      maxHistoryDays:
-        description: MaxHistoryDays defines maximum days of QueueHistory stored
-        type: integer
-      maxRetry:
-        description: MaxRetry defines max retry counts of component upgrade
-        type: integer
-    type: object
-  internal.ConfigTestRunner:
-    properties:
-      pollingTime:
-        type: string
-      teamcity:
-        $ref: '#/definitions/internal.Teamcity'
-        type: object
-      testMock:
-        $ref: '#/definitions/internal.TestMock'
-        type: object
-      timeout:
-        type: string
-    type: object
-  internal.Configuration:
-    properties:
-      activePromotion:
-        $ref: '#/definitions/internal.ConfigActivePromotion'
-        description: ActivePromotion represents configuration about active promotion
-        type: object
-      components:
-        description: Components defines all components that are managed
-        items:
-          $ref: '#/definitions/internal.Component'
-        type: array
-      envs:
-        description: Envs represents environment specific configuration
-        type: object
-      report:
-        $ref: '#/definitions/internal.ConfigReporter'
-        description: Reporter represents configuration about reporter
-        type: object
-      staging:
-        $ref: '#/definitions/internal.ConfigStaging'
-        description: Staging represents configuration about staging
-        type: object
-    type: object
-  internal.Email:
-    properties:
-      from:
-        type: string
-      port:
-        type: integer
-      server:
-        type: string
-      to:
-        items:
-          type: string
-        type: array
-    type: object
-  internal.Endpoint:
-    properties:
-      template:
-        type: string
-      url:
-        type: string
-    type: object
-  internal.OutdatedNotification:
-    properties:
-      exceedDuration:
-        type: string
-      excludeWeekendCalculation:
-        type: boolean
-    type: object
-  internal.ReportOption:
-    properties:
-      key:
-        type: string
-      value:
-        type: string
-    type: object
-  internal.Rest:
-    properties:
-      activePromotion:
-        properties:
-          endpoints:
-            items:
-              $ref: '#/definitions/internal.Endpoint'
-            type: array
-        type: object
-      componentUpgrade:
-        properties:
-          endpoints:
-            items:
-              $ref: '#/definitions/internal.Endpoint'
-            type: array
-        type: object
-      imageMissing:
-        properties:
-          endpoints:
-            items:
-              $ref: '#/definitions/internal.Endpoint'
-            type: array
-        type: object
-    type: object
-  internal.Shell:
-    properties:
-      activePromotion:
-        $ref: '#/definitions/internal.CommandAndArgs'
-        type: object
-      componentUpgrade:
-        $ref: '#/definitions/internal.CommandAndArgs'
-        type: object
-      imageMissing:
-        $ref: '#/definitions/internal.CommandAndArgs'
-        type: object
-    type: object
-  internal.Slack:
-    properties:
-      channels:
-        items:
-          type: string
-        type: array
-      componentUpgrade:
-        properties:
-          criteria:
-            type: string
-          interval:
-            type: string
-        type: object
-    type: object
-  internal.Teamcity:
-    properties:
-      branch:
-        type: string
-      buildTypeID:
-        type: string
-    type: object
-  internal.TestMock:
-    properties:
-      result:
-        type: boolean
-    type: object
   v1beta1.ActivePromotion:
     properties:
       spec:
@@ -422,12 +152,248 @@ definitions:
           +optional
         type: string
     type: object
+  v1beta1.CommandAndArgs:
+    properties:
+      args:
+        items:
+          type: string
+        type: array
+      command:
+        items:
+          type: string
+        type: array
+    type: object
+  v1beta1.Component:
+    properties:
+      chart:
+        $ref: '#/definitions/v1beta1.ComponentChart'
+        type: object
+      dependencies:
+        description: +optional
+        items:
+          $ref: '#/definitions/v1beta1.Component'
+        type: array
+      image:
+        $ref: '#/definitions/v1beta1.ComponentImage'
+        type: object
+      name:
+        type: string
+      parent:
+        description: +optional
+        type: string
+      source:
+        description: +optional
+        type: string
+      values:
+        $ref: '#/definitions/v1beta1.ComponentValues'
+        description: +optional
+        type: object
+    type: object
+  v1beta1.ComponentChart:
+    properties:
+      name:
+        type: string
+      repository:
+        type: string
+      version:
+        description: +optional
+        type: string
+    type: object
+  v1beta1.ComponentImage:
+    properties:
+      pattern:
+        description: +optional
+        type: string
+      repository:
+        type: string
+      tag:
+        description: +optional
+        type: string
+    type: object
+  v1beta1.ComponentValues:
+    additionalProperties:
+      type: object
+    type: object
+  v1beta1.ConfigActivePromotion:
+    properties:
+      demotionTimeout:
+        description: |-
+          DemotionTimeout defines maximum duration for doing active demotion
+          +optional
+        type: string
+      deployment:
+        $ref: '#/definitions/v1beta1.ConfigDeploy'
+        description: Deployment represents configuration about deploy
+        type: object
+      maxHistories:
+        description: |-
+          MaxHistories defines maximum length of ActivePromotionHistory stored per team
+          +optional
+        type: integer
+      outdatedNotification:
+        $ref: '#/definitions/v1beta1.OutdatedNotification'
+        description: |-
+          OutdatedNotification defines a configuration of outdated notification
+          +optional
+        type: object
+      rollbackTimeout:
+        description: |-
+          RollbackTimeout defines maximum duration for rolling back active promotion
+          +optional
+        type: string
+      tearDownDuration:
+        description: |-
+          TearDownDuration defines duration before teardown the previous active namespace
+          +optional
+        type: string
+      timeout:
+        description: |-
+          Timeout defines maximum duration for doing active promotion
+          +optional
+        type: string
+    type: object
+  v1beta1.ConfigComponentUpgrade:
+    properties:
+      criteria:
+        description: +optional
+        type: string
+      interval:
+        description: +optional
+        type: string
+    type: object
+  v1beta1.ConfigDeploy:
+    properties:
+      componentCleanupTimeout:
+        description: |-
+          ComponentCleanupTimeout defines timeout duration of component cleaning up
+          +optional
+        type: string
+      engine:
+        description: |-
+          Engine defines method of deploying
+
+          mock - for test only, always return success
+
+          flux-helm - create HelmRelease for Helm Operator from Flux
+          +optional
+        type: string
+      testRunner:
+        $ref: '#/definitions/v1beta1.ConfigTestRunner'
+        description: |-
+          TestRunner represents configuration about test
+          +optional
+        type: object
+      timeout:
+        description: |-
+          Timeout defines maximum duration for deploying environment
+          +optional
+        type: string
+    type: object
+  v1beta1.ConfigReporter:
+    properties:
+      cmd:
+        $ref: '#/definitions/v1beta1.Shell'
+        description: +optional
+        type: object
+      email:
+        $ref: '#/definitions/v1beta1.Email'
+        description: +optional
+        type: object
+      optionals:
+        description: +optional
+        items:
+          $ref: '#/definitions/v1beta1.ReportOption'
+        type: array
+      reportMock:
+        description: +optional
+        type: boolean
+      rest:
+        $ref: '#/definitions/v1beta1.Rest'
+        description: +optional
+        type: object
+      slack:
+        $ref: '#/definitions/v1beta1.Slack'
+        description: +optional
+        type: object
+    type: object
+  v1beta1.ConfigSpec:
+    properties:
+      activePromotion:
+        $ref: '#/definitions/v1beta1.ConfigActivePromotion'
+        description: |-
+          ActivePromotion represents configuration about active promotion
+          +optional
+        type: object
+      components:
+        description: Components represents all components that are managed
+        items:
+          $ref: '#/definitions/v1beta1.Component'
+        type: array
+      envs:
+        description: |-
+          Envs represents urls of values file per environments
+          ordering by less priority to high priority
+          +optional
+        type: object
+      report:
+        $ref: '#/definitions/v1beta1.ConfigReporter'
+        description: |-
+          Reporter represents configuration about reporter
+          +optional
+        type: object
+      staging:
+        $ref: '#/definitions/v1beta1.ConfigStaging'
+        description: Staging represents configuration about staging
+        type: object
+    type: object
+  v1beta1.ConfigStaging:
+    properties:
+      deployment:
+        $ref: '#/definitions/v1beta1.ConfigDeploy'
+        description: Deployment represents configuration about deploy
+        type: object
+      maxHistoryDays:
+        description: |-
+          MaxHistoryDays defines maximum days of QueueHistory stored
+          +optional
+        type: integer
+      maxRetry:
+        description: |-
+          MaxRetry defines max retry counts of component upgrade
+          +optional
+        type: integer
+    type: object
+  v1beta1.ConfigTeamcity:
+    properties:
+      branch:
+        type: string
+      buildTypeID:
+        type: string
+    type: object
+  v1beta1.ConfigTestMock:
+    properties:
+      result:
+        type: boolean
+    type: object
+  v1beta1.ConfigTestRunner:
+    properties:
+      pollingTime:
+        description: +optional
+        type: string
+      teamcity:
+        $ref: '#/definitions/v1beta1.ConfigTeamcity'
+        description: +optional
+        type: object
+      testMock:
+        $ref: '#/definitions/v1beta1.ConfigTestMock'
+        description: +optional
+        type: object
+      timeout:
+        description: +optional
+        type: string
+    type: object
   v1beta1.Credential:
     properties:
-      git:
-        $ref: '#/definitions/v1beta1.UsernamePasswordCredential'
-        description: Git
-        type: object
       secretName:
         description: SecretName
         type: string
@@ -438,40 +404,22 @@ definitions:
           +optional
         type: object
     type: object
-  v1beta1.GitStorage:
+  v1beta1.Email:
     properties:
-      cloneDepth:
-        description: |-
-          CloneDepth limits fetching to the specified number of commits
-          +optional
+      from:
+        type: string
+      port:
         type: integer
-      cloneTimeout:
-        description: |-
-          CloneTimeout represents timeout duration of git clone
-          +optional
+      server:
         type: string
-      path:
-        description: |-
-          Path represents a directory path in git repo
-          +optional
-        type: string
-      pullTimeout:
-        description: |-
-          PullTimeout represents timeout duration of git pull
-          +optional
-        type: string
-      pushTimeout:
-        description: |-
-          PushTimeout represents timeout duration of git push
-          +optional
-        type: string
-      ref:
-        description: |-
-          Ref represents git ref
-          +optional
-        type: string
+      to:
+        items:
+          type: string
+        type: array
+    type: object
+  v1beta1.Endpoint:
+    properties:
       url:
-        description: URL represents git url
         type: string
     type: object
   v1beta1.Image:
@@ -480,6 +428,13 @@ definitions:
         type: string
       tag:
         type: string
+    type: object
+  v1beta1.OutdatedNotification:
+    properties:
+      exceedDuration:
+        type: string
+      excludeWeekendCalculation:
+        type: boolean
     type: object
   v1beta1.Queue:
     properties:
@@ -627,6 +582,61 @@ definitions:
         description: UpdatedAt represents time when the component was processed
         type: string
     type: object
+  v1beta1.ReportOption:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+  v1beta1.Rest:
+    properties:
+      activePromotion:
+        $ref: '#/definitions/v1beta1.RestObject'
+        description: +optional
+        type: object
+      componentUpgrade:
+        $ref: '#/definitions/v1beta1.RestObject'
+        description: +optional
+        type: object
+      imageMissing:
+        $ref: '#/definitions/v1beta1.RestObject'
+        description: +optional
+        type: object
+    type: object
+  v1beta1.RestObject:
+    properties:
+      endpoints:
+        items:
+          $ref: '#/definitions/v1beta1.Endpoint'
+        type: array
+    type: object
+  v1beta1.Shell:
+    properties:
+      activePromotion:
+        $ref: '#/definitions/v1beta1.CommandAndArgs'
+        description: +optional
+        type: object
+      componentUpgrade:
+        $ref: '#/definitions/v1beta1.CommandAndArgs'
+        description: +optional
+        type: object
+      imageMissing:
+        $ref: '#/definitions/v1beta1.CommandAndArgs'
+        description: +optional
+        type: object
+    type: object
+  v1beta1.Slack:
+    properties:
+      channels:
+        items:
+          type: string
+        type: array
+      componentUpgrade:
+        $ref: '#/definitions/v1beta1.ConfigComponentUpgrade'
+        description: +optional
+        type: object
+    type: object
   v1beta1.StableComponent:
     properties:
       spec:
@@ -718,11 +728,6 @@ definitions:
           Description represents description for this team
           +optional
         type: string
-      gitStorage:
-        $ref: '#/definitions/v1beta1.GitStorage'
-        description: GitStorage represents git as storage for retrieving configuration,
-          etc.
-        type: object
       owners:
         description: |-
           Owners represents contact point of this team
@@ -838,18 +843,6 @@ definitions:
       error:
         type: string
     type: object
-  webhook.githubPushEventJSON:
-    properties:
-      ref:
-        type: string
-      repository:
-        properties:
-          full_name:
-            type: string
-          name:
-            type: string
-        type: object
-    type: object
   webhook.healthCheckJSON:
     properties:
       msg:
@@ -882,22 +875,27 @@ definitions:
     additionalProperties:
       properties:
         chart:
-          $ref: '#/definitions/internal.ComponentChart'
+          $ref: '#/definitions/v1beta1.ComponentChart'
           type: object
         dependencies:
+          description: +optional
           items:
-            $ref: '#/definitions/internal.Component'
+            $ref: '#/definitions/v1beta1.Component'
           type: array
         image:
-          $ref: '#/definitions/internal.ComponentImage'
+          $ref: '#/definitions/v1beta1.ComponentImage'
           type: object
         name:
           type: string
         parent:
+          description: +optional
           type: string
         source:
+          description: +optional
           type: string
         values:
+          $ref: '#/definitions/v1beta1.ComponentValues'
+          description: +optional
           type: object
       type: object
     type: object
@@ -1386,31 +1384,6 @@ paths:
           schema:
             $ref: '#/definitions/webhook.errResp'
       summary: Webhook New Component
-      tags:
-      - POST
-  /webhook/github:
-    post:
-      description: Endpoint for receiving webhook notifications from Github
-      parameters:
-      - description: Github Push Event
-        in: body
-        name: GithubPushEvent
-        required: true
-        schema:
-          $ref: '#/definitions/webhook.githubPushEventJSON'
-          type: object
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-          schema:
-            type: string
-        "400":
-          description: Invalid JSON
-          schema:
-            $ref: '#/definitions/webhook.errResp'
-      summary: Github Webhook
       tags:
       - POST
 swagger: "2.0"

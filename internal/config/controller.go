@@ -28,17 +28,29 @@ type controller struct {
 	client client.Client
 }
 
-func New(mgr cr.Manager) internal.ConfigController {
+type Option func(*controller)
+
+func WithClient(client client.Client) Option {
+	return func(c *controller) {
+		c.client = client
+	}
+}
+
+func New(mgr cr.Manager, options ...Option) internal.ConfigController {
 	c := &controller{}
 
 	if mgr != nil {
 		c.client = mgr.GetClient()
 	}
 
+	for _, opt := range options {
+		opt(c)
+	}
+
 	return c
 }
 
-// Get returns configuration from memory
+// Get returns configuration from Config CRD
 func (c *controller) Get(configName string) (*s2hv1beta1.ConfigSpec, error) {
 	config, err := c.getConfig(configName)
 	if err != nil {
@@ -117,15 +129,17 @@ func (c *controller) Delete(configName string) error {
 		}
 
 		return err
+
 	}
 
 	if err := c.client.Delete(context.TODO(), config); err != nil {
 		return err
 	}
 
-	return errors.ErrEnsureConfigDestroyed
+	return nil
 }
 
+// GetEnvValues returns component values per component name by the given env type
 func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType) (
 	map[string]s2hv1beta1.ComponentValues, error) {
 
@@ -147,7 +161,7 @@ func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType) (
 	return out, nil
 }
 
-// GetEnvComponentValues returns component values by env type and component name
+// GetEnvComponentValues returns component values by the given env type and component name
 func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envType s2hv1beta1.EnvType) (
 	s2hv1beta1.ComponentValues, error) {
 
@@ -196,40 +210,6 @@ func (c *controller) assignParent(config *s2hv1beta1.ConfigSpec) {
 		}
 	}
 }
-
-//func (c *controller) getComponentsByConfig(config *s2hv1beta1.ConfigSpec) (map[string]*s2hv1beta1.Component, error) {
-//	filteredComps := map[string]*s2hv1beta1.Component{}
-//
-//	var comps []*s2hv1beta1.Component
-//	var comp *s2hv1beta1.Component
-//
-//	comps = append(comps, config.Components...)
-//
-//	for len(comps) > 0 {
-//		comp, comps = comps[0], comps[1:]
-//		if len(comp.Dependencies) > 0 {
-//			// add to comps
-//			for _, dep := range comp.Dependencies {
-//				comps = append(comps, &s2hv1beta1.Component{
-//					Parent: comp.Name,
-//					Name:   dep.Name,
-//					Image:  dep.Image,
-//					Source: dep.Source,
-//				})
-//			}
-//		}
-//
-//		if _, exist := filteredComps[comp.Name]; exist {
-//			// duplication component name
-//			logger.Warnf("duplicate component: %s detected", comp.Name)
-//			continue
-//		}
-//
-//		filteredComps[comp.Name] = comp
-//	}
-//
-//	return filteredComps, nil
-//}
 
 func (c *controller) getConfig(configName string) (*s2hv1beta1.Config, error) {
 	config := &s2hv1beta1.Config{}

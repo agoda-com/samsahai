@@ -10,7 +10,6 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	"github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/reporter/shell"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
@@ -32,14 +31,14 @@ var _ = Describe("shell command reporter", func() {
 			}
 
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
-			configMgr := newConfigMock()
+			configCtrl := newMockConfigCtrl("")
 
 			comp := internal.NewComponentUpgradeReporter(&rpc.ComponentUpgrade{Status: 1}, internal.SamsahaiConfig{})
-			err := r.SendComponentUpgrade(configMgr, comp)
+			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).NotTo(HaveOccurred())
 
 			g.Expect(testCmdObj.Command).To(Equal([]string{"/bin/sh", "-c"}))
-			g.Expect(testCmdObj.Args).To(Equal([]string{"echo executing\necho upgraded component Success\n"}))
+			g.Expect(testCmdObj.Args).To(Equal([]string{"echo executing\n echo upgraded component Success"}))
 		})
 
 		It("should correctly execute active promotion", func() {
@@ -50,17 +49,17 @@ var _ = Describe("shell command reporter", func() {
 			}
 
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
-			configMgr := newConfigMock()
+			configCtrl := newMockConfigCtrl("")
 
 			status := &s2hv1beta1.ActivePromotionStatus{
 				Result: s2hv1beta1.ActivePromotionSuccess,
 			}
 			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "", "")
 
-			err := r.SendActivePromotionStatus(configMgr, atpRpt)
+			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 			g.Expect(err).NotTo(HaveOccurred())
 
-			g.Expect(testCmdObj.Command).To(Equal([]string{"echo active promotion status Success\n"}))
+			g.Expect(testCmdObj.Command).To(Equal([]string{"echo active promotion status Success"}))
 			g.Expect(testCmdObj.Args).To(BeNil())
 		})
 
@@ -72,10 +71,10 @@ var _ = Describe("shell command reporter", func() {
 			}
 
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
-			configMgr := newConfigMock()
+			configCtrl := newMockConfigCtrl("")
 
 			img := &rpc.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
-			err := r.SendImageMissing(configMgr, img)
+			err := r.SendImageMissing("mock", configCtrl, img)
 			g.Expect(err).NotTo(HaveOccurred())
 
 			g.Expect(testCmdObj.Command).To(Equal([]string{"/bin/sh", "-c"}))
@@ -86,10 +85,10 @@ var _ = Describe("shell command reporter", func() {
 	Describe("failure path", func() {
 		It("should fail to execute command due to timeout", func() {
 			r := shell.New(shell.WithTimeout(1 * time.Second))
-			configMgr := newFailureConfig()
+			configCtrl := newMockConfigCtrl("failure")
 
 			comp := internal.NewComponentUpgradeReporter(&rpc.ComponentUpgrade{}, internal.SamsahaiConfig{})
-			err := r.SendComponentUpgrade(configMgr, comp)
+			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).To(HaveOccurred())
 		})
 
@@ -101,56 +100,74 @@ var _ = Describe("shell command reporter", func() {
 			}
 
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
-			configMgr := newNoShellConfig()
+			configCtrl := newMockConfigCtrl("empty")
 
-			err := r.SendComponentUpgrade(configMgr, nil)
+			err := r.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
-			err = r.SendActivePromotionStatus(configMgr, nil)
+			err = r.SendActivePromotionStatus(configCtrl, &internal.ActivePromotionReporter{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
-			err = r.SendImageMissing(configMgr, nil)
+			err = r.SendImageMissing("mock", configCtrl, &rpc.Image{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 		})
 	})
 })
 
-func newConfigMock() internal.ConfigManager {
-	return config.NewWithBytes([]byte(`
-report:
-  cmd:
-    componentUpgrade:
-      command: ["/bin/sh", "-c"]
-      args: 
-        - |
-          echo executing
-          echo upgraded component {{ .StatusStr }}
-    activePromotion:
-      command: 
-        - |
-          echo active promotion status {{ .Result }}
-    imageMissing:
-      command: ["/bin/sh", "-c"]
-      args: ["echo image missing {{ .Repository }}:{{ .Tag }}"]
-`))
+type mockConfigCtrl struct {
+	configType string
 }
 
-func newNoShellConfig() internal.ConfigManager {
-	configMgr := config.NewWithBytes([]byte(`
-report:
-`))
-
-	return configMgr
+func newMockConfigCtrl(configType string) internal.ConfigController {
+	return &mockConfigCtrl{configType: configType}
 }
 
-func newFailureConfig() internal.ConfigManager {
-	return config.NewWithBytes([]byte(`
-report:
-  cmd:
-    componentUpgrade:
-      command: ["/bin/sleep", "5"]
-`))
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.ConfigSpec, error) {
+	switch c.configType {
+	case "empty":
+		return &s2hv1beta1.ConfigSpec{}, nil
+	case "failure":
+		return &s2hv1beta1.ConfigSpec{
+			Reporter: &s2hv1beta1.ConfigReporter{
+				Shell: &s2hv1beta1.Shell{
+					ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+						Command: []string{"/bin/sleep", "5"},
+					},
+				},
+			},
+		}, nil
+	default:
+		return &s2hv1beta1.ConfigSpec{
+			Reporter: &s2hv1beta1.ConfigReporter{
+				Shell: &s2hv1beta1.Shell{
+					ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+						Command: []string{"/bin/sh", "-c"},
+						Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
+					},
+					ActivePromotion: &s2hv1beta1.CommandAndArgs{
+						Command: []string{"echo active promotion status {{ .Result }}"},
+					},
+					ImageMissing: &s2hv1beta1.CommandAndArgs{
+						Command: []string{"/bin/sh", "-c"},
+						Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }}"},
+					},
+				},
+			},
+		}, nil
+	}
+}
+
+func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) Delete(configName string) error {
+	return nil
 }

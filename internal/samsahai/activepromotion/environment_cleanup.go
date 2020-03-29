@@ -100,7 +100,7 @@ func (c *controller) destroyActiveEnvironment(ctx context.Context, atpComp *s2hv
 
 func (c *controller) ensureDestroyEnvironment(ctx context.Context, envType envType, teamName, ns string, startedCleanupTime *metav1.Time) error {
 	if err := c.deleteAllComponentsInNamespace(teamName, ns, startedCleanupTime); err != nil {
-		if s2herrors.IsDeletingReleases(err) || s2herrors.IsLoadingConfiguration(err) {
+		if s2herrors.IsDeletingReleases(err) {
 			return s2herrors.ErrEnsureNamespaceDestroyed
 		}
 		return err

@@ -57,7 +57,6 @@ func (c *checker) GetVersion(repository, name, pattern string) (string, error) {
 			continue
 		}
 
-		// TODO: pohfy, change here
 		comps, err := configCtrl.GetComponents(teamComp.Name)
 		if err != nil {
 			return "", errors.Wrap(err, "cannot get config controller")

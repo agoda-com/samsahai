@@ -2,22 +2,20 @@ package staging
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path"
 	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/twitchtv/twirp"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -27,33 +25,34 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/agoda-com/samsahai/internal"
-	s2hconfig "github.com/agoda-com/samsahai/internal/config"
-	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
 
 	"github.com/agoda-com/samsahai/api/v1beta1"
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	configctrl "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/k8s/helmrelease"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/internal/samsahai"
 	"github.com/agoda-com/samsahai/internal/staging"
-	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 var _ = Describe("Staging Controller [e2e]", func() {
-	var stagingCtrl internal.StagingController
-	var queueCtrl internal.QueueController
-	var namespace string
-	var configMgr internal.ConfigManager
-	var runtimeClient crclient.Client
-	var restCfg *rest.Config
-	var hrClient internal.HelmReleaseClient
-	var wgStop *sync.WaitGroup
-	var chStop chan struct{}
-	var mgr manager.Manager
-	var err error
+	var (
+		stagingCtrl   internal.StagingController
+		queueCtrl     internal.QueueController
+		namespace     string
+		cfgCtrl       internal.ConfigController
+		runtimeClient crclient.Client
+		restCfg       *rest.Config
+		hrClient      internal.HelmReleaseClient
+		wgStop        *sync.WaitGroup
+		chStop        chan struct{}
+		mgr           manager.Manager
+		err           error
+	)
+
 	logger := s2hlog.Log.WithName(fmt.Sprintf("%s-test", internal.StagingCtrlName))
 
 	stableWordPress := v1beta1.StableComponent{
@@ -134,6 +133,77 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		},
 	}
 
+	engine := "helm3"
+	deployConfig := s2hv1beta1.ConfigDeploy{
+		Timeout:                 metav1.Duration{Duration: 5 * time.Minute},
+		ComponentCleanupTimeout: metav1.Duration{Duration: 2 * time.Second},
+		Engine:                  &engine,
+		TestRunner: &s2hv1beta1.ConfigTestRunner{
+			TestMock: &s2hv1beta1.ConfigTestMock{
+				Result: true,
+			},
+		},
+	}
+	compSource := s2hv1beta1.UpdatingSource("public-registry")
+	redisConfigComp := s2hv1beta1.Component{
+		Name: "redis",
+		Chart: s2hv1beta1.ComponentChart{
+			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Name:       "redis",
+		},
+		Image: s2hv1beta1.ComponentImage{
+			Repository: "bitnami/redis",
+			Pattern:    "5.*debian-9.*",
+		},
+		Source: &compSource,
+		Values: s2hv1beta1.ComponentValues{
+			"image": map[string]interface{}{
+				"repository": "bitnami/redis",
+				"pullPolicy": "IfNotPresent",
+			},
+			"cluster": map[string]interface{}{
+				"enabled": false,
+			},
+			"usePassword": false,
+			"master": map[string]interface{}{
+				"persistence": map[string]interface{}{
+					"enabled": false,
+				},
+			},
+		},
+	}
+
+	mockConfig := s2hv1beta1.Config{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: teamName,
+		},
+		Spec: s2hv1beta1.ConfigSpec{
+			Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
+				"staging": map[string][]string{
+					"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
+				},
+				"pre-active": map[string][]string{
+					"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml"},
+				},
+				"active": map[string][]string{
+					"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
+				},
+			},
+			Staging: &s2hv1beta1.ConfigStaging{
+				Deployment: &deployConfig,
+			},
+			ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+				Timeout:          metav1.Duration{Duration: 5 * time.Minute},
+				TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+				Deployment:       &deployConfig,
+			},
+			Reporter: &s2hv1beta1.ConfigReporter{
+				ReportMock: true,
+			},
+			Components: []*s2hv1beta1.Component{&redisConfigComp},
+		},
+	}
+
 	BeforeEach(func(done Done) {
 		defer GinkgoRecover()
 		defer close(done)
@@ -156,6 +226,10 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "should create runtime client successfully")
 
 		queueCtrl = queue.New(namespace, runtimeClient)
+		Expect(queueCtrl).ToNot(BeNil())
+
+		cfgCtrl = configctrl.New(mgr)
+		Expect(cfgCtrl).ToNot(BeNil())
 
 		hrClient = helmrelease.New(namespace, runtimeClient)
 		Expect(hrClient).NotTo(BeNil())
@@ -174,11 +248,6 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 		ctx := context.Background()
 
-		By("Deleting mock team")
-		t := &v1beta1.Team{}
-		_ = runtimeClient.Get(ctx, crclient.ObjectKey{Name: teamName}, t)
-		_ = runtimeClient.Delete(ctx, t)
-
 		By("Deleting nginx deployment")
 		deploy := &deployNginx
 		_ = runtimeClient.Delete(ctx, deploy)
@@ -186,6 +255,20 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		By("Deleting all teams")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Team{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
+		err = wait.PollImmediate(1*time.Second, 10*time.Second, func() (ok bool, err error) {
+			teamList := s2hv1beta1.TeamList{}
+			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
+			err = runtimeClient.List(ctx, &teamList, listOpt)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			if len(teamList.Items) == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete all teams error")
 
 		By("Deleting all StableComponents")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, crclient.InNamespace(namespace))
@@ -225,14 +308,21 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		defer close(done)
 
 		authToken := "12345"
-		configMgr, err = s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "data", "redis"))
 
-		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, configMgr,
+		By("Creating Config")
+		config := mockConfig
+		ctx := context.Background()
+		_ = runtimeClient.Delete(ctx, &config)
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, cfgCtrl,
 			"", "", "", internal.StagingConfig{})
 
 		go stagingCtrl.Start(chStop)
 
-		cfg := configMgr.Get()
+		cfg, err := cfgCtrl.Get(teamName)
+		Expect(err).NotTo(HaveOccurred())
+
 		deployTimeout := cfg.Staging.Deployment.Timeout.Duration
 		testingTimeout := cfg.Staging.Deployment.TestRunner.Timeout
 
@@ -240,7 +330,8 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		Expect(runtimeClient.Create(context.TODO(), &swp)).To(BeNil())
 
 		By("creating queue")
-		newQueue := queue.NewUpgradeQueue(teamName, namespace, "redis", "bitnami/redis", "5.0.5-debian-9-r160")
+		newQueue := queue.NewUpgradeQueue(teamName, namespace,
+			"redis", "bitnami/redis", "5.0.5-debian-9-r160")
 		Expect(queueCtrl.Add(newQueue)).To(BeNil())
 
 		By("deploying")
@@ -283,7 +374,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 		redisServiceName := fmt.Sprintf("%s-%s-redis-master", teamName, namespace)
 
-		err = wait.PollImmediate(2*time.Second, 40*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			queue, err := queue.EnsurePreActiveComponents(runtimeClient, teamName, namespace)
 			if err != nil {
 				logger.Error(err, "cannot ensure pre-active components")
@@ -321,7 +412,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 		By("Demote from Active")
 
-		err = wait.PollImmediate(2*time.Second, 30*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			queue, err := queue.EnsureDemoteFromActiveComponents(runtimeClient, teamName, namespace)
 			if err != nil {
 				logger.Error(err, "cannot ensure demote from active components")
@@ -343,7 +434,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 		By("Promote to Active")
 
-		err = wait.PollImmediate(2*time.Second, 30*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			queue, err := queue.EnsurePromoteToActiveComponents(runtimeClient, teamName, namespace)
 			if err != nil {
 				logger.Error(err, "cannot ensure promote to active components")
@@ -371,21 +462,26 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		team := mockTeam
 		Expect(runtimeClient.Create(context.TODO(), &team)).To(BeNil())
 
+		By("Creating Config")
+		config := mockConfig
+		config.Spec.Staging.MaxRetry = 0
+		config.Spec.Staging.Deployment.Timeout = metav1.Duration{Duration: 10 * time.Second}
+		config.Spec.Components[0].Values["master"].(map[string]interface{})["command"] = "exit 1"
+		ctx := context.Background()
+		_ = runtimeClient.Delete(ctx, &config)
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
 		authToken := "12345"
-
-		configMgr, err = s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "data", "failed-fast"))
-
 		s2hConfig := internal.SamsahaiConfig{SamsahaiCredential: internal.SamsahaiCredential{InternalAuthToken: authToken}}
-		samsahaiCtrl := samsahai.New(nil, namespace, s2hConfig,
+		samsahaiCtrl := samsahai.New(mgr, namespace, s2hConfig, cfgCtrl,
 			samsahai.WithClient(runtimeClient),
-			samsahai.WithConfigManager(teamName, configMgr),
 			samsahai.WithDisableLoaders(true, true, true))
 		server := httptest.NewServer(samsahaiCtrl)
 		defer server.Close()
 
 		samsahaiClient := samsahairpc.NewRPCProtobufClient(server.URL, &http.Client{})
 
-		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl, configMgr,
+		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl, cfgCtrl,
 			"", "", "", internal.StagingConfig{})
 		go stagingCtrl.Start(chStop)
 
@@ -393,7 +489,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		Expect(runtimeClient.Create(context.TODO(), redis)).To(BeNil())
 
 		qhl := &v1beta1.QueueHistoryList{}
-		err = wait.PollImmediate(1*time.Second, 30*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(1*time.Second, 60*time.Second, func() (ok bool, err error) {
 			err = runtimeClient.List(context.TODO(), qhl, &crclient.ListOptions{})
 			if err != nil || len(qhl.Items) < 1 {
 				return false, nil
@@ -414,19 +510,24 @@ var _ = Describe("Staging Controller [e2e]", func() {
 			return true, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Should have waiting queue")
-	}, 90)
+	}, 120)
 
 	// TODO: disable by phantomnat
 	XIt("should successfully clean all k8s resources in case of there are zombie pods", func(done Done) {
 		defer close(done)
 
 		authToken := "12345"
-		configMgr, err = s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "data", "redis"))
 
-		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, configMgr,
+		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, cfgCtrl,
 			"", "", "", internal.StagingConfig{})
 
 		go stagingCtrl.Start(chStop)
+
+		By("Creating Config")
+		config := mockConfig
+		ctx := context.Background()
+		_ = runtimeClient.Delete(ctx, &config)
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
 		By("deploying nginx deployment, to pretend as zombie pod with same release name")
 		// TODO: create pod instead of deployment
@@ -454,211 +555,4 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Cleaning error")
 	}, 60)
-
-	Describe("gRPC", func() {
-		It("Should error if client not specify the authentication", func(done Done) {
-			defer close(done)
-
-			authToken := "12345"
-			configMgr, err = s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "data", "redis"))
-			s2hConfig := internal.SamsahaiConfig{SamsahaiCredential: internal.SamsahaiCredential{InternalAuthToken: authToken}}
-			samsahaiCtrl := samsahai.New(nil, namespace, s2hConfig,
-				samsahai.WithClient(runtimeClient),
-				samsahai.WithConfigManager(teamName, configMgr),
-				samsahai.WithDisableLoaders(true, true, true))
-			samsahaiServer := httptest.NewServer(samsahaiCtrl)
-			defer samsahaiServer.Close()
-
-			samsahaiClient := samsahairpc.NewRPCProtobufClient(samsahaiServer.URL, &http.Client{})
-			configMgr, err = s2hconfig.NewWithSamsahaiClient(samsahaiClient, teamName, authToken)
-			Expect(err).ToNot(HaveOccurred())
-
-			stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl,
-				configMgr, "", "", "", internal.StagingConfig{})
-			server := httptest.NewServer(stagingCtrl)
-			defer server.Close()
-
-			rpcClient := stagingrpc.NewRPCProtobufClient(server.URL, &http.Client{})
-
-			go stagingCtrl.Start(chStop)
-
-			cfg := configMgr.Get()
-			data, err := json.Marshal(cfg)
-			Expect(err).NotTo(HaveOccurred())
-			_, err = rpcClient.UpdateConfiguration(context.TODO(), &stagingrpc.Configuration{
-				GitRevision: "abc123",
-				Config:      data,
-			})
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal(twirp.InternalErrorWith(s2herrors.ErrUnauthorized).Error()))
-
-		}, 30)
-
-		It("Should success communicate with gRPC", func(done Done) {
-			defer close(done)
-
-			authToken := "12345"
-			configMgr, err = s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "data", "redis"))
-			s2hConfig := internal.SamsahaiConfig{SamsahaiCredential: internal.SamsahaiCredential{InternalAuthToken: authToken}}
-			samsahaiCtrl := samsahai.New(nil, namespace, s2hConfig,
-				samsahai.WithClient(runtimeClient),
-				samsahai.WithConfigManager(teamName, configMgr),
-				samsahai.WithDisableLoaders(true, true, true))
-			samsahaiServer := httptest.NewServer(samsahaiCtrl)
-			defer samsahaiServer.Close()
-
-			samsahaiClient := samsahairpc.NewRPCProtobufClient(samsahaiServer.URL, &http.Client{})
-			configMgr, err = s2hconfig.NewWithSamsahaiClient(samsahaiClient, teamName, authToken)
-			Expect(err).ToNot(HaveOccurred())
-
-			stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl,
-				configMgr, "", "", "", internal.StagingConfig{})
-			server := httptest.NewServer(stagingCtrl)
-			defer server.Close()
-
-			rpcClient := stagingrpc.NewRPCProtobufClient(server.URL, &http.Client{})
-
-			go stagingCtrl.Start(chStop)
-
-			By("specify auth header")
-			headers := make(http.Header)
-			headers.Set(internal.SamsahaiAuthHeader, authToken)
-			ctx := context.TODO()
-			ctx, err = twirp.WithHTTPRequestHeaders(ctx, headers)
-			Expect(err).ToNot(HaveOccurred())
-
-			cfg := configMgr.Get()
-			data, err := json.Marshal(cfg)
-			Expect(err).NotTo(HaveOccurred())
-			_, err = rpcClient.UpdateConfiguration(ctx, &stagingrpc.Configuration{
-				GitRevision: "abc123",
-				Config:      data,
-			})
-			Expect(err).NotTo(HaveOccurred())
-		}, 30)
-	})
-
-	XDescribe("Failure Testing", func() {
-		testFile := "../data/failed.yaml"
-		mariadbq := queue.NewUpgradeQueue(teamName, namespace, "mariadb", "bitnami/mariadb", "10.3.16-debian-9-r23")
-
-		BeforeEach(func(done Done) {
-			defer close(done)
-
-			pwd, err := os.Getwd()
-			Expect(err).NotTo(HaveOccurred())
-			filepath := path.Join(pwd, testFile)
-			data, err := ioutil.ReadFile(filepath)
-			Expect(err).NotTo(HaveOccurred())
-
-			configMgr = s2hconfig.NewWithBytes(data)
-			Expect(configMgr).NotTo(BeNil())
-
-			//stagingCtrl = staging.NewController(namespace, mgr, restClient, queueCtrl, configMgr)
-			Expect(stagingCtrl).NotTo(BeNil())
-
-			mariadbq.ObjectMeta.Namespace = namespace
-
-			By("Creating StableComponents")
-			swp := stableWordPress
-			Expect(runtimeClient.Create(context.TODO(), &swp)).To(BeNil())
-			smd := stableMariaDB
-			Expect(runtimeClient.Create(context.TODO(), &smd)).To(BeNil())
-			chStop = make(chan struct{})
-			go stagingCtrl.Start(chStop)
-		}, 10)
-
-		AfterEach(func(done Done) {
-			defer close(done)
-
-			By("Deleting all StableComponents")
-			err = runtimeClient.DeleteAllOf(context.TODO(), &s2hv1beta1.StableComponent{}, crclient.InNamespace(namespace))
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Deleting all Queues")
-			err = runtimeClient.DeleteAllOf(context.TODO(), &s2hv1beta1.Queue{}, crclient.InNamespace(namespace))
-			Expect(err).NotTo(HaveOccurred())
-
-			close(chStop)
-		}, 10)
-
-		XIt("Should retry queue on failed test and create Reverify queue after reach max failed threshold", func(done Done) {
-			defer close(done)
-
-			cfg := configMgr.Get()
-
-			wgUpgrade := sync.WaitGroup{}
-			wgReverify := sync.WaitGroup{}
-			wgUpgrade.Add(cfg.Staging.MaxRetry + 1)
-			wgReverify.Add(1)
-
-			mockDeployEngine := mock.NewWithCallback(func(refName string, comp *s2hv1beta1.Component, parentComp *s2hv1beta1.Component, values map[string]interface{}) {
-				defer GinkgoRecover()
-
-				//if q.Spec.Type == v1beta1.QueueTypeReverify {
-				//	defer wgReverify.Done()
-				//
-				//	Expect(dotaccess.Get(values, "mariadb.image.tag")).To(Equal(stableMariaDB.Spec.Version))
-				//	Expect(dotaccess.Get(values, "mariadb.image.repository")).To(Equal(stableMariaDB.Spec.Repository))
-				//} else {
-				//	defer wgUpgrade.Done()
-				//
-				//	Expect(dotaccess.Get(values, "mariadb.image.tag")).To(Equal(mariadb.Spec.Version))
-				//	Expect(dotaccess.Get(values, "mariadb.image.repository")).To(Equal(mariadb.Spec.Repository))
-				//}
-			}, nil)
-
-			stagingCtrl.LoadDeployEngine(mockDeployEngine)
-
-			By("Creating Queue")
-			qmdb := *mariadbq
-			Expect(queueCtrl.Add(&qmdb)).To(BeNil())
-
-			wgUpgrade.Wait()
-			wgReverify.Wait()
-
-			for stagingCtrl.IsBusy() {
-				time.Sleep(50 * time.Millisecond)
-			}
-		}, 60)
-
-		// TODO: test is flaky
-		XSpecify("Cancelling Queue", func(done Done) {
-			defer close(done)
-
-			wgDone := sync.WaitGroup{}
-			wgDone.Add(1)
-
-			Eventually(stagingCtrl.IsBusy, time.Second, 50*time.Millisecond).Should(BeFalse())
-
-			mockDeployEngine := mock.NewWithCallback(func(refName string, comp *s2hv1beta1.Component, parentComp *s2hv1beta1.Component, values map[string]interface{}) {
-				defer GinkgoRecover()
-				// skip other components that aren't Queue
-				if comp.Name != mariadbq.Name {
-					return
-				}
-				defer wgDone.Done()
-
-				fetched := &v1beta1.Queue{}
-				err := runtimeClient.Get(
-					context.Background(),
-					types.NamespacedName{Namespace: mariadbq.Namespace, Name: mariadbq.Name},
-					fetched)
-				Expect(err).NotTo(HaveOccurred())
-
-				err = runtimeClient.Delete(context.Background(), fetched)
-				Expect(err).NotTo(HaveOccurred())
-			}, nil)
-
-			stagingCtrl.LoadDeployEngine(mockDeployEngine)
-
-			By("Creating queue")
-			qmdb := *mariadbq
-			Expect(queueCtrl.Add(&qmdb)).To(BeNil())
-
-			wgDone.Wait()
-
-			Eventually(stagingCtrl.IsBusy, 5*time.Second, 50*time.Millisecond).Should(BeFalse())
-		}, 30)
-	})
 })

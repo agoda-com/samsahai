@@ -1009,12 +1009,11 @@ func (c *controller) deleteFinalizer(teamComp *s2hv1beta1.Team) error {
 		}
 
 		if err := c.GetConfigController().Delete(teamComp.Name); err != nil {
-			if errors.IsEnsuringConfigDestroyed(err) {
-				logger.Debug("deleting Config CRD")
-				return err
-			}
+			return err
+		}
 
-			logger.Error(err, "cannot cleanup Config CRD")
+		if err := c.ensureConfigDestroyed(teamComp.Name); err != nil {
+			return err
 		}
 
 		// remove our finalizer from the list and update it.
@@ -1032,6 +1031,23 @@ func (c *controller) deleteFinalizer(teamComp *s2hv1beta1.Team) error {
 	}
 
 	return nil
+}
+
+func (c *controller) ensureConfigDestroyed(configName string) error {
+	config := &s2hv1beta1.Config{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: configName,
+		},
+	}
+
+	if err := c.client.Get(context.TODO(), types.NamespacedName{Name: configName}, config); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	return errors.ErrEnsureConfigDestroyed
 }
 
 // Reconcile reads that state of the cluster for a Team object and makes changes based on the state read

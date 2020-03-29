@@ -11,7 +11,6 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	"github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/reporter/slack"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
@@ -26,8 +25,8 @@ var _ = Describe("send slack message", func() {
 
 	Describe("send component upgrade", func() {
 		It("should correctly send component upgrade failure with everytime interval", func() {
-			configMgr := newConfigMock(s2hv1beta1.IntervalEveryTime, "")
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("", s2hv1beta1.IntervalEveryTime, "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
 				Name:             "comp1",
@@ -49,7 +48,7 @@ var _ = Describe("send slack message", func() {
 				internal.WithTestRunner(testRunner),
 				internal.WithQueueHistoryName("comp1-5678"),
 			)
-			err := r.SendComponentUpgrade(configMgr, comp)
+			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
@@ -69,8 +68,8 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should not send component upgrade failure with retry interval", func() {
-			configMgr := newConfigMock("", "")
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("", "", "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
 				Name:       "comp1",
@@ -80,14 +79,14 @@ var _ = Describe("send slack message", func() {
 			mockSlackCli := &mockSlack{}
 			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
 			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
-			err := r.SendComponentUpgrade(configMgr, comp)
+			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(0))
 		})
 
 		It("should not send component upgrade failure with success criteria", func() {
-			configMgr := newConfigMock(s2hv1beta1.IntervalEveryTime, s2hv1beta1.CriteriaSuccess)
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("", s2hv1beta1.IntervalEveryTime, s2hv1beta1.CriteriaSuccess)
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
 				Name:   "comp1",
@@ -96,14 +95,14 @@ var _ = Describe("send slack message", func() {
 			mockSlackCli := &mockSlack{}
 			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
 			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
-			err := r.SendComponentUpgrade(configMgr, comp)
+			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(0))
 		})
 
 		It("should correctly send component upgrade failure with image missing list message", func() {
-			configMgr := newConfigMock("", "")
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("", "", "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
 				Name:      "comp1",
@@ -121,7 +120,7 @@ var _ = Describe("send slack message", func() {
 			mockSlackCli := &mockSlack{}
 			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
 			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
-			err := r.SendComponentUpgrade(configMgr, comp)
+			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
@@ -138,8 +137,8 @@ var _ = Describe("send slack message", func() {
 
 	Describe("send active promotion", func() {
 		It("should correctly send active promotion success with outdated components message", func() {
-			configMgr := newConfigMock("", "")
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("", "", "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			var comp1, repoComp1, comp2, repoComp2 = "comp1", "repo/comp1", "comp2", "repo/comp2"
 			var v110, v112 = "1.1.0", "1.1.2"
@@ -169,7 +168,7 @@ var _ = Describe("send slack message", func() {
 
 			mockSlackCli := &mockSlack{}
 			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
-			err := r.SendActivePromotionStatus(configMgr, atpRpt)
+			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Success"))
@@ -185,8 +184,8 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should correctly send active promotion success without outdated components message", func() {
-			configMgr := newConfigMock("", "")
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("", "", "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			timeNow := metav1.Now()
 			status := &s2hv1beta1.ActivePromotionStatus{
@@ -200,7 +199,7 @@ var _ = Describe("send slack message", func() {
 
 			mockSlackCli := &mockSlack{}
 			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
-			err := r.SendActivePromotionStatus(configMgr, atpRpt)
+			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Success"))
@@ -214,8 +213,8 @@ var _ = Describe("send slack message", func() {
 
 		It("should correctly send active promotion failure with outdated components/image missing message",
 			func() {
-				configMgr := newConfigMock("", "")
-				g.Expect(configMgr).ShouldNot(BeNil())
+				configCtrl := newMockConfigCtrl("", "", "")
+				g.Expect(configCtrl).ShouldNot(BeNil())
 
 				var comp1, repoComp1, comp2, repoComp2 = "comp1", "repo/comp1", "comp2", "repo/comp2"
 				var v110, v112 = "1.1.0", "1.1.2"
@@ -247,7 +246,7 @@ var _ = Describe("send slack message", func() {
 
 				mockSlackCli := &mockSlack{}
 				r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
-				err := r.SendActivePromotionStatus(configMgr, atpRpt)
+				err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 				g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 				g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
@@ -268,8 +267,8 @@ var _ = Describe("send slack message", func() {
 			})
 
 		It("should correctly send active promotion failure without outdated components message", func() {
-			configMgr := newConfigMock("", "")
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("", "", "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			status := &s2hv1beta1.ActivePromotionStatus{
 				Result:               s2hv1beta1.ActivePromotionFailure,
@@ -279,7 +278,7 @@ var _ = Describe("send slack message", func() {
 
 			mockSlackCli := &mockSlack{}
 			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
-			err := r.SendActivePromotionStatus(configMgr, atpRpt)
+			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
@@ -290,8 +289,8 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should correctly send active promotion/demotion failure with rollback timeout message", func() {
-			configMgr := newConfigMock("", "")
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("", "", "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			status := &s2hv1beta1.ActivePromotionStatus{
 				Result:         s2hv1beta1.ActivePromotionFailure,
@@ -302,7 +301,7 @@ var _ = Describe("send slack message", func() {
 
 			mockSlackCli := &mockSlack{}
 			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
-			err := r.SendActivePromotionStatus(configMgr, atpRpt)
+			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
@@ -318,12 +317,12 @@ var _ = Describe("send slack message", func() {
 
 	Describe("send image missing", func() {
 		It("should correctly send image missing message", func() {
-			configMgr := newConfigMock("", "")
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("", "", "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			mockSlackCli := &mockSlack{}
 			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
-			err := r.SendImageMissing(configMgr, &rpc.Image{Repository: "registry/comp-1", Tag: "1.0.0"})
+			err := r.SendImageMissing("mock", configCtrl, &rpc.Image{Repository: "registry/comp-1", Tag: "1.0.0"})
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("registry/comp-1:1.0.0"))
@@ -332,21 +331,21 @@ var _ = Describe("send slack message", func() {
 	})
 
 	It("should not send message if not define slack reporter configuration", func() {
-		configMgr := newNoSlackConfig()
-		g.Expect(configMgr).ShouldNot(BeNil())
+		configCtrl := newMockConfigCtrl("empty", "", "")
+		g.Expect(configCtrl).ShouldNot(BeNil())
 
 		rpcComp := &rpc.ComponentUpgrade{}
 		mockSlackCli := &mockSlack{}
 		r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
 		comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
-		err := r.SendComponentUpgrade(configMgr, comp)
+		err := r.SendComponentUpgrade(configCtrl, comp)
 		g.Expect(err).Should(BeNil())
 		g.Expect(mockSlackCli.postMessageCalls).Should(Equal(0))
 	})
 
 	It("should fail to send message", func() {
-		configMgr := newFailureConfig()
-		g.Expect(configMgr).ShouldNot(BeNil())
+		configCtrl := newMockConfigCtrl("failure", "", "")
+		g.Expect(configCtrl).ShouldNot(BeNil())
 
 		rpcComp := &rpc.ComponentUpgrade{
 			IsReverify: true,
@@ -354,7 +353,7 @@ var _ = Describe("send slack message", func() {
 		mockSlackCli := &mockSlack{}
 		r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
 		comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
-		err := r.SendComponentUpgrade(configMgr, comp)
+		err := r.SendComponentUpgrade(configCtrl, comp)
 		g.Expect(err).To(HaveOccurred())
 	})
 })
@@ -381,35 +380,55 @@ func (s *mockSlack) PostMessage(channelNameOrID, message, username string) (chan
 	return channelNameOrID, "", nil
 }
 
-func newConfigMock(interval s2hv1beta1.SlackInterval, criteria s2hv1beta1.SlackCriteria) internal.ConfigManager {
-	configMgr := config.NewWithBytes([]byte(`
-report:
-  slack:
-    channels:
-      - chan1
-      - chan2
-    componentUpgrade:
-      interval: ` + string(interval) + `
-      criteria: ` + string(criteria)))
-
-	return configMgr
+type mockConfigCtrl struct {
+	configType string
+	interval   s2hv1beta1.SlackInterval
+	criteria   s2hv1beta1.SlackCriteria
 }
 
-func newNoSlackConfig() internal.ConfigManager {
-	configMgr := config.NewWithBytes([]byte(`
-report:
-`))
-
-	return configMgr
+func newMockConfigCtrl(configType string, interval s2hv1beta1.SlackInterval, criteria s2hv1beta1.SlackCriteria) internal.ConfigController {
+	return &mockConfigCtrl{
+		configType: configType,
+		interval:   interval,
+		criteria:   criteria,
+	}
 }
 
-func newFailureConfig() internal.ConfigManager {
-	configMgr := config.NewWithBytes([]byte(`
-report:
- slack:
-   channels:
-     - error
-`))
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.ConfigSpec, error) {
+	switch c.configType {
+	case "empty":
+		return &s2hv1beta1.ConfigSpec{}, nil
+	case "failure":
+		return &s2hv1beta1.ConfigSpec{
+			Reporter: &s2hv1beta1.ConfigReporter{
+				Slack: &s2hv1beta1.Slack{
+					Channels: []string{"error"},
+				},
+			},
+		}, nil
+	default:
+		return &s2hv1beta1.ConfigSpec{
+			Reporter: &s2hv1beta1.ConfigReporter{
+				Slack: &s2hv1beta1.Slack{
+					Channels: []string{"chan1", "chan2"},
+					ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgrade{
+						Interval: c.interval,
+						Criteria: c.criteria,
+					},
+				},
+			},
+		}, nil
+	}
+}
 
-	return configMgr
+func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) Delete(configName string) error {
+	return nil
 }

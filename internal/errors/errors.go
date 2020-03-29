@@ -29,7 +29,6 @@ const (
 	ErrEnsureActivePromoted           = Error("active environment has been being promoted")
 	ErrEnsureComponentDeployed        = Error("components has been being deployed")
 	ErrEnsureComponentTested          = Error("components has been being tested")
-	ErrLoadingConfiguration           = Error("configuration has been being loaded")
 	ErrDeletingReleases               = Error("deleting releases")
 	ErrForceDeletingComponents        = Error("force deleting components")
 	ErrRollingBackActivePromotion     = Error("rolling back active promotion process")
@@ -42,7 +41,7 @@ const (
 
 	ErrTestConfigurationNotFound = Error("test configuration not found")
 
-	ErrEnsureConfigDestroyed = Error("config has not been destroyed")
+	ErrEnsureConfigDestroyed = Error("config been being destroyed")
 )
 
 var (
@@ -105,12 +104,6 @@ func IsEnsuringNamespaceDestroyed(err error) bool {
 // IsErrRequestTimeout checks request timeout
 func IsErrRequestTimeout(err error) bool {
 	return ErrRequestTimeout.Error() == err.Error()
-}
-
-// TODO: pohfy, remove here
-// IsLoadingConfiguration checks configuration still loading
-func IsLoadingConfiguration(err error) bool {
-	return ErrLoadingConfiguration.Error() == err.Error()
 }
 
 // IsDeletingReleases checks releases have been deleting

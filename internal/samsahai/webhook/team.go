@@ -284,7 +284,7 @@ func (h *handler) getTeamQueueHistory(w http.ResponseWriter, r *http.Request, pa
 // @Param team path string true "Team name"
 // @Param component path string true "Component name"
 // @Param accept header string true "Accept" enums(application/json, application/x-yaml)
-// @Success 200 {string} internal.ComponentValues
+// @Success 200 {string} v1beta1.ComponentValues
 // @Failure 404 {object} errResp "Team not found"
 // @Failure 404 {object} errResp "Component not found"
 // @Failure 500 {object} errResp

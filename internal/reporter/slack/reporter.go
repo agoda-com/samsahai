@@ -298,13 +298,15 @@ func (r *reporter) makeImageMissingListReport(images []*rpc.Image) string {
 func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event internal.EventType) error {
 	logger.Debug("start sending message to slack channels",
 		"event", event, "channels", slackConfig.Channels)
+	var globalErr error
 	for _, channel := range slackConfig.Channels {
 		if _, _, err := r.slack.PostMessage(channel, message, username); err != nil {
 			logger.Error(err, "cannot post message to slack", "channel", channel)
+			globalErr = err
 			continue
 		}
 	}
-	return nil
+	return globalErr
 }
 
 func (r *reporter) getSlackConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1beta1.Slack, error) {
