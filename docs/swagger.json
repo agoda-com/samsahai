@@ -791,6 +791,7 @@
             "type": "object",
             "properties": {
                 "args": {
+                    "description": "+optional",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -955,11 +956,6 @@
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.Shell"
                 },
-                "email": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.Email"
-                },
                 "optionals": {
                     "description": "+optional",
                     "type": "array",
@@ -1085,26 +1081,6 @@
                     "description": "Teamcity\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.UsernamePasswordCredential"
-                }
-            }
-        },
-        "v1beta1.Email": {
-            "type": "object",
-            "properties": {
-                "from": {
-                    "type": "string"
-                },
-                "port": {
-                    "type": "integer"
-                },
-                "server": {
-                    "type": "string"
-                },
-                "to": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },

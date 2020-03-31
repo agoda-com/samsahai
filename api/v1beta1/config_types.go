@@ -159,8 +159,6 @@ type ConfigReporter struct {
 	// +optional
 	Slack *Slack `json:"slack,omitempty"`
 	// +optional
-	Email *Email `json:"email,omitempty"`
-	// +optional
 	Rest *Rest `json:"rest,omitempty"`
 	// +optional
 	Shell *Shell `json:"cmd,omitempty"`
@@ -211,14 +209,6 @@ type ConfigComponentUpgrade struct {
 	Criteria SlackCriteria `json:"criteria,omitempty"`
 }
 
-// Email defines a configuration of email
-type Email struct {
-	Server string   `json:"server"`
-	Port   int      `json:"port"`
-	From   string   `json:"from"`
-	To     []string `json:"to"`
-}
-
 // Rest defines a configuration of http rest
 type Rest struct {
 	// +optional
@@ -246,7 +236,8 @@ type Shell struct {
 // CommandAndArgs defines commands and args
 type CommandAndArgs struct {
 	Command []string `json:"command"`
-	Args    []string `json:"args"`
+	// +optional
+	Args []string `json:"args,omitempty"`
 }
 
 // Endpoint defines a configuration of rest endpoint

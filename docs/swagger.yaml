@@ -155,6 +155,7 @@ definitions:
   v1beta1.CommandAndArgs:
     properties:
       args:
+        description: +optional
         items:
           type: string
         type: array
@@ -295,10 +296,6 @@ definitions:
         $ref: '#/definitions/v1beta1.Shell'
         description: +optional
         type: object
-      email:
-        $ref: '#/definitions/v1beta1.Email'
-        description: +optional
-        type: object
       optionals:
         description: +optional
         items:
@@ -403,19 +400,6 @@ definitions:
           Teamcity
           +optional
         type: object
-    type: object
-  v1beta1.Email:
-    properties:
-      from:
-        type: string
-      port:
-        type: integer
-      server:
-        type: string
-      to:
-        items:
-          type: string
-        type: array
     type: object
   v1beta1.Endpoint:
     properties:
