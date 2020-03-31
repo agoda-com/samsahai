@@ -1,6 +1,9 @@
 package internal
 
 import (
+	"os"
+	"strings"
+
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
@@ -40,6 +43,8 @@ type ComponentUpgradeReporter struct {
 	StatusInt    int32                 `json:"statusInt,omitempty"`
 	TestRunner   s2hv1beta1.TestRunner `json:"testRunner,omitempty"`
 	Credential   s2hv1beta1.Credential `json:"credential,omitempty"`
+	Envs         map[string]string
+
 	rpc.ComponentUpgrade
 	SamsahaiConfig
 }
@@ -52,6 +57,7 @@ func NewComponentUpgradeReporter(comp *rpc.ComponentUpgrade, s2hConfig SamsahaiC
 		IssueTypeStr:     convertIssueType(comp.IssueType),
 		StatusStr:        convertStatusType(comp.Status),
 		StatusInt:        int32(comp.Status),
+		Envs:             listEnv(),
 	}
 
 	// apply the new options
@@ -95,6 +101,7 @@ type ActivePromotionReporter struct {
 	TeamName               string                `json:"teamName,omitempty"`
 	CurrentActiveNamespace string                `json:"currentActiveNamespace,omitempty"`
 	Credential             s2hv1beta1.Credential `json:"credential,omitempty"`
+	Envs                   map[string]string
 	s2hv1beta1.ActivePromotionStatus
 	SamsahaiConfig
 }
@@ -106,6 +113,7 @@ func NewActivePromotionReporter(status *s2hv1beta1.ActivePromotionStatus, s2hCon
 		TeamName:               teamName,
 		CurrentActiveNamespace: currentNs,
 		ActivePromotionStatus:  *status,
+		Envs:                   listEnv(),
 	}
 
 	// apply the new options
@@ -151,4 +159,14 @@ func convertStatusType(statusType rpc.ComponentUpgrade_UpgradeStatus) StatusType
 	default:
 		return StatusFailure
 	}
+}
+
+func listEnv() map[string]string {
+	env := make(map[string]string)
+	for _, setting := range os.Environ() {
+		pair := strings.SplitN(setting, "=", 2)
+		env[pair[0]] = pair[1]
+	}
+
+	return env
 }

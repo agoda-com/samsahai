@@ -2,6 +2,7 @@ package shell_test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -80,6 +81,24 @@ var _ = Describe("shell command reporter", func() {
 			g.Expect(testCmdObj.Command).To(Equal([]string{"/bin/sh", "-c"}))
 			g.Expect(testCmdObj.Args).To(Equal([]string{"echo image missing docker.io/hello-a:2018.01.01"}))
 		})
+
+		It("should correctly execute command with environment variables", func() {
+			testCmdObj := &s2hv1beta1.CommandAndArgs{}
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
+				testCmdObj = cmdObj
+				return []byte{}, nil
+			}
+
+			r := shell.New(shell.WithExecCommand(mockExecCommand))
+			configCtrl := newMockConfigCtrl("env")
+
+			g.Expect(os.Setenv("TEST_ENV", "s2h")).NotTo(HaveOccurred())
+			comp := internal.NewComponentUpgradeReporter(&rpc.ComponentUpgrade{Status: 1}, internal.SamsahaiConfig{})
+			err := r.SendComponentUpgrade(configCtrl, comp)
+			g.Expect(err).NotTo(HaveOccurred())
+
+			g.Expect(testCmdObj.Command).To(Equal([]string{"echo s2h"}))
+		})
 	})
 
 	Describe("failure path", func() {
@@ -129,6 +148,16 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.ConfigSpec, error) 
 	switch c.configType {
 	case "empty":
 		return &s2hv1beta1.ConfigSpec{}, nil
+	case "env":
+		return &s2hv1beta1.ConfigSpec{
+			Reporter: &s2hv1beta1.ConfigReporter{
+				Shell: &s2hv1beta1.Shell{
+					ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+						Command: []string{"echo {{ .Envs.TEST_ENV }}"},
+					},
+				},
+			},
+		}, nil
 	case "failure":
 		return &s2hv1beta1.ConfigSpec{
 			Reporter: &s2hv1beta1.ConfigReporter{

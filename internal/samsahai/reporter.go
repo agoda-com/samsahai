@@ -9,7 +9,7 @@ func (c *controller) NotifyActivePromotion(atpRpt *internal.ActivePromotionRepor
 
 	for _, reporter := range c.reporters {
 		if err := reporter.SendActivePromotionStatus(configCtrl, atpRpt); err != nil {
-			logger.Error(err, "cannot send component upgrade failure report")
+			logger.Error(err, "cannot send active promotion report")
 		}
 	}
 }
