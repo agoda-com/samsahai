@@ -91,16 +91,18 @@ func (r *reporter) GetName() string {
 
 // SendComponentUpgrade send details of component upgrade via http POST
 func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
-	cfg, err := configCtrl.Get(comp.TeamName)
+	config, err := configCtrl.Get(comp.TeamName)
 	if err != nil {
 		return err
 	}
 
-	if cfg.Reporter == nil || cfg.Reporter.Rest == nil || cfg.Reporter.Rest.ComponentUpgrade == nil {
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Rest == nil ||
+		config.Spec.Reporter.Rest.ComponentUpgrade == nil {
 		return nil
 	}
 
-	for _, ep := range cfg.Reporter.Rest.ComponentUpgrade.Endpoints {
+	for _, ep := range config.Spec.Reporter.Rest.ComponentUpgrade.Endpoints {
 		restObj := &componentUpgradeRest{NewReporterJSON(), *comp}
 		body, err := json.Marshal(restObj)
 		if err != nil {
@@ -118,16 +120,18 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 
 // SendActivePromotionStatus send active promotion status via http POST
 func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigController, atpRpt *internal.ActivePromotionReporter) error {
-	cfg, err := configCtrl.Get(atpRpt.TeamName)
+	config, err := configCtrl.Get(atpRpt.TeamName)
 	if err != nil {
 		return err
 	}
 
-	if cfg.Reporter == nil || cfg.Reporter.Rest == nil || cfg.Reporter.Rest.ActivePromotion == nil {
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Rest == nil ||
+		config.Spec.Reporter.Rest.ActivePromotion == nil {
 		return nil
 	}
 
-	for _, ep := range cfg.Reporter.Rest.ActivePromotion.Endpoints {
+	for _, ep := range config.Spec.Reporter.Rest.ActivePromotion.Endpoints {
 		restObj := &activePromotionRest{NewReporterJSON(), *atpRpt}
 		body, err := json.Marshal(restObj)
 		if err != nil {
@@ -135,7 +139,7 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 			return err
 		}
 
-		if err = r.send(ep.URL, []byte(body), internal.ActivePromotionType); err != nil {
+		if err = r.send(ep.URL, body, internal.ActivePromotionType); err != nil {
 			return err
 		}
 	}
@@ -145,16 +149,18 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 
 // SendImageMissing implements the reporter SendImageMissing function
 func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, img *rpc.Image) error {
-	cfg, err := configCtrl.Get(teamName)
+	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return err
 	}
 
-	if cfg.Reporter == nil || cfg.Reporter.Rest == nil || cfg.Reporter.Rest.ImageMissing == nil {
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Rest == nil ||
+		config.Spec.Reporter.Rest.ImageMissing == nil {
 		return nil
 	}
 
-	for _, ep := range cfg.Reporter.Rest.ImageMissing.Endpoints {
+	for _, ep := range config.Spec.Reporter.Rest.ImageMissing.Endpoints {
 		restObj := &imageMissingRest{NewReporterJSON(), *img}
 		body, err := json.Marshal(restObj)
 		if err != nil {
@@ -162,7 +168,7 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 			return err
 		}
 
-		if err = r.send(ep.URL, []byte(body), internal.ImageMissingType); err != nil {
+		if err = r.send(ep.URL, body, internal.ImageMissingType); err != nil {
 			return err
 		}
 	}

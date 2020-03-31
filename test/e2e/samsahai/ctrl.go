@@ -486,14 +486,14 @@ var _ = Describe("Main Controller [e2e]", func() {
 		ctx := context.TODO()
 		preActiveNs := ""
 
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
 		By("Creating Team")
 		team := mockTeam
 		team.Status.Namespace.Active = atvNamespace
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
-
-		By("Creating Config")
-		config := mockConfig
-		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
 		By("Verifying staging related objects has been created")
 		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
@@ -745,14 +745,14 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		ctx := context.TODO()
 
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
 		By("Creating Team")
 		team := mockTeam
 		team.Status.Namespace.Active = atvNamespace
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
-
-		By("Creating Config")
-		config := mockConfig
-		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
 		By("Creating active namespace")
 		atvNs := activeNamespace
@@ -967,14 +967,14 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		ctx := context.TODO()
 
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
 		By("Creating Team")
 		team := mockTeam
 		team.Status.Namespace.Active = atvNamespace
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
-
-		By("Creating Config")
-		config := mockConfig
-		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
 		By("Creating active namespace")
 		atvNs := activeNamespace
@@ -1081,13 +1081,13 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		ctx := context.TODO()
 
-		By("Creating Team")
-		team := mockTeam
-		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
-
 		By("Creating Config")
 		config := mockConfig
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
 		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
@@ -1132,13 +1132,13 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		ctx := context.TODO()
 
-		By("Creating Team")
-		team := mockTeam
-		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
-
 		By("Creating Config")
 		config := mockConfig
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
 		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
@@ -1194,13 +1194,13 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		ctx := context.TODO()
 
-		By("Creating Team")
-		team := mockTeam
-		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
-
 		By("Creating Config")
 		config := mockConfig
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
 		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
@@ -1257,10 +1257,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		ctx := context.TODO()
 
-		By("Creating Team")
-		team := mockTeam
-		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
-
 		By("Creating Config")
 		config := mockConfig
 		redisComp := redisConfigComp
@@ -1273,6 +1269,10 @@ var _ = Describe("Main Controller [e2e]", func() {
 		}
 		config.Spec.Components = []*s2hv1beta1.Component{&redisComp}
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
 		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
@@ -1369,13 +1369,13 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		ctx := context.TODO()
 
-		By("Creating Team")
-		team := mockTeam
-		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
-
 		By("Creating Config")
 		config := mockConfig
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
 		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {

@@ -157,7 +157,7 @@ func newMockConfigCtrl() s2h.ConfigController {
 	return &mockConfigCtrl{}
 }
 
-func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.ConfigSpec, error) {
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 	engine := "flux-helm"
 	deployConfig := s2hv1beta1.ConfigDeploy{
 		Timeout: metav1.Duration{Duration: 5 * time.Minute},
@@ -219,19 +219,21 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.ConfigSpec, error) 
 		},
 	}
 
-	mockConfig := &s2hv1beta1.ConfigSpec{
-		Staging: &s2hv1beta1.ConfigStaging{
-			MaxRetry:   3,
-			Deployment: &deployConfig,
-		},
-		ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
-			Timeout:          metav1.Duration{Duration: 10 * time.Minute},
-			TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
-			Deployment:       &deployConfig,
-		},
-		Components: []*s2hv1beta1.Component{
-			&redisConfigComp,
-			&wordpressConfigComp,
+	mockConfig := &s2hv1beta1.Config{
+		Spec: s2hv1beta1.ConfigSpec{
+			Staging: &s2hv1beta1.ConfigStaging{
+				MaxRetry:   3,
+				Deployment: &deployConfig,
+			},
+			ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+				Timeout:          metav1.Duration{Duration: 10 * time.Minute},
+				TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+				Deployment:       &deployConfig,
+			},
+			Components: []*s2hv1beta1.Component{
+				&redisConfigComp,
+				&wordpressConfigComp,
+			},
 		},
 	}
 
@@ -242,9 +244,9 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 	config, _ := c.Get(configName)
 
 	comps := map[string]*s2hv1beta1.Component{
-		"redis":     config.Components[0],
-		"wordpress": config.Components[1],
-		"mariadb":   config.Components[1].Dependencies[0],
+		"redis":     config.Spec.Components[0],
+		"wordpress": config.Spec.Components[1],
+		"mariadb":   config.Spec.Components[1].Dependencies[0],
 	}
 
 	comps["mariadb"].Parent = "wordpress"
@@ -254,6 +256,10 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 
 func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
 	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+	return nil
 }
 
 func (c *mockConfigCtrl) Delete(configName string) error {

@@ -144,44 +144,50 @@ func newMockConfigCtrl(configType string) internal.ConfigController {
 	return &mockConfigCtrl{configType: configType}
 }
 
-func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.ConfigSpec, error) {
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 	switch c.configType {
 	case "empty":
-		return &s2hv1beta1.ConfigSpec{}, nil
+		return &s2hv1beta1.Config{}, nil
 	case "env":
-		return &s2hv1beta1.ConfigSpec{
-			Reporter: &s2hv1beta1.ConfigReporter{
-				Shell: &s2hv1beta1.Shell{
-					ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
-						Command: []string{"echo {{ .Envs.TEST_ENV }}"},
+		return &s2hv1beta1.Config{
+			Spec: s2hv1beta1.ConfigSpec{
+				Reporter: &s2hv1beta1.ConfigReporter{
+					Shell: &s2hv1beta1.Shell{
+						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+							Command: []string{"echo {{ .Envs.TEST_ENV }}"},
+						},
 					},
 				},
 			},
 		}, nil
 	case "failure":
-		return &s2hv1beta1.ConfigSpec{
-			Reporter: &s2hv1beta1.ConfigReporter{
-				Shell: &s2hv1beta1.Shell{
-					ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
-						Command: []string{"/bin/sleep", "5"},
+		return &s2hv1beta1.Config{
+			Spec: s2hv1beta1.ConfigSpec{
+				Reporter: &s2hv1beta1.ConfigReporter{
+					Shell: &s2hv1beta1.Shell{
+						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+							Command: []string{"/bin/sleep", "5"},
+						},
 					},
 				},
 			},
 		}, nil
 	default:
-		return &s2hv1beta1.ConfigSpec{
-			Reporter: &s2hv1beta1.ConfigReporter{
-				Shell: &s2hv1beta1.Shell{
-					ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
-						Command: []string{"/bin/sh", "-c"},
-						Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
-					},
-					ActivePromotion: &s2hv1beta1.CommandAndArgs{
-						Command: []string{"echo active promotion status {{ .Result }}"},
-					},
-					ImageMissing: &s2hv1beta1.CommandAndArgs{
-						Command: []string{"/bin/sh", "-c"},
-						Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }}"},
+		return &s2hv1beta1.Config{
+			Spec: s2hv1beta1.ConfigSpec{
+				Reporter: &s2hv1beta1.ConfigReporter{
+					Shell: &s2hv1beta1.Shell{
+						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+							Command: []string{"/bin/sh", "-c"},
+							Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
+						},
+						ActivePromotion: &s2hv1beta1.CommandAndArgs{
+							Command: []string{"echo active promotion status {{ .Result }}"},
+						},
+						ImageMissing: &s2hv1beta1.CommandAndArgs{
+							Command: []string{"/bin/sh", "-c"},
+							Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }}"},
+						},
 					},
 				},
 			},
@@ -195,6 +201,10 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 
 func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
 	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+	return nil
 }
 
 func (c *mockConfigCtrl) Delete(configName string) error {

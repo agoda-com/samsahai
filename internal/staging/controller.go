@@ -416,12 +416,12 @@ func (c *controller) cancelQueue(q *s2hv1beta1.Queue) error {
 }
 
 func (c *controller) getConfiguration() (*s2hv1beta1.ConfigSpec, error) {
-	cfg, err := c.getConfigController().Get(c.teamName)
+	config, err := c.getConfigController().Get(c.teamName)
 	if err != nil {
 		return &s2hv1beta1.ConfigSpec{}, err
 	}
 
-	return cfg, nil
+	return &config.Spec, nil
 }
 
 func (c *controller) getConfigController() internal.ConfigController {

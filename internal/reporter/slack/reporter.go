@@ -310,15 +310,15 @@ func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event int
 }
 
 func (r *reporter) getSlackConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1beta1.Slack, error) {
-	cfg, err := configCtrl.Get(teamName)
+	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return nil, err
 	}
 
 	// no slack configuration
-	if cfg.Reporter == nil || cfg.Reporter.Slack == nil {
+	if config.Spec.Reporter == nil || config.Spec.Reporter.Slack == nil {
 		return nil, s2herrors.New("slack configuration not found")
 	}
 
-	return cfg.Reporter.Slack, nil
+	return config.Spec.Reporter.Slack, nil
 }

@@ -32,7 +32,7 @@ var _ = Describe("Apply Env Based Config", func() {
 	})
 
 	It("Should successfully apply configuration based on queue type", func() {
-		cfg, err := configCtrl.Get("mock")
+		config, err := configCtrl.Get("mock")
 		g.Expect(err).NotTo(HaveOccurred())
 
 		comps, err := configCtrl.GetParentComponents("mock")
@@ -40,7 +40,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(cfg, values, s2hv1beta1.QueueTypeUpgrade, comps["redis"])
+			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypeUpgrade, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -51,7 +51,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(cfg, values, s2hv1beta1.QueueTypePreActive, comps["redis"])
+			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypePreActive, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -62,7 +62,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(cfg, values, s2hv1beta1.QueueTypePromoteToActive, comps["redis"])
+			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypePromoteToActive, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -73,7 +73,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(cfg, values, s2hv1beta1.QueueTypeDemoteFromActive, comps["redis"])
+			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypeDemoteFromActive, comps["redis"])
 			val, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(val).To(BeNil())
@@ -81,14 +81,14 @@ var _ = Describe("Apply Env Based Config", func() {
 	})
 
 	It("Should correctly combine base values and config", func() {
-		cfg, err := configCtrl.Get("mock")
+		config, err := configCtrl.Get("mock")
 		g.Expect(err).NotTo(HaveOccurred())
 
 		comps, err := configCtrl.GetParentComponents("mock")
 		g.Expect(err).NotTo(HaveOccurred())
 
 		wordpress := comps["wordpress"]
-		envValues, err := configctrl.GetEnvComponentValues(cfg, "wordpress", s2hv1beta1.EnvBase)
+		envValues, err := configctrl.GetEnvComponentValues(&config.Spec, "wordpress", s2hv1beta1.EnvBase)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		values := valuesutil.GenStableComponentValues(wordpress, nil, envValues)
@@ -107,7 +107,7 @@ func newMockConfigCtrl() internal.ConfigController {
 	return &mockConfigCtrl{}
 }
 
-func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.ConfigSpec, error) {
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 	engine := "flux-helm"
 	deployConfig := s2hv1beta1.ConfigDeploy{
 		Timeout: metav1.Duration{Duration: 5 * time.Minute},
@@ -168,33 +168,35 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.ConfigSpec, error) 
 		},
 	}
 
-	mockConfig := &s2hv1beta1.ConfigSpec{
-		Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
-			"staging": map[string][]string{
-				"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
+	mockConfig := &s2hv1beta1.Config{
+		Spec: s2hv1beta1.ConfigSpec{
+			Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
+				"staging": map[string][]string{
+					"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
+				},
+				"pre-active": map[string][]string{
+					"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml"},
+				},
+				"active": map[string][]string{
+					"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
+				},
+				"base": map[string][]string{
+					"wordpress": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/base/wordpress.yaml"},
+				},
 			},
-			"pre-active": map[string][]string{
-				"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml"},
+			Staging: &s2hv1beta1.ConfigStaging{
+				MaxRetry:   3,
+				Deployment: &deployConfig,
 			},
-			"active": map[string][]string{
-				"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
+			ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+				Timeout:          metav1.Duration{Duration: 10 * time.Minute},
+				TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+				Deployment:       &deployConfig,
 			},
-			"base": map[string][]string{
-				"wordpress": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/base/wordpress.yaml"},
+			Components: []*s2hv1beta1.Component{
+				&redisConfigComp,
+				&wordpressConfigComp,
 			},
-		},
-		Staging: &s2hv1beta1.ConfigStaging{
-			MaxRetry:   3,
-			Deployment: &deployConfig,
-		},
-		ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
-			Timeout:          metav1.Duration{Duration: 10 * time.Minute},
-			TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
-			Deployment:       &deployConfig,
-		},
-		Components: []*s2hv1beta1.Component{
-			&redisConfigComp,
-			&wordpressConfigComp,
 		},
 	}
 
@@ -205,9 +207,9 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 	config, _ := c.Get(configName)
 
 	comps := map[string]*s2hv1beta1.Component{
-		"redis":     config.Components[0],
-		"wordpress": config.Components[1],
-		"mariadb":   config.Components[1].Dependencies[0],
+		"redis":     config.Spec.Components[0],
+		"wordpress": config.Spec.Components[1],
+		"mariadb":   config.Spec.Components[1].Dependencies[0],
 	}
 
 	comps["mariadb"].Parent = "wordpress"
@@ -219,11 +221,15 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	config, _ := c.Get(configName)
 
 	comps := map[string]*s2hv1beta1.Component{
-		"redis":     config.Components[0],
-		"wordpress": config.Components[1],
+		"redis":     config.Spec.Components[0],
+		"wordpress": config.Spec.Components[1],
 	}
 
 	return comps, nil
+}
+
+func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+	return nil
 }
 
 func (c *mockConfigCtrl) Delete(configName string) error {

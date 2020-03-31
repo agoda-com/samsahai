@@ -394,8 +394,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 	}
 
 	ctx := context.TODO()
-	err := c.client.Get(ctx, types.NamespacedName{Name: namespace}, &namespaceObj)
-	if err != nil {
+	if err := c.client.Get(ctx, types.NamespacedName{Name: namespace}, &namespaceObj); err != nil {
 		if k8serrors.IsNotFound(err) {
 			logger.Debug("start creating namespace", "team", teamComp.Name, "namespace", namespace)
 			if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
@@ -416,7 +415,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 
 	logger.Debug("start creating s2h environment objects",
 		"team", teamComp.Name, "namespace", namespace)
-	if err = c.createEnvironmentObjects(teamComp, namespace); err != nil {
+	if err := c.createEnvironmentObjects(teamComp, namespace); err != nil {
 		return err
 	}
 
@@ -860,7 +859,7 @@ func (c *controller) GetStableValues(team *s2hv1beta1.Team, comp *s2hv1beta1.Com
 		return nil, err
 	}
 
-	values, err := configctrl.GetEnvComponentValues(config, comp.Name, s2hv1beta1.EnvBase)
+	values, err := configctrl.GetEnvComponentValues(&config.Spec, comp.Name, s2hv1beta1.EnvBase)
 	if err != nil {
 		logger.Error(err, "cannot get values file",
 			"env", s2hv1beta1.EnvBase, "component", comp.Name, "team", team.Name)
@@ -1050,6 +1049,29 @@ func (c *controller) ensureConfigDestroyed(configName string) error {
 	return errors.ErrEnsureConfigDestroyed
 }
 
+func (c *controller) ensureAndUpdateConfig(teamComp *s2hv1beta1.Team) error {
+	// ensure config of team is deployed
+	config, err := c.configCtrl.Get(teamComp.Name)
+	if err != nil {
+		logger.Error(err, "cannot get config", "name", teamComp.Name)
+		return err
+	}
+
+	// set owner references
+	if len(config.ObjectMeta.OwnerReferences) == 0 {
+		if err := controllerutil.SetControllerReference(teamComp, config, c.scheme); err != nil {
+			return err
+		}
+
+		if err := c.configCtrl.Update(config); err != nil {
+			logger.Error(err, "cannot set controller reference of config", "name", teamComp.Name)
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Reconcile reads that state of the cluster for a Team object and makes changes based on the state read
 // and what is in the Team.Spec
 // +kubebuilder:rbac:groups=,resources=nodes,verbs=get;list;watch
@@ -1120,6 +1142,31 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	if err := c.LoadTeamSecret(teamComp); err != nil {
 		return reconcile.Result{}, err
+	}
+
+	if err := c.ensureAndUpdateConfig(teamComp); err != nil {
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamConfigExisted,
+			corev1.ConditionFalse,
+			err.Error())
+
+		if err := c.updateTeam(teamComp); err != nil {
+			return reconcile.Result{}, errors.Wrap(err,
+				"cannot update team conditions when config does not exist")
+		}
+
+		return reconcile.Result{}, err
+	}
+
+	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamConfigExisted) {
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamConfigExisted,
+			corev1.ConditionTrue,
+			"Config exists")
+
+		if err := c.updateTeam(teamComp); err != nil {
+			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when config exists")
+		}
 	}
 
 	// add metric teamname

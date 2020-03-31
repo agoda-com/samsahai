@@ -51,14 +51,8 @@ func New(mgr cr.Manager, options ...Option) internal.ConfigController {
 }
 
 // Get returns configuration from Config CRD
-func (c *controller) Get(configName string) (*s2hv1beta1.ConfigSpec, error) {
-	config, err := c.getConfig(configName)
-	if err != nil {
-		logger.Error(err, "cannot get Config", "name", configName)
-		return &s2hv1beta1.ConfigSpec{}, err
-	}
-
-	return &config.Spec, nil
+func (c *controller) Get(configName string) (*s2hv1beta1.Config, error) {
+	return c.getConfig(configName)
 }
 
 // GetComponents returns all components from `Configuration` that has valid `Source`
@@ -69,14 +63,14 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Co
 		return map[string]*s2hv1beta1.Component{}, err
 	}
 
-	c.assignParent(config)
+	c.assignParent(&config.Spec)
 
 	filteredComps := map[string]*s2hv1beta1.Component{}
 
 	var comps []*s2hv1beta1.Component
 	var comp *s2hv1beta1.Component
 
-	comps = append(comps, config.Components...)
+	comps = append(comps, config.Spec.Components...)
 
 	for len(comps) > 0 {
 		comp, comps = comps[0], comps[1:]
@@ -118,6 +112,15 @@ func (c *controller) GetParentComponents(configName string) (map[string]*s2hv1be
 	}
 
 	return filteredComps, nil
+}
+
+// Update updates Config CRD
+func (c *controller) Update(config *s2hv1beta1.Config) error {
+	if err := c.client.Update(context.TODO(), config); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Delete delete Config CRD

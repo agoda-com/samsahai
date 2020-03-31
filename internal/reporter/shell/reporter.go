@@ -66,16 +66,19 @@ func (r *reporter) GetName() string {
 
 // SendComponentUpgrade implements the reporter SendComponentUpgrade function
 func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
-	cfg, err := configCtrl.Get(comp.TeamName)
+	config, err := configCtrl.Get(comp.TeamName)
 	if err != nil {
 		return err
 	}
 
-	if cfg.Reporter == nil || cfg.Reporter.Shell == nil || cfg.Reporter.Shell.ComponentUpgrade == nil {
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Shell == nil ||
+		config.Spec.Reporter.Shell.ComponentUpgrade == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(cfg.Reporter.Shell.ComponentUpgrade.Command, cfg.Reporter.Shell.ComponentUpgrade.Args, comp)
+	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.ComponentUpgrade.Command,
+		config.Spec.Reporter.Shell.ComponentUpgrade.Args, comp)
 	if err := r.execute(cmdObj, internal.ComponentUpgradeType); err != nil {
 		return err
 	}
@@ -85,16 +88,19 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 
 // SendActivePromotionStatus implements the reporter SendActivePromotionStatus function
 func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigController, atpRpt *internal.ActivePromotionReporter) error {
-	cfg, err := configCtrl.Get(atpRpt.TeamName)
+	config, err := configCtrl.Get(atpRpt.TeamName)
 	if err != nil {
 		return err
 	}
 
-	if cfg.Reporter == nil || cfg.Reporter.Shell == nil || cfg.Reporter.Shell.ActivePromotion == nil {
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Shell == nil ||
+		config.Spec.Reporter.Shell.ActivePromotion == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(cfg.Reporter.Shell.ActivePromotion.Command, cfg.Reporter.Shell.ActivePromotion.Args, atpRpt)
+	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.ActivePromotion.Command,
+		config.Spec.Reporter.Shell.ActivePromotion.Args, atpRpt)
 	if err := r.execute(cmdObj, internal.ActivePromotionType); err != nil {
 		return err
 	}
@@ -105,16 +111,19 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 
 // SendImageMissing implements the reporter SendImageMissing function
 func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, images *rpc.Image) error {
-	cfg, err := configCtrl.Get(teamName)
+	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return err
 	}
 
-	if cfg.Reporter == nil || cfg.Reporter.Shell == nil || cfg.Reporter.Shell.ImageMissing == nil {
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Shell == nil ||
+		config.Spec.Reporter.Shell.ImageMissing == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(cfg.Reporter.Shell.ImageMissing.Command, cfg.Reporter.Shell.ImageMissing.Args, images)
+	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.ImageMissing.Command,
+		config.Spec.Reporter.Shell.ImageMissing.Args, images)
 	if err := r.execute(cmdObj, internal.ImageMissingType); err != nil {
 		return err
 	}

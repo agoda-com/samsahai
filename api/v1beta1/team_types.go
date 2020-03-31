@@ -229,6 +229,7 @@ const (
 	TeamNamespacePreActiveCreated      TeamConditionType = "TeamNamespacePreActiveCreated"
 	TeamNamespacePreviousActiveCreated TeamConditionType = "TeamNamespacePreviousActiveCreated"
 	TeamNamespaceActiveCreated         TeamConditionType = "TeamNamespaceActiveCreated"
+	TeamConfigExisted                  TeamConditionType = "TeamConfigExist"
 )
 
 func (ts *TeamStatus) IsConditionTrue(cond TeamConditionType) bool {

@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -283,27 +282,8 @@ type ConfigSpec struct {
 	Reporter *ConfigReporter `json:"report,omitempty"`
 }
 
-type ConfigCondition struct {
-	Type   ConfigConditionType `json:"type"`
-	Status v1.ConditionStatus  `json:"status"`
-	// +optional
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-	// +optional
-	Reason string `json:"reason,omitempty"`
-	// +optional
-	Message string `json:"message,omitempty"`
-}
-
-type ConfigConditionType string
-
 // ConfigStatus defines the observed state of Config
 type ConfigStatus struct {
-	// Conditions contains observations of the resource's state e.g.,
-	// Queue deployed, being tested
-	// +optional
-	// +patchMergeKey=type
-	// +patchStrategy=merge
-	Conditions []ConfigCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }
 
 // +kubebuilder:object:root=true

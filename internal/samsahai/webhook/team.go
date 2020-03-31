@@ -344,7 +344,7 @@ func (h *handler) getTeamConfig(w http.ResponseWriter, r *http.Request, params h
 	}
 
 	configCtrl := h.samsahai.GetConfigController()
-	cfg, err := configCtrl.Get(team.Name)
+	config, err := configCtrl.Get(team.Name)
 	if err != nil {
 		h.errorf(w, http.StatusBadRequest, "team config not found: %s", team.Name)
 		return
@@ -354,10 +354,10 @@ func (h *handler) getTeamConfig(w http.ResponseWriter, r *http.Request, params h
 	case "application/x-yaml":
 		fallthrough
 	case "text/yaml":
-		h.YAML(w, http.StatusOK, cfg)
+		h.YAML(w, http.StatusOK, config.Spec)
 		return
 	default:
-		h.JSON(w, http.StatusOK, cfg)
+		h.JSON(w, http.StatusOK, config.Spec)
 	}
 }
 

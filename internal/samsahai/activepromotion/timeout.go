@@ -49,13 +49,13 @@ func (c *controller) isTimeoutFromConfig(atpComp *s2hv1beta1.ActivePromotion, ti
 
 func (c *controller) getActiveDemotionTimeout(teamName string, configCtrl internal.ConfigController) metav1.Duration {
 	timeout := c.configs.ActivePromotion.DemotionTimeout
-	cfg, err := configCtrl.Get(teamName)
+	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return timeout
 	}
 
-	if cfg.ActivePromotion != nil && cfg.ActivePromotion.DemotionTimeout.Duration != 0 {
-		timeout = cfg.ActivePromotion.DemotionTimeout
+	if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.DemotionTimeout.Duration != 0 {
+		timeout = config.Spec.ActivePromotion.DemotionTimeout
 	}
 
 	return timeout
@@ -63,13 +63,13 @@ func (c *controller) getActiveDemotionTimeout(teamName string, configCtrl intern
 
 func (c *controller) getActivePromotionTimeout(teamName string, configCtrl internal.ConfigController) metav1.Duration {
 	timeout := c.configs.ActivePromotion.Timeout
-	cfg, err := configCtrl.Get(teamName)
+	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return timeout
 	}
 
-	if cfg.ActivePromotion != nil && cfg.ActivePromotion.Timeout.Duration != 0 {
-		timeout = cfg.ActivePromotion.Timeout
+	if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.Timeout.Duration != 0 {
+		timeout = config.Spec.ActivePromotion.Timeout
 	}
 
 	return timeout
@@ -77,13 +77,13 @@ func (c *controller) getActivePromotionTimeout(teamName string, configCtrl inter
 
 func (c *controller) getActivePromotionRollbackTimeout(teamName string, configCtrl internal.ConfigController) metav1.Duration {
 	timeout := c.configs.ActivePromotion.RollbackTimeout
-	cfg, err := configCtrl.Get(teamName)
+	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return timeout
 	}
 
-	if cfg.ActivePromotion != nil && cfg.ActivePromotion.RollbackTimeout.Duration != 0 {
-		timeout = cfg.ActivePromotion.RollbackTimeout
+	if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.RollbackTimeout.Duration != 0 {
+		timeout = config.Spec.ActivePromotion.RollbackTimeout
 	}
 
 	return timeout

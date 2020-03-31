@@ -394,26 +394,30 @@ func newMockConfigCtrl(configType string, interval s2hv1beta1.SlackInterval, cri
 	}
 }
 
-func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.ConfigSpec, error) {
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 	switch c.configType {
 	case "empty":
-		return &s2hv1beta1.ConfigSpec{}, nil
+		return &s2hv1beta1.Config{}, nil
 	case "failure":
-		return &s2hv1beta1.ConfigSpec{
-			Reporter: &s2hv1beta1.ConfigReporter{
-				Slack: &s2hv1beta1.Slack{
-					Channels: []string{"error"},
+		return &s2hv1beta1.Config{
+			Spec: s2hv1beta1.ConfigSpec{
+				Reporter: &s2hv1beta1.ConfigReporter{
+					Slack: &s2hv1beta1.Slack{
+						Channels: []string{"error"},
+					},
 				},
 			},
 		}, nil
 	default:
-		return &s2hv1beta1.ConfigSpec{
-			Reporter: &s2hv1beta1.ConfigReporter{
-				Slack: &s2hv1beta1.Slack{
-					Channels: []string{"chan1", "chan2"},
-					ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgrade{
-						Interval: c.interval,
-						Criteria: c.criteria,
+		return &s2hv1beta1.Config{
+			Spec: s2hv1beta1.ConfigSpec{
+				Reporter: &s2hv1beta1.ConfigReporter{
+					Slack: &s2hv1beta1.Slack{
+						Channels: []string{"chan1", "chan2"},
+						ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgrade{
+							Interval: c.interval,
+							Criteria: c.criteria,
+						},
 					},
 				},
 			},
@@ -427,6 +431,10 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 
 func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
 	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+	return nil
 }
 
 func (c *mockConfigCtrl) Delete(configName string) error {

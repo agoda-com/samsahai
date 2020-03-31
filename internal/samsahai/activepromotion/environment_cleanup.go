@@ -198,12 +198,12 @@ func (c *controller) deleteAllComponentsInNamespace(teamName, ns string, started
 func (c *controller) getComponentCleanupTimeout(teamName string, configCtrl internal.ConfigController) *metav1.Duration {
 	cleanupTimeout := &metav1.Duration{Duration: 15 * time.Minute}
 
-	cfg, err := configCtrl.Get(teamName)
+	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return cleanupTimeout
 	}
 
-	atpConfig := cfg.ActivePromotion
+	atpConfig := config.Spec.ActivePromotion
 
 	if atpConfig == nil || atpConfig.Deployment == nil {
 		return cleanupTimeout
@@ -214,17 +214,17 @@ func (c *controller) getComponentCleanupTimeout(teamName string, configCtrl inte
 
 func (c *controller) getDeployEngine(teamName, ns string, configCtrl internal.ConfigController) internal.DeployEngine {
 	var e string
-	cfg, err := configCtrl.Get(teamName)
+	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return mock.New()
 	}
 
-	atpConfig := cfg.ActivePromotion
+	atpConfig := config.Spec.ActivePromotion
 
 	if atpConfig == nil || atpConfig.Deployment == nil || atpConfig.Deployment.Engine == nil || *atpConfig.Deployment.Engine == "" {
 		e = mock.EngineName
 	} else {
-		e = *cfg.ActivePromotion.Deployment.Engine
+		e = *config.Spec.ActivePromotion.Deployment.Engine
 	}
 
 	var engine internal.DeployEngine

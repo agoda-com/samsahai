@@ -323,8 +323,8 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		cfg, err := cfgCtrl.Get(teamName)
 		Expect(err).NotTo(HaveOccurred())
 
-		deployTimeout := cfg.Staging.Deployment.Timeout.Duration
-		testingTimeout := cfg.Staging.Deployment.TestRunner.Timeout
+		deployTimeout := cfg.Spec.Staging.Deployment.Timeout.Duration
+		testingTimeout := cfg.Spec.Staging.Deployment.TestRunner.Timeout
 
 		swp := stableWordPress
 		Expect(runtimeClient.Create(context.TODO(), &swp)).To(BeNil())
@@ -458,9 +458,6 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 	It("Should create error log in case of deploy failed", func(done Done) {
 		defer close(done)
-		By("Creating Team")
-		team := mockTeam
-		Expect(runtimeClient.Create(context.TODO(), &team)).To(BeNil())
 
 		By("Creating Config")
 		config := mockConfig
@@ -470,6 +467,10 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		ctx := context.Background()
 		_ = runtimeClient.Delete(ctx, &config)
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(runtimeClient.Create(context.TODO(), &team)).To(BeNil())
 
 		authToken := "12345"
 		s2hConfig := internal.SamsahaiConfig{SamsahaiCredential: internal.SamsahaiCredential{InternalAuthToken: authToken}}

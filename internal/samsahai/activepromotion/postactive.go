@@ -99,12 +99,12 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta
 	desiredCompsImageCreatedTime := teamComp.Status.DesiredComponentImageCreatedTime
 	stableComps := stableCompList.Items
 
-	cfg, err := configCtrl.Get(teamName)
+	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return err
 	}
 
-	o := outdated.New(cfg, desiredCompsImageCreatedTime, stableComps)
+	o := outdated.New(&config.Spec, desiredCompsImageCreatedTime, stableComps)
 	atpStatus := &atpComp.Status
 	o.SetOutdatedDuration(atpStatus)
 	return nil
