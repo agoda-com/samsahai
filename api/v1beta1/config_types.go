@@ -148,8 +148,10 @@ type ConfigActivePromotion struct {
 
 // OutdatedNotification defines a configuration of outdated notification
 type OutdatedNotification struct {
-	ExceedDuration            metav1.Duration `json:"exceedDuration"`
-	ExcludeWeekendCalculation bool            `json:"excludeWeekendCalculation"`
+	// +optional
+	ExceedDuration metav1.Duration `json:"exceedDuration,omitempty"`
+	// +optional
+	ExcludeWeekendCalculation bool `json:"excludeWeekendCalculation,omitempty"`
 }
 
 // ConfigReporter represents configuration about sending notification

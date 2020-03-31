@@ -416,8 +416,10 @@ definitions:
   v1beta1.OutdatedNotification:
     properties:
       exceedDuration:
+        description: +optional
         type: string
       excludeWeekendCalculation:
+        description: +optional
         type: boolean
     type: object
   v1beta1.Queue:

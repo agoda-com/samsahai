@@ -1107,9 +1107,11 @@
             "type": "object",
             "properties": {
                 "exceedDuration": {
+                    "description": "+optional",
                     "type": "string"
                 },
                 "excludeWeekendCalculation": {
+                    "description": "+optional",
                     "type": "boolean"
                 }
             }
