@@ -122,7 +122,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		Expect(c.Create(context.TODO(), ath)).NotTo(HaveOccurred())
 
 		//c.Create(ctx, )
-		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "test", "data", "github", "team.yaml"))
+		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "test", "data", "team", "team.yaml"))
 		g.Expect(err).NotTo(HaveOccurred())
 		obj, _ := util.MustParseYAMLtoRuntimeObject(yamlTeam)
 

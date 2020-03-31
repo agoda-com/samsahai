@@ -10,5 +10,4 @@ bin/
 vendor/
 .idea/
 
-gitstorage/
 .version

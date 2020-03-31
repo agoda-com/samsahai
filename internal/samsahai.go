@@ -147,9 +147,6 @@ type SamsahaiController interface {
 	// SetActiveNamespace updates active namespace to team status
 	SetActiveNamespace(teamComp *s2hv1beta1.Team, namespace string) error
 
-	// NotifyGitChanged adds GitInfo to channel for process
-	//NotifyGitChanged(updated GitInfo)
-
 	// NotifyComponentChanged adds Component to queue for checking new version
 	NotifyComponentChanged(name, repository string)
 

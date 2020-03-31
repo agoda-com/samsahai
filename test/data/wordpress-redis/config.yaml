@@ -6,16 +6,16 @@ spec:
   envs:
     base:
       wordpress:
-        - https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/base/wordpress.yaml
+        - https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/base/wordpress.yaml
     staging:
       redis:
-        - https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml
+        - https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/staging/redis.yaml
     pre-active:
       redis:
-        - https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml
+        - https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/pre-active/redis.yaml
     active:
       redis:
-        - https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml
+        - https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/active/redis.yaml
 
   staging:
     maxRetry: 3
@@ -74,10 +74,3 @@ spec:
             repository: bitnami/mariadb
             pattern: '10\.3.*debian-9.*'
           source: public-registry
-
-
-
-
-
-
-

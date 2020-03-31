@@ -76,7 +76,7 @@ var _ = Describe("", func() {
 			samsahai.WithScheme(scheme.Scheme))
 		check = New(s2hCtrl)
 
-		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "..", "test", "data", "github", "team.yaml"))
+		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "..", "test", "data", "team", "team.yaml"))
 		g.Expect(err).NotTo(HaveOccurred())
 		obj, _ := util.MustParseYAMLtoRuntimeObject(yamlTeam)
 

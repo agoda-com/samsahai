@@ -232,7 +232,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 
 			if err = c.client.Create(ctx, desiredComp); err != nil {
 				logger.Error(err, "cannot create DesiredComponent",
-					"name", compName, "namespace", compNs)
+					"name", desiredComp, "namespace", compNs)
 			}
 
 			return nil
