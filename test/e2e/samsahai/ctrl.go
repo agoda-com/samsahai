@@ -1179,6 +1179,35 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 	}, 30)
 
+	It("should be error when creating team if config does not exist", func(done Done) {
+		defer close(done)
+
+		ctx := context.TODO()
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
+
+		By("Team should be error if missing Config")
+		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+			team := s2hv1beta1.Team{}
+			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
+				return false, nil
+			}
+
+			for i, c := range team.Status.Conditions {
+				if c.Type == s2hv1beta1.TeamConfigExisted {
+					if team.Status.Conditions[i].Status == corev1.ConditionFalse {
+						return true, nil
+					}
+				}
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Team should be error if missing Config")
+	}, 15)
+
 	It("should create DesiredComponent on team staging namespace", func(done Done) {
 		defer close(done)
 
