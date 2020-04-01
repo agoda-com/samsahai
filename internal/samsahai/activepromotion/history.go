@@ -80,12 +80,11 @@ func (c *controller) deleteActivePromotionHistoryOutOfRange(ctx context.Context,
 	maxHistoriesPerTeam := c.configs.ActivePromotion.MaxHistories
 
 	// get configuration
-	configMgr, err := c.getTeamConfiguration(teamName)
-	if err != nil {
-		return err
-	}
-	if cfg := configMgr.Get(); cfg.ActivePromotion != nil && cfg.ActivePromotion.MaxHistories != 0 {
-		maxHistoriesPerTeam = cfg.ActivePromotion.MaxHistories
+	config, err := c.s2hCtrl.GetConfigController().Get(teamName)
+	if err == nil {
+		if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.MaxHistories != 0 {
+			maxHistoriesPerTeam = config.Spec.ActivePromotion.MaxHistories
+		}
 	}
 
 	// +1 for current active promotion history

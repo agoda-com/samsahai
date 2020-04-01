@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -32,7 +32,7 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	s2hconfig "github.com/agoda-com/samsahai/internal/config"
+	configctrl "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/reporter/reportermock"
@@ -69,11 +69,9 @@ const (
 )
 
 type controller struct {
-	scheme        *runtime.Scheme
-	muTeamConfigs *sync.Mutex
-	client        client.Client
-	teamConfigs   map[string]internal.ConfigManager
-	namespace     string
+	scheme    *runtime.Scheme
+	client    client.Client
+	namespace string
 
 	rpcHandler rpc.TwirpServer
 
@@ -93,7 +91,8 @@ type controller struct {
 	reportersDisabled bool
 	reporters         map[string]internal.Reporter
 
-	configs internal.SamsahaiConfig
+	configs    internal.SamsahaiConfig
+	configCtrl internal.ConfigController
 }
 
 // New returns Samsahai controller and assign itself to Manager for
@@ -102,6 +101,7 @@ func New(
 	mgr manager.Manager,
 	ns string,
 	configs internal.SamsahaiConfig,
+	configCtrl internal.ConfigController,
 	options ...Option,
 ) internal.SamsahaiController {
 	stop := make(chan struct{})
@@ -115,8 +115,6 @@ func New(
 
 	c := &controller{
 		scheme:          scheme,
-		muTeamConfigs:   &sync.Mutex{},
-		teamConfigs:     map[string]internal.ConfigManager{},
 		namespace:       ns,
 		internalStop:    stop,
 		internalStopper: stop,
@@ -125,6 +123,7 @@ func New(
 		plugins:         map[string]internal.Plugin{},
 		reporters:       map[string]internal.Reporter{},
 		configs:         configs,
+		configCtrl:      configCtrl,
 	}
 
 	if mgr != nil {
@@ -172,14 +171,7 @@ func WithClient(client client.Client) Option {
 		c.client = client
 	}
 }
-func WithConfigManager(teamName string, configManager internal.ConfigManager) Option {
-	return func(c *controller) {
-		if c.teamConfigs == nil {
-			c.teamConfigs = map[string]internal.ConfigManager{}
-		}
-		c.teamConfigs[teamName] = configManager
-	}
-}
+
 func WithDisableLoaders(checkers, plugins, reporters bool) Option {
 	return func(c *controller) {
 		c.checkersDisabled = checkers
@@ -265,15 +257,8 @@ func (c *controller) loadPlugins(dir string) {
 	}
 }
 
-func (c *controller) GetTeamConfigManager(teamName string) (internal.ConfigManager, bool) {
-	c.muTeamConfigs.Lock()
-	defer c.muTeamConfigs.Unlock()
-	teamConfigs, ok := c.teamConfigs[teamName]
-	return teamConfigs, ok
-}
-
-func (c *controller) GetTeamConfigManagers() map[string]internal.ConfigManager {
-	return c.teamConfigs
+func (c *controller) GetConfigController() internal.ConfigController {
+	return c.configCtrl
 }
 
 func (c *controller) GetPlugins() map[string]internal.Plugin {
@@ -410,8 +395,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 	}
 
 	ctx := context.TODO()
-	err := c.client.Get(ctx, types.NamespacedName{Name: namespace}, &namespaceObj)
-	if err != nil {
+	if err := c.client.Get(ctx, types.NamespacedName{Name: namespace}, &namespaceObj); err != nil {
 		if k8serrors.IsNotFound(err) {
 			logger.Debug("start creating namespace", "team", teamComp.Name, "namespace", namespace)
 			if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
@@ -432,8 +416,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 
 	logger.Debug("start creating s2h environment objects",
 		"team", teamComp.Name, "namespace", namespace)
-	err = c.createEnvironmentObjects(teamComp, namespace)
-	if err != nil {
+	if err := c.createEnvironmentObjects(teamComp, namespace); err != nil {
 		return err
 	}
 
@@ -501,11 +484,14 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 			Value: intstr.FromString(c.configs.TeamcityURL),
 		},
 	}
+
 	k8sObjects := []runtime.Object{
 		k8sobject.GetService(c.scheme, teamComp, namespace),
 		k8sobject.GetServiceAccount(teamComp, namespace),
 		k8sobject.GetRole(teamComp, namespace),
 		k8sobject.GetRoleBinding(teamComp, namespace),
+		k8sobject.GetClusterRole(teamComp, namespace),
+		k8sobject.GetClusterRoleBinding(teamComp, namespace),
 		k8sobject.GetSecret(c.scheme, teamComp, namespace, secretKVs...),
 	}
 
@@ -627,6 +613,14 @@ func (c *controller) destroyNamespaces(teamComp *s2hv1beta1.Team, teamNsOpts ...
 			return errors.Wrap(err, "cannot delete all stable components")
 		}
 
+		if err := c.destroyClusterRole(namespace); err != nil {
+			return errors.Wrap(err, "cannot delete clusterrole")
+		}
+
+		if err := c.destroyClusterRoleBinding(namespace); err != nil {
+			return errors.Wrap(err, "cannot delete clusterrolebinding")
+		}
+
 		namespaceObj := corev1.Namespace{}
 		err := c.client.Get(ctx, types.NamespacedName{Name: namespace}, &namespaceObj)
 		if err != nil && k8serrors.IsNotFound(err) {
@@ -732,15 +726,6 @@ func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
 		return errors.Wrapf(err, "cannot find %s secret in %s namespace", secretName, c.namespace)
 	}
 
-	gitCred := teamComp.Spec.Credential.Git
-	if gitCred != nil {
-		gitUsername := gitCred.UsernameRef
-		teamComp.Spec.Credential.Git.Username = string(s2hSecret.Data[gitUsername.Key])
-
-		gitPassword := gitCred.PasswordRef
-		teamComp.Spec.Credential.Git.Password = string(s2hSecret.Data[gitPassword.Key])
-	}
-
 	tcCred := teamComp.Spec.Credential.Teamcity
 	if tcCred != nil {
 		tcUsername := tcCred.UsernameRef
@@ -751,42 +736,6 @@ func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
 	}
 
 	return nil
-}
-
-func (c *controller) loadGitStorage(teamComp *s2hv1beta1.Team) error {
-	teamName := teamComp.GetName()
-	teamGitStorage := teamComp.Spec.GitStorage
-	teamGitCredential := teamComp.Spec.Credential.Git
-	configMgr, ok := c.GetTeamConfigManager(teamName)
-	if !ok || configMgr.HasGitChanges(teamGitStorage) {
-		var err error
-		configMgr, err = s2hconfig.NewWithGit(teamName, teamGitStorage, teamGitCredential)
-		if err != nil {
-			return err
-		}
-	}
-
-	c.muTeamConfigs.Lock()
-	defer c.muTeamConfigs.Unlock()
-	c.teamConfigs[teamName] = configMgr
-
-	return nil
-}
-
-func (c *controller) getTeamNamesFromConfig() []string {
-	c.muTeamConfigs.Lock()
-	defer c.muTeamConfigs.Unlock()
-	var names []string
-	for teamName := range c.teamConfigs {
-		names = append(names, teamName)
-	}
-	return names
-}
-
-func (c *controller) deleteTeamConfig(teamName string) {
-	c.muTeamConfigs.Lock()
-	defer c.muTeamConfigs.Unlock()
-	delete(c.teamConfigs, teamName)
 }
 
 func (c *controller) GetTeam(teamName string, teamComp *s2hv1beta1.Team) error {
@@ -882,14 +831,6 @@ func (c *controller) GetTeams() (v *s2hv1beta1.TeamList, err error) {
 	return v, errors.Wrap(err, "cannot list teams")
 }
 
-func (c *controller) GetTeamNames() map[string]struct{} {
-	teams := map[string]struct{}{}
-	for t := range c.teamConfigs {
-		teams[t] = struct{}{}
-	}
-	return teams
-}
-
 func (c *controller) GetQueueHistories(namespace string) (v *s2hv1beta1.QueueHistoryList, err error) {
 	v = &s2hv1beta1.QueueHistoryList{}
 	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})
@@ -908,15 +849,28 @@ func (c *controller) GetQueues(namespace string) (v *s2hv1beta1.QueueList, err e
 	return v, errors.Wrap(err, "cannot list queues")
 }
 
-func (c *controller) GetStableValues(team *s2hv1beta1.Team, comp *internal.Component) (internal.ComponentValues, error) {
+func (c *controller) GetStableValues(team *s2hv1beta1.Team, comp *s2hv1beta1.Component) (s2hv1beta1.ComponentValues, error) {
 	// TODO: can get stable components map from team.status
 	stableComps, err := valuesutil.GetStableComponentsMap(c.client, team.Status.Namespace.Staging)
 	if err != nil {
 		logger.Error(err, "get stable components map")
 		return nil, err
 	}
-	cfgMgr := c.teamConfigs[team.Name]
-	return valuesutil.GenStableComponentValues(comp, stableComps, cfgMgr.Get().Envs["base"][comp.Name]), nil
+
+	configCtrl := c.GetConfigController()
+	config, err := configCtrl.Get(team.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	values, err := configctrl.GetEnvComponentValues(&config.Spec, comp.Name, s2hv1beta1.EnvBase)
+	if err != nil {
+		logger.Error(err, "cannot get values file",
+			"env", s2hv1beta1.EnvBase, "component", comp.Name, "team", team.Name)
+		return nil, err
+	}
+
+	return valuesutil.GenStableComponentValues(comp, stableComps, values), nil
 }
 
 func (c *controller) GetActivePromotions() (v *s2hv1beta1.ActivePromotionList, err error) {
@@ -969,6 +923,38 @@ func getNodeIP(nodes *corev1.NodeList) string {
 
 func (c *controller) destroyAllStableComponents(namespace string) error {
 	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.StableComponent{}, client.InNamespace(namespace))
+}
+
+func (c *controller) destroyClusterRole(namespace string) error {
+	ctx := context.TODO()
+
+	clusterRoleName := k8sobject.GenClusterRoleName(namespace)
+	clusterRole := &rbacv1.ClusterRole{}
+	err := c.client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, clusterRole)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "cannot get clusterrole name %s", clusterRoleName)
+	}
+
+	return c.client.Delete(ctx, clusterRole)
+}
+
+func (c *controller) destroyClusterRoleBinding(namespace string) error {
+	ctx := context.TODO()
+
+	clusterRoleBindingName := k8sobject.GenClusterRoleName(namespace)
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
+	err := c.client.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName}, clusterRoleBinding)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "cannot get clusterrole name %s", clusterRoleBindingName)
+	}
+
+	return c.client.Delete(ctx, clusterRoleBinding)
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -1057,14 +1043,13 @@ func (c *controller) deleteFinalizer(teamComp *s2hv1beta1.Team) error {
 			return err
 		}
 
-		configMgr, _ := c.GetTeamConfigManager(teamComp.GetName())
-		if configMgr != nil {
-			if err := configMgr.Clean(); err != nil {
-				logger.Error(err, "cannot remove team git directory")
-			}
+		if err := c.GetConfigController().Delete(teamComp.Name); err != nil {
+			return err
 		}
 
-		c.deleteTeamConfig(teamComp.Name)
+		if err := c.ensureConfigDestroyed(teamComp.Name); err != nil {
+			return err
+		}
 
 		// remove our finalizer from the list and update it.
 		teamComp.ObjectMeta.Finalizers = stringutils.RemoveString(teamComp.ObjectMeta.Finalizers, teamFinalizerName)
@@ -1073,7 +1058,51 @@ func (c *controller) deleteFinalizer(teamComp *s2hv1beta1.Team) error {
 		}
 
 		// Add metric teamname
-		exporter.SetTeamNameMetric(c.teamConfigs)
+		teamList, err := c.GetTeams()
+		if err != nil {
+			return err
+		}
+		exporter.SetTeamNameMetric(teamList)
+	}
+
+	return nil
+}
+
+func (c *controller) ensureConfigDestroyed(configName string) error {
+	config := &s2hv1beta1.Config{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: configName,
+		},
+	}
+
+	if err := c.client.Get(context.TODO(), types.NamespacedName{Name: configName}, config); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	return errors.ErrEnsureConfigDestroyed
+}
+
+func (c *controller) ensureAndUpdateConfig(teamComp *s2hv1beta1.Team) error {
+	// ensure config of team is deployed
+	config, err := c.configCtrl.Get(teamComp.Name)
+	if err != nil {
+		logger.Error(err, "cannot get config", "name", teamComp.Name)
+		return err
+	}
+
+	// set owner references
+	if len(config.ObjectMeta.OwnerReferences) == 0 {
+		if err := controllerutil.SetControllerReference(teamComp, config, c.scheme); err != nil {
+			return err
+		}
+
+		if err := c.configCtrl.Update(config); err != nil {
+			logger.Error(err, "cannot set controller reference of config", "name", teamComp.Name)
+			return err
+		}
 	}
 
 	return nil
@@ -1118,7 +1147,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	// The object is being deleted
 	if !teamComp.ObjectMeta.DeletionTimestamp.IsZero() {
 		if err := c.deleteFinalizer(teamComp); err != nil {
-			if errors.IsNamespaceStillExists(err) {
+			if errors.IsNamespaceStillExists(err) || errors.IsEnsuringConfigDestroyed(err) {
 				return reconcile.Result{
 					Requeue:      true,
 					RequeueAfter: 2 * time.Second,
@@ -1151,45 +1180,37 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
-	if err := c.loadGitStorage(teamComp); err != nil {
-		if errors.IsErrGitCloning(err) {
-			return reconcile.Result{
-				Requeue:      true,
-				RequeueAfter: 2 * time.Second,
-			}, nil
-		}
-
+	if err := c.ensureAndUpdateConfig(teamComp); err != nil {
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamGitCheckoutUpToDate,
+			s2hv1beta1.TeamConfigExisted,
 			corev1.ConditionFalse,
 			err.Error())
 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err,
-				"cannot update team conditions when git checkout failure")
+				"cannot update team conditions when config does not exist")
 		}
 
-		// need to stop because we need correct configuration from git
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, err
 	}
 
-	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamGitCheckoutUpToDate) {
-		teamConfigs, _ := c.GetTeamConfigManager(teamName)
-		gitRevision := teamConfigs.GetGitLatestRevision()
-		msg := fmt.Sprintf("with revision %s", gitRevision)
-
+	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamConfigExisted) {
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamGitCheckoutUpToDate,
+			s2hv1beta1.TeamConfigExisted,
 			corev1.ConditionTrue,
-			fmt.Sprintf("git cloning is success %s", msg))
+			"Config exists")
 
 		if err := c.updateTeam(teamComp); err != nil {
-			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when git checkout success")
+			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when config exists")
 		}
 	}
 
 	// add metric teamname
-	exporter.SetTeamNameMetric(c.teamConfigs)
+	teamList, err := c.GetTeams()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	exporter.SetTeamNameMetric(teamList)
 
 	// Our finalizer has finished, so the reconciler can do nothing.
 	return reconcile.Result{}, nil

@@ -14,10 +14,6 @@ import (
 
 func (c *controller) demoteActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
 	if err := c.checkDemotionTimeout(ctx, atpComp); err != nil {
-		if s2herrors.IsLoadingConfiguration(err) {
-			return s2herrors.ErrEnsureActiveDemoted
-		}
-
 		return err
 	}
 

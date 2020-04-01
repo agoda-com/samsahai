@@ -6,7 +6,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/agoda-com/samsahai/api/v1beta1"
-	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/util"
 )
 
@@ -32,10 +31,10 @@ func GetStableComponentsMap(c client.Client, namespace string) (stableMap map[st
 
 // GenStableComponentValues returns Values of the component combine with stable version of itself and its dependencies
 func GenStableComponentValues(
-	comp *internal.Component,
+	comp *v1beta1.Component,
 	stableMap map[string]v1beta1.StableComponent,
 	baseValues map[string]interface{},
-) internal.ComponentValues {
+) v1beta1.ComponentValues {
 	var values map[string]interface{}
 	if len(baseValues) > 0 {
 		values = util.CopyMap(baseValues)

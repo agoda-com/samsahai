@@ -291,10 +291,10 @@ generate-rpc:
 	export PROTO_SRC_PATH=.; \
 	export IMPORT_PREFIX="$$(go list)"; \
 	$(PROTOC) \
-		--proto_path=$$PROTO_SRC_PATH/:./bin/include/ \
-		--twirp_out=$$PROTO_SRC_PATH \
-		--go_out=$$PROTO_SRC_PATH \
-		$$PROTO_SRC_PATH/pkg/staging/rpc/service.proto; \
+    		--proto_path=$$PROTO_SRC_PATH/:./bin/include/ \
+    		--twirp_out=$$PROTO_SRC_PATH \
+    		--go_out=$$PROTO_SRC_PATH \
+    		$$PROTO_SRC_PATH/pkg/staging/rpc/service.proto; \
 	$(PROTOC) \
 		--proto_path=$$PROTO_SRC_PATH/:./bin/include/ \
 		--twirp_out=$$PROTO_SRC_PATH \

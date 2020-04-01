@@ -87,12 +87,13 @@ func (c *controller) setup(ctx context.Context, atpComp *s2hv1beta1.ActivePromot
 	if atpComp.Spec.TearDownDuration == nil {
 		duration := c.configs.ActivePromotion.TearDownDuration
 
-		configMgr, err := c.getTeamConfiguration(atpComp.Name)
+		config, err := c.s2hCtrl.GetConfigController().Get(atpComp.Name)
 		if err != nil {
 			return err
 		}
-		if cfg := configMgr.Get(); cfg.ActivePromotion != nil && cfg.ActivePromotion.TearDownDuration.Duration != 0 {
-			duration = cfg.ActivePromotion.TearDownDuration
+
+		if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.TearDownDuration.Duration != 0 {
+			duration = config.Spec.ActivePromotion.TearDownDuration
 		}
 
 		atpComp.Spec.SetTearDownDuration(duration)
@@ -312,12 +313,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	isSkipped, err := c.deleteFinalizerWhenFinished(ctx, atpComp)
 	if err != nil {
-		if s2herrors.IsLoadingConfiguration(err) {
-			return reconcile.Result{
-				Requeue:      true,
-				RequeueAfter: 1 * time.Second,
-			}, nil
-		}
 		return reconcile.Result{}, err
 	}
 	if isSkipped {
@@ -325,7 +320,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if err := c.checkActivePromotionTimeout(ctx, atpComp); err != nil {
-		if s2herrors.IsLoadingConfiguration(err) || s2herrors.IsErrActivePromotionTimeout(err) {
+		if s2herrors.IsErrActivePromotionTimeout(err) {
 			return reconcile.Result{
 				Requeue:      true,
 				RequeueAfter: 1 * time.Second,
@@ -338,12 +333,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	case "":
 		logger.Info("activepromotion has been created", "team", atpComp.Name)
 		if err := c.setup(ctx, atpComp); err != nil {
-			if s2herrors.IsLoadingConfiguration(err) {
-				return reconcile.Result{
-					Requeue:      true,
-					RequeueAfter: 1 * time.Second,
-				}, nil
-			}
 			return reconcile.Result{}, err
 		}
 

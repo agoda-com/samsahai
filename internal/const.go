@@ -1,5 +1,9 @@
 package internal
 
+import (
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+)
+
 const (
 	// URIHealthz represents URI for health check
 	URIHealthz = "/healthz"
@@ -48,6 +52,6 @@ const (
 )
 
 type ConfigurationJSON struct {
-	GitRevision   string         `json:"gitRevision"`
-	Configuration *Configuration `json:"config"`
+	GitRevision   string                 `json:"gitRevision"`
+	Configuration *s2hv1beta1.ConfigSpec `json:"config"`
 }

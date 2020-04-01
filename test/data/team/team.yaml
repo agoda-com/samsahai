@@ -6,9 +6,6 @@ spec:
   description: Example team
   owners:
     - example@samsahai.io
-  gitStorage:
-    url: https://github.com/agoda-com/samsahai-example.git
-    path: configs
   stagingCtrl:
     endpoint: http://127.0.0.1:8090
     isDeploy: false

@@ -38,7 +38,7 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	s2h "github.com/agoda-com/samsahai/internal"
-	s2hconfig "github.com/agoda-com/samsahai/internal/config"
+	configctrl "github.com/agoda-com/samsahai/internal/config"
 	desiredctrl "github.com/agoda-com/samsahai/internal/desiredcomponent"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/queue"
@@ -139,11 +139,7 @@ func startCtrlCmd() *cobra.Command {
 			logger.Info("setting up internal components")
 
 			samsahaiClient := rpc.NewRPCProtobufClient(viper.GetString(s2h.VKS2HServerURL), &http.Client{})
-			configManager, err := s2hconfig.NewWithSamsahaiClient(samsahaiClient, teamName, viper.GetString(s2h.VKS2HAuthToken))
-			if err != nil {
-				logger.Error(err, "cannot load configuration from server")
-				os.Exit(1)
-			}
+			configCtrl := configctrl.New(mgr)
 			queueCtrl := queue.New(namespace, runtimeClient)
 			desiredctrl.New(teamName, mgr, queueCtrl)
 			authToken := viper.GetString(s2h.VKS2HAuthToken)
@@ -151,8 +147,8 @@ func startCtrlCmd() *cobra.Command {
 			tcUsername := viper.GetString(s2h.VKTeamcityUsername)
 			tcPassword := viper.GetString(s2h.VKTeamcityPassword)
 			maxQueueHistDays := viper.GetInt(s2h.VKQueueMaxHistoryDays)
-			stagingCtrl := stagingctrl.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl,
-				configManager, tcBaseURL, tcUsername, tcPassword, s2h.StagingConfig{MaxHistoryDays: maxQueueHistDays})
+			stagingCtrl := stagingctrl.NewController(teamName, namespace, authToken, samsahaiClient, mgr,
+				queueCtrl, configCtrl, tcBaseURL, tcUsername, tcPassword, s2h.StagingConfig{MaxHistoryDays: maxQueueHistDays})
 
 			logger.Info("setup signal handler")
 			stop := signals.SetupSignalHandler()

@@ -17,26 +17,23 @@ const (
 )
 
 func (c *controller) isTimeoutFromConfig(atpComp *s2hv1beta1.ActivePromotion, timeoutType timeoutType) (bool, error) {
-	configMgr, err := c.getTeamConfiguration(atpComp.Name)
-	if err != nil {
-		return false, err
-	}
+	configCtrl := c.s2hCtrl.GetConfigController()
 
 	var timeout metav1.Duration
 	var startedTime *metav1.Time
 	now := metav1.Now()
 	switch timeoutType {
 	case timeoutActivePromotion:
-		timeout = c.getActivePromotionTimeout(configMgr)
+		timeout = c.getActivePromotionTimeout(atpComp.Name, configCtrl)
 		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondStarted)
 	case timeoutActiveDemotion:
-		timeout = c.getActiveDemotionTimeout(configMgr)
+		timeout = c.getActiveDemotionTimeout(atpComp.Name, configCtrl)
 		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondActiveDemotionStarted)
 	case timeoutActivePromotionRollback:
-		timeout = c.getActivePromotionRollbackTimeout(configMgr)
+		timeout = c.getActivePromotionRollbackTimeout(atpComp.Name, configCtrl)
 		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondRollbackStarted)
 	case timeoutActiveDemotionForRollback:
-		timeout = c.getActiveDemotionTimeout(configMgr)
+		timeout = c.getActiveDemotionTimeout(atpComp.Name, configCtrl)
 		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondRollbackStarted)
 	}
 
@@ -50,28 +47,43 @@ func (c *controller) isTimeoutFromConfig(atpComp *s2hv1beta1.ActivePromotion, ti
 	return false, nil
 }
 
-func (c *controller) getActiveDemotionTimeout(configMgr internal.ConfigManager) metav1.Duration {
+func (c *controller) getActiveDemotionTimeout(teamName string, configCtrl internal.ConfigController) metav1.Duration {
 	timeout := c.configs.ActivePromotion.DemotionTimeout
-	if cfg := configMgr.Get(); cfg.ActivePromotion != nil && cfg.ActivePromotion.DemotionTimeout.Duration != 0 {
-		timeout = cfg.ActivePromotion.DemotionTimeout
+	config, err := configCtrl.Get(teamName)
+	if err != nil {
+		return timeout
+	}
+
+	if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.DemotionTimeout.Duration != 0 {
+		timeout = config.Spec.ActivePromotion.DemotionTimeout
 	}
 
 	return timeout
 }
 
-func (c *controller) getActivePromotionTimeout(configMgr internal.ConfigManager) metav1.Duration {
+func (c *controller) getActivePromotionTimeout(teamName string, configCtrl internal.ConfigController) metav1.Duration {
 	timeout := c.configs.ActivePromotion.Timeout
-	if cfg := configMgr.Get(); cfg.ActivePromotion != nil && cfg.ActivePromotion.Timeout.Duration != 0 {
-		timeout = cfg.ActivePromotion.Timeout
+	config, err := configCtrl.Get(teamName)
+	if err != nil {
+		return timeout
+	}
+
+	if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.Timeout.Duration != 0 {
+		timeout = config.Spec.ActivePromotion.Timeout
 	}
 
 	return timeout
 }
 
-func (c *controller) getActivePromotionRollbackTimeout(configMgr internal.ConfigManager) metav1.Duration {
+func (c *controller) getActivePromotionRollbackTimeout(teamName string, configCtrl internal.ConfigController) metav1.Duration {
 	timeout := c.configs.ActivePromotion.RollbackTimeout
-	if cfg := configMgr.Get(); cfg.ActivePromotion != nil && cfg.ActivePromotion.RollbackTimeout.Duration != 0 {
-		timeout = cfg.ActivePromotion.RollbackTimeout
+	config, err := configCtrl.Get(teamName)
+	if err != nil {
+		return timeout
+	}
+
+	if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.RollbackTimeout.Duration != 0 {
+		timeout = config.Spec.ActivePromotion.RollbackTimeout
 	}
 
 	return timeout

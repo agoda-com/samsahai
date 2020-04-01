@@ -12,15 +12,11 @@ import (
 
 func (c *controller) rollbackActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
 	if err := c.checkRollbackTimeout(ctx, atpComp); err != nil {
-		if s2herrors.IsLoadingConfiguration(err) {
-			return s2herrors.ErrRollingBackActivePromotion
-		}
 		return err
 	}
 
 	if err := c.demoteAndDestroyPreActive(ctx, atpComp); err != nil {
-		if s2herrors.IsLoadingConfiguration(err) ||
-			s2herrors.IsEnsuringActiveDemoted(err) ||
+		if s2herrors.IsEnsuringActiveDemoted(err) ||
 			s2herrors.IsEnsuringNamespaceDestroyed(err) {
 			return s2herrors.ErrRollingBackActivePromotion
 		}

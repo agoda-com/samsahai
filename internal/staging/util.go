@@ -15,22 +15,26 @@ import (
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-func (c *controller) getDeployConfiguration(queue *s2hv1beta1.Queue) *internal.ConfigDeploy {
-	cfg := c.getConfiguration()
+func (c *controller) getDeployConfiguration(queue *s2hv1beta1.Queue) *s2hv1beta1.ConfigDeploy {
+	cfg, err := c.getConfiguration()
+	if err != nil {
+		logger.Error(err, "cannot get configuration", "team", c.teamName)
+		return &s2hv1beta1.ConfigDeploy{}
+	}
 
 	if queue.IsActivePromotionQueue() {
 		if cfg.ActivePromotion != nil && cfg.ActivePromotion.Deployment != nil {
 			return cfg.ActivePromotion.Deployment
 		}
-		return &internal.ConfigDeploy{}
+		return &s2hv1beta1.ConfigDeploy{}
 	}
 	if cfg.Staging != nil {
 		return cfg.Staging.Deployment
 	}
-	return &internal.ConfigDeploy{}
+	return &s2hv1beta1.ConfigDeploy{}
 }
 
-func (c *controller) getTestConfiguration(queue *s2hv1beta1.Queue) *internal.ConfigTestRunner {
+func (c *controller) getTestConfiguration(queue *s2hv1beta1.Queue) *s2hv1beta1.ConfigTestRunner {
 	deployConfig := c.getDeployConfiguration(queue)
 	if deployConfig == nil {
 		return nil
@@ -104,8 +108,13 @@ func (c *controller) deleteQueue(q *s2hv1beta1.Queue) error {
 		q.Spec.NoOfRetry++
 
 		maxNoOfRetry := 0
-		configMgr := c.getConfigManager()
-		if cfg := configMgr.Get(); cfg != nil && cfg.Staging != nil {
+
+		cfg, err := c.getConfiguration()
+		if err != nil {
+			return err
+		}
+
+		if cfg != nil && cfg.Staging != nil {
 			maxNoOfRetry = cfg.Staging.MaxRetry
 		}
 
@@ -153,6 +162,6 @@ func (c *controller) updateQueueWithState(q *s2hv1beta1.Queue, state s2hv1beta1.
 	return c.updateQueue(q)
 }
 
-func (c *controller) genReleaseName(comp *internal.Component) string {
+func (c *controller) genReleaseName(comp *s2hv1beta1.Component) string {
 	return internal.GenReleaseName(c.teamName, c.namespace, comp.Name)
 }

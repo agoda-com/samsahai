@@ -5,7 +5,6 @@ import (
 	"time"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
-	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 )
@@ -13,13 +12,13 @@ import (
 var logger = s2hlog.S2HLog.WithName("Outdated-util")
 
 type Outdated struct {
-	cfg                   *internal.Configuration
+	cfg                   *s2hv1beta1.ConfigSpec
 	desiredCompsImageTime map[string]map[string]s2hv1beta1.DesiredImageTime
 	stableComps           []s2hv1beta1.StableComponent
 	nowTime               time.Time
 }
 
-func New(cfg *internal.Configuration, desiredComps map[string]map[string]s2hv1beta1.DesiredImageTime, stableComps []s2hv1beta1.StableComponent) *Outdated {
+func New(cfg *s2hv1beta1.ConfigSpec, desiredComps map[string]map[string]s2hv1beta1.DesiredImageTime, stableComps []s2hv1beta1.StableComponent) *Outdated {
 	r := &Outdated{
 		cfg:                   cfg,
 		desiredCompsImageTime: desiredComps,

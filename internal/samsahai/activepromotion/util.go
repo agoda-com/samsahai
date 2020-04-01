@@ -8,8 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
-	"github.com/agoda-com/samsahai/internal"
-	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 )
@@ -90,16 +88,4 @@ func (c *controller) getTeam(ctx context.Context, teamName string) (*s2hv1beta1.
 	}
 
 	return teamComp, nil
-}
-
-func (c *controller) getTeamConfiguration(teamName string) (internal.ConfigManager, error) {
-	configMgr, ok := c.s2hCtrl.GetTeamConfigManager(teamName)
-	if !ok {
-		return nil, s2herrors.ErrLoadingConfiguration
-	}
-	if configMgr == nil {
-		return nil, errors.Wrapf(s2herrors.ErrLoadConfiguration, "cannot load configuration for %s", teamName)
-	}
-
-	return configMgr, nil
 }

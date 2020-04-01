@@ -84,8 +84,8 @@ func (e *engine) IsMocked() bool {
 
 func (e *engine) Create(
 	refName string,
-	_ *internal.Component,
-	parentComp *internal.Component,
+	_ *v1beta1.Component,
+	parentComp *v1beta1.Component,
 	values map[string]interface{},
 ) error {
 	if err := e.helmInit(); err != nil {

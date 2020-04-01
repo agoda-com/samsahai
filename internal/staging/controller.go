@@ -2,15 +2,11 @@ package staging
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"reflect"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/twitchtv/twirp"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -47,21 +43,18 @@ type controller struct {
 	teamName   string
 	namespace  string
 	authToken  string
-	configMgr  internal.ConfigManager
 	queueCtrl  internal.QueueController
+	configCtrl internal.ConfigController
 	client     client.Client
 	helmClient internal.HelmReleaseClient
 	scheme     *apiruntime.Scheme
-	//recoder    record.EventRecorder
-	//wg         *sync.WaitGroup
-	//shutdown   chan struct{}
+
 	internalStop    <-chan struct{}
 	internalStopper chan<- struct{}
 	rpcHandler      stagingrpc.TwirpServer
 
 	currentQueue *s2hv1beta1.Queue
 	mtQueue      sync.Mutex
-	mtConfig     sync.Mutex
 	s2hClient    samsahairpc.RPC
 
 	lastAppliedValues       map[string]interface{}
@@ -81,7 +74,7 @@ func NewController(
 	s2hClient samsahairpc.RPC,
 	mgr manager.Manager,
 	queueCtrl internal.QueueController,
-	configMgr internal.ConfigManager,
+	configCtrl internal.ConfigController,
 	teamcityBaseURL string,
 	teamcityUsername string,
 	teamcityPassword string,
@@ -100,8 +93,8 @@ func NewController(
 		namespace:               namespace,
 		authToken:               authToken,
 		s2hClient:               s2hClient,
-		configMgr:               configMgr,
 		queueCtrl:               queueCtrl,
+		configCtrl:              configCtrl,
 		client:                  mgr.GetClient(),
 		helmClient:              helmrelease.New(namespace, mgr.GetClient()),
 		scheme:                  mgr.GetScheme(),
@@ -150,12 +143,6 @@ func (c *controller) process() bool {
 		if c.currentQueue, err = c.queueCtrl.First(); err != nil {
 			c.mtQueue.Unlock()
 			return false
-		} else if c.currentQueue != nil {
-			if err := c.loadConfiguration(); err != nil {
-				logger.Error(err, "cannot load configuration from samsahai")
-				c.mtQueue.Unlock()
-				return false
-			}
 		}
 		c.mtQueue.Unlock()
 	}
@@ -226,7 +213,7 @@ func (c *controller) loadDeployEngines() {
 	// init test runner
 	engines := []internal.DeployEngine{
 		mock.New(),
-		fluxhelm.New(c.configMgr, c.helmClient),
+		fluxhelm.New(c.configCtrl, c.helmClient),
 		helm3.New(c.namespace, true),
 	}
 
@@ -330,7 +317,12 @@ func (c *controller) initQueue(q *s2hv1beta1.Queue) error {
 func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 	deployEngine := c.getDeployEngine(queue)
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedBefore) {
-		for compName := range c.configMgr.GetParentComponents() {
+		parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
+		if err != nil {
+			return err
+		}
+
+		for compName := range parentComps {
 			refName := internal.GenReleaseName(c.teamName, c.namespace, compName)
 			if err := deployEngine.Delete(refName); err != nil {
 				return err
@@ -344,10 +336,15 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 		cleanupTimeout = deployConfig.ComponentCleanupTimeout.Duration
 	}
 
+	parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
+	if err != nil {
+		return err
+	}
+
 	isCleaned, err := WaitForComponentsCleaned(
 		c.client,
 		deployEngine,
-		c.configMgr.GetParentComponents(),
+		parentComps,
 		c.teamName,
 		c.namespace,
 		queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningBeforeStarted),
@@ -371,7 +368,12 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
 	deployEngine := c.getDeployEngine(queue)
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedAfter) {
-		for compName := range c.configMgr.GetParentComponents() {
+		parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
+		if err != nil {
+			return err
+		}
+
+		for compName := range parentComps {
 			refName := internal.GenReleaseName(c.teamName, c.namespace, compName)
 			if err := deployEngine.Delete(refName); err != nil {
 				return err
@@ -385,10 +387,15 @@ func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
 		cleanupTimeout = deployConfig.ComponentCleanupTimeout.Duration
 	}
 
+	parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
+	if err != nil {
+		return err
+	}
+
 	isCleaned, err := WaitForComponentsCleaned(
 		c.client,
 		deployEngine,
-		c.configMgr.GetParentComponents(),
+		parentComps,
 		c.teamName,
 		c.namespace,
 		queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningAfterStarted),
@@ -413,52 +420,23 @@ func (c *controller) cancelQueue(q *s2hv1beta1.Queue) error {
 	return nil
 }
 
-// loadConfiguration loads config from Samsahai Controller
-func (c *controller) loadConfiguration() (err error) {
-	if c.s2hClient == nil {
-		return nil
+func (c *controller) getConfiguration() (*s2hv1beta1.ConfigSpec, error) {
+	config, err := c.getConfigController().Get(c.teamName)
+	if err != nil {
+		return &s2hv1beta1.ConfigSpec{}, err
 	}
 
-	headers := http.Header{}
-	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
-	ctx := context.TODO()
-	ctx, err = twirp.WithHTTPRequestHeaders(ctx, headers)
-	if err != nil {
-		return errors.Wrap(err, "cannot set request header")
-	}
-	config, err := c.s2hClient.GetConfiguration(ctx, &samsahairpc.Team{Name: c.teamName})
-	if err != nil {
-		return errors.Wrap(err, "cannot load configuration from server")
-	}
-
-	var cfg internal.Configuration
-	err = json.Unmarshal(config.Config, &cfg)
-	if err != nil {
-		return errors.Wrap(err, "cannot load configuration from server")
-	}
-
-	c.mtConfig.Lock()
-	c.configMgr.Load(&cfg, config.GitRevision)
-	c.mtConfig.Unlock()
-	return nil
+	return &config.Spec, nil
 }
 
-func (c *controller) getConfiguration() *internal.Configuration {
-	c.mtConfig.Lock()
-	defer c.mtConfig.Unlock()
-	return c.configMgr.Get()
-}
-
-func (c *controller) getConfigManager() internal.ConfigManager {
-	c.mtConfig.Lock()
-	defer c.mtConfig.Unlock()
-	return c.configMgr
+func (c *controller) getConfigController() internal.ConfigController {
+	return c.configCtrl
 }
 
 func WaitForComponentsCleaned(
 	c client.Client,
 	deployEngine internal.DeployEngine,
-	parentComps map[string]*internal.Component,
+	parentComps map[string]*s2hv1beta1.Component,
 	teamName string,
 	namespace string,
 	startCleaningTime *metav1.Time,

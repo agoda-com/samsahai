@@ -3,11 +3,11 @@ package exporter
 import (
 	"log"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -20,8 +20,6 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	"github.com/agoda-com/samsahai/internal/config"
-	"github.com/agoda-com/samsahai/internal/config/git"
 	"github.com/agoda-com/samsahai/internal/util/http"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
@@ -64,7 +62,7 @@ var _ = Describe("Samsahai Exporter", func() {
 	g := NewWithT(GinkgoT())
 	var wgStop *sync.WaitGroup
 	var chStop chan struct{}
-	var configMgr internal.ConfigManager
+	var configCtrl internal.ConfigController
 	var err error
 
 	RegisterMetrics()
@@ -73,19 +71,25 @@ var _ = Describe("Samsahai Exporter", func() {
 		defer GinkgoRecover()
 		defer close(done)
 
-		configMgr, err = config.NewWithGitClient(&git.Client{}, "example", path.Join("..", "..", "..", "test", "data", "wordpress-redis"))
+		configCtrl = newMockConfigCtrl()
 		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(configMgr).NotTo(BeNil())
+		g.Expect(configCtrl).NotTo(BeNil())
 
 		chStop = make(chan struct{})
 
 		mgr, err := manager.New(cfg, manager.Options{Namespace: namespace, MetricsBindAddress: ":8008"})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
-		t := map[string]internal.ConfigManager{
-			"testQTeamName1": configMgr,
+		teamList := &s2hv1beta1.TeamList{
+			Items: []s2hv1beta1.Team{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "testQTeamName1",
+					},
+				},
+			},
 		}
-		q := &s2hv1beta1.Queue{
+		queue := &s2hv1beta1.Queue{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "qName1",
 				Namespace: namespace,
@@ -100,7 +104,7 @@ var _ = Describe("Samsahai Exporter", func() {
 				State:         "waiting",
 			},
 		}
-		ap := &s2hv1beta1.ActivePromotion{
+		activePromotion := &s2hv1beta1.ActivePromotion{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "testAPName1",
 				Namespace: namespace,
@@ -110,9 +114,9 @@ var _ = Describe("Samsahai Exporter", func() {
 			},
 		}
 
-		SetTeamNameMetric(t)
-		SetQueueMetric(q)
-		SetActivePromotionMetric(ap)
+		SetTeamNameMetric(teamList)
+		SetQueueMetric(queue)
+		SetActivePromotionMetric(activePromotion)
 		SetHealthStatusMetric("9.9.9.8", "777888999", 234000)
 
 		wgStop = &sync.WaitGroup{}
@@ -162,3 +166,117 @@ var _ = Describe("Samsahai Exporter", func() {
 		g.Expect(expectedData).To(BeTrue())
 	}, timeout)
 })
+
+type mockConfigCtrl struct{}
+
+func newMockConfigCtrl() internal.ConfigController {
+	return &mockConfigCtrl{}
+}
+
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
+	engine := "flux-helm"
+	deployConfig := s2hv1beta1.ConfigDeploy{
+		Timeout: metav1.Duration{Duration: 5 * time.Minute},
+		Engine:  &engine,
+		TestRunner: &s2hv1beta1.ConfigTestRunner{
+			TestMock: &s2hv1beta1.ConfigTestMock{
+				Result: true,
+			},
+		},
+	}
+	compSource := s2hv1beta1.UpdatingSource("public-registry")
+	redisConfigComp := s2hv1beta1.Component{
+		Name: "redis",
+		Chart: s2hv1beta1.ComponentChart{
+			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Name:       "redis",
+		},
+		Image: s2hv1beta1.ComponentImage{
+			Repository: "bitnami/redis",
+			Pattern:    "5.*debian-9.*",
+		},
+		Source: &compSource,
+		Values: s2hv1beta1.ComponentValues{
+			"image": map[string]interface{}{
+				"repository": "bitnami/redis",
+				"pullPolicy": "IfNotPresent",
+			},
+			"cluster": map[string]interface{}{
+				"enabled": false,
+			},
+			"usePassword": false,
+			"master": map[string]interface{}{
+				"persistence": map[string]interface{}{
+					"enabled": false,
+				},
+			},
+		},
+	}
+	wordpressConfigComp := s2hv1beta1.Component{
+		Name: "wordpress",
+		Chart: s2hv1beta1.ComponentChart{
+			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Name:       "wordpress",
+		},
+		Image: s2hv1beta1.ComponentImage{
+			Repository: "bitnami/wordpress",
+			Pattern:    "5\\.2.*debian-9.*",
+		},
+		Source: &compSource,
+		Dependencies: []*s2hv1beta1.Component{
+			{
+				Name: "mariadb",
+				Image: s2hv1beta1.ComponentImage{
+					Repository: "bitnami/mariadb",
+					Pattern:    "10\\.3.*debian-9.*",
+				},
+			},
+		},
+	}
+
+	mockConfig := &s2hv1beta1.Config{
+		Spec: s2hv1beta1.ConfigSpec{
+			Staging: &s2hv1beta1.ConfigStaging{
+				MaxRetry:   3,
+				Deployment: &deployConfig,
+			},
+			ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+				Timeout:          metav1.Duration{Duration: 10 * time.Minute},
+				TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+				Deployment:       &deployConfig,
+			},
+			Components: []*s2hv1beta1.Component{
+				&redisConfigComp,
+				&wordpressConfigComp,
+			},
+		},
+	}
+
+	return mockConfig, nil
+}
+
+func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	config, _ := c.Get(configName)
+
+	comps := map[string]*s2hv1beta1.Component{
+		"redis":     config.Spec.Components[0],
+		"wordpress": config.Spec.Components[1],
+		"mariadb":   config.Spec.Components[1].Dependencies[0],
+	}
+
+	comps["mariadb"].Parent = "wordpress"
+
+	return comps, nil
+}
+
+func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+	return nil
+}
+
+func (c *mockConfigCtrl) Delete(configName string) error {
+	return nil
+}
