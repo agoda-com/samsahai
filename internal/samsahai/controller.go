@@ -819,14 +819,6 @@ func (c *controller) GetTeams() (v *s2hv1beta1.TeamList, err error) {
 	return v, errors.Wrap(err, "cannot list teams")
 }
 
-//func (c *controller) GetTeamNames() map[string]struct{} {
-//	teams := map[string]struct{}{}
-//	for t := range c.teamConfigs {
-//		teams[t] = struct{}{}
-//	}
-//	return teams
-//}
-
 func (c *controller) GetQueueHistories(namespace string) (v *s2hv1beta1.QueueHistoryList, err error) {
 	v = &s2hv1beta1.QueueHistoryList{}
 	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})
