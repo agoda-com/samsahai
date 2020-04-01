@@ -371,6 +371,15 @@ func GetRole(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
 				},
 				Verbs: []string{"get", "list", "watch"},
 			},
+			{
+				APIGroups: []string{
+					"env.samsahai.io",
+				},
+				Resources: []string{
+					"configs",
+				},
+				Verbs: []string{"get", "list", "watch"},
+			},
 		},
 	}
 
@@ -389,6 +398,56 @@ func GetRoleBinding(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Obj
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "Role",
+			Name:     internal.StagingCtrlName,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      internal.StagingCtrlName,
+				Namespace: namespaceName,
+			},
+		},
+	}
+
+	return &roleBinding
+}
+
+func GetClusterRole(teamComp *s2hv1beta1.Team) runtime.Object {
+	teamName := teamComp.GetName()
+	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
+	role := rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   internal.StagingCtrlName,
+			Labels: defaultLabelsWithVersion,
+		},
+		Rules: []rbacv1.PolicyRule{
+			// samsahai
+			{
+				APIGroups: []string{
+					"env.samsahai.io",
+				},
+				Resources: []string{
+					"configs",
+				},
+				Verbs: []string{"get", "list", "watch"},
+			},
+		},
+	}
+
+	return &role
+}
+
+func GetClusterRoleBinding(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
+	teamName := teamComp.GetName()
+	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
+	roleBinding := rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   internal.StagingCtrlName,
+			Labels: defaultLabelsWithVersion,
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
 			Name:     internal.StagingCtrlName,
 		},
 		Subjects: []rbacv1.Subject{
@@ -473,6 +532,11 @@ func IsK8sObjectChanged(found, target runtime.Object) bool {
 	}
 
 	return false
+}
+
+// TODO: pohfy, remove
+func GenClusterRoleName(namespaceName string) string {
+	return internal.StagingCtrlName + "-" + namespaceName
 }
 
 func isDeploymentChanged(found, target interface{}) bool {

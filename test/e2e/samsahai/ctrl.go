@@ -481,7 +481,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		wgStop.Wait()
 	}, 60)
 
-	It("should successfully promote an active environment", func(done Done) {
+	FIt("should successfully promote an active environment", func(done Done) {
 		defer close(done)
 		ctx := context.TODO()
 		preActiveNs := ""
@@ -534,6 +534,8 @@ var _ = Describe("Main Controller [e2e]", func() {
 			if err != nil {
 				return false, nil
 			}
+
+			// TODO: pohfy, check clusterroles/ clusterrolebinding
 
 			sa := corev1.ServiceAccount{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: stgNamespace}, &sa)
@@ -625,9 +627,10 @@ var _ = Describe("Main Controller [e2e]", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
+			stagingCfgCtrl := configctrl.New(stagingMgr)
 			qctrl := queue.New(preActiveNs, runtimeClient)
 			stagingPreActiveCtrl = staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient,
-				stagingMgr, qctrl, cfgCtrl, "", "", "",
+				stagingMgr, qctrl, stagingCfgCtrl, "", "", "",
 				internal.StagingConfig{})
 			go func() {
 				defer GinkgoRecover()

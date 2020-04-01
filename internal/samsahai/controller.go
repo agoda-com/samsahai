@@ -13,6 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
+	v1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -483,12 +484,31 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 			Value: intstr.FromString(c.configs.TeamcityURL),
 		},
 	}
+
 	k8sObjects := []runtime.Object{
 		k8sobject.GetService(c.scheme, teamComp, namespace),
 		k8sobject.GetServiceAccount(teamComp, namespace),
 		k8sobject.GetRole(teamComp, namespace),
 		k8sobject.GetRoleBinding(teamComp, namespace),
 		k8sobject.GetSecret(c.scheme, teamComp, namespace, secretKVs...),
+	}
+
+	clusterRole := &v1.ClusterRole{}
+	err := c.client.Get(context.TODO(), types.NamespacedName{Name: internal.StagingCtrlName}, clusterRole)
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			return errors.Wrapf(err, "cannot get clusterrole name %s", internal.StagingCtrlName)
+		}
+		k8sObjects = append(k8sObjects, k8sobject.GetClusterRole(teamComp))
+	}
+
+	clusterRoleBinding := &v1.ClusterRoleBinding{}
+	err = c.client.Get(context.TODO(), types.NamespacedName{Name: internal.StagingCtrlName}, clusterRoleBinding)
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			return errors.Wrapf(err, "cannot get clusterrolebinding name %s", internal.StagingCtrlName)
+		}
+		k8sObjects = append(k8sObjects, k8sobject.GetClusterRoleBinding(teamComp, namespace))
 	}
 
 	if teamComp.Spec.StagingCtrl != nil && !(*teamComp.Spec.StagingCtrl).IsDeploy {
@@ -608,6 +628,15 @@ func (c *controller) destroyNamespaces(teamComp *s2hv1beta1.Team, teamNsOpts ...
 		if err := c.destroyAllStableComponents(namespace); err != nil {
 			return errors.Wrap(err, "cannot delete all stable components")
 		}
+
+		// TODO: pohfy, fix this
+		//if err := c.destroyClusterRole(namespace); err != nil {
+		//	return errors.Wrap(err, "cannot delete clusterrole")
+		//}
+		//
+		//if err := c.destroyClusterRoleBinding(namespace); err != nil {
+		//	return errors.Wrap(err, "cannot delete clusterrolebinding")
+		//}
 
 		namespaceObj := corev1.Namespace{}
 		err := c.client.Get(ctx, types.NamespacedName{Name: namespace}, &namespaceObj)
@@ -912,6 +941,33 @@ func getNodeIP(nodes *corev1.NodeList) string {
 func (c *controller) destroyAllStableComponents(namespace string) error {
 	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.StableComponent{}, client.InNamespace(namespace))
 }
+
+// TODO: pohfy
+//func (c *controller) destroyClusterRole(namespace string) error {
+//	ctx := context.TODO()
+//
+//	clusterRoleName := k8sobject.GenClusterRoleName(namespace)
+//	clusterRole := &v1.ClusterRole{}
+//	err := c.client.Get(ctx, types.NamespacedName{Name: clusterRoleName}, clusterRole)
+//	if err != nil {
+//		return errors.Wrapf(err, "cannot get clusterrole name %s", clusterRoleName)
+//	}
+//
+//	return c.client.Delete(ctx, clusterRole)
+//}
+//
+//func (c *controller) destroyClusterRoleBinding(namespace string) error {
+//	ctx := context.TODO()
+//
+//	clusterRoleBindingName := k8sobject.GenClusterRoleName(namespace)
+//	clusterRoleBinding := &v1.ClusterRoleBinding{}
+//	err := c.client.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName}, clusterRoleBinding)
+//	if err != nil {
+//		return errors.Wrapf(err, "cannot get clusterrole name %s", clusterRoleBindingName)
+//	}
+//
+//	return c.client.Delete(ctx, clusterRoleBinding)
+//}
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
