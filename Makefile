@@ -294,11 +294,6 @@ generate-rpc:
 		--proto_path=$$PROTO_SRC_PATH/:./bin/include/ \
 		--twirp_out=$$PROTO_SRC_PATH \
 		--go_out=$$PROTO_SRC_PATH \
-		$$PROTO_SRC_PATH/pkg/staging/rpc/service.proto; \
-	$(PROTOC) \
-		--proto_path=$$PROTO_SRC_PATH/:./bin/include/ \
-		--twirp_out=$$PROTO_SRC_PATH \
-		--go_out=$$PROTO_SRC_PATH \
 		$$PROTO_SRC_PATH/pkg/samsahai/rpc/service.proto;
 
 # Generate swag docs

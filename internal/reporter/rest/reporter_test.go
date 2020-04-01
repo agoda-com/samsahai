@@ -14,7 +14,6 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	"github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/reporter/rest"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
@@ -86,11 +85,11 @@ var _ = Describe("send rest message", func() {
 					"json should be matched")
 			})
 			defer server.Close()
-			configMgr := newConfigMock()
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("")
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
-			err := client.SendActivePromotionStatus(configMgr, atpRpt)
+			err := client.SendActivePromotionStatus(configCtrl, atpRpt)
 			g.Expect(err).To(BeNil(), "request should not thrown any error")
 		})
 
@@ -120,30 +119,28 @@ var _ = Describe("send rest message", func() {
 					"unixTimestamp keys should exist")
 				g.Expect(gjson.GetBytes(body, "teamName").String()).To(Equal(rpcComp.TeamName),
 					"teamName should be matched")
-				g.Expect(gjson.GetBytes(body, "issueType").String()).To(Equal("Image missing"),
+				g.Expect(gjson.GetBytes(body, "issueTypeStr").String()).To(Equal("Image missing"),
 					"issueType should be matched")
-				g.Expect(gjson.GetBytes(body, "component").String()).To(Equal(rpcComp.Name),
-					"component should be matched")
-				g.Expect(gjson.GetBytes(body, "testBuildTypeID").String()).To(Equal("teamcity_buildtypeid"),
+				g.Expect(gjson.GetBytes(body, "testRunner.teamcity.buildTypeID").String()).To(Equal("Teamcity_BuildTypeID"),
 					"testBuildTypeID should be matched")
-				g.Expect(gjson.GetBytes(body, "imageRepository").String()).To(Equal(img.Repository),
+				g.Expect(gjson.GetBytes(body, "testRunner.teamcity.buildURL").String()).To(BeEmpty(),
+					"teamcityURL should be empty")
+				g.Expect(gjson.GetBytes(body, "image.repository").String()).To(Equal(img.Repository),
 					"imageRepository should be matched")
-				g.Expect(gjson.GetBytes(body, "imageTag").String()).To(Equal(img.Tag),
+				g.Expect(gjson.GetBytes(body, "image.tag").String()).To(Equal(img.Tag),
 					"imageTag should be matched")
 				g.Expect(gjson.GetBytes(body, "namespace").String()).To(Equal(rpcComp.Namespace),
 					"namespace should be matched")
-				g.Expect(gjson.GetBytes(body, "teamcityURL").String()).To(BeEmpty(),
-					"teamcityURL should be empty")
 				g.Expect(gjson.GetBytes(body, "isReverify").String()).To(Equal("true"),
 					"isReverify should be matched")
 			})
 
 			defer server.Close()
-			configMgr := newConfigMock()
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("")
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
-			err := client.SendComponentUpgrade(configMgr, comp)
+			err := client.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).To(BeNil(), "request should not thrown any error")
 		})
 
@@ -161,11 +158,11 @@ var _ = Describe("send rest message", func() {
 			})
 
 			defer server.Close()
-			configMgr := newConfigMock()
-			g.Expect(configMgr).ShouldNot(BeNil())
+			configCtrl := newMockConfigCtrl("")
+			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
-			err := client.SendImageMissing(configMgr, img)
+			err := client.SendImageMissing("mock", configCtrl, img)
 			g.Expect(err).To(BeNil(), "request should not thrown any error")
 		})
 	})
@@ -178,15 +175,15 @@ var _ = Describe("send rest message", func() {
 			defer server.Close()
 
 			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
-			configMgr := newConfigMock()
+			configCtrl := newMockConfigCtrl("")
 
-			err := client.SendComponentUpgrade(configMgr, &internal.ComponentUpgradeReporter{})
+			err := client.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{})
 			g.Expect(err).NotTo(BeNil(), "component upgrade request should thrown an error")
 
-			err = client.SendActivePromotionStatus(configMgr, &internal.ActivePromotionReporter{})
+			err = client.SendActivePromotionStatus(configCtrl, &internal.ActivePromotionReporter{})
 			g.Expect(err).NotTo(BeNil(), "active promotion request should thrown an error")
 
-			err = client.SendImageMissing(configMgr, &rpc.Image{})
+			err = client.SendImageMissing("mock", configCtrl, &rpc.Image{})
 			g.Expect(err).NotTo(BeNil(), "image missing request should thrown an error")
 		})
 
@@ -204,17 +201,17 @@ var _ = Describe("send rest message", func() {
 			defer server.Close()
 
 			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
-			configMgr := newNoRestConfig()
+			configCtrl := newMockConfigCtrl("empty")
 
-			err := client.SendComponentUpgrade(configMgr, &internal.ComponentUpgradeReporter{})
+			err := client.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
-			err = client.SendActivePromotionStatus(configMgr, &internal.ActivePromotionReporter{})
+			err = client.SendActivePromotionStatus(configCtrl, &internal.ActivePromotionReporter{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
-			err = client.SendImageMissing(configMgr, &rpc.Image{})
+			err = client.SendImageMissing("mock", configCtrl, &rpc.Image{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 		})
@@ -222,27 +219,45 @@ var _ = Describe("send rest message", func() {
 
 })
 
-func newConfigMock() internal.ConfigManager {
-	return config.NewWithBytes([]byte(`
-report:
-  rest:
-    componentUpgrade:
-      endpoints:
-        - url: http://resturl
-          template: ./testdata/component-upgrade-failure.tpl
-    activePromotion:
-      endpoints:
-        - url: http://resturl
-    imageMissing:
-      endpoints:
-        - url: http://resturl
-`))
+type mockConfigCtrl struct {
+	configType string
 }
 
-func newNoRestConfig() internal.ConfigManager {
-	configMgr := config.NewWithBytes([]byte(`
-report:
-`))
+func newMockConfigCtrl(configType string) internal.ConfigController {
+	return &mockConfigCtrl{configType: configType}
+}
 
-	return configMgr
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
+	switch c.configType {
+	case "empty":
+		return &s2hv1beta1.Config{}, nil
+	default:
+		return &s2hv1beta1.Config{
+			Spec: s2hv1beta1.ConfigSpec{
+				Reporter: &s2hv1beta1.ConfigReporter{
+					Rest: &s2hv1beta1.Rest{
+						ComponentUpgrade: &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+						ActivePromotion:  &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+						ImageMissing:     &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+					},
+				},
+			},
+		}, nil
+	}
+}
+
+func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+	return nil
+}
+
+func (c *mockConfigCtrl) Delete(configName string) error {
+	return nil
 }

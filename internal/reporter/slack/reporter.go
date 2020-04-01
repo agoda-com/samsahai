@@ -18,8 +18,8 @@ const (
 	ReporterName = "slack"
 	username     = "Samsahai Notification"
 
-	componentUpgradeInterval = internal.IntervalRetry
-	componentUpgradeCriteria = internal.CriteriaFailure
+	componentUpgradeInterval = s2hv1beta1.IntervalRetry
+	componentUpgradeCriteria = s2hv1beta1.CriteriaFailure
 )
 
 type reporter struct {
@@ -65,8 +65,8 @@ func (r *reporter) GetName() string {
 }
 
 // SendComponentUpgrade implements the reporter SendComponentUpgrade function
-func (r *reporter) SendComponentUpgrade(configMgr internal.ConfigManager, comp *internal.ComponentUpgradeReporter) error {
-	slackConfig, err := r.getSlackConfig(configMgr)
+func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
+	slackConfig, err := r.getSlackConfig(comp.TeamName, configCtrl)
 	if err != nil {
 		return nil
 	}
@@ -85,17 +85,17 @@ func (r *reporter) SendComponentUpgrade(configMgr internal.ConfigManager, comp *
 		message += r.makeImageMissingListReport(comp.ImageMissingList)
 	}
 
-	return r.post(configMgr, message, internal.ComponentUpgradeType)
+	return r.post(slackConfig, message, internal.ComponentUpgradeType)
 }
 
-func (r *reporter) checkMatchingInterval(slackConfig *internal.Slack, isReverify bool) error {
+func (r *reporter) checkMatchingInterval(slackConfig *s2hv1beta1.Slack, isReverify bool) error {
 	interval := componentUpgradeInterval
 	if slackConfig.ComponentUpgrade != nil && slackConfig.ComponentUpgrade.Interval != "" {
 		interval = slackConfig.ComponentUpgrade.Interval
 	}
 
 	switch interval {
-	case internal.IntervalEveryTime:
+	case s2hv1beta1.IntervalEveryTime:
 	default:
 		if !isReverify {
 			return s2herrors.New("interval was not matched")
@@ -105,15 +105,15 @@ func (r *reporter) checkMatchingInterval(slackConfig *internal.Slack, isReverify
 	return nil
 }
 
-func (r *reporter) checkMatchingCriteria(slackConfig *internal.Slack, status rpc.ComponentUpgrade_UpgradeStatus) error {
+func (r *reporter) checkMatchingCriteria(slackConfig *s2hv1beta1.Slack, status rpc.ComponentUpgrade_UpgradeStatus) error {
 	criteria := componentUpgradeCriteria
 	if slackConfig.ComponentUpgrade != nil && slackConfig.ComponentUpgrade.Criteria != "" {
 		criteria = slackConfig.ComponentUpgrade.Criteria
 	}
 
 	switch criteria {
-	case internal.CriteriaBoth:
-	case internal.CriteriaSuccess:
+	case s2hv1beta1.CriteriaBoth:
+	case s2hv1beta1.CriteriaSuccess:
 		if status != rpc.ComponentUpgrade_UpgradeStatus_SUCCESS {
 			return s2herrors.New("criteria was not matched")
 		}
@@ -127,7 +127,12 @@ func (r *reporter) checkMatchingCriteria(slackConfig *internal.Slack, status rpc
 }
 
 // SendActivePromotionStatus implements the reporter SendActivePromotionStatus function
-func (r *reporter) SendActivePromotionStatus(configMgr internal.ConfigManager, atpRpt *internal.ActivePromotionReporter) error {
+func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigController, atpRpt *internal.ActivePromotionReporter) error {
+	slackConfig, err := r.getSlackConfig(atpRpt.TeamName, configCtrl)
+	if err != nil {
+		return nil
+	}
+
 	message := r.makeActivePromotionStatusReport(atpRpt)
 
 	imageMissingList := atpRpt.ActivePromotionStatus.PreActiveQueue.ImageMissingList
@@ -160,7 +165,7 @@ func (r *reporter) SendActivePromotionStatus(configMgr internal.ConfigManager, a
 		message += r.makeDestroyedPreviousActiveTimeReport(&atpRpt.ActivePromotionStatus)
 	}
 
-	return r.post(configMgr, message, internal.ActivePromotionType)
+	return r.post(slackConfig, message, internal.ActivePromotionType)
 }
 
 func convertImageListToRPCImageList(images []s2hv1beta1.Image) []*rpc.Image {
@@ -176,10 +181,15 @@ func convertImageListToRPCImageList(images []s2hv1beta1.Image) []*rpc.Image {
 }
 
 // SendImageMissing implements the reporter SendImageMissing function
-func (r *reporter) SendImageMissing(configMgr internal.ConfigManager, images *rpc.Image) error {
+func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, images *rpc.Image) error {
+	slackConfig, err := r.getSlackConfig(teamName, configCtrl)
+	if err != nil {
+		return nil
+	}
+
 	message := r.makeImageMissingListReport([]*rpc.Image{images})
 
-	return r.post(configMgr, message, internal.ImageMissingType)
+	return r.post(slackConfig, message, internal.ImageMissingType)
 }
 
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
@@ -285,29 +295,30 @@ func (r *reporter) makeImageMissingListReport(images []*rpc.Image) string {
 	return strings.TrimSpace(template.TextRender("SlackImageMissingList", message, imagesObj))
 }
 
-func (r *reporter) post(configMgr internal.ConfigManager, message string, event internal.EventType) error {
-	slackConfig, err := r.getSlackConfig(configMgr)
-	if err != nil {
-		return nil
-	}
-
+func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event internal.EventType) error {
 	logger.Debug("start sending message to slack channels",
 		"event", event, "channels", slackConfig.Channels)
+	var globalErr error
 	for _, channel := range slackConfig.Channels {
 		if _, _, err := r.slack.PostMessage(channel, message, username); err != nil {
-			return err
+			logger.Error(err, "cannot post message to slack", "channel", channel)
+			globalErr = err
+			continue
 		}
 	}
-	return nil
+	return globalErr
 }
 
-func (r *reporter) getSlackConfig(configMgr internal.ConfigManager) (*internal.Slack, error) {
-	cfg := configMgr.Get()
+func (r *reporter) getSlackConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1beta1.Slack, error) {
+	config, err := configCtrl.Get(teamName)
+	if err != nil {
+		return nil, err
+	}
 
 	// no slack configuration
-	if cfg.Reporter == nil || cfg.Reporter.Slack == nil {
+	if config.Spec.Reporter == nil || config.Spec.Reporter.Slack == nil {
 		return nil, s2herrors.New("slack configuration not found")
 	}
 
-	return cfg.Reporter.Slack, nil
+	return config.Spec.Reporter.Slack, nil
 }

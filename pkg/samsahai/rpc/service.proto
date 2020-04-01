@@ -4,7 +4,6 @@ package samsahai.io.samsahai;
 option go_package = "rpc";
 
 service RPC {
-    rpc GetConfiguration (Team) returns (Configuration);
     rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
     rpc GetMissingVersion (TeamWithCurrentComponent) returns (ImageList);
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
@@ -15,11 +14,6 @@ message Empty {
 
 message Team {
     string name = 1;
-}
-
-message Configuration {
-    bytes config = 1;
-    string gitRevision = 2;
 }
 
 message ComponentUpgrade {

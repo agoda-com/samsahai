@@ -66,7 +66,7 @@ type SamsahaiConfig struct {
 
 	// PostNamespaceCreation defines commands executing after creating s2h namespace
 	PostNamespaceCreation *struct {
-		CommandAndArgs
+		s2hv1beta1.CommandAndArgs
 	} `json:"postNamespaceCreation,omitempty" yaml:"postNamespaceCreation,omitempty"`
 
 	SamsahaiURL        string             `json:"-" yaml:"-"`
@@ -111,11 +111,8 @@ type SamsahaiController interface {
 	// GetTeam returns Team CRD
 	GetTeam(teamName string, teamComp *s2hv1beta1.Team) error
 
-	// GetTeamConfigManagers returns Samsahai configuration from all teams
-	GetTeamConfigManagers() map[string]ConfigManager
-
-	// GetTeamConfigManager returns samsahai configuration from team's github
-	GetTeamConfigManager(teamName string) (ConfigManager, bool)
+	// GetConfigController returns samsahai configuration from config crd
+	GetConfigController() ConfigController
 
 	// GetPlugins returns samsahai plugins
 	GetPlugins() map[string]Plugin
@@ -150,14 +147,11 @@ type SamsahaiController interface {
 	// SetActiveNamespace updates active namespace to team status
 	SetActiveNamespace(teamComp *s2hv1beta1.Team, namespace string) error
 
-	// NotifyGitChanged adds GitInfo to channel for process
-	NotifyGitChanged(updated GitInfo)
-
 	// NotifyComponentChanged adds Component to queue for checking new version
 	NotifyComponentChanged(name, repository string)
 
 	// NotifyActivePromotion sends active promotion status report
-	NotifyActivePromotion(atpRpt *ActivePromotionReporter) error
+	NotifyActivePromotion(atpRpt *ActivePromotionReporter)
 
 	// API
 
@@ -166,9 +160,6 @@ type SamsahaiController interface {
 
 	// GetTeams returns list of teams in Samsahai
 	GetTeams() (*s2hv1beta1.TeamList, error)
-
-	// GetTeamNames returns map of team names in Samsahai
-	GetTeamNames() map[string]struct{}
 
 	// GetQueueHistories returns QueueHistoryList of the namespace
 	GetQueueHistories(namespace string) (*s2hv1beta1.QueueHistoryList, error)
@@ -180,7 +171,7 @@ type SamsahaiController interface {
 	GetQueues(namespace string) (*s2hv1beta1.QueueList, error)
 
 	// GetStableValues returns Stable Values of parent component in team
-	GetStableValues(team *s2hv1beta1.Team, comp *Component) (ComponentValues, error)
+	GetStableValues(team *s2hv1beta1.Team, comp *s2hv1beta1.Component) (s2hv1beta1.ComponentValues, error)
 
 	// GetActivePromotions returns ActivePromotionList by labels
 	GetActivePromotions() (*s2hv1beta1.ActivePromotionList, error)

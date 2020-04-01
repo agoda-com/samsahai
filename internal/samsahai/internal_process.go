@@ -2,14 +2,9 @@ package samsahai
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"sort"
 	"time"
 
-	"github.com/twitchtv/twirp"
-	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,7 +16,6 @@ import (
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
-	stagingrpc "github.com/agoda-com/samsahai/pkg/staging/rpc"
 )
 
 const maxDesiredMappingPerComp = 10
@@ -30,9 +24,6 @@ type changedComponent struct {
 	Name       string
 	Repository string
 }
-
-// updateTeamGit defines which team needs to update git
-type updateTeamGit string
 
 type updateHealth struct {
 }
@@ -45,7 +36,7 @@ type updateTeamDesiredComponent struct {
 	TeamName        string
 	ComponentName   string
 	ComponentSource string
-	ComponentImage  internal.ComponentImage
+	ComponentImage  s2hv1beta1.ComponentImage
 }
 
 func (c *controller) Start(stop <-chan struct{}) {
@@ -67,10 +58,6 @@ func (c *controller) Start(stop <-chan struct{}) {
 	<-stop
 
 	logger.Info("stopping internal process")
-}
-
-func (c *controller) NotifyGitChanged(updated internal.GitInfo) {
-	c.queue.Add(updated)
 }
 
 func (c *controller) NotifyComponentChanged(compName, repository string) {
@@ -96,10 +83,6 @@ func (c *controller) process() bool {
 	defer c.queue.Done(obj)
 
 	switch v := obj.(type) {
-	case internal.GitInfo:
-		err = c.checkGitChanged(v)
-	case updateTeamGit:
-		err = c.updateTeamGit(string(v))
 	case changedComponent:
 		err = c.checkComponentChanged(v)
 	case updateTeamDesiredComponent:
@@ -126,17 +109,21 @@ func (c *controller) process() bool {
 //
 // Component should match both name and repository
 func (c *controller) checkComponentChanged(component changedComponent) error {
-	teamNames := c.getTeamNamesFromConfig()
-	for i := range teamNames {
-		teamName := teamNames[i]
-		config, _ := c.GetTeamConfigManager(teamName)
+	configCtrl := c.GetConfigController()
+	teamList, err := c.GetTeams()
+	if err != nil {
+		return err
+	}
+
+	for _, teamComp := range teamList.Items {
+		teamName := teamComp.Name
 		team := &s2hv1beta1.Team{}
 		if err := c.getTeam(teamName, team); err != nil {
 			logger.Error(err, "cannot get team", "team", teamName)
 			return err
 		}
 
-		comps := config.GetComponents()
+		comps, _ := configCtrl.GetComponents(teamName)
 		for _, comp := range comps {
 			if component.Name != comp.Name || comp.Source == nil {
 				// ignored mismatch or missing source
@@ -245,7 +232,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 
 			if err = c.client.Create(ctx, desiredComp); err != nil {
 				logger.Error(err, "cannot create DesiredComponent",
-					"name", compName, "namespace", compNs)
+					"name", desiredComp, "namespace", compNs)
 			}
 
 			return nil
@@ -270,7 +257,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 		return err
 	}
 
-	// Add matric updateQueueMetric
+	// Add metric updateQueueMetric
 	queue := &s2hv1beta1.Queue{}
 	if err = c.client.Get(ctx, types.NamespacedName{
 		Name:      compName,
@@ -284,133 +271,13 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 }
 
 func (c *controller) sendImageMissingReport(teamName, repo, version string) {
-	configMgr, _ := c.GetTeamConfigManager(teamName)
+	configCtrl := c.GetConfigController()
 	for _, reporter := range c.reporters {
 		img := &rpc.Image{Repository: repo, Tag: version}
-		if err := reporter.SendImageMissing(configMgr, img); err != nil {
+		if err := reporter.SendImageMissing(teamName, configCtrl, img); err != nil {
 			logger.Error(err, "cannot send image missing list report", "team", teamName)
 		}
 	}
-}
-
-// checkGitChanged determines which team's configuration matched with GitInfo.
-//
-// If matched, added to queue.
-func (c *controller) checkGitChanged(updated internal.GitInfo) error {
-	teamNames := c.getTeamNamesFromConfig()
-	for i := range teamNames {
-		teamName := teamNames[i]
-		cfg, ok := c.GetTeamConfigManager(teamName)
-		if !ok || cfg == nil {
-			continue
-		}
-
-		gitInfo := cfg.GetGitInfo()
-
-		// TODO(phantomat) should check fullname instead of name?
-		isRepoNameMatched := gitInfo.Name == "" || gitInfo.Name != updated.Name
-		if isRepoNameMatched {
-			continue
-		}
-
-		isBranchMatched := updated.BranchName != gitInfo.BranchName || (updated.BranchName == "master" && gitInfo.BranchName != "")
-		if !isBranchMatched {
-			continue
-		}
-
-		c.queue.Add(updateTeamGit(teamName))
-	}
-	return nil
-}
-
-// updateTeamGit pulls git to the latest of refs spec,
-// and sent the latest configuration to Staging controller.
-func (c *controller) updateTeamGit(teamName string) error {
-	cfg, ok := c.GetTeamConfigManager(teamName)
-	if !ok || cfg == nil {
-		return nil
-	}
-
-	err := cfg.Sync()
-	if err != nil {
-		if errors.IsErrGitPulling(err) {
-			logger.Debug("still pulling git", "team", teamName)
-			return err
-		} else if errors.IsGitNoErrAlreadyUpToDate(err) {
-			return nil
-		}
-		logger.Error(err, "cannot sync git", "team", teamName)
-		return err
-	}
-
-	// TODO(phantomnat) can check webhook revision after git pull
-
-	team := &s2hv1beta1.Team{}
-	if err = c.getTeam(teamName, team); err != nil {
-		logger.Error(err, "cannot get team", "team", teamName)
-		return err
-	}
-
-	gitRevision := cfg.GetGitLatestRevision()
-	msg := fmt.Sprintf("with revision %s", gitRevision)
-	team.Status.SetCondition(
-		s2hv1beta1.TeamGitCheckoutUpToDate,
-		corev1.ConditionTrue,
-		fmt.Sprintf("git pulling is success %s", msg),
-	)
-	if err := c.updateTeam(team); err != nil {
-		return errors.Wrapf(err, "cannot update team conditions when git pulling success, team %s", teamName)
-	}
-
-	// create gRPC connection with Staging controller
-	stagingURI := fmt.Sprintf("http://%s.%s.svc.%s:%d",
-		internal.StagingCtrlName,
-		team.Status.Namespace.Staging,
-		c.configs.ClusterDomain,
-		internal.StagingDefaultPort)
-
-	// override endpoint from configuration
-	if team.Spec.StagingCtrl != nil && (*team.Spec.StagingCtrl).Endpoint != "" {
-		stagingURI = (*team.Spec.StagingCtrl).Endpoint
-	}
-	stagingRPC := stagingrpc.NewRPCProtobufClient(stagingURI, &http.Client{})
-
-	headers := make(http.Header)
-	headers.Set(internal.SamsahaiAuthHeader, c.configs.SamsahaiCredential.InternalAuthToken)
-	ctx := context.TODO()
-	ctx, _ = twirp.WithHTTPRequestHeaders(ctx, headers)
-
-	configBytes, err := json.Marshal(cfg.Get())
-	if err != nil {
-		logger.Error(err, "cannot marshal configuration", "team", teamName)
-		return err
-	}
-
-	_, err = stagingRPC.UpdateConfiguration(ctx, &stagingrpc.Configuration{
-		Config:      configBytes,
-		GitRevision: gitRevision,
-	})
-	if err != nil {
-		if twerr, ok := err.(twirp.Error); ok {
-			logger.Error(twerr, "cannot call staging for update configuration",
-				"team", teamName,
-				"namespace", team.Status.Namespace.Staging,
-				"stagingURI", stagingURI,
-				"errMsg", twerr.Msg(),
-				"errCode", twerr.Code(),
-				"errMetaBody", twerr.Meta("body"),
-				"errMetaStatusCode", twerr.Meta("status_code"),
-			)
-			return err
-		}
-		logger.Error(err, "cannot call staging for update configuration ",
-			"team", teamName,
-			"namespace", team.Status.Namespace.Staging,
-			"stagingURI", stagingURI)
-		return err
-	}
-
-	return nil
 }
 
 func (c *controller) QueueLen() int {
@@ -452,9 +319,11 @@ func convertDesiredMapToDesiredTimeList(desiredMap map[string]s2hv1beta1.Desired
 }
 
 func (c *controller) exportTeamMetric() error {
-	//team name
-	exporter.SetTeamNameMetric(c.teamConfigs)
-
+	teamList, err := c.GetTeams()
+	if err != nil {
+		return err
+	}
+	exporter.SetTeamNameMetric(teamList)
 	return nil
 }
 

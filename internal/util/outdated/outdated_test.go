@@ -9,7 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
-	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
@@ -89,7 +88,7 @@ var _ = Describe("set outdated duration when input objects are empty", func() {
 
 var _ = Describe("set outdated duration when active stable version is eq to latest desired version", func() {
 	g := NewGomegaWithT(GinkgoT())
-	cfg := &internal.Configuration{}
+	cfg := &s2hv1beta1.ConfigSpec{}
 
 	It("should return outdated duration as zero", func() {
 		var comp1, repoComp1, v110 = "comp1", "repo/comp1", "1.1.0"
@@ -184,9 +183,9 @@ var _ = Describe("set outdated duration when active stable version is eq to late
 
 var _ = Describe("set outdated duration when active stable version is not eq to latest desired version", func() {
 	g := NewGomegaWithT(GinkgoT())
-	cfg := &internal.Configuration{
-		ActivePromotion: &internal.ConfigActivePromotion{
-			OutdatedNotification: &internal.OutdatedNotification{},
+	cfg := &s2hv1beta1.ConfigSpec{
+		ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+			OutdatedNotification: &s2hv1beta1.OutdatedNotification{},
 		},
 	}
 
@@ -420,9 +419,9 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 
 var _ = Describe("set outdated duration when exceed duration configuration is 24h", func() {
 	g := NewGomegaWithT(GinkgoT())
-	cfg := &internal.Configuration{
-		ActivePromotion: &internal.ConfigActivePromotion{
-			OutdatedNotification: &internal.OutdatedNotification{
+	cfg := &s2hv1beta1.ConfigSpec{
+		ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+			OutdatedNotification: &s2hv1beta1.OutdatedNotification{
 				ExceedDuration: metav1.Duration{Duration: 24 * time.Hour},
 			},
 		},
@@ -527,9 +526,9 @@ var _ = Describe("set outdated duration when exceed duration configuration is 24
 
 var _ = Describe("calculate outdated duration without weekend duration", func() {
 	g := NewGomegaWithT(GinkgoT())
-	cfg := &internal.Configuration{
-		ActivePromotion: &internal.ConfigActivePromotion{
-			OutdatedNotification: &internal.OutdatedNotification{
+	cfg := &s2hv1beta1.ConfigSpec{
+		ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+			OutdatedNotification: &s2hv1beta1.OutdatedNotification{
 				ExcludeWeekendCalculation: true,
 			},
 		},
@@ -578,7 +577,7 @@ var _ = Describe("calculate outdated duration without weekend duration", func() 
 	})
 })
 
-func newMock(cfg *internal.Configuration, desiredComps map[string]map[string]s2hv1beta1.DesiredImageTime, stableComps []s2hv1beta1.StableComponent, nowMockTime time.Time) *Outdated {
+func newMock(cfg *s2hv1beta1.ConfigSpec, desiredComps map[string]map[string]s2hv1beta1.DesiredImageTime, stableComps []s2hv1beta1.StableComponent, nowMockTime time.Time) *Outdated {
 	o := &Outdated{
 		cfg:                   cfg,
 		desiredCompsImageTime: desiredComps,

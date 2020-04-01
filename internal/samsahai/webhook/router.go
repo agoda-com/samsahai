@@ -34,7 +34,6 @@ func (h *handler) bind(r *httprouter.Router) {
 	r.GET(s2h.URIVersion, h.getVersion)
 	r.GET(s2h.URIHealthz, h.getHealthz)
 
-	r.POST("/webhook/github", h.githubWebhook)
 	r.POST("/webhook/component", h.newComponentWebhook)
 
 	// route from plugins

@@ -16,7 +16,6 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/julienschmidt/httprouter v1.2.0
-	github.com/jvsteiner/multilock v0.0.0-20190621192552-684f2fa3399f
 	github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 // indirect
 	github.com/lusis/slack-test v0.0.0-20180109053238-3c758769bfa6 // indirect
 	github.com/nlopes/slack v0.5.0
@@ -39,7 +38,6 @@ require (
 	golang.org/x/sys v0.0.0-20200107162124-548cf772de50 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
-	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 	helm.sh/helm/v3 v3.0.2
 	k8s.io/api v0.17.0

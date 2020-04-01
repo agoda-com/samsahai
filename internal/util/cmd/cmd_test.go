@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/agoda-com/samsahai/internal"
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
 
@@ -21,7 +21,7 @@ var _ = Describe("shell command", func() {
 
 	Describe("success path", func() {
 		It("should execute command with single argument correctly", func() {
-			cmdObj := &internal.CommandAndArgs{
+			cmdObj := &s2hv1beta1.CommandAndArgs{
 				Command: []string{"/bin/sh", "-c"},
 				Args:    []string{"echo hello with newline"},
 			}
@@ -35,7 +35,7 @@ var _ = Describe("shell command", func() {
 		})
 
 		It("should execute command with multiple arguments correctly", func() {
-			cmdObj := &internal.CommandAndArgs{
+			cmdObj := &s2hv1beta1.CommandAndArgs{
 				Command: []string{"/bin/echo"},
 				Args:    []string{"-n", "hello without newline"},
 			}
@@ -49,7 +49,7 @@ var _ = Describe("shell command", func() {
 		})
 
 		It("should execute command with multi-line arguments correctly", func() {
-			cmdObj := &internal.CommandAndArgs{
+			cmdObj := &s2hv1beta1.CommandAndArgs{
 				Command: []string{"/bin/sh", "-c"},
 				Args:    []string{"/bin/echo hello\n/bin/echo -n world"},
 			}
@@ -63,7 +63,7 @@ var _ = Describe("shell command", func() {
 		})
 
 		It("should execute command without argument correctly", func() {
-			cmdObj := &internal.CommandAndArgs{
+			cmdObj := &s2hv1beta1.CommandAndArgs{
 				Command: []string{"/bin/sh", "-c", "/bin/echo hello\n/bin/echo -n world"},
 			}
 
@@ -76,7 +76,7 @@ var _ = Describe("shell command", func() {
 		})
 
 		It("should execute command from file correctly", func() {
-			cmdObj := &internal.CommandAndArgs{
+			cmdObj := &s2hv1beta1.CommandAndArgs{
 				Command: []string{"/bin/sh", "./testdata/test.sh"},
 			}
 
@@ -90,7 +90,7 @@ var _ = Describe("shell command", func() {
 
 	Describe("failure path", func() {
 		It("should fail to execute command if not define command", func() {
-			cmdObj := &internal.CommandAndArgs{
+			cmdObj := &s2hv1beta1.CommandAndArgs{
 				Args: []string{"echo hello with newline"},
 			}
 

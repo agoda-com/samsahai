@@ -100,7 +100,7 @@ func (c *controller) destroyActiveEnvironment(ctx context.Context, atpComp *s2hv
 
 func (c *controller) ensureDestroyEnvironment(ctx context.Context, envType envType, teamName, ns string, startedCleanupTime *metav1.Time) error {
 	if err := c.deleteAllComponentsInNamespace(teamName, ns, startedCleanupTime); err != nil {
-		if s2herrors.IsDeletingReleases(err) || s2herrors.IsLoadingConfiguration(err) {
+		if s2herrors.IsDeletingReleases(err) {
 			return s2herrors.ErrEnsureNamespaceDestroyed
 		}
 		return err
@@ -158,25 +158,28 @@ func (c *controller) ensureNamespaceDestroyed(ctx context.Context, teamName, ns 
 }
 
 func (c *controller) deleteAllComponentsInNamespace(teamName, ns string, startedCleanupTime *metav1.Time) error {
-	configMgr, err := c.getTeamConfiguration(teamName)
+	configCtrl := c.s2hCtrl.GetConfigController()
+
+	deployEngine := c.getDeployEngine(teamName, ns, configCtrl)
+
+	parentComps, err := configCtrl.GetParentComponents(teamName)
 	if err != nil {
 		return err
 	}
-	deployEngine := c.getDeployEngine(configMgr, ns)
 
-	for compName := range configMgr.GetParentComponents() {
+	for compName := range parentComps {
 		refName := internal.GenReleaseName(teamName, ns, compName)
 		if err := deployEngine.Delete(refName); err != nil {
 			return err
 		}
 	}
 
-	cleanupTimeout := c.getComponentCleanupTimeout(configMgr)
+	cleanupTimeout := c.getComponentCleanupTimeout(teamName, configCtrl)
 
 	ok, err := staging.WaitForComponentsCleaned(
 		c.client,
 		deployEngine,
-		configMgr.GetParentComponents(),
+		parentComps,
 		teamName,
 		ns,
 		startedCleanupTime,
@@ -192,33 +195,43 @@ func (c *controller) deleteAllComponentsInNamespace(teamName, ns string, started
 	return nil
 }
 
-func (c *controller) getComponentCleanupTimeout(configMgr internal.ConfigManager) *metav1.Duration {
-	cfg := configMgr.Get()
-	atpConfig := cfg.ActivePromotion
+func (c *controller) getComponentCleanupTimeout(teamName string, configCtrl internal.ConfigController) *metav1.Duration {
+	cleanupTimeout := &metav1.Duration{Duration: 15 * time.Minute}
+
+	config, err := configCtrl.Get(teamName)
+	if err != nil {
+		return cleanupTimeout
+	}
+
+	atpConfig := config.Spec.ActivePromotion
 
 	if atpConfig == nil || atpConfig.Deployment == nil {
-		return &metav1.Duration{Duration: 15 * time.Minute}
+		return cleanupTimeout
 	}
 
 	return &atpConfig.Deployment.ComponentCleanupTimeout
 }
 
-func (c *controller) getDeployEngine(configMgr internal.ConfigManager, ns string) internal.DeployEngine {
+func (c *controller) getDeployEngine(teamName, ns string, configCtrl internal.ConfigController) internal.DeployEngine {
 	var e string
-	cfg := configMgr.Get()
-	atpConfig := cfg.ActivePromotion
+	config, err := configCtrl.Get(teamName)
+	if err != nil {
+		return mock.New()
+	}
+
+	atpConfig := config.Spec.ActivePromotion
 
 	if atpConfig == nil || atpConfig.Deployment == nil || atpConfig.Deployment.Engine == nil || *atpConfig.Deployment.Engine == "" {
 		e = mock.EngineName
 	} else {
-		e = *cfg.ActivePromotion.Deployment.Engine
+		e = *config.Spec.ActivePromotion.Deployment.Engine
 	}
 
 	var engine internal.DeployEngine
 
 	switch e {
 	case fluxhelm.EngineName:
-		engine = fluxhelm.New(configMgr, helmrelease.New(ns, c.client))
+		engine = fluxhelm.New(configCtrl, helmrelease.New(ns, c.client))
 	case helm3.EngineName:
 		engine = helm3.New(ns, false)
 	default:

@@ -22,21 +22,21 @@ func (r *reporterMock) GetName() string {
 }
 
 // SendMessage implements the reporter SendMessage function
-func (r *reporterMock) SendMessage(configMgr internal.ConfigManager, message string) error {
+func (r *reporterMock) SendMessage(configCtrl internal.ConfigController, message string) error {
 	return nil
 }
 
 // SendComponentUpgrade implements the reporter SendComponentUpgrade function
-func (r *reporterMock) SendComponentUpgrade(configMgr internal.ConfigManager, component *internal.ComponentUpgradeReporter) error {
+func (r *reporterMock) SendComponentUpgrade(configCtrl internal.ConfigController, component *internal.ComponentUpgradeReporter) error {
 	return nil
 }
 
 // SendActivePromotionStatus implements the reporter SendActivePromotionStatus function
-func (r *reporterMock) SendActivePromotionStatus(configMgr internal.ConfigManager, atpRpt *internal.ActivePromotionReporter) error {
+func (r *reporterMock) SendActivePromotionStatus(configCtrl internal.ConfigController, atpRpt *internal.ActivePromotionReporter) error {
 	return nil
 }
 
 // SendImageMissing implements the reporter SendImageMissingList function
-func (r *reporterMock) SendImageMissing(configMgr internal.ConfigManager, images *rpc.Image) error {
+func (r *reporterMock) SendImageMissing(teamName string, configCtrl internal.ConfigController, images *rpc.Image) error {
 	return nil
 }

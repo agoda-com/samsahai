@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,7 +20,6 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	s2h "github.com/agoda-com/samsahai/internal"
-	s2hconfig "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/samsahai"
 	"github.com/agoda-com/samsahai/internal/util"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
@@ -68,17 +68,15 @@ var _ = Describe("", func() {
 
 	BeforeEach(func(done Done) {
 		defer close(done)
-		configMgr, err := s2hconfig.NewWithGitClient(nil, teamName, path.Join("..", "..", "..", "..", "test", "data", "wordpress-redis"))
-		g.Expect(err).NotTo(HaveOccurred())
+		configCtrl := newMockConfigCtrl()
 		s2hConfig := s2h.SamsahaiConfig{SamsahaiCredential: s2h.SamsahaiCredential{InternalAuthToken: "123456"}}
-		s2hCtrl = samsahai.New(nil, namespace, s2hConfig,
+		s2hCtrl = samsahai.New(nil, namespace, s2hConfig, configCtrl,
 			samsahai.WithClient(crClient),
-			samsahai.WithConfigManager(teamName, configMgr),
 			samsahai.WithDisableLoaders(true, true, true),
 			samsahai.WithScheme(scheme.Scheme))
 		check = New(s2hCtrl)
 
-		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "..", "test", "data", "github", "team.yaml"))
+		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "..", "test", "data", "team", "team.yaml"))
 		g.Expect(err).NotTo(HaveOccurred())
 		obj, _ := util.MustParseYAMLtoRuntimeObject(yamlTeam)
 
@@ -152,3 +150,118 @@ var _ = Describe("", func() {
 		})
 	})
 })
+
+type mockConfigCtrl struct{}
+
+func newMockConfigCtrl() s2h.ConfigController {
+	return &mockConfigCtrl{}
+}
+
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
+	engine := "flux-helm"
+	deployConfig := s2hv1beta1.ConfigDeploy{
+		Timeout: metav1.Duration{Duration: 5 * time.Minute},
+		Engine:  &engine,
+		TestRunner: &s2hv1beta1.ConfigTestRunner{
+			TestMock: &s2hv1beta1.ConfigTestMock{
+				Result: true,
+			},
+		},
+	}
+	compSource := s2hv1beta1.UpdatingSource("public-registry")
+	redisConfigComp := s2hv1beta1.Component{
+		Name: "redis",
+		Chart: s2hv1beta1.ComponentChart{
+			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Name:       "redis",
+		},
+		Image: s2hv1beta1.ComponentImage{
+			Repository: "bitnami/redis",
+			Pattern:    "5.*debian-9.*",
+		},
+		Source: &compSource,
+		Values: s2hv1beta1.ComponentValues{
+			"image": map[string]interface{}{
+				"repository": "bitnami/redis",
+				"pullPolicy": "IfNotPresent",
+			},
+			"cluster": map[string]interface{}{
+				"enabled": false,
+			},
+			"usePassword": false,
+			"master": map[string]interface{}{
+				"persistence": map[string]interface{}{
+					"enabled": false,
+				},
+			},
+		},
+	}
+	wordpressConfigComp := s2hv1beta1.Component{
+		Name: "wordpress",
+		Chart: s2hv1beta1.ComponentChart{
+			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Name:       "wordpress",
+		},
+		Image: s2hv1beta1.ComponentImage{
+			Repository: "bitnami/wordpress",
+			Pattern:    "5\\.2.*debian-9.*",
+		},
+		Source: &compSource,
+		Dependencies: []*s2hv1beta1.Component{
+			{
+				Name: "mariadb",
+				Image: s2hv1beta1.ComponentImage{
+					Repository: "bitnami/mariadb",
+					Pattern:    "10\\.3.*debian-9.*",
+				},
+				Source: &compSource,
+			},
+		},
+	}
+
+	mockConfig := &s2hv1beta1.Config{
+		Spec: s2hv1beta1.ConfigSpec{
+			Staging: &s2hv1beta1.ConfigStaging{
+				MaxRetry:   3,
+				Deployment: &deployConfig,
+			},
+			ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+				Timeout:          metav1.Duration{Duration: 10 * time.Minute},
+				TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+				Deployment:       &deployConfig,
+			},
+			Components: []*s2hv1beta1.Component{
+				&redisConfigComp,
+				&wordpressConfigComp,
+			},
+		},
+	}
+
+	return mockConfig, nil
+}
+
+func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	config, _ := c.Get(configName)
+
+	comps := map[string]*s2hv1beta1.Component{
+		"redis":     config.Spec.Components[0],
+		"wordpress": config.Spec.Components[1],
+		"mariadb":   config.Spec.Components[1].Dependencies[0],
+	}
+
+	comps["mariadb"].Parent = "wordpress"
+
+	return comps, nil
+}
+
+func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+	return nil
+}
+
+func (c *mockConfigCtrl) Delete(configName string) error {
+	return nil
+}

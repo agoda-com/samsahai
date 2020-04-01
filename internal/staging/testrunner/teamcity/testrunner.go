@@ -108,7 +108,7 @@ func (t *testRunner) GetName() string {
 }
 
 // Trigger implements the staging testRunner Trigger function
-func (t *testRunner) Trigger(testConfig *internal.ConfigTestRunner, currentQueue *v1beta1.Queue) error {
+func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) error {
 	if testConfig == nil {
 		return errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
@@ -204,7 +204,7 @@ func (t *testRunner) Trigger(testConfig *internal.ConfigTestRunner, currentQueue
 }
 
 // GetResult implements the staging testRunner GetResult function
-func (t *testRunner) GetResult(testConfig *internal.ConfigTestRunner, currentQueue *v1beta1.Queue) (isResultSuccess bool, isBuildFinished bool, err error) {
+func (t *testRunner) GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) (isResultSuccess bool, isBuildFinished bool, err error) {
 	if testConfig == nil {
 		return false, false, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
 			"test configuration should not be nil. queue: %s", currentQueue.Name)

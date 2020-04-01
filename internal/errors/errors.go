@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	pkgerrors "github.com/pkg/errors"
-	"gopkg.in/src-d/go-git.v4"
 )
 
 const (
@@ -18,9 +17,6 @@ const (
 	ErrImageVersionNotFound      = Error("image version not found")
 	ErrNoDesiredComponentVersion = Error("no desired component version")
 
-	// ErrComponentMissingArgs indicates that some component arguments are missing
-	ErrComponentMissingArgs = Error("cannot new component: component name and current version should not be empty")
-
 	ErrTeamNotFound               = Error("team not found")
 	ErrTeamNamespaceStillCreating = Error("still creating namespace")
 	ErrTeamNamespaceStillExists   = Error("destroyed namespace still exists")
@@ -33,28 +29,19 @@ const (
 	ErrEnsureActivePromoted           = Error("active environment has been being promoted")
 	ErrEnsureComponentDeployed        = Error("components has been being deployed")
 	ErrEnsureComponentTested          = Error("components has been being tested")
-	ErrLoadConfiguration              = Error("cannot load configuration")
-	ErrLoadingConfiguration           = Error("configuration has been being loaded")
 	ErrDeletingReleases               = Error("deleting releases")
 	ErrForceDeletingComponents        = Error("force deleting components")
 	ErrRollingBackActivePromotion     = Error("rolling back active promotion process")
 
-	ErrGitCloneTimeout = Error("git clone timeout")
-	ErrGitPullTimeout  = Error("git pull timeout")
-	ErrGitPushTimeout  = Error("git push timeout")
-
-	ErrGitDirectoryNotFound = Error("git directory not found")
-	ErrGitCloning           = Error("still cloning the repository")
-	ErrGitPulling           = Error("still pulling the repository")
-
-	ErrUnauthorized        = Error("unauthorized")
-	ErrAuthTokenNotFound   = Error("auth token not found")
-	ErrInvalidJSONData     = Error("invalid json data")
-	ErrCannotMarshalJSON   = Error("cannot marshal to json")
-	ErrCannotMarshalYAML   = Error("cannot marshal to yaml")
-	ErrCannotUnmarshalJSON = Error("cannot unmarshal from json")
+	ErrUnauthorized      = Error("unauthorized")
+	ErrAuthTokenNotFound = Error("auth token not found")
+	ErrInvalidJSONData   = Error("invalid json data")
+	ErrCannotMarshalJSON = Error("cannot marshal to json")
+	ErrCannotMarshalYAML = Error("cannot marshal to yaml")
 
 	ErrTestConfigurationNotFound = Error("test configuration not found")
+
+	ErrEnsureConfigDestroyed = Error("config been being destroyed")
 )
 
 var (
@@ -69,10 +56,6 @@ type Error string
 
 // Error overrides error
 func (e Error) Error() string { return string(e) }
-
-//func HTTPError(errCode int) error {
-//	return fmt.Errorf("error status code %d - %s", errCode, http.StatusText(errCode))
-//}
 
 func IsImageNotFound(err error) bool {
 	return ErrImageVersionNotFound.Error() == err.Error()
@@ -118,29 +101,9 @@ func IsEnsuringNamespaceDestroyed(err error) bool {
 	return ErrEnsureNamespaceDestroyed.Error() == err.Error()
 }
 
-// IsErrGitCloning checks git still cloning
-func IsErrGitCloning(err error) bool {
-	return ErrGitCloning.Error() == err.Error()
-}
-
-// IsErrGitCloning checks git still pulling
-func IsErrGitPulling(err error) bool {
-	return ErrGitPulling.Error() == err.Error()
-}
-
-// IsGitNoErrAlreadyUpToDate checks git is update date
-func IsGitNoErrAlreadyUpToDate(err error) bool {
-	return git.NoErrAlreadyUpToDate.Error() == err.Error()
-}
-
 // IsErrRequestTimeout checks request timeout
 func IsErrRequestTimeout(err error) bool {
 	return ErrRequestTimeout.Error() == err.Error()
-}
-
-// IsLoadingConfiguration checks configuration still loading
-func IsLoadingConfiguration(err error) bool {
-	return ErrLoadingConfiguration.Error() == err.Error()
 }
 
 // IsDeletingReleases checks releases have been deleting
@@ -166,4 +129,9 @@ func IsErrRollbackActivePromotionTimeout(err error) bool {
 // IsRollingBackActivePromotion checks active promotion is rolling back
 func IsRollingBackActivePromotion(err error) bool {
 	return ErrRollingBackActivePromotion.Error() == err.Error()
+}
+
+// IsEnsuringConfigDestroyed checks ensuring config destroyed
+func IsEnsuringConfigDestroyed(err error) bool {
+	return ErrEnsureConfigDestroyed.Error() == err.Error()
 }

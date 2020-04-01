@@ -14,7 +14,7 @@ const (
 	EngineName = "mock"
 )
 
-type CreateCallbackFn func(refName string, comp *internal.Component, parentComp *internal.Component, values map[string]interface{})
+type CreateCallbackFn func(refName string, comp *v1beta1.Component, parentComp *v1beta1.Component, values map[string]interface{})
 type DeleteCallbackFn func(refName string)
 
 type engine struct {
@@ -37,8 +37,8 @@ func NewWithCallback(creFn CreateCallbackFn, delFn DeleteCallbackFn) internal.De
 
 func (e *engine) Create(
 	refName string,
-	comp *internal.Component,
-	parentComp *internal.Component,
+	comp *v1beta1.Component,
+	parentComp *v1beta1.Component,
 	values map[string]interface{},
 ) error {
 	if e.createFn != nil {

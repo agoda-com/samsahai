@@ -12,7 +12,7 @@ type DeployEngine interface {
 	GetValues() (map[string][]byte, error)
 
 	// Create creates environment
-	Create(refName string, comp *Component, parentComp *Component, values map[string]interface{}) error
+	Create(refName string, comp *v1beta1.Component, parentComp *v1beta1.Component, values map[string]interface{}) error
 
 	// Delete deletes environment
 	Delete(refName string) error

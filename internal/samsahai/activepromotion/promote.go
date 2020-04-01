@@ -47,9 +47,6 @@ func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv
 		"Destroying the previous active environment")
 
 	if err := c.runPostActive(ctx, atpComp); err != nil {
-		if s2herrors.IsLoadingConfiguration(err) {
-			return s2herrors.ErrEnsureActivePromoted
-		}
 		return err
 	}
 

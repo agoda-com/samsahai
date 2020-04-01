@@ -7,7 +7,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
-	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 )
 
@@ -40,9 +39,9 @@ func RegisterMetrics() {
 	metrics.Registry.MustRegister(HealthStatusMetric)
 }
 
-func SetTeamNameMetric(teamList map[string]internal.ConfigManager) {
-	for teamName := range teamList {
-		TeamMetric.WithLabelValues(teamName).Set(1)
+func SetTeamNameMetric(teamList *s2hv1beta1.TeamList) {
+	for _, teamComp := range teamList.Items {
+		TeamMetric.WithLabelValues(teamComp.Name).Set(1)
 	}
 }
 

@@ -45,6 +45,7 @@ import (
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	docs2 "github.com/agoda-com/samsahai/docs"
 	s2h "github.com/agoda-com/samsahai/internal"
+	configctrl "github.com/agoda-com/samsahai/internal/config"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/samsahai"
 	"github.com/agoda-com/samsahai/internal/samsahai/activepromotion"
@@ -172,7 +173,8 @@ func startCtrlCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
-			s2hCtrl := samsahai.New(mgr, namespace, configs)
+			configCtrl := configctrl.New(mgr)
+			s2hCtrl := samsahai.New(mgr, namespace, configs, configCtrl)
 			activepromotion.New(mgr, s2hCtrl, configs)
 			stablecomponent.New(mgr, s2hCtrl)
 
