@@ -163,5 +163,5 @@ func (c *controller) updateQueueWithState(q *s2hv1beta1.Queue, state s2hv1beta1.
 }
 
 func (c *controller) genReleaseName(comp *s2hv1beta1.Component) string {
-	return internal.GenReleaseName(c.teamName, c.namespace, comp.Name)
+	return internal.GenReleaseName(c.namespace, comp.Name)
 }

@@ -319,7 +319,7 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 		}
 
 		for compName := range parentComps {
-			refName := internal.GenReleaseName(c.teamName, c.namespace, compName)
+			refName := internal.GenReleaseName(c.namespace, compName)
 			if err := deployEngine.Delete(refName); err != nil {
 				return err
 			}
@@ -369,7 +369,7 @@ func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
 		}
 
 		for compName := range parentComps {
-			refName := internal.GenReleaseName(c.teamName, c.namespace, compName)
+			refName := internal.GenReleaseName(c.namespace, compName)
 			if err := deployEngine.Delete(refName); err != nil {
 				return err
 			}
@@ -447,7 +447,7 @@ func WaitForComponentsCleaned(
 	}
 
 	for compName := range parentComps {
-		refName := internal.GenReleaseName(teamName, namespace, compName)
+		refName := internal.GenReleaseName(namespace, compName)
 		selectors := deployEngine.GetLabelSelectors(refName)
 		listOpt := &client.ListOptions{Namespace: namespace, LabelSelector: labels.SelectorFromSet(selectors)}
 		log := logger.WithValues(
