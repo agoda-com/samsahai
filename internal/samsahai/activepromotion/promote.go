@@ -14,7 +14,7 @@ import (
 
 func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
 	teamName := atpComp.Name
-	targetNs := atpComp.Status.TargetNamespace
+	targetNs := c.getTargetNamespace(atpComp)
 	prevNs := atpComp.Status.PreviousActiveNamespace
 
 	if err := queue.DeletePreActiveQueue(c.client, targetNs); err != nil {

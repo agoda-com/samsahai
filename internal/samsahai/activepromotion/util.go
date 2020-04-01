@@ -14,6 +14,22 @@ import (
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 )
 
+func (c *controller) getTargetNamespace(atpComp *s2hv1beta1.ActivePromotion) string {
+	if atpComp.Status.TargetNamespace == "" {
+		logger.Warn("target namespace has not been set, getting namespace from team", "team",
+			atpComp.Name)
+		teamComp, err := c.getTeam(context.TODO(), atpComp.Name)
+		if err != nil {
+			logger.Error(err, "cannot pre-active namespace from team", "team", atpComp.Name)
+			return ""
+		}
+
+		return teamComp.Status.Namespace.PreActive
+	}
+
+	return atpComp.Status.TargetNamespace
+}
+
 func (c *controller) updateActivePromotion(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
 	if err := c.client.Update(ctx, atpComp); err != nil {
 		return errors.Wrapf(err, "cannot update activepromotion %s", atpComp.Name)

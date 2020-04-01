@@ -12,7 +12,7 @@ import (
 
 func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
 	teamName := atpComp.Name
-	targetNs := atpComp.Status.TargetNamespace
+	targetNs := c.getTargetNamespace(atpComp)
 	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs)
 	if err != nil {
 		return errors.Wrapf(err, "cannot ensure pre-active components, namespace %s", targetNs)

@@ -23,7 +23,7 @@ func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *
 
 	now := metav1.Now()
 	atpLabels := internal.GetDefaultLabels(atpComp.Name)
-	atpLabels["namespace"] = atpComp.Status.TargetNamespace
+	atpLabels["namespace"] = c.getTargetNamespace(atpComp)
 
 	history := &s2hv1beta1.ActivePromotionHistory{
 		ObjectMeta: metav1.ObjectMeta{

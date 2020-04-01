@@ -47,7 +47,7 @@ func (c *controller) runPostActive(ctx context.Context, atpComp *s2hv1beta1.Acti
 }
 
 func (c *controller) sendReport(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
-	currentNs := atpComp.Status.TargetNamespace
+	currentNs := c.getTargetNamespace(atpComp)
 	if atpComp.Status.Result != s2hv1beta1.ActivePromotionSuccess {
 		currentNs = atpComp.Status.PreviousActiveNamespace
 		if atpComp.Status.DemotionStatus == s2hv1beta1.ActivePromotionDemotionFailure {
@@ -87,7 +87,7 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta
 		return err
 	}
 
-	atpNs := atpComp.Status.TargetNamespace
+	atpNs := c.getTargetNamespace(atpComp)
 	if atpComp.Status.Result != s2hv1beta1.ActivePromotionSuccess {
 		atpNs = atpComp.Status.PreviousActiveNamespace
 	}

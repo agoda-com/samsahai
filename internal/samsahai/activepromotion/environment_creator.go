@@ -52,7 +52,7 @@ func (c *controller) createPreActiveEnvAndDeployStableCompObjects(ctx context.Co
 }
 
 func (c *controller) ensureActiveEnvironmentPromoted(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
-	targetNs := atpComp.Status.TargetNamespace
+	targetNs := c.getTargetNamespace(atpComp)
 
 	teamComp, err := c.getTeam(ctx, atpComp.Name)
 	if err != nil {
@@ -65,6 +65,7 @@ func (c *controller) ensureActiveEnvironmentPromoted(ctx context.Context, atpCom
 	}
 
 	if err := c.ensureTeamNamespaceUpdated(teamComp.Status.Namespace.Active, targetNs); err != nil {
+		logger.Warn("cannot ensure team active namespace updated", "error", err.Error())
 		return s2herrors.ErrEnsureActivePromoted
 	}
 
@@ -73,6 +74,9 @@ func (c *controller) ensureActiveEnvironmentPromoted(ctx context.Context, atpCom
 
 func (c *controller) createPreActiveEnvironment(ctx context.Context, teamName, preActiveNs string) error {
 	if err := c.s2hCtrl.CreatePreActiveEnvironment(teamName, preActiveNs); err != nil && !k8serrors.IsAlreadyExists(err) {
+		if s2herrors.IsNamespaceStillCreating(err) {
+			return s2herrors.ErrEnsurePreActiveEnvironmentCreated
+		}
 		return err
 	}
 
@@ -81,12 +85,14 @@ func (c *controller) createPreActiveEnvironment(ctx context.Context, teamName, p
 		return err
 	}
 
-	if err := c.ensureTeamNamespaceUpdated(teamComp.Status.Namespace.PreActive, preActiveNs); err != nil {
-		return err
+	if err := c.ensureNamespaceReady(ctx, preActiveNs); err != nil {
+		logger.Warn("cannot ensure pre-active namespace created", "error", err.Error())
+		return s2herrors.ErrEnsurePreActiveEnvironmentCreated
 	}
 
-	if err := c.ensureNamespaceReady(ctx, preActiveNs); err != nil {
-		return err
+	if err := c.ensureTeamNamespaceUpdated(teamComp.Status.Namespace.PreActive, preActiveNs); err != nil {
+		logger.Warn("cannot ensure team pre-active namespace updated", "error", err.Error())
+		return s2herrors.ErrEnsurePreActiveEnvironmentCreated
 	}
 
 	return nil

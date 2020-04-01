@@ -69,7 +69,7 @@ func (c *controller) destroyPreviousActiveEnvironmentAt(ctx context.Context, tea
 }
 
 func (c *controller) destroyPreActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
-	targetNs := atpComp.Status.TargetNamespace
+	targetNs := c.getTargetNamespace(atpComp)
 	teamName := atpComp.Name
 
 	startedCleaningTime := atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondActivePromoted)
