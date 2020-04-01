@@ -11,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/tidwall/gjson"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +36,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/internal/samsahai"
 	"github.com/agoda-com/samsahai/internal/staging"
+	httputil "github.com/agoda-com/samsahai/internal/util/http"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -514,6 +516,22 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Should have waiting queue")
 	}, 120)
+
+	It("Should successfully get health check", func(done Done) {
+		defer close(done)
+
+		stagingCtrl = staging.NewController(teamName, namespace, "", nil, mgr, queueCtrl,
+			nil, "", "", "", internal.StagingConfig{})
+
+		server := httptest.NewServer(stagingCtrl)
+		defer server.Close()
+
+		data, err := httputil.Get(server.URL + internal.URIHealthz)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(data).NotTo(BeEmpty())
+		Expect(gjson.ValidBytes(data)).To(BeTrue())
+
+	}, 5)
 
 	// TODO: disable by phantomnat
 	XIt("should successfully clean all k8s resources in case of there are zombie pods", func(done Done) {
