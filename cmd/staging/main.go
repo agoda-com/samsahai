@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -100,6 +101,7 @@ func startCtrlCmd() *cobra.Command {
 			}
 
 			namespace := viper.GetString(s2h.VKPodNamespace)
+			httpServerPort := viper.GetString(s2h.VKServerHTTPPort)
 			httpMetricPort := viper.GetString(s2h.VKMetricHTTPPort)
 			teamName := viper.GetString(s2h.VKS2HTeamName)
 
@@ -154,10 +156,26 @@ func startCtrlCmd() *cobra.Command {
 			logger.Info("starting controller")
 			go stagingCtrl.Start(stop)
 
+			logger.Info("initializing http routes")
+
+			httpServer := http.Server{Handler: stagingCtrl, Addr: ":" + httpServerPort}
+
+			logger.Info("starting http server")
+			go func() {
+				if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+					logger.Error(err, "cannot start web server")
+				}
+			}()
+
 			logger.Info("starting manager")
 			if err := mgr.Start(stop); err != nil {
 				logger.Error(err, "unable to run the manager")
 				os.Exit(1)
+			}
+
+			logger.Info("shutting down http server")
+			if err := httpServer.Shutdown(context.Background()); err != nil {
+				logger.Error(err, "http server shutdown")
 			}
 
 			return nil

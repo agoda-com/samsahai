@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package samsahai.io.staging;
+option go_package = "rpc";
+
+service RPC {
+}
+
+message Empty {
+}
