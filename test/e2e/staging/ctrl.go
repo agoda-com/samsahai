@@ -315,7 +315,8 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		_ = runtimeClient.Delete(ctx, &config)
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
-		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, cfgCtrl,
+		stagingCfgCtrl := configctrl.New(mgr)
+		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, stagingCfgCtrl,
 			"", "", "", internal.StagingConfig{})
 
 		go stagingCtrl.Start(chStop)
@@ -482,7 +483,8 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 		samsahaiClient := samsahairpc.NewRPCProtobufClient(server.URL, &http.Client{})
 
-		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl, cfgCtrl,
+		stagingCfgCtrl := configctrl.New(mgr)
+		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl, stagingCfgCtrl,
 			"", "", "", internal.StagingConfig{})
 		go stagingCtrl.Start(chStop)
 
@@ -519,7 +521,8 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 		authToken := "12345"
 
-		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, cfgCtrl,
+		stagingCfgCtrl := configctrl.New(mgr)
+		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, stagingCfgCtrl,
 			"", "", "", internal.StagingConfig{})
 
 		go stagingCtrl.Start(chStop)

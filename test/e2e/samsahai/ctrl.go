@@ -481,7 +481,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		wgStop.Wait()
 	}, 60)
 
-	FIt("should successfully promote an active environment", func(done Done) {
+	It("should successfully promote an active environment", func(done Done) {
 		defer close(done)
 		ctx := context.TODO()
 		preActiveNs := ""
@@ -535,7 +535,17 @@ var _ = Describe("Main Controller [e2e]", func() {
 				return false, nil
 			}
 
-			// TODO: pohfy, check clusterroles/ clusterrolebinding
+			clusterRole := rbacv1.ClusterRole{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: s2hobject.GenClusterRoleName(stgNamespace), Namespace: stgNamespace}, &clusterRole)
+			if err != nil {
+				return false, nil
+			}
+
+			clusterRoleBinding := rbacv1.ClusterRoleBinding{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: s2hobject.GenClusterRoleName(stgNamespace), Namespace: stgNamespace}, &clusterRoleBinding)
+			if err != nil {
+				return false, nil
+			}
 
 			sa := corev1.ServiceAccount{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: stgNamespace}, &sa)

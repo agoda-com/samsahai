@@ -412,12 +412,12 @@ func GetRoleBinding(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Obj
 	return &roleBinding
 }
 
-func GetClusterRole(teamComp *s2hv1beta1.Team) runtime.Object {
+func GetClusterRole(teamComp *s2hv1beta1.Team, namespace string) runtime.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	role := rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   internal.StagingCtrlName,
+			Name:   GenClusterRoleName(namespace),
 			Labels: defaultLabelsWithVersion,
 		},
 		Rules: []rbacv1.PolicyRule{
@@ -437,24 +437,24 @@ func GetClusterRole(teamComp *s2hv1beta1.Team) runtime.Object {
 	return &role
 }
 
-func GetClusterRoleBinding(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
+func GetClusterRoleBinding(teamComp *s2hv1beta1.Team, namespace string) runtime.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	roleBinding := rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   internal.StagingCtrlName,
+			Name:   GenClusterRoleName(namespace),
 			Labels: defaultLabelsWithVersion,
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "ClusterRole",
-			Name:     internal.StagingCtrlName,
+			Name:     GenClusterRoleName(namespace),
 		},
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
 				Name:      internal.StagingCtrlName,
-				Namespace: namespaceName,
+				Namespace: namespace,
 			},
 		},
 	}
@@ -534,9 +534,8 @@ func IsK8sObjectChanged(found, target runtime.Object) bool {
 	return false
 }
 
-// TODO: pohfy, remove
-func GenClusterRoleName(namespaceName string) string {
-	return internal.StagingCtrlName + "-" + namespaceName
+func GenClusterRoleName(namespace string) string {
+	return internal.StagingCtrlName + "-" + namespace
 }
 
 func isDeploymentChanged(found, target interface{}) bool {
