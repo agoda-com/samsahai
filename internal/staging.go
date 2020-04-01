@@ -1,7 +1,10 @@
 package internal
 
 import (
+	"net/http"
+
 	"github.com/agoda-com/samsahai/api/v1beta1"
+	stagingrpc "github.com/agoda-com/samsahai/pkg/staging/rpc"
 )
 
 // StagingConfig represents configuration of Staging
@@ -23,6 +26,12 @@ type StagingTestRunner interface {
 }
 
 type StagingController interface {
+	// should implement RPC
+	stagingrpc.RPC
+
+	// should be able to serve http
+	http.Handler
+
 	// Start runs internal worker
 	Start(stop <-chan struct{})
 

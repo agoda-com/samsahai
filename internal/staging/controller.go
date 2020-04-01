@@ -29,6 +29,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/testmock"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
+	stagingrpc "github.com/agoda-com/samsahai/pkg/staging/rpc"
 )
 
 var logger = s2hlog.Log.WithName(internal.StagingCtrlName)
@@ -50,6 +51,7 @@ type controller struct {
 
 	internalStop    <-chan struct{}
 	internalStopper chan<- struct{}
+	rpcHandler      stagingrpc.TwirpServer
 
 	currentQueue *s2hv1beta1.Queue
 	mtQueue      sync.Mutex
@@ -105,6 +107,8 @@ func NewController(
 		teamcityPassword:        teamcityPassword,
 		configs:                 configs,
 	}
+
+	c.rpcHandler = stagingrpc.NewRPCServer(c, nil)
 
 	c.loadDeployEngines()
 	c.loadTestRunners()
