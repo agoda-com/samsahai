@@ -1176,6 +1176,11 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
+	teamComp = &s2hv1beta1.Team{}
+	if err := c.getTeam(teamName, teamComp); err != nil {
+		return reconcile.Result{}, errors.Wrapf(err, "cannot get team %s", teamName)
+	}
+
 	if err := c.LoadTeamSecret(teamComp); err != nil {
 		return reconcile.Result{}, err
 	}

@@ -41,7 +41,7 @@ func (c *controller) demoteAndDestroyPreActive(ctx context.Context, atpComp *s2h
 
 	if !isTimeout {
 		teamName := atpComp.Name
-		targetNs := atpComp.Status.TargetNamespace
+		targetNs := c.getTargetNamespace(atpComp)
 
 		errCh := make(chan error, 2)
 		go func() {
@@ -87,7 +87,7 @@ func (c *controller) demotePreActiveForRollback(ctx context.Context, teamName, t
 
 func (c *controller) destroyPreActiveEnvironmentForRollback(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
 	teamName := atpComp.Name
-	targetNs := atpComp.Status.TargetNamespace
+	targetNs := c.getTargetNamespace(atpComp)
 	startedCleaningTime := atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondRollbackStarted)
 	if err := c.ensureDestroyEnvironment(ctx, preActiveEnvirontment, teamName, targetNs, startedCleaningTime); err != nil {
 		return err
@@ -103,7 +103,7 @@ func (c *controller) destroyPreActiveEnvironmentForRollback(ctx context.Context,
 
 func (c *controller) rePromoteCurrentActive(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
 	teamName := atpComp.Name
-	targetNs := atpComp.Status.TargetNamespace
+	targetNs := c.getTargetNamespace(atpComp)
 	// get current namespace from team, current namespace might be destroyed due to demoting timeout
 	teamComp, err := c.getTeam(ctx, teamName)
 	if err != nil {

@@ -17,21 +17,21 @@ const (
 	ErrImageVersionNotFound      = Error("image version not found")
 	ErrNoDesiredComponentVersion = Error("no desired component version")
 
-	ErrTeamNotFound               = Error("team not found")
 	ErrTeamNamespaceStillCreating = Error("still creating namespace")
 	ErrTeamNamespaceStillExists   = Error("destroyed namespace still exists")
 
-	ErrActivePromotionTimeout         = Error("active promotion timeout")
-	ErrActiveDemotionTimeout          = Error("demoted active environment timeout")
-	ErrRollbackActivePromotionTimeout = Error("rollback active promotion timeout")
-	ErrEnsureNamespaceDestroyed       = Error("namespace has not been destroyed")
-	ErrEnsureActiveDemoted            = Error("active environment has been being demoted")
-	ErrEnsureActivePromoted           = Error("active environment has been being promoted")
-	ErrEnsureComponentDeployed        = Error("components has been being deployed")
-	ErrEnsureComponentTested          = Error("components has been being tested")
-	ErrDeletingReleases               = Error("deleting releases")
-	ErrForceDeletingComponents        = Error("force deleting components")
-	ErrRollingBackActivePromotion     = Error("rolling back active promotion process")
+	ErrActivePromotionTimeout            = Error("active promotion timeout")
+	ErrActiveDemotionTimeout             = Error("demoted active environment timeout")
+	ErrRollbackActivePromotionTimeout    = Error("rollback active promotion timeout")
+	ErrEnsurePreActiveEnvironmentCreated = Error("pre-active environment has been being created")
+	ErrEnsureNamespaceDestroyed          = Error("namespace has not been destroyed")
+	ErrEnsureActiveDemoted               = Error("active environment has been being demoted")
+	ErrEnsureActivePromoted              = Error("active environment has been being promoted")
+	ErrEnsureComponentDeployed           = Error("components has been being deployed")
+	ErrEnsureComponentTested             = Error("components has been being tested")
+	ErrDeletingReleases                  = Error("deleting releases")
+	ErrForceDeletingComponents           = Error("force deleting components")
+	ErrRollingBackActivePromotion        = Error("rolling back active promotion process")
 
 	ErrUnauthorized      = Error("unauthorized")
 	ErrAuthTokenNotFound = Error("auth token not found")
@@ -61,11 +61,6 @@ func IsImageNotFound(err error) bool {
 	return ErrImageVersionNotFound.Error() == err.Error()
 }
 
-// IsTeamNotFound checks team is exist
-func IsTeamNotFound(err error) bool {
-	return ErrTeamNotFound.Error() == err.Error()
-}
-
 // IsNamespaceStillCreating checks namespace is still creating
 func IsNamespaceStillCreating(err error) bool {
 	return ErrTeamNamespaceStillCreating.Error() == err.Error()
@@ -74,6 +69,11 @@ func IsNamespaceStillCreating(err error) bool {
 // IsNamespaceStillExists checks namespace still exists
 func IsNamespaceStillExists(err error) bool {
 	return ErrTeamNamespaceStillExists.Error() == err.Error()
+}
+
+// IsEnsuringPreActiveEnvironmentCreated checks ensuring pre-active created
+func IsEnsuringPreActiveEnvironmentCreated(err error) bool {
+	return ErrEnsureActivePromoted.Error() == err.Error()
 }
 
 // IsEnsuringActivePromoted checks ensuring active promoted

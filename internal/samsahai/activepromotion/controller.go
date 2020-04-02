@@ -104,7 +104,7 @@ func (c *controller) setup(ctx context.Context, atpComp *s2hv1beta1.ActivePromot
 }
 
 func (c *controller) teardown(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
-	targetNs := atpComp.Status.TargetNamespace
+	targetNs := c.getTargetNamespace(atpComp)
 	_ = queue.DeletePreActiveQueue(c.client, targetNs)
 	_ = queue.DeletePromoteToActiveQueue(c.client, targetNs)
 	_ = queue.DeleteDemoteFromActiveQueue(c.client, targetNs)
@@ -342,7 +342,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	case s2hv1beta1.ActivePromotionCreatingPreActive:
 		if err := c.createPreActiveEnvAndDeployStableCompObjects(ctx, atpComp); err != nil {
-			if s2herrors.IsNamespaceStillCreating(err) {
+			if s2herrors.IsEnsuringPreActiveEnvironmentCreated(err) {
 				return reconcile.Result{
 					Requeue:      true,
 					RequeueAfter: 2 * time.Second,

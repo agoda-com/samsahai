@@ -11,7 +11,7 @@ import (
 
 func (c *controller) deployComponentsToTargetNamespace(atpComp *s2hv1beta1.ActivePromotion) error {
 	teamName := atpComp.Name
-	targetNs := atpComp.Status.TargetNamespace
+	targetNs := c.getTargetNamespace(atpComp)
 	q, err := c.ensurePreActiveComponentsDeployed(teamName, targetNs)
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (c *controller) ensurePreActiveComponentsDeployed(teamName, targetNs string
 
 func (c *controller) testPreActiveEnvironment(atpComp *s2hv1beta1.ActivePromotion) error {
 	teamName := atpComp.Name
-	targetNs := atpComp.Status.TargetNamespace
+	targetNs := c.getTargetNamespace(atpComp)
 	q, err := c.ensurePreActiveComponentsTested(teamName, targetNs)
 	if err != nil {
 		return err

@@ -352,6 +352,7 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 	if err != nil {
 		return err
 	} else if !isCleaned {
+		logger.Warn("waiting for component cleaned", "queue", queue.Name)
 		time.Sleep(2 * time.Second)
 		return nil
 	}
@@ -478,6 +479,8 @@ func WaitForComponentsCleaned(
 			if forceClean {
 				return false, forceCleanupPod(log, c, namespace, selectors)
 			}
+
+			log.Warn("pods still exist", "pods", getPodNames(pods))
 			return false, nil
 		}
 
@@ -485,7 +488,7 @@ func WaitForComponentsCleaned(
 		services := &corev1.ServiceList{}
 		err = c.List(context.TODO(), services, listOpt)
 		if err != nil {
-			logger.Error(err, "list services error")
+			log.Error(err, "list services error")
 			return false, err
 		}
 
@@ -493,6 +496,8 @@ func WaitForComponentsCleaned(
 			if forceClean {
 				return false, forceCleanupService(log, c, namespace, selectors)
 			}
+
+			log.Warn("services still exist", "services", getServiceNames(services))
 			return false, nil
 		}
 
@@ -608,4 +613,22 @@ func forceCleanupService(log s2hlog.Logger, c client.Client, namespace string, s
 func generateQueueHistoryName(queueName string) string {
 	now := metav1.Now()
 	return fmt.Sprintf("%s-%s", queueName, now.Format("20060102-150405"))
+}
+
+func getPodNames(pods *corev1.PodList) []string {
+	podNames := make([]string, 0)
+	for _, pod := range pods.Items {
+		podNames = append(podNames, pod.Name)
+	}
+
+	return podNames
+}
+
+func getServiceNames(svcs *corev1.ServiceList) []string {
+	svcNames := make([]string, 0)
+	for _, svc := range svcs.Items {
+		svcNames = append(svcNames, svc.Name)
+	}
+
+	return svcNames
 }
