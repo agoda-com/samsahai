@@ -83,7 +83,7 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta
 	if err != nil {
 		return err
 	}
-  
+
 	configCtrl := c.s2hCtrl.GetConfigController()
 	atpNs := c.getTargetNamespace(atpComp)
 	if atpComp.Status.Result != s2hv1beta1.ActivePromotionSuccess {
