@@ -168,7 +168,7 @@ func (c *controller) deleteAllComponentsInNamespace(teamName, ns string, started
 	}
 
 	for compName := range parentComps {
-		refName := internal.GenReleaseName(teamName, ns, compName)
+		refName := internal.GenReleaseName(ns, compName)
 		if err := deployEngine.Delete(refName); err != nil {
 			return err
 		}
