@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -131,25 +132,42 @@ func (e *engine) Create(
 }
 
 func (e *engine) Delete(refName string) error {
-	if refName == "" {
-		return nil
-	}
 	if err := e.helmInit(); err != nil {
 		return err
 	}
 
-	logger.Debug("deleting release", "releaseName", refName)
-	if err := e.helmUninstall(refName, false); err != nil {
+	releaseName, err := e.ensureReleaseName(refName)
+	if err != nil {
 		return err
 	}
+
+	if releaseName == "" {
+		return nil
+	}
+
+	logger.Debug("deleting release", "releaseName", releaseName)
+	if err := e.helmUninstall(releaseName, false); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (e *engine) ForceDelete(refName string) error {
-	// delete release
-	if err := e.helmUninstall(refName, true); err != nil {
+	releaseName, err := e.ensureReleaseName(refName)
+	if err != nil {
 		return err
 	}
+
+	if releaseName == "" {
+		return nil
+	}
+
+	// delete release
+	if err := e.helmUninstall(releaseName, true); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -362,6 +380,21 @@ func (e *engine) helmGetValues() (map[string][]byte, error) {
 	}
 
 	return valuesYaml, nil
+}
+
+func (e *engine) ensureReleaseName(refName string) (string, error) {
+	releases, err := e.helmList()
+	if err != nil {
+		return "", err
+	}
+
+	for _, r := range releases {
+		if strings.Contains(r.Name, refName) {
+			return r.Name, nil
+		}
+	}
+
+	return "", nil
 }
 
 // DeleteAllReleases deletes all releases in the namespace

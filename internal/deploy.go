@@ -33,12 +33,12 @@ type DeployEngine interface {
 }
 
 const (
-	MaxReleaseNameLength = 200
+	MaxReleaseNameLength = 53
 )
 
 // GenReleaseName returns the release name for deploying components
-func GenReleaseName(teamName, namespace, compName string) string {
-	refName := teamName + "-" + namespace + "-" + compName
+func GenReleaseName(namespace, compName string) string {
+	refName := namespace + "-" + compName
 	if len(refName) > MaxReleaseNameLength {
 		// component name is more important than team name
 		return refName[len(refName)-MaxReleaseNameLength:]
