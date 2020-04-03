@@ -22,7 +22,7 @@ func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1beta1.Acti
 		// to save pre-active queue after pre-active queue finished
 		q, err = c.ensurePreActiveComponentsTested(teamName, targetNs)
 		if err != nil {
-			return errors.Wrapf(err, "cannot ensure pre-active components tested, namespace %s", targetNs)
+			return errors.Wrapf(err, "cannot ensure pre-active components finished, namespace %s", targetNs)
 		}
 	}
 

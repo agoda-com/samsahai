@@ -1022,18 +1022,12 @@ func (c *controller) updateTeam(teamComp *s2hv1beta1.Team) error {
 	return nil
 }
 
-func (c *controller) addFinalizer(teamComp *s2hv1beta1.Team) error {
+func (c *controller) addFinalizer(teamComp *s2hv1beta1.Team) {
 	// The object is not being deleted, so if it does not have our finalizer,
 	// then lets add the finalizer and update the object.
 	if !stringutils.ContainsString(teamComp.ObjectMeta.Finalizers, teamFinalizerName) {
 		teamComp.ObjectMeta.Finalizers = append(teamComp.ObjectMeta.Finalizers, teamFinalizerName)
-
-		if err := c.updateTeam(teamComp); err != nil {
-			return err
-		}
 	}
-
-	return nil
 }
 
 func (c *controller) deleteFinalizer(teamComp *s2hv1beta1.Team) error {
@@ -1160,30 +1154,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
-	if err := c.addFinalizer(teamComp); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	teamName := teamComp.GetName()
-	if err := c.CreateStagingEnvironment(teamName, internal.GenStagingNamespace(teamName)); err != nil {
-		if errors.IsNamespaceStillCreating(err) {
-			return reconcile.Result{
-				Requeue:      true,
-				RequeueAfter: 2 * time.Second,
-			}, nil
-		}
-
-		return reconcile.Result{}, err
-	}
-
-	teamComp = &s2hv1beta1.Team{}
-	if err := c.getTeam(teamName, teamComp); err != nil {
-		return reconcile.Result{}, errors.Wrapf(err, "cannot get team %s", teamName)
-	}
-
-	if err := c.LoadTeamSecret(teamComp); err != nil {
-		return reconcile.Result{}, err
-	}
+	c.addFinalizer(teamComp)
 
 	if err := c.ensureAndUpdateConfig(teamComp); err != nil {
 		teamComp.Status.SetCondition(
@@ -1208,6 +1179,22 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when config exists")
 		}
+	}
+
+	teamName := teamComp.GetName()
+	if err := c.CreateStagingEnvironment(teamName, internal.GenStagingNamespace(teamName)); err != nil {
+		if errors.IsNamespaceStillCreating(err) {
+			return reconcile.Result{
+				Requeue:      true,
+				RequeueAfter: 2 * time.Second,
+			}, nil
+		}
+
+		return reconcile.Result{}, err
+	}
+
+	if err := c.LoadTeamSecret(teamComp); err != nil {
+		return reconcile.Result{}, err
 	}
 
 	// add metric teamname
