@@ -448,29 +448,28 @@ func WaitForComponentsCleaned(
 		refName := internal.GenReleaseName(namespace, compName)
 		selectors := deployEngine.GetLabelSelectors(refName)
 		listOpt := &client.ListOptions{Namespace: namespace, LabelSelector: labels.SelectorFromSet(selectors)}
-		logKVs := []interface{}{
+		log := logger.WithValues(
 			"refName", refName,
 			"namespace", namespace,
 			"component", compName,
-			"selectors", selectors,
-		}
+			"selectors", selectors)
 
 		if forceClean {
 			if err := deployEngine.ForceDelete(refName); err != nil {
-				logger.Error(err, "error while force delete", logKVs...)
+				log.Error(err, "error while force delete")
 			}
 		}
 
 		// check pods
 		pods := &corev1.PodList{}
 		if err := c.List(context.TODO(), pods, listOpt); err != nil {
-			logger.Error(err, "list pods error", logKVs...)
+			log.Error(err, "list pods error")
 			return false, err
 		}
 
 		if len(pods.Items) > 0 {
 			if forceClean {
-				return false, forceCleanupPod(c, namespace, selectors, logKVs)
+				return false, forceCleanupPod(log, c, namespace, selectors)
 			}
 
 			return false, nil
@@ -479,13 +478,13 @@ func WaitForComponentsCleaned(
 		// check services
 		services := &corev1.ServiceList{}
 		if err := c.List(context.TODO(), services, listOpt); err != nil {
-			logger.Error(err, "list services error", logKVs...)
+			log.Error(err, "list services error")
 			return false, err
 		}
 
 		if len(services.Items) > 0 {
 			if forceClean {
-				return false, forceCleanupService(c, namespace, selectors, logKVs)
+				return false, forceCleanupService(log, c, namespace, selectors)
 			}
 
 			return false, nil
@@ -494,18 +493,18 @@ func WaitForComponentsCleaned(
 		// check pvcs
 		pvcs := &corev1.PersistentVolumeClaimList{}
 		if err := c.List(context.TODO(), pvcs, listOpt); err != nil {
-			logger.Error(err, "list pvcs error", logKVs...)
+			log.Error(err, "list pvcs error")
 			return false, err
 		}
 
 		if len(pvcs.Items) > 0 {
-			logger.Debug("pvc found, deleting", logKVs...)
+			log.Debug("pvc found, deleting")
 			if err := c.DeleteAllOf(context.TODO(), &corev1.PersistentVolumeClaim{},
 				client.InNamespace(namespace),
 				client.MatchingLabels(selectors),
 				client.PropagationPolicy(metav1.DeletePropagationBackground),
 			); err != nil {
-				logger.Error(err, "delete all pvc error", logKVs...)
+				log.Error(err, "delete all pvc error")
 			}
 			return false, nil
 		}
@@ -528,41 +527,41 @@ func IsCleanupTimeout(start *metav1.Time, timeout time.Duration) bool {
 	return now.Sub(start.Time) > timeout
 }
 
-func forceCleanupPod(c client.Client, namespace string, selectors map[string]string, logKVs []interface{}) error {
+func forceCleanupPod(log s2hlog.Logger, c client.Client, namespace string, selectors map[string]string) error {
 	ctx := context.Background()
 	var err error
 
-	logger.Warn("force delete deployment", logKVs...)
+	log.Warn("force delete deployment")
 	if err = c.DeleteAllOf(ctx,
 		&appsv1.Deployment{},
 		client.InNamespace(namespace),
 		client.MatchingLabels(selectors),
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
 	); err != nil {
-		logger.Error(err, "delete deployment error", logKVs...)
+		log.Error(err, "delete deployment error")
 	}
 
-	logger.Warn("force delete statefulset", logKVs...)
+	log.Warn("force delete statefulset")
 	if err = c.DeleteAllOf(ctx,
 		&appsv1.StatefulSet{},
 		client.InNamespace(namespace),
 		client.MatchingLabels(selectors),
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
 	); err != nil {
-		logger.Error(err, "delete statefulset error", logKVs...)
+		log.Error(err, "delete statefulset error")
 	}
 
-	logger.Warn("force delete daemonset", logKVs...)
+	log.Warn("force delete daemonset")
 	if err = c.DeleteAllOf(ctx,
 		&appsv1.DaemonSet{},
 		client.InNamespace(namespace),
 		client.MatchingLabels(selectors),
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
 	); err != nil {
-		logger.Error(err, "delete daemonset error", logKVs...)
+		log.Error(err, "delete daemonset error")
 	}
 
-	logger.Warn("force delete pod", logKVs...)
+	log.Warn("force delete pod")
 	if err = c.DeleteAllOf(ctx,
 		&corev1.Pod{},
 		client.InNamespace(namespace),
@@ -570,25 +569,25 @@ func forceCleanupPod(c client.Client, namespace string, selectors map[string]str
 		client.GracePeriodSeconds(0),
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
 	); err != nil {
-		logger.Error(err, "delete pod error", logKVs...)
+		log.Error(err, "delete pod error")
 	}
 
 	return errors.Wrapf(s2herrors.ErrForceDeletingComponents,
 		"force cleaning up pods, namespace: %s, selectors: %+v", namespace, selectors)
 }
 
-func forceCleanupService(c client.Client, namespace string, selectors map[string]string, logKVs []interface{}) error {
+func forceCleanupService(log s2hlog.Logger, c client.Client, namespace string, selectors map[string]string) error {
 	ctx := context.Background()
 	var err error
 
-	logger.Warn("force delete service", logKVs...)
+	log.Warn("force delete service")
 	if err = c.DeleteAllOf(ctx,
 		&corev1.Service{},
 		client.InNamespace(namespace),
 		client.MatchingLabels(selectors),
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
 	); err != nil {
-		logger.Error(err, "delete service error", logKVs...)
+		log.Error(err, "delete service error")
 	}
 
 	return errors.Wrapf(s2herrors.ErrForceDeletingComponents,
