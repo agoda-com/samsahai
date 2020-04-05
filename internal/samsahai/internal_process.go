@@ -53,7 +53,7 @@ func (c *controller) Start(stop <-chan struct{}) {
 	}
 
 	c.queue.Add(updateHealth{})
-	c.queue.AddAfter(exportMetric{}, (30 * time.Second))
+	c.queue.AddAfter(exportMetric{}, 30*time.Second)
 
 	<-stop
 

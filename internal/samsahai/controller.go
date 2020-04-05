@@ -440,6 +440,21 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 		}
 	}
 
+	if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
+		teamName := teamComp.Name
+		if err := c.notifyComponentChanged(teamName); err != nil {
+			logger.Error(err, "cannot notify component changed",
+				"team", teamName, "namespace", namespace)
+		}
+
+		if c.configs.ActivePromotion.OnStagingCreation {
+			if err := c.createActivePromotion(teamName); err != nil {
+				logger.Error(err, "cannot create active promotion for new staging namespace",
+					"team", teamName, "namespace", namespace)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -896,6 +911,35 @@ func (c *controller) GetActivePromotionHistory(name string) (v *s2hv1beta1.Activ
 	v = &s2hv1beta1.ActivePromotionHistory{}
 	err = c.client.Get(context.TODO(), client.ObjectKey{Name: name}, v)
 	return
+}
+
+func (c *controller) notifyComponentChanged(teamName string) error {
+	configCtrl := c.GetConfigController()
+	comps, err := configCtrl.GetComponents(teamName)
+	if err != nil {
+		logger.Error(err, "cannot get values file")
+		return err
+	}
+
+	for comp := range comps {
+		c.NotifyComponentChanged(comp, "")
+	}
+
+	return nil
+}
+
+func (c *controller) createActivePromotion(teamName string) error {
+	atp := &s2hv1beta1.ActivePromotion{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: teamName,
+		},
+	}
+
+	if err := c.client.Create(context.TODO(), atp); err != nil && !k8serrors.IsAlreadyExists(err) {
+		return err
+	}
+
+	return nil
 }
 
 func getNodeIP(nodes *corev1.NodeList) string {

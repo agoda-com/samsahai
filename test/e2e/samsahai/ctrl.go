@@ -1394,7 +1394,167 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 	}, 60)
 
-	XIt("Should correctly get image missing list", func(done Done) {
+	It("should successfully promote new active on staging creation", func(done Done) {
+		defer close(done)
+		s2hConfig := internal.SamsahaiConfig{
+			ActivePromotion: internal.ActivePromotionConfig{
+				Concurrences:      1,
+				Timeout:           metav1.Duration{Duration: 5 * time.Minute},
+				DemotionTimeout:   metav1.Duration{Duration: 1 * time.Second},
+				TearDownDuration:  metav1.Duration{Duration: 1 * time.Second},
+				MaxHistories:      2,
+				OnStagingCreation: true,
+			},
+			SamsahaiCredential: internal.SamsahaiCredential{
+				InternalAuthToken: samsahaiAuthToken,
+			},
+		}
+		samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig, cfgCtrl)
+		Expect(samsahaiCtrl).ToNot(BeNil())
+
+		ctx := context.TODO()
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
+
+		teamComp := s2hv1beta1.Team{}
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
+
+		By("Waiting pre-active environment is successfully created")
+		atpResCh := make(chan s2hv1beta1.ActivePromotion)
+		go func() {
+			atpTemp := s2hv1beta1.ActivePromotion{}
+			for {
+				_ = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
+				if atpTemp.Status.IsConditionTrue(s2hv1beta1.ActivePromotionCondPreActiveCreated) {
+					break
+				}
+				time.Sleep(500 * time.Millisecond)
+			}
+			atpResCh <- atpTemp
+		}()
+		atpRes := <-atpResCh
+
+		By("Start staging controller for pre-active")
+		preActiveNs := atpRes.Status.TargetNamespace
+		{
+			stagingCfg := rest.CopyConfig(restCfg)
+			stagingCfg.Username = ""
+			// get token
+			stagingSA := &corev1.ServiceAccount{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: preActiveNs}, stagingSA)
+			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get sa: %s", internal.StagingCtrlName))
+			Expect(len(stagingSA.Secrets)).To(BeNumerically(">=", 1))
+			stagingSecret := &corev1.Secret{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: preActiveNs, Name: stagingSA.Secrets[0].Name}, stagingSecret)
+			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get secret: %s", stagingSA.Secrets[0].Name))
+			stagingCfg.BearerToken = string(stagingSecret.Data["token"])
+
+			// create mgr from config
+			stagingMgr, err := manager.New(stagingCfg, manager.Options{
+				Namespace:          preActiveNs,
+				MetricsBindAddress: "0",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			stagingCfgCtrl := configctrl.New(stagingMgr)
+			qCtrl := queue.New(preActiveNs, runtimeClient)
+			stagingPreActiveCtrl = staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient,
+				stagingMgr, qCtrl, stagingCfgCtrl, "", "", "",
+				internal.StagingConfig{})
+			go func() {
+				defer GinkgoRecover()
+				Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())
+			}()
+			go stagingPreActiveCtrl.Start(chStop)
+		}
+
+		By("Checking pre-active namespace has been set")
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
+		Expect(teamComp.Status.Namespace.PreActive).ToNot(BeEmpty())
+		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
+		Expect(atpRes.Status.PreviousActiveNamespace).To(Equal(""))
+
+		By("ActivePromotion should be deleted")
+		err = wait.PollImmediate(1*time.Second, promoteTimeOut, func() (ok bool, err error) {
+			atpTemp := s2hv1beta1.ActivePromotion{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
+
+		By("Checking active namespace has been reset")
+		teamComp = s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(teamComp.Status.Namespace.Active).To(Equal(preActiveNs))
+
+		By("ActivePromotionHistory should be created")
+		atpHists := &s2hv1beta1.ActivePromotionHistoryList{}
+		listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
+		err = runtimeClient.List(context.TODO(), atpHists, listOpt)
+		Expect(err).To(BeNil())
+		Expect(len(atpHists.Items)).To(Equal(1))
+		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).To(BeNil())
+
+		By("Current active components should not be set as it is first time promotion")
+		teamComp = s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
+
+		By("Public API")
+		{
+			By("Get team")
+			{
+				data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(data).NotTo(BeNil())
+				Expect(gjson.GetBytes(data, "teamName").Str).To(Equal(team.Name))
+			}
+
+			By("Get team Queue")
+			{
+				data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(data).NotTo(BeNil())
+			}
+
+			By("Get team QueueHistories not found")
+			{
+				_, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue/histories/" + "unknown")
+				Expect(err).To(HaveOccurred())
+			}
+		}
+	}, 230)
+
+	XIt("should correctly get image missing list", func(done Done) {
 		defer close(done)
 
 		// TODO: should check image missing faster, maybe use the image that have less tags than bitnami/*
