@@ -170,7 +170,10 @@ func (c *controller) deleteAllComponentsInNamespace(teamName, ns string, started
 	for compName := range parentComps {
 		refName := internal.GenReleaseName(ns, compName)
 		if err := deployEngine.Delete(refName); err != nil {
-			return err
+			logger.Error(err, "cannot delete release",
+				"refName", refName,
+				"namespace", ns,
+				"component", compName)
 		}
 	}
 
@@ -180,7 +183,6 @@ func (c *controller) deleteAllComponentsInNamespace(teamName, ns string, started
 		c.client,
 		deployEngine,
 		parentComps,
-		teamName,
 		ns,
 		startedCleanupTime,
 		cleanupTimeout.Duration)

@@ -181,20 +181,17 @@ func (e *engine) GetValues() (map[string][]byte, error) {
 }
 
 func (e *engine) helmUninstall(refName string, disableHooks bool) error {
-	log := logger.WithValues("refName", refName)
 	client := action.NewUninstall(e.actionSettings)
 	client.Timeout = DefaultUninstallTimeout
 	client.DisableVerify = true
 	client.DisableHooks = disableHooks
 
-	log.Debug("deleting release")
-	_, err := client.Run(refName)
-	if err != nil {
+	logger.Debug("deleting release", "refName", refName)
+	if _, err := client.Run(refName); err != nil {
 		switch {
 		case errors.Is(errors.Cause(err), driver.ErrReleaseNotFound): // nolint
 			return nil
 		}
-		log.Error(err, "helm uninstall failed")
 		return errors.Wrap(err, "error while deleting helm release")
 	}
 
@@ -344,6 +341,7 @@ func (e *engine) helmPrepareChart(
 
 func (e *engine) helmList() ([]*release.Release, error) {
 	client := action.NewList(e.actionSettings)
+	client.StateMask = action.ListAll
 	client.All = true
 	releases, err := client.Run()
 	if err != nil {
@@ -371,12 +369,12 @@ func (e *engine) helmGetValues() (map[string][]byte, error) {
 			return nil, err
 		}
 
-		yaml, err := yaml.JSONToYAML(valuesData)
+		yml, err := yaml.JSONToYAML(valuesData)
 		if err != nil {
 			return nil, err
 		}
 
-		valuesYaml[r.Name] = yaml
+		valuesYaml[r.Name] = yml
 	}
 
 	return valuesYaml, nil

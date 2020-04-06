@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -316,16 +317,19 @@ func (c *controller) initQueue(q *s2hv1beta1.Queue) error {
 
 func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 	deployEngine := c.getDeployEngine(queue)
-	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedBefore) {
-		parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
-		if err != nil {
-			return err
-		}
+	parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
+	if err != nil {
+		return err
+	}
 
+	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedBefore) {
 		for compName := range parentComps {
 			refName := internal.GenReleaseName(c.namespace, compName)
 			if err := deployEngine.Delete(refName); err != nil {
-				return err
+				logger.Error(err, "cannot delete release",
+					"refName", refName,
+					"namespace", c.namespace,
+					"component", compName)
 			}
 		}
 	}
@@ -336,16 +340,10 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 		cleanupTimeout = deployConfig.ComponentCleanupTimeout.Duration
 	}
 
-	parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
-	if err != nil {
-		return err
-	}
-
 	isCleaned, err := WaitForComponentsCleaned(
 		c.client,
 		deployEngine,
 		parentComps,
-		c.teamName,
 		c.namespace,
 		queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningBeforeStarted),
 		cleanupTimeout)
@@ -367,16 +365,20 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 
 func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
 	deployEngine := c.getDeployEngine(queue)
-	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedAfter) {
-		parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
-		if err != nil {
-			return err
-		}
 
+	parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
+	if err != nil {
+		return err
+	}
+
+	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedAfter) {
 		for compName := range parentComps {
 			refName := internal.GenReleaseName(c.namespace, compName)
 			if err := deployEngine.Delete(refName); err != nil {
-				return err
+				logger.Error(err, "cannot delete release",
+					"refName", refName,
+					"namespace", c.namespace,
+					"component", compName)
 			}
 		}
 	}
@@ -387,30 +389,22 @@ func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
 		cleanupTimeout = deployConfig.ComponentCleanupTimeout.Duration
 	}
 
-	parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
-	if err != nil {
-		return err
-	}
-
 	isCleaned, err := WaitForComponentsCleaned(
 		c.client,
 		deployEngine,
 		parentComps,
-		c.teamName,
 		c.namespace,
 		queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningAfterStarted),
 		cleanupTimeout)
 	if err != nil {
 		return err
 	} else if !isCleaned {
+		logger.Warn("waiting for component cleaned", "queue", queue.Name)
 		time.Sleep(2 * time.Second)
 		return nil
 	}
 
-	queue.Status.SetCondition(
-		s2hv1beta1.QueueCleanedAfter,
-		corev1.ConditionTrue,
-		"namespace cleaned")
+	queue.Status.SetCondition(s2hv1beta1.QueueCleanedAfter, corev1.ConditionTrue, "namespace cleaned")
 
 	return c.updateQueueWithState(queue, s2hv1beta1.Deleting)
 }
@@ -437,7 +431,6 @@ func WaitForComponentsCleaned(
 	c client.Client,
 	deployEngine internal.DeployEngine,
 	parentComps map[string]*s2hv1beta1.Component,
-	teamName string,
 	namespace string,
 	startCleaningTime *metav1.Time,
 	cleanupTimeout time.Duration,
@@ -463,14 +456,13 @@ func WaitForComponentsCleaned(
 
 		if forceClean {
 			if err := deployEngine.ForceDelete(refName); err != nil {
-				log.Warnf("error while force delete: %v", err)
+				log.Error(err, "error while force delete")
 			}
 		}
 
 		// check pods
 		pods := &corev1.PodList{}
-		err := c.List(context.TODO(), pods, listOpt)
-		if err != nil {
+		if err := c.List(context.TODO(), pods, listOpt); err != nil {
 			log.Error(err, "list pods error")
 			return false, err
 		}
@@ -480,14 +472,12 @@ func WaitForComponentsCleaned(
 				return false, forceCleanupPod(log, c, namespace, selectors)
 			}
 
-			log.Warn("pods still exist", "pods", getPodNames(pods))
 			return false, nil
 		}
 
 		// check services
 		services := &corev1.ServiceList{}
-		err = c.List(context.TODO(), services, listOpt)
-		if err != nil {
+		if err := c.List(context.TODO(), services, listOpt); err != nil {
 			log.Error(err, "list services error")
 			return false, err
 		}
@@ -497,27 +487,24 @@ func WaitForComponentsCleaned(
 				return false, forceCleanupService(log, c, namespace, selectors)
 			}
 
-			log.Warn("services still exist", "services", getServiceNames(services))
 			return false, nil
 		}
 
 		// check pvcs
 		pvcs := &corev1.PersistentVolumeClaimList{}
-		err = c.List(context.TODO(), pvcs, listOpt)
-		if err != nil {
+		if err := c.List(context.TODO(), pvcs, listOpt); err != nil {
 			log.Error(err, "list pvcs error")
 			return false, err
 		}
 
 		if len(pvcs.Items) > 0 {
 			log.Debug("pvc found, deleting")
-			err = c.DeleteAllOf(context.TODO(), &corev1.PersistentVolumeClaim{},
+			if err := c.DeleteAllOf(context.TODO(), &corev1.PersistentVolumeClaim{},
 				client.InNamespace(namespace),
 				client.MatchingLabels(selectors),
 				client.PropagationPolicy(metav1.DeletePropagationBackground),
-			)
-			if err != nil {
-				log.Warnf("delete all pvc error: %+v", err)
+			); err != nil {
+				log.Error(err, "delete all pvc error")
 			}
 			return false, nil
 		}
@@ -545,51 +532,48 @@ func forceCleanupPod(log s2hlog.Logger, c client.Client, namespace string, selec
 	var err error
 
 	log.Warn("force delete deployment")
-	err = c.DeleteAllOf(ctx,
+	if err = c.DeleteAllOf(ctx,
 		&appsv1.Deployment{},
 		client.InNamespace(namespace),
 		client.MatchingLabels(selectors),
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
-	)
-	if err != nil {
-		log.Warnf("delete deployment error: %v", err)
+	); err != nil {
+		log.Error(err, "delete deployment error")
 	}
 
 	log.Warn("force delete statefulset")
-	err = c.DeleteAllOf(ctx,
+	if err = c.DeleteAllOf(ctx,
 		&appsv1.StatefulSet{},
 		client.InNamespace(namespace),
 		client.MatchingLabels(selectors),
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
-	)
-	if err != nil {
-		log.Warnf("delete statefulset error: %v", err)
+	); err != nil {
+		log.Error(err, "delete statefulset error")
 	}
 
 	log.Warn("force delete daemonset")
-	err = c.DeleteAllOf(ctx,
+	if err = c.DeleteAllOf(ctx,
 		&appsv1.DaemonSet{},
 		client.InNamespace(namespace),
 		client.MatchingLabels(selectors),
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
-	)
-	if err != nil {
-		log.Warnf("delete daemonset error: %v", err)
+	); err != nil {
+		log.Error(err, "delete daemonset error")
 	}
 
 	log.Warn("force delete pod")
-	err = c.DeleteAllOf(ctx,
+	if err = c.DeleteAllOf(ctx,
 		&corev1.Pod{},
 		client.InNamespace(namespace),
 		client.MatchingLabels(selectors),
 		client.GracePeriodSeconds(0),
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
-	)
-	if err != nil {
-		log.Warnf("delete pod error: %v", err)
+	); err != nil {
+		log.Error(err, "delete pod error")
 	}
 
-	return s2herrors.ErrForceDeletingComponents
+	return errors.Wrapf(s2herrors.ErrForceDeletingComponents,
+		"force cleaning up pods, namespace: %s, selectors: %+v", namespace, selectors)
 }
 
 func forceCleanupService(log s2hlog.Logger, c client.Client, namespace string, selectors map[string]string) error {
@@ -597,38 +581,20 @@ func forceCleanupService(log s2hlog.Logger, c client.Client, namespace string, s
 	var err error
 
 	log.Warn("force delete service")
-	err = c.DeleteAllOf(ctx,
+	if err = c.DeleteAllOf(ctx,
 		&corev1.Service{},
 		client.InNamespace(namespace),
 		client.MatchingLabels(selectors),
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
-	)
-	if err != nil {
-		log.Warnf("delete service error: %v", err)
+	); err != nil {
+		log.Error(err, "delete service error")
 	}
 
-	return s2herrors.ErrForceDeletingComponents
+	return errors.Wrapf(s2herrors.ErrForceDeletingComponents,
+		"force cleaning up services, namespace: %s, selectors: %+v", namespace, selectors)
 }
 
 func generateQueueHistoryName(queueName string) string {
 	now := metav1.Now()
 	return fmt.Sprintf("%s-%s", queueName, now.Format("20060102-150405"))
-}
-
-func getPodNames(pods *corev1.PodList) []string {
-	podNames := make([]string, 0)
-	for _, pod := range pods.Items {
-		podNames = append(podNames, pod.Name)
-	}
-
-	return podNames
-}
-
-func getServiceNames(svcs *corev1.ServiceList) []string {
-	svcNames := make([]string, 0)
-	for _, svc := range svcs.Items {
-		svcNames = append(svcNames, svc.Name)
-	}
-
-	return svcNames
 }
