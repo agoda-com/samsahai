@@ -438,19 +438,18 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 		if err := c.updateTeamNamespacesStatus(teamComp, teamNsOpt); err != nil {
 			return errors.Wrap(err, "cannot update team conditions when create namespace success")
 		}
-	}
 
-	if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
-		teamName := teamComp.Name
-		if err := c.notifyComponentChanged(teamName); err != nil {
-			logger.Error(err, "cannot notify component changed for new staging namespace",
-				"team", teamName, "namespace", namespace)
-		}
+		if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
+			if err := c.notifyComponentChanged(teamComp.Name); err != nil {
+				logger.Error(err, "cannot notify component changed for new staging namespace",
+					"team", teamComp.Name, "namespace", namespace)
+			}
 
-		if c.configs.ActivePromotion.PromoteOnTeamCreation {
-			if err := c.createActivePromotion(teamName); err != nil {
-				logger.Error(err, "cannot create active promotion for new staging namespace",
-					"team", teamName, "namespace", namespace)
+			if c.configs.ActivePromotion.PromoteOnTeamCreation {
+				if err := c.createActivePromotion(teamComp.Name); err != nil {
+					logger.Error(err, "cannot create active promotion for new staging namespace",
+						"team", teamComp.Name, "namespace", namespace)
+				}
 			}
 		}
 	}
