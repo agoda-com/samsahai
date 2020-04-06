@@ -1628,7 +1628,7 @@ var _ = FDescribe("Main Controller Promote On Team Creation [e2e]", func() {
 		wgStop.Wait()
 	}, 60)
 
-	It("should successfully set new active namespace on team", func(done Done) {
+	It("should successfully set new active namespace on new team creation", func(done Done) {
 		defer close(done)
 		ctx := context.TODO()
 
@@ -1772,7 +1772,7 @@ var _ = FDescribe("Main Controller Promote On Team Creation [e2e]", func() {
 		}
 	}, 230)
 
-	It("should not set active namespace on team", func(done Done) {
+	It("should not set active namespace on new team creation", func(done Done) {
 		defer close(done)
 		ctx := context.TODO()
 
