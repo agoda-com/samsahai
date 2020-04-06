@@ -143,7 +143,7 @@ func (l *DelegatingLogger) WithName(name string) Logger {
 	delegatingLn, ok := ln.(*log.DelegatingLogger)
 
 	if !ok {
-		delegatingLn = log.NewDelegatingLogger(log.NullLogger{})
+		delegatingLn = log.NewDelegatingLogger(ln)
 	}
 
 	res := &DelegatingLogger{
@@ -158,7 +158,7 @@ func (l *DelegatingLogger) WithValues(tags ...interface{}) Logger {
 	ln := l.logger.WithValues(tags...)
 	delegatingLn, ok := ln.(*log.DelegatingLogger)
 	if !ok {
-		delegatingLn = log.NewDelegatingLogger(log.NullLogger{})
+		delegatingLn = log.NewDelegatingLogger(ln)
 	}
 
 	res := &DelegatingLogger{
