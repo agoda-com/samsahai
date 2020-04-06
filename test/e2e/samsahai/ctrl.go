@@ -307,7 +307,7 @@ var (
 	}
 )
 
-var _ = FDescribe("Main Controller [e2e]", func() {
+var _ = Describe("Main Controller [e2e]", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
 
@@ -1472,7 +1472,7 @@ var _ = FDescribe("Main Controller [e2e]", func() {
 	}, 150)
 })
 
-var _ = FDescribe("Main Controller Promote On Team Creation [e2e]", func() {
+var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
 
