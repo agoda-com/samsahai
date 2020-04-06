@@ -447,7 +447,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 				"team", teamName, "namespace", namespace)
 		}
 
-		if c.configs.ActivePromotion.OnStagingCreation {
+		if c.configs.ActivePromotion.PromoteOnTeamCreation {
 			if err := c.createActivePromotion(teamName); err != nil {
 				logger.Error(err, "cannot create active promotion for new staging namespace",
 					"team", teamName, "namespace", namespace)

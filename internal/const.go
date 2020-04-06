@@ -48,6 +48,7 @@ const (
 	VKActivePromotionRollbackTimeout  = "active-promotion-rollback-timeout"
 	VKActivePromotionTearDownDuration = "active-promotion-teardown-duration"
 	VKActivePromotionMaxHistories     = "active-promotion-max-histories"
+	VKActivePromotionOnTeamCreation   = "active-promotion-on-team-creation"
 	VKQueueMaxHistoryDays             = "queue-max-history-days"
 )
 

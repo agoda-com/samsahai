@@ -93,8 +93,8 @@ type ActivePromotionConfig struct {
 	// MaxHistories defines max stored histories of active promotion
 	MaxHistories int `json:"maxHistories" yaml:"maxHistories"`
 
-	// OnStagingCreation defines whether promote active environment or not when staging namespace creation?
-	OnStagingCreation bool `json:"onStagingCreation,omitempty" yaml:"onStagingCreation,omitempty"`
+	// PromoteOnTeamCreation defines whether auto-promote active environment or not when team creation?
+	PromoteOnTeamCreation bool `json:"promoteOnTeamCreation" yaml:"promoteOnTeamCreation"`
 }
 
 // SamsahaiController
