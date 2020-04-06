@@ -443,7 +443,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 	if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
 		teamName := teamComp.Name
 		if err := c.notifyComponentChanged(teamName); err != nil {
-			logger.Error(err, "cannot notify component changed",
+			logger.Error(err, "cannot notify component changed for new staging namespace",
 				"team", teamName, "namespace", namespace)
 		}
 
