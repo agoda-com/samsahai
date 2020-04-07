@@ -17,8 +17,11 @@ const (
 	ErrImageVersionNotFound      = Error("image version not found")
 	ErrNoDesiredComponentVersion = Error("no desired component version")
 
-	ErrTeamNamespaceStillCreating = Error("still creating namespace")
-	ErrTeamNamespaceStillExists   = Error("destroyed namespace still exists")
+	ErrTeamNamespaceStillCreating     = Error("still creating namespace")
+	ErrTeamNamespaceStillExists       = Error("destroyed namespace still exists")
+	ErrTeamNamespaceEnvObjsCreated    = Error("environment objects is creating")
+	ErrTeamNamespaceComponentNotified = Error("new components is notifying changed")
+	ErrTeamNamespacePromotionCreated  = Error("active promotion is creating")
 
 	ErrActivePromotionTimeout            = Error("active promotion timeout")
 	ErrActiveDemotionTimeout             = Error("demoted active environment timeout")
@@ -69,6 +72,21 @@ func IsNamespaceStillCreating(err error) bool {
 // IsNamespaceStillExists checks namespace still exists
 func IsNamespaceStillExists(err error) bool {
 	return ErrTeamNamespaceStillExists.Error() == err.Error()
+}
+
+// IsNewNamespaceEnvObjsCreated checks ensuring environment objects created
+func IsNewNamespaceEnvObjsCreated(err error) bool {
+	return ErrTeamNamespaceEnvObjsCreated.Error() == err.Error()
+}
+
+// IsNewNamespaceComponentNotified checks ensuring components notified
+func IsNewNamespaceComponentNotified(err error) bool {
+	return ErrTeamNamespaceComponentNotified.Error() == err.Error()
+}
+
+// IsNewNamespacePromotionCreated checks ensuring active promotion created
+func IsNewNamespacePromotionCreated(err error) bool {
+	return ErrTeamNamespacePromotionCreated.Error() == err.Error()
 }
 
 // IsEnsuringPreActiveEnvironmentCreated checks ensuring pre-active created
