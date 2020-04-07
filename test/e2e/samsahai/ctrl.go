@@ -42,51 +42,48 @@ import (
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-var _ = Describe("Main Controller [e2e]", func() {
-	const (
-		verifyTimeout10        = 10 * time.Second
-		verifyNSCreatedTimeout = 15 * time.Second
-		promoteTimeOut         = 220 * time.Second
-	)
+const (
+	verifyTimeout10        = 10 * time.Second
+	verifyNSCreatedTimeout = 15 * time.Second
+	promoteTimeOut         = 220 * time.Second
+)
 
-	var (
-		stableComponentCtrl  internal.StableComponentController
-		cfgCtrl              internal.ConfigController
-		activePromotionCtrl  internal.ActivePromotionController
-		samsahaiCtrl         internal.SamsahaiController
-		stagingPreActiveCtrl internal.StagingController
-		runtimeClient        crclient.Client
-		wgStop               *sync.WaitGroup
-		chStop               chan struct{}
-		mgr                  manager.Manager
-		err                  error
-		samsahaiServer       *httptest.Server
-		samsahaiAuthToken    string
-		samsahaiClient       samsahairpc.RPC
-		restCfg              *rest.Config
-	)
+var (
+	stableComponentCtrl  internal.StableComponentController
+	cfgCtrl              internal.ConfigController
+	activePromotionCtrl  internal.ActivePromotionController
+	samsahaiCtrl         internal.SamsahaiController
+	stagingPreActiveCtrl internal.StagingController
+	runtimeClient        crclient.Client
+	wgStop               *sync.WaitGroup
+	chStop               chan struct{}
+	mgr                  manager.Manager
+	err                  error
+	samsahaiServer       *httptest.Server
+	samsahaiClient       samsahairpc.RPC
+	restCfg              *rest.Config
 
 	samsahaiAuthToken = "1234567890_"
-	samsahaiSystemNs := "samsahai-system"
+	samsahaiSystemNs  = "samsahai-system"
 
-	teamName := "teamtest"
-	teamForQ1 := teamName + "-q1"
-	teamForQ2 := teamName + "-q2"
-	teamForQ3 := teamName + "-q3"
+	teamName  = "teamtest"
+	teamForQ1 = teamName + "-q1"
+	teamForQ2 = teamName + "-q2"
+	teamForQ3 = teamName + "-q3"
 
-	defaultLabels := internal.GetDefaultLabels(teamName)
-	defaultLabelsQ1 := internal.GetDefaultLabels(teamForQ1)
-	defaultLabelsQ2 := internal.GetDefaultLabels(teamForQ2)
-	defaultLabelsQ3 := internal.GetDefaultLabels(teamForQ3)
+	defaultLabels   = internal.GetDefaultLabels(teamName)
+	defaultLabelsQ1 = internal.GetDefaultLabels(teamForQ1)
+	defaultLabelsQ2 = internal.GetDefaultLabels(teamForQ2)
+	defaultLabelsQ3 = internal.GetDefaultLabels(teamForQ3)
 
-	stgNamespace := internal.AppPrefix + teamName
-	atvNamespace := internal.AppPrefix + teamName + "-active"
+	stgNamespace = internal.AppPrefix + teamName
+	atvNamespace = internal.AppPrefix + teamName + "-active"
 
-	testLabels := map[string]string{
+	testLabels = map[string]string{
 		"created-for": "s2h-testing",
 	}
 
-	mockTeam := s2hv1beta1.Team{
+	mockTeam = s2hv1beta1.Team{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
 			Labels: testLabels,
@@ -114,7 +111,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		},
 	}
 
-	mockActiveQueue := s2hv1beta1.Queue{
+	mockActiveQueue = s2hv1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "active",
 			Labels: testLabels,
@@ -124,7 +121,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		},
 	}
 
-	mockDeActiveQueue := s2hv1beta1.Queue{
+	mockDeActiveQueue = s2hv1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "de-active",
 			Labels: testLabels,
@@ -134,28 +131,28 @@ var _ = Describe("Main Controller [e2e]", func() {
 		},
 	}
 
-	activeNamespace := corev1.Namespace{
+	activeNamespace = corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   atvNamespace,
 			Labels: testLabels,
 		},
 	}
 
-	activePromotion := s2hv1beta1.ActivePromotion{
+	activePromotion = s2hv1beta1.ActivePromotion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
 			Labels: testLabels,
 		},
 	}
 
-	activePromotionHistory := s2hv1beta1.ActivePromotionHistory{
+	activePromotionHistory = s2hv1beta1.ActivePromotionHistory{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   fmt.Sprintf("%s-20191010-111111", teamName),
 			Labels: defaultLabels,
 		},
 	}
 
-	stableMariaDB := s2hv1beta1.StableComponent{
+	stableMariaDB = s2hv1beta1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mariadb",
 			Namespace: stgNamespace,
@@ -167,7 +164,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		},
 	}
 
-	stableAtvMariaDB := s2hv1beta1.StableComponent{
+	stableAtvMariaDB = s2hv1beta1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mariadb",
 			Namespace: atvNamespace,
@@ -179,7 +176,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		},
 	}
 
-	stableRedis := s2hv1beta1.StableComponent{
+	stableRedis = s2hv1beta1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "redis",
 			Namespace: stgNamespace,
@@ -191,7 +188,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		},
 	}
 
-	mockSecret := corev1.Secret{
+	mockSecret = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s2hobject.GetTeamSecretName(teamName),
 			Namespace: samsahaiSystemNs,
@@ -200,8 +197,8 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Type: "Opaque",
 	}
 
-	engine := "helm3"
-	deployConfig := s2hv1beta1.ConfigDeploy{
+	engine       = "helm3"
+	deployConfig = s2hv1beta1.ConfigDeploy{
 		Timeout: metav1.Duration{Duration: 5 * time.Minute},
 		Engine:  &engine,
 		TestRunner: &s2hv1beta1.ConfigTestRunner{
@@ -210,8 +207,8 @@ var _ = Describe("Main Controller [e2e]", func() {
 			},
 		},
 	}
-	compSource := s2hv1beta1.UpdatingSource("public-registry")
-	redisConfigComp := s2hv1beta1.Component{
+	compSource      = s2hv1beta1.UpdatingSource("public-registry")
+	redisConfigComp = s2hv1beta1.Component{
 		Name: "redis",
 		Chart: s2hv1beta1.ComponentChart{
 			Repository: "https://kubernetes-charts.storage.googleapis.com",
@@ -238,7 +235,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 			},
 		},
 	}
-	wordpressConfigComp := s2hv1beta1.Component{
+	wordpressConfigComp = s2hv1beta1.Component{
 		Name: "wordpress",
 		Chart: s2hv1beta1.ComponentChart{
 			Repository: "https://kubernetes-charts.storage.googleapis.com",
@@ -280,7 +277,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		},
 	}
 
-	mockConfig := s2hv1beta1.Config{
+	mockConfig = s2hv1beta1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
 			Labels: testLabels,
@@ -308,7 +305,9 @@ var _ = Describe("Main Controller [e2e]", func() {
 			},
 		},
 	}
+)
 
+var _ = Describe("Main Controller [e2e]", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
 
@@ -344,12 +343,13 @@ var _ = Describe("Main Controller [e2e]", func() {
 			"should sent samsahai file config path successfully")
 		s2hConfig := internal.SamsahaiConfig{
 			ActivePromotion: internal.ActivePromotionConfig{
-				Concurrences:     1,
-				Timeout:          metav1.Duration{Duration: 5 * time.Minute},
-				DemotionTimeout:  metav1.Duration{Duration: 1 * time.Second},
-				RollbackTimeout:  metav1.Duration{Duration: 10 * time.Second},
-				TearDownDuration: metav1.Duration{Duration: 1 * time.Second},
-				MaxHistories:     2,
+				Concurrences:          1,
+				Timeout:               metav1.Duration{Duration: 5 * time.Minute},
+				DemotionTimeout:       metav1.Duration{Duration: 1 * time.Second},
+				RollbackTimeout:       metav1.Duration{Duration: 10 * time.Second},
+				TearDownDuration:      metav1.Duration{Duration: 1 * time.Second},
+				MaxHistories:          2,
+				PromoteOnTeamCreation: false,
 			},
 			SamsahaiCredential: internal.SamsahaiCredential{
 				InternalAuthToken: samsahaiAuthToken,
@@ -1394,7 +1394,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 	}, 60)
 
-	XIt("Should correctly get image missing list", func(done Done) {
+	XIt("should correctly get image missing list", func(done Done) {
 		defer close(done)
 
 		// TODO: should check image missing faster, maybe use the image that have less tags than bitnami/*
@@ -1470,4 +1470,429 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(len(imgList.Images)).To(Equal(1), "should get image missing list")
 
 	}, 150)
+})
+
+var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
+	BeforeEach(func(done Done) {
+		defer close(done)
+
+		chStop = make(chan struct{})
+
+		adminRestConfig, err := config.GetConfig()
+		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
+
+		adminClient, err := crclient.New(adminRestConfig, crclient.Options{Scheme: scheme.Scheme})
+		Expect(err).NotTo(HaveOccurred(), "should create runtime client successfully")
+
+		ctx := context.TODO()
+		// get token for samsahai user
+		restCfg = rest.CopyConfig(adminRestConfig)
+		restCfg.Username = ""
+		// get token
+		samsahaiSA := &corev1.ServiceAccount{}
+		err = adminClient.Get(ctx, types.NamespacedName{Name: "samsahai", Namespace: samsahaiSystemNs}, samsahaiSA)
+		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get sa: %s/%s", samsahaiSystemNs, "samsahai"))
+		Expect(len(samsahaiSA.Secrets)).To(BeNumerically(">=", 1))
+		samsahaiSecret := &corev1.Secret{}
+		err = adminClient.Get(ctx, types.NamespacedName{Namespace: samsahaiSystemNs, Name: samsahaiSA.Secrets[0].Name}, samsahaiSecret)
+		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get secret: %s/%s", samsahaiSystemNs, samsahaiSA.Secrets[0].Name))
+		restCfg.BearerToken = string(samsahaiSecret.Data["token"])
+
+		mgr, err = manager.New(restCfg, manager.Options{MetricsBindAddress: "0"})
+		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
+
+		runtimeClient, err = crclient.New(restCfg, crclient.Options{Scheme: scheme.Scheme})
+		Expect(err).NotTo(HaveOccurred(), "should create runtime client successfully")
+
+		Expect(os.Setenv("S2H_CONFIG_PATH", "../data/application.yaml")).NotTo(HaveOccurred(),
+			"should sent samsahai file config path successfully")
+		s2hConfig := internal.SamsahaiConfig{
+			ActivePromotion: internal.ActivePromotionConfig{
+				Concurrences:          1,
+				Timeout:               metav1.Duration{Duration: 5 * time.Minute},
+				DemotionTimeout:       metav1.Duration{Duration: 1 * time.Second},
+				RollbackTimeout:       metav1.Duration{Duration: 10 * time.Second},
+				TearDownDuration:      metav1.Duration{Duration: 1 * time.Second},
+				MaxHistories:          2,
+				PromoteOnTeamCreation: true,
+			},
+			SamsahaiCredential: internal.SamsahaiCredential{
+				InternalAuthToken: samsahaiAuthToken,
+			},
+		}
+		cfgCtrl = configctrl.New(mgr)
+		Expect(cfgCtrl).ToNot(BeNil())
+
+		samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig, cfgCtrl)
+		Expect(samsahaiCtrl).ToNot(BeNil())
+
+		activePromotionCtrl = activepromotion.New(mgr, samsahaiCtrl, s2hConfig)
+		Expect(activePromotionCtrl).ToNot(BeNil())
+
+		stableComponentCtrl = stablecomponent.New(mgr, samsahaiCtrl)
+		Expect(stableComponentCtrl).ToNot(BeNil())
+
+		wgStop = &sync.WaitGroup{}
+		wgStop.Add(1)
+		go func() {
+			defer wgStop.Done()
+			Expect(mgr.Start(chStop)).To(BeNil())
+		}()
+
+		mux := http.NewServeMux()
+		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
+		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
+		samsahaiServer = httptest.NewServer(mux)
+		samsahaiClient = samsahairpc.NewRPCProtobufClient(samsahaiServer.URL, &http.Client{})
+
+		By("Creating Secret")
+		secret := mockSecret
+		_ = runtimeClient.Delete(context.TODO(), &secret)
+		_ = runtimeClient.Create(context.TODO(), &secret)
+	}, 60)
+
+	AfterEach(func(done Done) {
+		defer close(done)
+		ctx := context.TODO()
+
+		By("Deleting all StableComponents")
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, crclient.InNamespace(stgNamespace))
+		Expect(err).NotTo(HaveOccurred())
+
+		By("Deleting all Teams")
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Team{}, crclient.MatchingLabels(testLabels))
+		Expect(err).NotTo(HaveOccurred())
+		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+			teamList := s2hv1beta1.TeamList{}
+			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
+			err = runtimeClient.List(ctx, &teamList, listOpt)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			if len(teamList.Items) == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete all Teams error")
+
+		By("Deleting all Configs")
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Config{}, crclient.MatchingLabels(testLabels))
+		Expect(err).NotTo(HaveOccurred())
+		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+			configList := s2hv1beta1.ConfigList{}
+			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
+			err = runtimeClient.List(ctx, &configList, listOpt)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			if len(configList.Items) == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Deleting all Configs error")
+
+		By("Deleting all ActivePromotions")
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotion{}, crclient.MatchingLabels(testLabels))
+		Expect(err).NotTo(HaveOccurred())
+		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+			atpList := s2hv1beta1.ActivePromotionList{}
+			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
+			err = runtimeClient.List(ctx, &atpList, listOpt)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			if len(atpList.Items) == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete all active promotions error")
+
+		By("Deleting ActivePromotionHistories")
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotionHistory{}, crclient.MatchingLabels(testLabels))
+		Expect(err).NotTo(HaveOccurred())
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotionHistory{}, crclient.MatchingLabels(defaultLabels))
+		Expect(err).NotTo(HaveOccurred())
+
+		By("Deleting Secret")
+		secret := mockSecret
+		Expect(runtimeClient.Delete(context.TODO(), &secret)).NotTo(HaveOccurred())
+
+		close(chStop)
+		samsahaiServer.Close()
+		wgStop.Wait()
+	}, 60)
+
+	It("should successfully set new active namespace on new team creation", func(done Done) {
+		defer close(done)
+		ctx := context.TODO()
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
+
+		teamComp := s2hv1beta1.Team{}
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
+
+		By("Waiting pre-active environment is successfully created")
+		atpResCh := make(chan s2hv1beta1.ActivePromotion)
+		go func() {
+			atpTemp := s2hv1beta1.ActivePromotion{}
+			for {
+				_ = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
+				if atpTemp.Status.IsConditionTrue(s2hv1beta1.ActivePromotionCondPreActiveCreated) {
+					break
+				}
+				time.Sleep(500 * time.Millisecond)
+			}
+			atpResCh <- atpTemp
+		}()
+		atpRes := <-atpResCh
+
+		By("Checking pre-active namespace has been set")
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
+		Expect(teamComp.Status.Namespace.PreActive).ToNot(BeEmpty())
+		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
+		Expect(atpRes.Status.PreviousActiveNamespace).To(BeEmpty())
+
+		By("Start staging controller for pre-active")
+		preActiveNs := atpRes.Status.TargetNamespace
+		{
+			stagingCfg := rest.CopyConfig(restCfg)
+			stagingCfg.Username = ""
+			// get token
+			stagingSA := &corev1.ServiceAccount{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: preActiveNs}, stagingSA)
+			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get sa: %s", internal.StagingCtrlName))
+			Expect(len(stagingSA.Secrets)).To(BeNumerically(">=", 1))
+			stagingSecret := &corev1.Secret{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: preActiveNs, Name: stagingSA.Secrets[0].Name}, stagingSecret)
+			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get secret: %s", stagingSA.Secrets[0].Name))
+			stagingCfg.BearerToken = string(stagingSecret.Data["token"])
+
+			// create mgr from config
+			stagingMgr, err := manager.New(stagingCfg, manager.Options{
+				Namespace:          preActiveNs,
+				MetricsBindAddress: "0",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			stagingCfgCtrl := configctrl.New(stagingMgr)
+			qCtrl := queue.New(preActiveNs, runtimeClient)
+			stagingPreActiveCtrl = staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient,
+				stagingMgr, qCtrl, stagingCfgCtrl, "", "", "",
+				internal.StagingConfig{})
+			go func() {
+				defer GinkgoRecover()
+				Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())
+			}()
+			go stagingPreActiveCtrl.Start(chStop)
+		}
+
+		By("ActivePromotion should be deleted")
+		err = wait.PollImmediate(1*time.Second, promoteTimeOut, func() (ok bool, err error) {
+			atpTemp := s2hv1beta1.ActivePromotion{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
+
+		By("Checking active namespace has been set")
+		teamComp = s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(teamComp.Status.Namespace.Active).To(Equal(preActiveNs))
+
+		By("ActivePromotionHistory should be created")
+		atpHists := &s2hv1beta1.ActivePromotionHistoryList{}
+		listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
+		err = runtimeClient.List(context.TODO(), atpHists, listOpt)
+		Expect(err).To(BeNil())
+		Expect(len(atpHists.Items)).To(Equal(1))
+		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).To(BeNil())
+
+		By("Current active components should not be set as it is first time promotion")
+		teamComp = s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
+
+		By("Public API")
+		{
+			By("Get team")
+			{
+				data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(data).NotTo(BeNil())
+				Expect(gjson.GetBytes(data, "teamName").Str).To(Equal(team.Name))
+			}
+
+			By("Get team Queue")
+			{
+				data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(data).NotTo(BeNil())
+			}
+
+			By("Get team QueueHistories not found")
+			{
+				_, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue/histories/" + "unknown")
+				Expect(err).To(HaveOccurred())
+			}
+		}
+	}, 230)
+
+	It("should not set active namespace on new team creation", func(done Done) {
+		defer close(done)
+		ctx := context.TODO()
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
+
+		By("Waiting pre-active environment is successfully created")
+		atpResCh := make(chan s2hv1beta1.ActivePromotion)
+		go func() {
+			atpTemp := s2hv1beta1.ActivePromotion{}
+			for {
+				_ = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
+				if atpTemp.Status.IsConditionTrue(s2hv1beta1.ActivePromotionCondPreActiveCreated) {
+					break
+				}
+				time.Sleep(500 * time.Millisecond)
+			}
+			atpResCh <- atpTemp
+		}()
+		atpRes := <-atpResCh
+
+		By("Checking pre-active namespace has been set")
+		teamComp := s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
+		Expect(teamComp.Status.Namespace.PreActive).ToNot(BeEmpty())
+		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
+		Expect(atpRes.Status.PreviousActiveNamespace).To(BeEmpty())
+
+		By("Waiting ActivePromotion state to be `Deploying`")
+		err = wait.PollImmediate(1*time.Second, 60*time.Second, func() (ok bool, err error) {
+			atpComp := s2hv1beta1.ActivePromotion{}
+			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp); err != nil {
+				return false, nil
+			}
+
+			if atpComp.Status.State == s2hv1beta1.ActivePromotionDeployingComponents {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Change active promotion state to `Deploying` error")
+
+		By("Updating ActivePromotion state to be `DestroyingPreActiveEnvironment`")
+		atpComp := s2hv1beta1.ActivePromotion{}
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp))
+		atpComp.Status.State = s2hv1beta1.ActivePromotionDestroyingPreActive
+		atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondPreActiveDestroyed, corev1.ConditionTrue, "failed")
+		Expect(runtimeClient.Update(ctx, &atpComp)).To(BeNil())
+
+		By("Delete ActivePromotion")
+		atpComp = s2hv1beta1.ActivePromotion{}
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp))
+		Expect(runtimeClient.Delete(context.TODO(), &atpComp)).To(BeNil())
+
+		By("pre-active namespace should be deleted")
+		preActiveNs := atpComp.Status.TargetNamespace
+		err = wait.PollImmediate(1*time.Second, 15*time.Second, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: preActiveNs}, &namespace)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete pre-active namespace error")
+
+		By("ActivePromotion should be deleted")
+		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+			atpTemp := s2hv1beta1.ActivePromotion{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
+
+		atpHists := &s2hv1beta1.ActivePromotionHistoryList{}
+		listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
+		err = runtimeClient.List(context.TODO(), atpHists, listOpt)
+		Expect(err).To(BeNil())
+		Expect(len(atpHists.Items)).To(Equal(1))
+		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).To(BeNil())
+
+		By("Checking only staging namespace left")
+		teamComp = s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(teamComp.Status.Namespace.Staging).ToNot(BeEmpty())
+		Expect(teamComp.Status.Namespace.Active).To(BeEmpty())
+		Expect(teamComp.Status.Namespace.PreActive).To(BeEmpty())
+
+		By("Current active components should not be set")
+		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
+	}, 60)
 })

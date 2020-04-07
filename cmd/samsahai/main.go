@@ -152,12 +152,13 @@ func startCtrlCmd() *cobra.Command {
 				SamsahaiNoProxy:     viper.GetString(s2h.VKS2HNoProxy),
 				ClusterDomain:       viper.GetString(s2h.VKClusterDomain),
 				ActivePromotion: s2h.ActivePromotionConfig{
-					Concurrences:     viper.GetInt(s2h.VKActivePromotionConcurrences),
-					Timeout:          metav1.Duration{Duration: viper.GetDuration(s2h.VKActivePromotionTimeout)},
-					DemotionTimeout:  metav1.Duration{Duration: viper.GetDuration(s2h.VKActivePromotionDemotionTimeout)},
-					RollbackTimeout:  metav1.Duration{Duration: viper.GetDuration(s2h.VKActivePromotionRollbackTimeout)},
-					TearDownDuration: metav1.Duration{Duration: viper.GetDuration(s2h.VKActivePromotionTearDownDuration)},
-					MaxHistories:     viper.GetInt(s2h.VKActivePromotionMaxHistories),
+					Concurrences:          viper.GetInt(s2h.VKActivePromotionConcurrences),
+					Timeout:               metav1.Duration{Duration: viper.GetDuration(s2h.VKActivePromotionTimeout)},
+					DemotionTimeout:       metav1.Duration{Duration: viper.GetDuration(s2h.VKActivePromotionDemotionTimeout)},
+					RollbackTimeout:       metav1.Duration{Duration: viper.GetDuration(s2h.VKActivePromotionRollbackTimeout)},
+					TearDownDuration:      metav1.Duration{Duration: viper.GetDuration(s2h.VKActivePromotionTearDownDuration)},
+					MaxHistories:          viper.GetInt(s2h.VKActivePromotionMaxHistories),
+					PromoteOnTeamCreation: viper.GetBool(s2h.VKActivePromotionOnTeamCreation),
 				},
 				SamsahaiCredential: s2h.SamsahaiCredential{
 					InternalAuthToken: authToken,
@@ -250,6 +251,8 @@ func startCtrlCmd() *cobra.Command {
 		"Previous active environment teardown duration.")
 	cmd.Flags().Int(s2h.VKActivePromotionMaxHistories, 7,
 		"Max stored active promotion histories per team.")
+	cmd.Flags().Bool(s2h.VKActivePromotionOnTeamCreation, true,
+		"Promote active environment when team creation")
 
 	return cmd
 }
