@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -25,7 +26,7 @@ var HealthStatusMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 var QueueMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "samsahai_queue",
 	Help: "Show components in queue",
-}, []string{"order", "teamName", "component", "version", "state", "no_of_processed"})
+}, []string{ "teamName", "component", "version", "state","order", "no_of_processed"})
 
 var ActivePromotionMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "samsahai_active_promotion",
@@ -46,64 +47,26 @@ func SetTeamNameMetric(teamList *s2hv1beta1.TeamList) {
 }
 
 func SetQueueMetric(queue *s2hv1beta1.Queue) {
-	queueStateList := map[string]float64{"waiting": 0, "testing": 0, "finished": 0, "deploying": 0, "cleaning": 0}
+	var queueState string
 	switch queue.Status.State {
 	case s2hv1beta1.Waiting:
-		queueStateList["waiting"] = 1
-		for state, val := range queueStateList {
-			QueueMetric.WithLabelValues(
-				strconv.Itoa(queue.Spec.NoOfOrder),
-				queue.Spec.TeamName,
-				queue.Name,
-				queue.Spec.Version,
-				state,
-				strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
-		}
+		queueState = "waiting"
 	case s2hv1beta1.Testing, s2hv1beta1.Collecting:
-		queueStateList["testing"] = 1
-		for state, val := range queueStateList {
-			QueueMetric.WithLabelValues(
-				strconv.Itoa(queue.Spec.NoOfOrder),
-				queue.Spec.TeamName,
-				queue.Name,
-				queue.Spec.Version,
-				state,
-				strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
-		}
+		queueState = "testing"
 	case s2hv1beta1.Finished:
-		queueStateList["finished"] = 1
-		for state, val := range queueStateList {
-			QueueMetric.WithLabelValues(
-				strconv.Itoa(queue.Spec.NoOfOrder),
-				queue.Spec.TeamName,
-				queue.Name,
-				queue.Spec.Version,
-				state,
-				strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
-		}
+		queueState = "finished"
 	case s2hv1beta1.DetectingImageMissing, s2hv1beta1.Creating:
-		queueStateList["deploying"] = 1
-		for state, val := range queueStateList {
-			QueueMetric.WithLabelValues(
-				strconv.Itoa(queue.Spec.NoOfOrder),
-				queue.Spec.TeamName,
-				queue.Name,
-				queue.Spec.Version,
-				state,
-				strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
-		}
+		queueState = "deploying"
 	case s2hv1beta1.CleaningBefore, s2hv1beta1.CleaningAfter:
-		queueStateList["cleaning"] = 1
-		for state, val := range queueStateList {
-			QueueMetric.WithLabelValues(
-				strconv.Itoa(queue.Spec.NoOfOrder),
-				queue.Spec.TeamName,
-				queue.Name,
-				queue.Spec.Version,
-				state,
-				strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
-		}
+		queueState = "cleaning"
 	}
+	QueueMetric.WithLabelValues(
+		queue.Spec.TeamName,
+		queue.Name,
+		queue.Spec.Version,
+		queueState,
+		strconv.Itoa(queue.Spec.NoOfOrder),
+		strconv.Itoa(queue.Status.NoOfProcessed)).Set(float64(time.Now().Unix()))
 }
 
 func SetHealthStatusMetric(version, gitCommit string, ts float64) {
