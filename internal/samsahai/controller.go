@@ -397,6 +397,16 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 	ctx := context.TODO()
 	if err := c.client.Get(ctx, types.NamespacedName{Name: namespace}, &namespaceObj); err != nil {
 		if k8serrors.IsNotFound(err) {
+			teamComp.Status.SetCondition(
+				nsConditionType,
+				corev1.ConditionFalse,
+				fmt.Sprintf("%s namespace is creating", namespace))
+
+			logger.Debug("start updating team namespace", "team", teamComp.Name, "namespace", namespace)
+			if err := c.updateTeamNamespacesStatus(teamComp, teamNsOpt); err != nil {
+				return errors.Wrap(err, "cannot update team conditions while creating namespace")
+			}
+
 			logger.Debug("start creating namespace", "team", teamComp.Name, "namespace", namespace)
 			if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
 				if err := controllerutil.SetControllerReference(teamComp, &namespaceObj, c.scheme); err != nil {
@@ -430,13 +440,17 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 		}
 
 		if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
+			logger.Debug("start notifying changed components",
+				"team", teamComp.Name, "namespace", namespace)
 			if err := c.notifyComponentChanged(teamComp.Name); err != nil {
-				return errors.Wrap(err, "cannot notify component changed when create staging namespace")
+				return errors.Wrap(err, "cannot notify component changed while creating staging namespace")
 			}
 
 			if c.configs.ActivePromotion.PromoteOnTeamCreation {
+				logger.Debug("start creating active promotion",
+					"team", teamComp.Name, "namespace", namespace)
 				if err := c.createActivePromotion(teamComp.Name); err != nil {
-					return errors.Wrap(err, "cannot create active promotion when create staging namespace")
+					return errors.Wrap(err, "cannot create active promotion while creating staging namespace")
 				}
 			}
 		}
