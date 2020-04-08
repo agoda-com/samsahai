@@ -52,6 +52,10 @@ fileConfigs:
     # this is for failed active promotion
     rollbackTimeout: "5m"
 
+    # would you like to auto promote active namespace when team is created?
+    # if you do not set this flag, the default value is true
+    promoteOnTeamCreation: true
+
 # the value in this field should be base64 encoder
 credentials: null
 #  # this is the token for GRPC communication between samsahai and staging controller

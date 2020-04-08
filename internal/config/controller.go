@@ -9,6 +9,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	cr "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	k8scontroller "sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -18,10 +20,11 @@ import (
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
 )
 
-var logger = s2hlog.Log.WithName(CtrlName)
+var logger = s2hlog.Log.WithName(ctrlName)
 
 const (
-	CtrlName = "config-ctrl"
+	ctrlName                = "config-ctrl"
+	maxConcurrentReconciles = 1
 )
 
 type controller struct {
@@ -41,6 +44,10 @@ func New(mgr cr.Manager, options ...Option) internal.ConfigController {
 
 	if mgr != nil {
 		c.client = mgr.GetClient()
+		if err := c.SetupWithManager(mgr); err != nil {
+			logger.Error(err, "cannot add new controller to manager")
+			return nil
+		}
 	}
 
 	for _, opt := range options {
@@ -48,6 +55,13 @@ func New(mgr cr.Manager, options ...Option) internal.ConfigController {
 	}
 
 	return c
+}
+
+func (c *controller) SetupWithManager(mgr cr.Manager) error {
+	return cr.NewControllerManagedBy(mgr).
+		WithOptions(k8scontroller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}).
+		For(&s2hv1beta1.Config{}).
+		Complete(c)
 }
 
 // Get returns configuration from Config CRD
@@ -221,4 +235,150 @@ func (c *controller) getConfig(configName string) (*s2hv1beta1.Config, error) {
 	}
 
 	return config, nil
+}
+
+// EnsureComponentChanged detects unused components and removes all unused component objects
+func (c *controller) EnsureComponentChanged(teamName, namespace string) error {
+	comps, err := c.GetComponents(teamName)
+	if err != nil {
+		logger.Error(err, "cannot get components from configuration",
+			"team", teamName, "namespace", namespace)
+		return err
+	}
+
+	if err := c.deleteDesiredComponents(comps, namespace); err != nil {
+		return err
+	}
+
+	if err := c.deleteTeamDesiredComponents(comps, teamName); err != nil {
+		return err
+	}
+
+	if err := c.deleteQueues(comps, namespace); err != nil {
+		return err
+	}
+
+	if err := c.deleteStableComponents(comps, namespace); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *controller) deleteDesiredComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
+	ctx := context.Background()
+	desiredComps := &s2hv1beta1.DesiredComponentList{}
+	if err := c.client.List(ctx, desiredComps, &client.ListOptions{Namespace: namespace}); err != nil {
+		logger.Error(err, "cannot list desired components", "namespace", namespace)
+		return err
+	}
+
+	for _, desired := range desiredComps.Items {
+		if _, ok := comps[desired.Name]; !ok {
+			if err := c.client.Delete(ctx, &desired); err != nil {
+				logger.Error(err, "cannot delete desired component",
+					"namespace", namespace, "component", desired.Name)
+				return err
+			}
+
+			logger.Debug("desired component has been deleted",
+				"namespace", namespace, "component", desired)
+		}
+	}
+
+	return nil
+}
+
+func (c *controller) deleteTeamDesiredComponents(comps map[string]*s2hv1beta1.Component, teamName string) error {
+	ctx := context.Background()
+	teamComp := &s2hv1beta1.Team{}
+	if err := c.client.Get(ctx, types.NamespacedName{Name: teamName}, teamComp); err != nil {
+		logger.Error(err, "cannot get team component", "team", teamName)
+		return err
+	}
+
+	teamDesiredComps := teamComp.Status.DesiredComponentImageCreatedTime
+	for desired := range teamDesiredComps {
+		if _, ok := comps[desired]; !ok {
+			logger.Debug("desired component has been deleted from team",
+				"team", teamName, "component", desired)
+			delete(teamDesiredComps, desired)
+		}
+	}
+
+	if err := c.client.Update(ctx, teamComp); err != nil {
+		logger.Error(err, "cannot update team", "team", teamName)
+		return err
+	}
+
+	return nil
+}
+
+func (c *controller) deleteQueues(comps map[string]*s2hv1beta1.Component, namespace string) error {
+	ctx := context.Background()
+	qComps := &s2hv1beta1.QueueList{}
+	if err := c.client.List(ctx, qComps, &client.ListOptions{Namespace: namespace}); err != nil {
+		logger.Error(err, "cannot list queues", "namespace", namespace)
+		return err
+	}
+
+	for _, q := range qComps.Items {
+		if _, ok := comps[q.Name]; !ok {
+			if err := c.client.Delete(ctx, &q); err != nil {
+				logger.Error(err, "cannot delete queue",
+					"namespace", namespace, "component", q.Name)
+				return err
+			}
+
+			logger.Debug("queue has been deleted",
+				"namespace", namespace, "component", q.Name)
+		}
+	}
+
+	return nil
+}
+
+func (c *controller) deleteStableComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
+	ctx := context.Background()
+	stableComps := &s2hv1beta1.StableComponentList{}
+	if err := c.client.List(ctx, stableComps, &client.ListOptions{Namespace: namespace}); err != nil {
+		logger.Error(err, "cannot list stable components", "namespace", namespace)
+		return err
+	}
+
+	for _, stable := range stableComps.Items {
+		if _, ok := comps[stable.Name]; !ok {
+			if err := c.client.Delete(ctx, &stable); err != nil {
+				logger.Error(err, "cannot delete stable component",
+					"namespace", namespace, "component", stable.Name)
+				return err
+			}
+
+			logger.Debug("stable component has been deleted",
+				"namespace", namespace, "component", stable.Name)
+		}
+	}
+
+	return nil
+}
+
+func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
+	ctx := context.Background()
+	configComp := &s2hv1beta1.Config{}
+	if err := c.client.Get(ctx, req.NamespacedName, configComp); err != nil {
+		if k8serrors.IsNotFound(err) {
+			// Object not found, return. Created objects are automatically garbage collected.
+			// For additional cleanup logic use finalizers.
+			return reconcile.Result{}, nil
+		}
+
+		logger.Error(err, "cannot get Config", "name", req.Name, "namespace", req.Namespace)
+		return cr.Result{}, err
+	}
+
+	if err := c.EnsureComponentChanged(req.Name, req.Namespace); err != nil {
+		return cr.Result{}, err
+	}
+
+	return cr.Result{}, nil
 }
