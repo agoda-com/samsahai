@@ -273,16 +273,17 @@ func (c *controller) deleteDesiredComponents(comps map[string]*s2hv1beta1.Compon
 		return err
 	}
 
-	for _, desired := range desiredComps.Items {
-		if _, ok := comps[desired.Name]; !ok {
-			if err := c.client.Delete(ctx, &desired); err != nil {
-				logger.Error(err, "cannot delete desired component",
-					"namespace", namespace, "component", desired.Name)
+	for i := len(desiredComps.Items) - 1; i > 0; i-- {
+		d := desiredComps.Items[i]
+		if _, ok := comps[d.Name]; !ok {
+			if err := c.client.Delete(ctx, &d); err != nil {
+				logger.Error(err, "cannot delete d component",
+					"namespace", namespace, "component", d.Name)
 				return err
 			}
 
-			logger.Debug("desired component has been deleted",
-				"namespace", namespace, "component", desired)
+			logger.Debug("d component has been deleted",
+				"namespace", namespace, "component", d.Name)
 		}
 	}
 
@@ -298,11 +299,11 @@ func (c *controller) deleteTeamDesiredComponents(comps map[string]*s2hv1beta1.Co
 	}
 
 	teamDesiredComps := teamComp.Status.DesiredComponentImageCreatedTime
-	for desired := range teamDesiredComps {
-		if _, ok := comps[desired]; !ok {
-			logger.Debug("desired component has been deleted from team",
-				"team", teamName, "component", desired)
-			delete(teamDesiredComps, desired)
+	for td := range teamDesiredComps {
+		if _, ok := comps[td]; !ok {
+			logger.Debug("td component has been deleted from team",
+				"team", teamName, "component", td)
+			delete(teamDesiredComps, td)
 		}
 	}
 
@@ -322,7 +323,8 @@ func (c *controller) deleteQueues(comps map[string]*s2hv1beta1.Component, namesp
 		return err
 	}
 
-	for _, q := range qComps.Items {
+	for i := len(qComps.Items) - 1; i > 0; i-- {
+		q := qComps.Items[i]
 		if _, ok := comps[q.Name]; !ok {
 			if err := c.client.Delete(ctx, &q); err != nil {
 				logger.Error(err, "cannot delete queue",
@@ -346,16 +348,17 @@ func (c *controller) deleteStableComponents(comps map[string]*s2hv1beta1.Compone
 		return err
 	}
 
-	for _, stable := range stableComps.Items {
-		if _, ok := comps[stable.Name]; !ok {
-			if err := c.client.Delete(ctx, &stable); err != nil {
-				logger.Error(err, "cannot delete stable component",
-					"namespace", namespace, "component", stable.Name)
+	for i := len(stableComps.Items) - 1; i > 0; i-- {
+		s := stableComps.Items[i]
+		if _, ok := comps[s.Name]; !ok {
+			if err := c.client.Delete(ctx, &s); err != nil {
+				logger.Error(err, "cannot delete s component",
+					"namespace", namespace, "component", s.Name)
 				return err
 			}
 
-			logger.Debug("stable component has been deleted",
-				"namespace", namespace, "component", stable.Name)
+			logger.Debug("s component has been deleted",
+				"namespace", namespace, "component", s.Name)
 		}
 	}
 

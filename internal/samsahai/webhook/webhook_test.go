@@ -392,6 +392,10 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	return comps, nil
 }
 
+func (c *mockConfigCtrl) EnsureComponentChanged(configName, namespace string) error {
+	return nil
+}
+
 func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
 	return nil
 }
