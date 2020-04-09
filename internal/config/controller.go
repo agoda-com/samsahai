@@ -273,7 +273,7 @@ func (c *controller) deleteDesiredComponents(comps map[string]*s2hv1beta1.Compon
 		return err
 	}
 
-	for i := len(desiredComps.Items) - 1; i > 0; i-- {
+	for i := len(desiredComps.Items) - 1; i >= 0; i-- {
 		d := desiredComps.Items[i]
 		if _, ok := comps[d.Name]; !ok {
 			if err := c.client.Delete(ctx, &d); err != nil {
@@ -323,7 +323,7 @@ func (c *controller) deleteQueues(comps map[string]*s2hv1beta1.Component, namesp
 		return err
 	}
 
-	for i := len(qComps.Items) - 1; i > 0; i-- {
+	for i := len(qComps.Items) - 1; i >= 0; i-- {
 		q := qComps.Items[i]
 		if _, ok := comps[q.Name]; !ok {
 			if err := c.client.Delete(ctx, &q); err != nil {
@@ -348,7 +348,7 @@ func (c *controller) deleteStableComponents(comps map[string]*s2hv1beta1.Compone
 		return err
 	}
 
-	for i := len(stableComps.Items) - 1; i > 0; i-- {
+	for i := len(stableComps.Items) - 1; i >= 0; i-- {
 		s := stableComps.Items[i]
 		if _, ok := comps[s.Name]; !ok {
 			if err := c.client.Delete(ctx, &s); err != nil {
