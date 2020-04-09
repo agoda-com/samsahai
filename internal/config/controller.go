@@ -237,8 +237,7 @@ func (c *controller) getConfig(configName string) (*s2hv1beta1.Config, error) {
 	return config, nil
 }
 
-// EnsureComponentChanged detects unused components and removes all unused component objects
-func (c *controller) EnsureComponentChanged(teamName, namespace string) error {
+func (c *controller) ensureComponentChanged(teamName, namespace string) error {
 	comps, err := c.GetComponents(teamName)
 	if err != nil {
 		logger.Error(err, "cannot get components from configuration",
@@ -379,7 +378,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		return cr.Result{}, err
 	}
 
-	if err := c.EnsureComponentChanged(req.Name, req.Namespace); err != nil {
+	if err := c.ensureComponentChanged(req.Name, req.Namespace); err != nil {
 		return cr.Result{}, err
 	}
 

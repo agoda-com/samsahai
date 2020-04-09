@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -18,6 +19,7 @@ import (
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -30,6 +32,9 @@ var _ = Describe("config controller [e2e]", func() {
 	var (
 		controller    internal.ConfigController
 		client        rclient.Client
+		chStop        chan struct{}
+		mgr           manager.Manager
+		wgStop        *sync.WaitGroup
 		namespace     = os.Getenv("POD_NAMESPACE")
 		teamName      = "teamtest"
 		redisComp     = "redis"
@@ -120,21 +125,31 @@ var _ = Describe("config controller [e2e]", func() {
 	)
 
 	BeforeEach(func(done Done) {
+		defer GinkgoRecover()
 		defer close(done)
 
-		//namespace = os.Getenv("POD_NAMESPACE")
 		Expect(namespace).NotTo(BeEmpty(), "Please provided POD_NAMESPACE")
 
+		chStop = make(chan struct{})
 		cfg, err := config.GetConfig()
 		Expect(err).To(BeNil(), "Please provide credential for accessing k8s cluster")
+
+		mgr, err = manager.New(cfg, manager.Options{Namespace: namespace, MetricsBindAddress: "0"})
+		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
 		client, err = rclient.New(cfg, rclient.Options{Scheme: scheme.Scheme})
 		Expect(err).NotTo(HaveOccurred())
 
-		controller = configctrl.New(nil, configctrl.WithClient(client))
+		controller = configctrl.New(mgr, configctrl.WithClient(client))
 		Expect(controller).NotTo(BeNil(), "Should successfully init Config controller")
 
-		_ = controller.Delete(teamName)
+		wgStop = &sync.WaitGroup{}
+		wgStop.Add(1)
+		go func() {
+			defer GinkgoRecover()
+			defer wgStop.Done()
+			Expect(mgr.Start(chStop)).To(BeNil())
+		}()
 	}, 5)
 
 	AfterEach(func(done Done) {
@@ -174,6 +189,8 @@ var _ = Describe("config controller [e2e]", func() {
 
 		_ = controller.Delete(teamName)
 
+		close(chStop)
+		wgStop.Wait()
 	}, 5)
 
 	It("should successfully get/delete Config", func(done Done) {
@@ -253,9 +270,7 @@ var _ = Describe("config controller [e2e]", func() {
 		configComp.Spec.Components = []*s2hv1beta1.Component{{Name: redisComp}}
 		Expect(client.Update(ctx, &configComp)).To(BeNil())
 
-		By("Ensuring changes of components config")
-		Expect(controller.EnsureComponentChanged(teamName, namespace)).To(BeNil())
-
+		time.Sleep(1 * time.Second)
 		By("Checking DesiredComponents")
 		dRedis := s2hv1beta1.DesiredComponent{}
 		Expect(client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: redisComp}, &dRedis)).To(BeNil())

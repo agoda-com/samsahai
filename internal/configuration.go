@@ -14,9 +14,6 @@ type ConfigController interface {
 	// GetParentComponents returns components that doesn't have parent (nil Parent)
 	GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error)
 
-	// EnsureComponentChanged detects unused components and removes all unused component objects
-	EnsureComponentChanged(configName, namespace string) error
-
 	// Update updates Config CRD
 	Update(config *s2hv1beta1.Config) error
 
