@@ -124,9 +124,7 @@ func New(
 		configs:         configs,
 	}
 
-	if c.configCtrl == nil {
-		c.configCtrl = configctrl.New(mgr, configctrl.WithS2hCtrl(c))
-	}
+	c.configCtrl = configctrl.New(mgr, configctrl.WithS2hCtrl(c))
 
 	if mgr != nil {
 		// create runtime client
@@ -185,6 +183,12 @@ func WithDisableLoaders(checkers, plugins, reporters bool) Option {
 func WithScheme(scheme *runtime.Scheme) Option {
 	return func(c *controller) {
 		c.scheme = scheme
+	}
+}
+
+func WithConfigCtrl(configCtrl internal.ConfigController) Option {
+	return func(c *controller) {
+		c.configCtrl = configCtrl
 	}
 }
 
