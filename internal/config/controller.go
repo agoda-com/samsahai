@@ -28,7 +28,8 @@ const (
 )
 
 type controller struct {
-	client client.Client
+	client  client.Client
+	s2hCtrl internal.SamsahaiController
 }
 
 type Option func(*controller)
@@ -36,6 +37,12 @@ type Option func(*controller)
 func WithClient(client client.Client) Option {
 	return func(c *controller) {
 		c.client = client
+	}
+}
+
+func WithS2hCtrl(s2hCtrl internal.SamsahaiController) Option {
+	return func(c *controller) {
+		c.s2hCtrl = s2hCtrl
 	}
 }
 
@@ -245,26 +252,63 @@ func (c *controller) ensureComponentChanged(teamName, namespace string) error {
 		return err
 	}
 
-	if err := c.deleteDesiredComponents(comps, namespace); err != nil {
+	if err := c.detectRemovedDesiredComponents(comps, namespace); err != nil {
 		return err
 	}
 
-	if err := c.deleteTeamDesiredComponents(comps, teamName); err != nil {
+	if err := c.detectRemovedTeamDesiredComponents(comps, teamName); err != nil {
 		return err
 	}
 
-	if err := c.deleteQueues(comps, namespace); err != nil {
+	if err := c.detectRemovedQueues(comps, namespace); err != nil {
 		return err
 	}
 
-	if err := c.deleteStableComponents(comps, namespace); err != nil {
+	if err := c.detectRemovedStableComponents(comps, namespace); err != nil {
+		return err
+	}
+
+	if err := c.detectNewComponents(comps, namespace); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (c *controller) deleteDesiredComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
+func (c *controller) detectNewComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
+	if c.s2hCtrl == nil {
+		return nil
+	}
+
+	ctx := context.Background()
+	desiredComps := &s2hv1beta1.DesiredComponentList{}
+	if err := c.client.List(ctx, desiredComps, &client.ListOptions{Namespace: namespace}); err != nil {
+		logger.Error(err, "cannot list desired components", "namespace", namespace)
+		return err
+	}
+
+	for comp := range comps {
+		if isNewComponent(desiredComps, comp) {
+			logger.Debug("desired component has been added and notified",
+				"namespace", namespace, "component", comp)
+			c.s2hCtrl.NotifyComponentChanged(comp, "")
+		}
+	}
+
+	return nil
+}
+
+func isNewComponent(desiredComps *s2hv1beta1.DesiredComponentList, component string) bool {
+	for _, d := range desiredComps.Items {
+		if component == d.Name {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (c *controller) detectRemovedDesiredComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
 	ctx := context.Background()
 	desiredComps := &s2hv1beta1.DesiredComponentList{}
 	if err := c.client.List(ctx, desiredComps, &client.ListOptions{Namespace: namespace}); err != nil {
@@ -276,12 +320,12 @@ func (c *controller) deleteDesiredComponents(comps map[string]*s2hv1beta1.Compon
 		d := desiredComps.Items[i]
 		if _, ok := comps[d.Name]; !ok {
 			if err := c.client.Delete(ctx, &d); err != nil {
-				logger.Error(err, "cannot delete d component",
+				logger.Error(err, "cannot remove desired component",
 					"namespace", namespace, "component", d.Name)
 				return err
 			}
 
-			logger.Debug("d component has been deleted",
+			logger.Debug("desired component has been removed",
 				"namespace", namespace, "component", d.Name)
 		}
 	}
@@ -289,20 +333,20 @@ func (c *controller) deleteDesiredComponents(comps map[string]*s2hv1beta1.Compon
 	return nil
 }
 
-func (c *controller) deleteTeamDesiredComponents(comps map[string]*s2hv1beta1.Component, teamName string) error {
+func (c *controller) detectRemovedTeamDesiredComponents(comps map[string]*s2hv1beta1.Component, teamName string) error {
 	ctx := context.Background()
 	teamComp := &s2hv1beta1.Team{}
-	if err := c.client.Get(ctx, types.NamespacedName{Name: teamName}, teamComp); err != nil {
-		logger.Error(err, "cannot get team component", "team", teamName)
+	if err := c.s2hCtrl.GetTeam(teamName, teamComp); err != nil {
+		logger.Error(err, "cannot get team", "team", teamName)
 		return err
 	}
 
 	teamDesiredComps := teamComp.Status.DesiredComponentImageCreatedTime
 	for td := range teamDesiredComps {
 		if _, ok := comps[td]; !ok {
-			logger.Debug("td component has been deleted from team",
+			logger.Debug("desired component has been removed from team",
 				"team", teamName, "component", td)
-			delete(teamDesiredComps, td)
+			teamComp.Status.RemoveDesiredComponentImageCreatedTime(td)
 		}
 	}
 
@@ -314,7 +358,7 @@ func (c *controller) deleteTeamDesiredComponents(comps map[string]*s2hv1beta1.Co
 	return nil
 }
 
-func (c *controller) deleteQueues(comps map[string]*s2hv1beta1.Component, namespace string) error {
+func (c *controller) detectRemovedQueues(comps map[string]*s2hv1beta1.Component, namespace string) error {
 	ctx := context.Background()
 	qComps := &s2hv1beta1.QueueList{}
 	if err := c.client.List(ctx, qComps, &client.ListOptions{Namespace: namespace}); err != nil {
@@ -326,12 +370,12 @@ func (c *controller) deleteQueues(comps map[string]*s2hv1beta1.Component, namesp
 		q := qComps.Items[i]
 		if _, ok := comps[q.Name]; !ok {
 			if err := c.client.Delete(ctx, &q); err != nil {
-				logger.Error(err, "cannot delete queue",
+				logger.Error(err, "cannot remove queue",
 					"namespace", namespace, "component", q.Name)
 				return err
 			}
 
-			logger.Debug("queue has been deleted",
+			logger.Debug("queue has been removed",
 				"namespace", namespace, "component", q.Name)
 		}
 	}
@@ -339,7 +383,7 @@ func (c *controller) deleteQueues(comps map[string]*s2hv1beta1.Component, namesp
 	return nil
 }
 
-func (c *controller) deleteStableComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
+func (c *controller) detectRemovedStableComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
 	ctx := context.Background()
 	stableComps := &s2hv1beta1.StableComponentList{}
 	if err := c.client.List(ctx, stableComps, &client.ListOptions{Namespace: namespace}); err != nil {
@@ -351,12 +395,12 @@ func (c *controller) deleteStableComponents(comps map[string]*s2hv1beta1.Compone
 		s := stableComps.Items[i]
 		if _, ok := comps[s.Name]; !ok {
 			if err := c.client.Delete(ctx, &s); err != nil {
-				logger.Error(err, "cannot delete s component",
+				logger.Error(err, "cannot remove stable component",
 					"namespace", namespace, "component", s.Name)
 				return err
 			}
 
-			logger.Debug("s component has been deleted",
+			logger.Debug("stable component has been removed",
 				"namespace", namespace, "component", s.Name)
 		}
 	}
@@ -374,11 +418,28 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 			return reconcile.Result{}, nil
 		}
 
-		logger.Error(err, "cannot get Config", "name", req.Name, "namespace", req.Namespace)
+		logger.Error(err, "cannot get config", "team", req.Name, "namespace", req.Namespace)
 		return cr.Result{}, err
 	}
 
-	if err := c.ensureComponentChanged(req.Name, req.Namespace); err != nil {
+	if c.s2hCtrl == nil {
+		logger.Debug("samsahai ctrl is not initialized", "team", req.Name)
+		return cr.Result{}, nil
+	}
+
+	teamComp := s2hv1beta1.Team{}
+	if err := c.s2hCtrl.GetTeam(req.Name, &teamComp); err != nil {
+		logger.Error(err, "cannot get team", "team", req.Name)
+		return cr.Result{}, err
+	}
+
+	stagingNs := teamComp.Status.Namespace.Staging
+	if stagingNs == "" {
+		logger.Debug("no staging namespace to process", "team", req.Name)
+		return cr.Result{}, nil
+	}
+
+	if err := c.ensureComponentChanged(req.Name, stagingNs); err != nil {
 		return cr.Result{}, err
 	}
 

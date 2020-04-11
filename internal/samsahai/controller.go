@@ -101,7 +101,6 @@ func New(
 	mgr manager.Manager,
 	ns string,
 	configs internal.SamsahaiConfig,
-	configCtrl internal.ConfigController,
 	options ...Option,
 ) internal.SamsahaiController {
 	stop := make(chan struct{})
@@ -123,7 +122,10 @@ func New(
 		plugins:         map[string]internal.Plugin{},
 		reporters:       map[string]internal.Reporter{},
 		configs:         configs,
-		configCtrl:      configCtrl,
+	}
+
+	if c.configCtrl == nil {
+		c.configCtrl = configctrl.New(mgr, configctrl.WithS2hCtrl(c))
 	}
 
 	if mgr != nil {
