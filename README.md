@@ -111,7 +111,11 @@ Find more configuration information in [samsahai-example](https://www.github.com
     http://<minikube_ip>:<node_port>/version (e.g. http://192.168.64.14:32501/version)
     http://<minikube_ip>:<node_port>/swagger/index.html# (e.g. http://192.168.64.14:32501/swagger/index.html#)
     ```
-10. Apply team
+10. Apply configuration
+    ```
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/config-example.yaml
+    ```
+11. Apply team
     ```
     kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/team-example.yaml
     ```
@@ -198,9 +202,10 @@ To save the cluster resources once every upgrade component verification has fini
 2. Clone project in the directory above
 3. Prepare environment and export KUBECONFIG
     ```
-    make install-init
+    make init
     make prepare-env-e2e-k3d
     export KUBECONFIG=/tmp/s2h/k3s-kubeconfig
+    make install-crds
     ```
 4. Run `samsahai controller` by using go build with following configurations:
     ```
@@ -212,7 +217,11 @@ To save the cluster resources once every upgrade component verification has fini
     ```
     http://localhost:8080/swagger/index.html#
     ```
-6. Apply team
+6. Apply configuration
+    ```
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/config-example.yaml
+    ```
+7. Apply team
     ```
     kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/team-example-local.yaml
     ```
