@@ -9,7 +9,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -31,6 +33,12 @@ var _ = Describe("config controller [e2e]", func() {
 		namespace = os.Getenv("POD_NAMESPACE")
 		Expect(namespace).NotTo(BeEmpty(), "Please provided POD_NAMESPACE")
 
+		cfg, err := config.GetConfig()
+		Expect(err).To(BeNil(), "Please provide credential for accessing k8s cluster")
+
+		client, err = rclient.New(cfg, rclient.Options{Scheme: scheme.Scheme})
+		Expect(err).NotTo(HaveOccurred())
+
 		controller = configctrl.New(nil, configctrl.WithClient(client))
 		Expect(controller).NotTo(BeNil(), "Should successfully init Config controller")
 	}, 5)
@@ -38,7 +46,6 @@ var _ = Describe("config controller [e2e]", func() {
 	AfterEach(func(done Done) {
 		defer close(done)
 		_ = controller.Delete(teamName)
-
 	}, 5)
 
 	It("should successfully get/delete Config", func(done Done) {
@@ -78,6 +85,5 @@ var _ = Describe("config controller [e2e]", func() {
 		config = &s2hv1beta1.Config{}
 		err = client.Get(context.TODO(), types.NamespacedName{Name: teamName}, config)
 		Expect(err).To(HaveOccurred())
-
 	}, 10)
 })
