@@ -26,7 +26,6 @@ var _ = Describe("config controller [e2e]", func() {
 	)
 
 	BeforeEach(func(done Done) {
-		defer GinkgoRecover()
 		defer close(done)
 
 		namespace = os.Getenv("POD_NAMESPACE")
