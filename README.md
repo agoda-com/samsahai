@@ -111,7 +111,11 @@ Find more configuration information in [samsahai-example](https://www.github.com
     http://<minikube_ip>:<node_port>/version (e.g. http://192.168.64.14:32501/version)
     http://<minikube_ip>:<node_port>/swagger/index.html# (e.g. http://192.168.64.14:32501/swagger/index.html#)
     ```
-10. Apply team
+10. Apply configuration
+    ```
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/config-example.yaml
+    ```
+11. Apply team
     ```
     kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/team-example.yaml
     ```
