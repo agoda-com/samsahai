@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path"
 	"sync"
 	"time"
 
@@ -39,7 +37,6 @@ import (
 	s2hhttp "github.com/agoda-com/samsahai/internal/samsahai/webhook"
 	"github.com/agoda-com/samsahai/internal/stablecomponent"
 	"github.com/agoda-com/samsahai/internal/staging"
-	"github.com/agoda-com/samsahai/internal/util"
 	utilhttp "github.com/agoda-com/samsahai/internal/util/http"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
@@ -205,12 +202,12 @@ var (
 	mockQueueList = &s2hv1beta1.QueueList{
 		Items: []s2hv1beta1.Queue{
 			{
-				ObjectMeta: metav1.ObjectMeta{Name: mariaDBCompName, Namespace: stgNamespace},
-				Spec:       s2hv1beta1.QueueSpec{Name: mariaDBCompName, Repository: "bitnami/mariadb", Version: "10.3.18-debian-9-r32"},
-			},
-			{
 				ObjectMeta: metav1.ObjectMeta{Name: redisCompName, Namespace: stgNamespace},
 				Spec:       s2hv1beta1.QueueSpec{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.7-debian-9-r56"},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: wordpressCompName, Namespace: stgNamespace},
+				Spec:       s2hv1beta1.QueueSpec{Name: wordpressCompName, Repository: "bitnami/wordpress", Version: "5.2.4-debian-9-r18"},
 			},
 		},
 	}
@@ -1434,19 +1431,25 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 	It("should successfully detect changed components", func(done Done) {
 		defer close(done)
+
+		By("Starting Samsahai internal process")
+		go samsahaiCtrl.Start(chStop)
+
+		By("Starting http server")
+		mux := http.NewServeMux()
+		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
+		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
 		ctx := context.TODO()
 
 		By("Creating Config")
-		yamlTeam, err := ioutil.ReadFile(path.Join("..", "data", "wordpress-redis", "config.yaml"))
-		Expect(err).NotTo(HaveOccurred())
-
-		obj, _ := util.MustParseYAMLtoRuntimeObject(yamlTeam)
-		config, _ := obj.(*s2hv1beta1.Config)
-		Expect(runtimeClient.Create(ctx, config)).To(BeNil())
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
 		team := mockTeam
-		team.Status.Namespace.Staging = stgNamespace
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
@@ -1466,16 +1469,39 @@ var _ = Describe("Main Controller [e2e]", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
-		By("Creating DesiredComponents")
-		for _, d := range mockDesiredCompList.Items {
-			Expect(runtimeClient.Create(ctx, &d)).To(BeNil())
-		}
+		By("Send webhook")
+		jsonDataRedis, err := json.Marshal(map[string]interface{}{
+			"component": redisCompName,
+		})
+		Expect(err).NotTo(HaveOccurred())
 
-		time.Sleep(1 * time.Second)
+		jsonDataWordpress, err := json.Marshal(map[string]interface{}{
+			"component": wordpressCompName,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		By("Verifying DesiredComponent has been created")
+		err = wait.PollImmediate(1*time.Second, 30*time.Second, func() (ok bool, err error) {
+			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataRedis)
+			dc := s2hv1beta1.DesiredComponent{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dc); err != nil {
+				return false, nil
+			}
+
+			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataWordpress)
+			c := s2hv1beta1.DesiredComponent{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: wordpressCompName, Namespace: stgNamespace}, &c); err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify DesiredComponent error")
+
 		By("Checking all desired components have been set")
 		desiredComps := &s2hv1beta1.DesiredComponentList{}
 		Expect(runtimeClient.List(ctx, desiredComps, &crclient.ListOptions{Namespace: stgNamespace}))
-		Expect(len(desiredComps.Items)).To(Equal(3))
+		Expect(len(desiredComps.Items)).To(Equal(2))
 
 		By("Creating Queues")
 		for _, q := range mockQueueList.Items {
@@ -1507,9 +1533,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("Checking DesiredComponents")
 		dRedis := s2hv1beta1.DesiredComponent{}
 		Expect(runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &dRedis)).To(BeNil())
-		dMaria := s2hv1beta1.DesiredComponent{}
-		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: mariaDBCompName}, &dMaria)
-		Expect(errors.IsNotFound(err)).To(BeTrue())
 		dWordpress := s2hv1beta1.DesiredComponent{}
 		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &dWordpress)
 		Expect(errors.IsNotFound(err)).To(BeTrue())
@@ -1519,14 +1542,13 @@ var _ = Describe("Main Controller [e2e]", func() {
 		team = s2hv1beta1.Team{}
 		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &team)).To(BeNil())
 		Expect(team.Status.DesiredComponentImageCreatedTime[redisCompName]).ToNot(BeNil())
-		Expect(team.Status.DesiredComponentImageCreatedTime[mariaDBCompName]).To(BeNil())
 		Expect(team.Status.DesiredComponentImageCreatedTime[wordpressCompName]).To(BeNil())
 
 		By("Checking Queues")
 		qRedis := s2hv1beta1.Queue{}
 		Expect(runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &qRedis)).To(BeNil())
-		qMaria := s2hv1beta1.Queue{}
-		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: mariaDBCompName}, &qMaria)
+		qWordpress := s2hv1beta1.Queue{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &qWordpress)
 		Expect(errors.IsNotFound(err)).To(BeTrue())
 
 		By("Checking StableComponents")
@@ -1535,8 +1557,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		sMaria := s2hv1beta1.StableComponent{}
 		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: mariaDBCompName}, &sMaria)
 		Expect(errors.IsNotFound(err)).To(BeTrue())
-
-	}, 10)
+	}, 60)
 
 	XIt("should correctly get image missing list", func(done Done) {
 		defer close(done)
