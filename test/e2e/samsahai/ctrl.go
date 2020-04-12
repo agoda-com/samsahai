@@ -1537,7 +1537,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &dWordpress)
 		Expect(errors.IsNotFound(err)).To(BeTrue())
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(2 * time.Second)
 		By("Checking TeamDesired")
 		team = s2hv1beta1.Team{}
 		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &team)).To(BeNil())
