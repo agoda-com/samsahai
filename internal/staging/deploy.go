@@ -53,7 +53,19 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 		if err != nil {
 			return err
 		}
-		comp = comps[queue.Spec.Name]
+
+		var ok bool
+		comp, ok = comps[queue.Spec.Name]
+		if !ok {
+			// delete queue if component does not exist in config
+			if err := c.client.Delete(context.TODO(), queue); err != nil {
+				logger.Error(err, "deleting queue error")
+				return err
+			}
+			c.clearCurrentQueue()
+			return nil
+		}
+
 		parentComp = comp
 
 		if comp.Parent != "" {

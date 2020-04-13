@@ -109,6 +109,7 @@ func (c *controller) RemoveAllQueues() error {
 func (c *controller) add(ctx context.Context, queue *v1beta1.Queue, atTop bool) error {
 	queueList, err := c.list(nil)
 	if err != nil {
+		logger.Error(err, "cannot list queue")
 		return err
 	}
 
@@ -213,7 +214,7 @@ func (c *controller) list(opts *client.ListOptions) (list *v1beta1.QueueList, er
 		opts = &client.ListOptions{Namespace: c.namespace}
 	}
 	if err = c.client.List(context.Background(), list, opts); err != nil {
-		return
+		return list, errors.Wrapf(err, "cannot list queue with options: %+v", opts)
 	}
 	return list, nil
 }
@@ -221,6 +222,7 @@ func (c *controller) list(opts *client.ListOptions) (list *v1beta1.QueueList, er
 func (c *controller) SetLastOrder(q *v1beta1.Queue) error {
 	queueList, err := c.list(nil)
 	if err != nil {
+		logger.Error(err, "cannot list queue")
 		return err
 	}
 
@@ -233,6 +235,7 @@ func (c *controller) SetLastOrder(q *v1beta1.Queue) error {
 func (c *controller) SetReverifyQueueAtFirst(q *v1beta1.Queue) error {
 	list, err := c.list(nil)
 	if err != nil {
+		logger.Error(err, "cannot list queue")
 		return err
 	}
 
@@ -250,6 +253,7 @@ func (c *controller) SetReverifyQueueAtFirst(q *v1beta1.Queue) error {
 func (c *controller) SetRetryQueue(q *v1beta1.Queue, noOfRetry int, nextAt time.Time) error {
 	list, err := c.list(nil)
 	if err != nil {
+		logger.Error(err, "cannot list queue")
 		return err
 	}
 
@@ -269,6 +273,7 @@ func (c *controller) SetRetryQueue(q *v1beta1.Queue, noOfRetry int, nextAt time.
 func (c *controller) updateQueueList(ql *v1beta1.QueueList) error {
 	for i := range ql.Items {
 		if err := c.client.Update(context.TODO(), &ql.Items[i]); err != nil {
+			logger.Error(err, "cannot update queue list", "queue", ql.Items[i].Name)
 			return errors.Wrapf(err, "cannot update queue %s in %s", ql.Items[i].Name, ql.Items[i].Namespace)
 		}
 	}
