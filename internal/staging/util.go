@@ -8,6 +8,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/twitchtv/twirp"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -86,6 +88,11 @@ func (c *controller) updateQueue(queue *s2hv1beta1.Queue) error {
 }
 
 func (c *controller) deleteQueue(q *s2hv1beta1.Queue) error {
+	// update queue history before processing next queue
+	if err := c.updateQueueHistory(q); err != nil {
+		return errors.Wrap(err, "updating queuehistory error")
+	}
+
 	isDeploySuccess, isTestSuccess, isReverify := q.IsDeploySuccess(), q.IsTestSuccess(), q.IsReverify()
 
 	if isDeploySuccess && isTestSuccess && !isReverify {
@@ -164,4 +171,36 @@ func (c *controller) updateQueueWithState(q *s2hv1beta1.Queue, state s2hv1beta1.
 
 func (c *controller) genReleaseName(comp *s2hv1beta1.Component) string {
 	return internal.GenReleaseName(c.namespace, comp.Name)
+}
+
+func (c *controller) updateQueueHistory(q *s2hv1beta1.Queue) error {
+	ctx := context.TODO()
+
+	qHistName := q.Status.QueueHistoryName
+	fetched := &s2hv1beta1.QueueHistory{}
+	err := c.client.Get(ctx, types.NamespacedName{Name: qHistName, Namespace: c.namespace}, fetched)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			logger.Warnf("queuehistory %s not found, creating", qHistName)
+			if err := c.createQueueHistory(q); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		logger.Error(err, fmt.Sprintf("cannot get queuehistory: %s", qHistName))
+		return err
+	}
+
+	fetched.Spec.Queue = &s2hv1beta1.Queue{
+		Spec:   q.Spec,
+		Status: q.Status,
+	}
+
+	if err := c.client.Update(ctx, fetched); err != nil {
+		logger.Error(err, fmt.Sprintf("cannot update queuehistory: %s", qHistName))
+		return err
+	}
+
+	return nil
 }
