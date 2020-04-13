@@ -142,6 +142,7 @@ func (c *controller) process() bool {
 		c.mtQueue.Lock()
 		// pick new queue
 		if c.currentQueue, err = c.queueCtrl.First(); err != nil {
+			logger.Error(err, "cannot pick the first component of queue")
 			c.mtQueue.Unlock()
 			return false
 		}
@@ -350,7 +351,8 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 	if err != nil {
 		return err
 	} else if !isCleaned {
-		logger.Warn("waiting for component cleaned", "queue", queue.Name)
+		logger.Warn("waiting for component cleaned",
+			"queue", queue.Name, "state", s2hv1beta1.CleaningBefore)
 		time.Sleep(2 * time.Second)
 		return nil
 	}
@@ -399,7 +401,8 @@ func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
 	if err != nil {
 		return err
 	} else if !isCleaned {
-		logger.Warn("waiting for component cleaned", "queue", queue.Name)
+		logger.Warn("waiting for component cleaned",
+			"queue", queue.Name, "state", s2hv1beta1.CleaningAfter)
 		time.Sleep(2 * time.Second)
 		return nil
 	}

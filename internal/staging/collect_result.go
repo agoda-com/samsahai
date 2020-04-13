@@ -46,8 +46,7 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 	}
 
 	// Queue will finished if type are Active promotion related
-	switch queue.Spec.Type {
-	case s2hv1beta1.QueueTypePromoteToActive, s2hv1beta1.QueueTypeDemoteFromActive, s2hv1beta1.QueueTypePreActive:
+	if queue.IsActivePromotionQueue() {
 		return c.updateQueueWithState(queue, s2hv1beta1.Finished)
 	}
 
@@ -56,10 +55,8 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 		return err
 	}
 
-	if !queue.IsActivePromotionQueue() {
-		if err := c.setStableAndSendReport(queue); err != nil {
-			return err
-		}
+	if err := c.setStableAndSendReport(queue); err != nil {
+		return err
 	}
 
 	queue.Status.SetCondition(s2hv1beta1.QueueCleaningAfterStarted, corev1.ConditionTrue,
@@ -124,14 +121,14 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 	err := c.client.Get(ctx, types.NamespacedName{Name: history.Name, Namespace: history.Namespace}, fetched)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			if err := c.client.Create(context.TODO(), history); err != nil {
-				logger.Error(err, "cannot create history")
+			if err := c.client.Create(ctx, history); err != nil {
+				logger.Error(err, "cannot create queuehistory")
 				return err
 			}
 
 			return nil
 		}
-		logger.Error(err, "cannot get history")
+		logger.Error(err, "cannot get queuehistory")
 		return err
 	}
 
@@ -145,6 +142,7 @@ func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace
 			return nil
 		}
 
+		logger.Error(err, "cannot list queuehistories")
 		return errors.Wrapf(err, "cannot list queuehistories in %s", namespace)
 	}
 
@@ -153,6 +151,7 @@ func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace
 	// get configuration
 	cfg, err := c.getConfiguration()
 	if err != nil {
+		logger.Error(err, "cannot get configuration")
 		return err
 	}
 
@@ -176,6 +175,7 @@ func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace
 					continue
 				}
 
+				logger.Error(err, fmt.Sprintf("cannot delete queuehistories %s", queueHists.Items[i].Name))
 				return errors.Wrapf(err, "cannot delete queuehistories %s", queueHists.Items[i].Name)
 			}
 			continue
@@ -408,7 +408,8 @@ func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_Upgr
 	if c.s2hClient != nil {
 		_, err = c.s2hClient.RunPostComponentUpgrade(ctx, comp)
 		if err != nil {
-			return errors.Wrap(err, "cannot load send component upgrade report")
+			logger.Error(err, "cannot send component upgrade report", "queue", queue.Spec.Name)
+			return errors.Wrap(err, "cannot send component upgrade report")
 		}
 	}
 
