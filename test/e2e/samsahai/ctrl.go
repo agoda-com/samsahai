@@ -1449,8 +1449,8 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
-		team := mockTeam
-		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
+		teamComp := mockTeam
+		Expect(runtimeClient.Create(ctx, &teamComp)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
 		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
@@ -1460,7 +1460,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 			}
 
 			config := s2hv1beta1.Config{}
-			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
 			if err != nil {
 				return false, nil
 			}
@@ -1483,14 +1483,14 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("Verifying DesiredComponent has been created")
 		err = wait.PollImmediate(1*time.Second, 30*time.Second, func() (ok bool, err error) {
 			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataRedis)
-			dc := s2hv1beta1.DesiredComponent{}
-			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dc); err != nil {
+			dRedis := s2hv1beta1.DesiredComponent{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dRedis); err != nil {
 				return false, nil
 			}
 
 			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataWordpress)
-			c := s2hv1beta1.DesiredComponent{}
-			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: wordpressCompName, Namespace: stgNamespace}, &c); err != nil {
+			dWordpress := s2hv1beta1.DesiredComponent{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: wordpressCompName, Namespace: stgNamespace}, &dWordpress); err != nil {
 				return false, nil
 			}
 
@@ -1537,12 +1537,24 @@ var _ = Describe("Main Controller [e2e]", func() {
 		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &dWordpress)
 		Expect(errors.IsNotFound(err)).To(BeTrue())
 
-		time.Sleep(2 * time.Second)
-		By("Checking TeamDesired")
-		team = s2hv1beta1.Team{}
-		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &team)).To(BeNil())
-		Expect(team.Status.DesiredComponentImageCreatedTime[redisCompName]).ToNot(BeNil())
-		Expect(team.Status.DesiredComponentImageCreatedTime[wordpressCompName]).To(BeNil())
+		By("Checking TeamDesiredComponents")
+		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
+			teamComp = s2hv1beta1.Team{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &teamComp); err != nil {
+				return false, nil
+			}
+
+			if _, ok := teamComp.Status.DesiredComponentImageCreatedTime[redisCompName]; !ok {
+				return false, nil
+			}
+
+			if _, ok := teamComp.Status.DesiredComponentImageCreatedTime[wordpressCompName]; ok {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify TeamDesiredComponent error")
 
 		By("Checking Queues")
 		qRedis := s2hv1beta1.Queue{}
@@ -1557,7 +1569,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		sMaria := s2hv1beta1.StableComponent{}
 		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: mariaDBCompName}, &sMaria)
 		Expect(errors.IsNotFound(err)).To(BeTrue())
-	}, 60)
+	}, 80)
 
 	XIt("should correctly get image missing list", func(done Done) {
 		defer close(done)
