@@ -244,6 +244,7 @@ func (c *controller) getConfig(configName string) (*s2hv1beta1.Config, error) {
 	return config, nil
 }
 
+// ensureComponentChanged detects added or removed component
 func (c *controller) ensureComponentChanged(teamName, namespace string) error {
 	comps, err := c.GetComponents(teamName)
 	if err != nil {
@@ -287,21 +288,22 @@ func (c *controller) detectNewComponents(comps map[string]*s2hv1beta1.Component,
 		return err
 	}
 
-	for comp := range comps {
-		if isNewComponent(desiredComps, comp) {
+	for name, comp := range comps {
+		if IsNewComponent(desiredComps, comp) {
 			logger.Debug("desired component has been added and notified",
-				"namespace", namespace, "component", comp)
-			c.s2hCtrl.NotifyComponentChanged(comp, "")
+				"namespace", namespace, "component", name)
+			c.s2hCtrl.NotifyComponentChanged(name, "")
 		}
 	}
 
 	return nil
 }
 
-func isNewComponent(desiredComps *s2hv1beta1.DesiredComponentList, component string) bool {
+// IsNewComponent returns true flag for new component
+func IsNewComponent(desiredComps *s2hv1beta1.DesiredComponentList, component *s2hv1beta1.Component) bool {
 	for _, d := range desiredComps.Items {
-		if component == d.Name {
-			return false
+		if component.Name == d.Name {
+			return component.Image.Repository != d.Spec.Repository
 		}
 	}
 
