@@ -269,45 +269,20 @@ func (c *controller) ensureComponentChanged(teamName, namespace string) error {
 		return err
 	}
 
-	if err := c.detectNewComponents(comps, namespace); err != nil {
-		return err
-	}
+	c.notifyComponentChanged(teamName, namespace, comps)
 
 	return nil
 }
 
-func (c *controller) detectNewComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
+func (c *controller) notifyComponentChanged(teamName, namespace string, comps map[string]*s2hv1beta1.Component) {
 	if c.s2hCtrl == nil {
-		return nil
+		logger.Debug("no s2h ctrl, skip notify changed")
 	}
 
-	ctx := context.Background()
-	desiredComps := &s2hv1beta1.DesiredComponentList{}
-	if err := c.client.List(ctx, desiredComps, &client.ListOptions{Namespace: namespace}); err != nil {
-		logger.Error(err, "cannot list desired components", "namespace", namespace)
-		return err
+	logger.Debug("start notifying components", "team", teamName, "namespace", namespace)
+	for _, comp := range comps {
+		c.s2hCtrl.NotifyComponentChanged(comp.Name, comp.Image.Repository)
 	}
-
-	for name, comp := range comps {
-		if IsNewComponent(desiredComps, comp) {
-			logger.Debug("desired component has been added and notified",
-				"namespace", namespace, "component", name)
-			c.s2hCtrl.NotifyComponentChanged(name, "")
-		}
-	}
-
-	return nil
-}
-
-// IsNewComponent returns true flag for new component
-func IsNewComponent(desiredComps *s2hv1beta1.DesiredComponentList, component *s2hv1beta1.Component) bool {
-	for _, d := range desiredComps.Items {
-		if component.Name == d.Name {
-			return component.Image.Repository != d.Spec.Repository
-		}
-	}
-
-	return true
 }
 
 func (c *controller) detectRemovedDesiredComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
@@ -336,6 +311,11 @@ func (c *controller) detectRemovedDesiredComponents(comps map[string]*s2hv1beta1
 }
 
 func (c *controller) detectRemovedTeamDesiredComponents(comps map[string]*s2hv1beta1.Component, teamName string) error {
+	if c.s2hCtrl == nil {
+		logger.Debug("no s2h ctrl, skip detect team desired", "team", teamName)
+		return nil
+	}
+
 	ctx := context.Background()
 	teamComp := &s2hv1beta1.Team{}
 	if err := c.s2hCtrl.GetTeam(teamName, teamComp); err != nil {
@@ -425,7 +405,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	}
 
 	if c.s2hCtrl == nil {
-		logger.Debug("samsahai ctrl is not initialized", "team", req.Name)
+		logger.Debug("no s2h ctrl, skip detect changed component", "team", req.Name)
 		return cr.Result{}, nil
 	}
 

@@ -1480,8 +1480,8 @@ var _ = Describe("Main Controller [e2e]", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Verifying DesiredComponent has been created")
-		err = wait.PollImmediate(1*time.Second, 30*time.Second, func() (ok bool, err error) {
+		By("Verifying redis DesiredComponent has been created")
+		err = wait.PollImmediate(1*time.Second, 50*time.Second, func() (ok bool, err error) {
 			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataRedis)
 			dRedis := s2hv1beta1.DesiredComponent{}
 			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dRedis); err != nil {
@@ -1564,12 +1564,21 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(errors.IsNotFound(err)).To(BeTrue())
 
 		By("Checking StableComponents")
-		sRedis := s2hv1beta1.StableComponent{}
-		Expect(runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &sRedis)).To(BeNil())
-		sMaria := s2hv1beta1.StableComponent{}
-		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: mariaDBCompName}, &sMaria)
-		Expect(errors.IsNotFound(err)).To(BeTrue())
-	}, 80)
+		err = wait.PollImmediate(1*time.Second, 10*time.Second, func() (ok bool, err error) {
+			sRedis := s2hv1beta1.StableComponent{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &sRedis); err != nil {
+				return false, nil
+			}
+
+			sMaria := s2hv1beta1.StableComponent{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: mariaDBCompName}, &sMaria); err != nil && !errors.IsNotFound(err) {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify StableComponents error")
+	}, 100)
 
 	XIt("should correctly get image missing list", func(done Done) {
 		defer close(done)

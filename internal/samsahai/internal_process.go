@@ -140,6 +140,8 @@ func (c *controller) checkComponentChanged(component changedComponent) error {
 				continue
 			}
 
+			logger.Debug("component has been notified", "team", teamName, "component", comp.Name)
+
 			// add to queue for processing
 			c.queue.Add(updateTeamDesiredComponent{
 				TeamName:        teamName,

@@ -5,7 +5,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
@@ -43,28 +42,6 @@ var _ = Describe("Config Controller", func() {
 				"persistence": map[string]interface{}{
 					"enabled": false,
 				},
-			},
-		},
-	}
-
-	wordpressCompName := "wordpress"
-	wordpressComp := s2hv1beta1.Component{
-		Name: wordpressCompName,
-		Chart: s2hv1beta1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
-			Name:       wordpressCompName,
-		},
-		Image: s2hv1beta1.ComponentImage{
-			Repository: "bitnami/redis",
-			Pattern:    "5\\.2.*debian-9.*",
-		},
-		Source: &compSource,
-		Values: s2hv1beta1.ComponentValues{
-			"image": map[string]interface{}{
-				"repository": "bitnami/wordpress",
-			},
-			"service": map[string]interface{}{
-				"type": "NodePort",
 			},
 		},
 	}
@@ -112,50 +89,5 @@ var _ = Describe("Config Controller", func() {
 				},
 			},
 		}))
-	})
-
-	It("Should detect new component correctly when there is a new component", func() {
-		g := NewWithT(GinkgoT())
-		mockDesiredCompList := &s2hv1beta1.DesiredComponentList{
-			Items: []s2hv1beta1.DesiredComponent{
-				{
-					ObjectMeta: metav1.ObjectMeta{Name: redisCompName},
-					Spec:       s2hv1beta1.DesiredComponentSpec{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.7-debian-9-r56"},
-				},
-			},
-		}
-
-		isNewComponent := configctrl.IsNewComponent(mockDesiredCompList, &wordpressComp)
-		g.Expect(isNewComponent).To(BeTrue())
-	})
-
-	It("Should detect new component correctly when repository of component is changed", func() {
-		g := NewWithT(GinkgoT())
-		mockDesiredCompList := &s2hv1beta1.DesiredComponentList{
-			Items: []s2hv1beta1.DesiredComponent{
-				{
-					ObjectMeta: metav1.ObjectMeta{Name: redisCompName},
-					Spec:       s2hv1beta1.DesiredComponentSpec{Name: redisCompName, Repository: "bitnami/redis2", Version: "5.0.7-debian-9-r56"},
-				},
-			},
-		}
-
-		isNewComponent := configctrl.IsNewComponent(mockDesiredCompList, &redisConfigComp)
-		g.Expect(isNewComponent).To(BeTrue())
-	})
-
-	It("Should not detect new component correctly", func() {
-		g := NewWithT(GinkgoT())
-		mockDesiredCompList := &s2hv1beta1.DesiredComponentList{
-			Items: []s2hv1beta1.DesiredComponent{
-				{
-					ObjectMeta: metav1.ObjectMeta{Name: redisCompName},
-					Spec:       s2hv1beta1.DesiredComponentSpec{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.7-debian-9-r56"},
-				},
-			},
-		}
-
-		isNewComponent := configctrl.IsNewComponent(mockDesiredCompList, &redisConfigComp)
-		g.Expect(isNewComponent).To(BeFalse())
 	})
 })
