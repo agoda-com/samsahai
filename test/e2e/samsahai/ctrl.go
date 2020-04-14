@@ -427,6 +427,19 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("Deleting all StableComponents")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, crclient.InNamespace(stgNamespace))
 		Expect(err).NotTo(HaveOccurred())
+		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+			stableList := s2hv1beta1.StableComponentList{}
+			err = runtimeClient.List(ctx, &stableList, &crclient.ListOptions{Namespace: stgNamespace})
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			if len(stableList.Items) == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Deleting all StableComponents error")
 
 		By("Deleting all Teams")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Team{}, crclient.MatchingLabels(testLabels))
