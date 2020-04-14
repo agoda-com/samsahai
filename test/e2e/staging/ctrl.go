@@ -477,7 +477,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 		authToken := "12345"
 		s2hConfig := internal.SamsahaiConfig{SamsahaiCredential: internal.SamsahaiCredential{InternalAuthToken: authToken}}
-		samsahaiCtrl := samsahai.New(mgr, namespace, s2hConfig, cfgCtrl,
+		samsahaiCtrl := samsahai.New(mgr, namespace, s2hConfig,
 			samsahai.WithClient(runtimeClient),
 			samsahai.WithDisableLoaders(true, true, true))
 		server := httptest.NewServer(samsahaiCtrl)

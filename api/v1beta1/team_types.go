@@ -192,6 +192,15 @@ func (ts *TeamStatus) UpdateDesiredComponentImageCreatedTime(compName, image str
 	ts.DesiredComponentImageCreatedTime[compName][image] = desiredImageTime
 }
 
+// RemoveDesiredComponentImageCreatedTime removes desired component from team
+func (ts *TeamStatus) RemoveDesiredComponentImageCreatedTime(compName string) {
+	if ts.DesiredComponentImageCreatedTime == nil {
+		return
+	}
+
+	delete(ts.DesiredComponentImageCreatedTime, compName)
+}
+
 type DesiredImageTime struct {
 	*Image      `json:"image"`
 	CreatedTime metav1.Time `json:"createdTime"`

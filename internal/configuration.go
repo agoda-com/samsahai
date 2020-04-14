@@ -11,7 +11,7 @@ type ConfigController interface {
 	// GetComponents returns all components from `Configuration` that has valid `Source`
 	GetComponents(configName string) (map[string]*s2hv1beta1.Component, error)
 
-	//GetParentComponents returns components that doesn't have parent (nil Parent)
+	// GetParentComponents returns components that doesn't have parent (nil Parent)
 	GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error)
 
 	// Update updates Config CRD

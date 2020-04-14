@@ -101,7 +101,6 @@ func New(
 	mgr manager.Manager,
 	ns string,
 	configs internal.SamsahaiConfig,
-	configCtrl internal.ConfigController,
 	options ...Option,
 ) internal.SamsahaiController {
 	stop := make(chan struct{})
@@ -123,8 +122,9 @@ func New(
 		plugins:         map[string]internal.Plugin{},
 		reporters:       map[string]internal.Reporter{},
 		configs:         configs,
-		configCtrl:      configCtrl,
 	}
+
+	c.configCtrl = configctrl.New(mgr, configctrl.WithS2hCtrl(c))
 
 	if mgr != nil {
 		// create runtime client
@@ -183,6 +183,12 @@ func WithDisableLoaders(checkers, plugins, reporters bool) Option {
 func WithScheme(scheme *runtime.Scheme) Option {
 	return func(c *controller) {
 		c.scheme = scheme
+	}
+}
+
+func WithConfigCtrl(configCtrl internal.ConfigController) Option {
+	return func(c *controller) {
+		c.configCtrl = configCtrl
 	}
 }
 

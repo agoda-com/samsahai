@@ -70,10 +70,11 @@ var _ = Describe("", func() {
 		defer close(done)
 		configCtrl := newMockConfigCtrl()
 		s2hConfig := s2h.SamsahaiConfig{SamsahaiCredential: s2h.SamsahaiCredential{InternalAuthToken: "123456"}}
-		s2hCtrl = samsahai.New(nil, namespace, s2hConfig, configCtrl,
+		s2hCtrl = samsahai.New(nil, namespace, s2hConfig,
 			samsahai.WithClient(crClient),
 			samsahai.WithDisableLoaders(true, true, true),
-			samsahai.WithScheme(scheme.Scheme))
+			samsahai.WithScheme(scheme.Scheme),
+			samsahai.WithConfigCtrl(configCtrl))
 		check = New(s2hCtrl)
 
 		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "..", "test", "data", "team", "team.yaml"))
