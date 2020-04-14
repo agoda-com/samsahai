@@ -11,6 +11,16 @@ import (
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 )
 
+type ActivePromotionMetricState string
+
+const (
+	Waiting ActivePromotionMetricState = "waiting"
+	Deploying ActivePromotionMetricState = "deploying"
+	Testing ActivePromotionMetricState = "testing"
+	Promoting ActivePromotionMetricState = "promoting"
+	Destroying ActivePromotionMetricState = "dsetroying"
+
+)
 var logger = s2hlog.S2HLog.WithName("exporter")
 
 var TeamMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -114,50 +124,50 @@ func SetHealthStatusMetric(version, gitCommit string, ts float64) {
 }
 
 func SetActivePromotionMetric(atpComp *s2hv1beta1.ActivePromotion) {
-	atpStateList := map[string]float64{"waiting": 0, "deploying": 0, "testing": 0, "promoting": 0, "destroying": 0}
+	atpStateList := map[ActivePromotionMetricState]float64{Waiting: 0, Deploying: 0, Testing: 0, Promoting: 0, Destroying: 0}
 	atpState := atpComp.Status.State
 	if atpState != "" {
 		switch atpState {
 		case s2hv1beta1.ActivePromotionWaiting:
-			atpStateList["waiting"] = float64(time.Now().Unix())
+			atpStateList[Waiting] = float64(time.Now().Unix())
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,
-					state).Set(val)
+					string(state)).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionDeployingComponents, s2hv1beta1.ActivePromotionCreatingPreActive:
-			atpStateList["deploying"] = float64(time.Now().Unix())
+			atpStateList[Deploying] = float64(time.Now().Unix())
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,
-					state).Set(val)
+					string(state)).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionTestingPreActive, s2hv1beta1.ActivePromotionCollectingPreActiveResult:
-			atpStateList["testing"] = float64(time.Now().Unix())
+			atpStateList[Testing] = float64(time.Now().Unix())
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,
-					state).Set(val)
+					string(state)).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionActiveEnvironment, s2hv1beta1.ActivePromotionDemoting:
-			atpStateList["promoting"] = float64(time.Now().Unix())
+			atpStateList[Promoting] = float64(time.Now().Unix())
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,
-					state).Set(val)
+					string(state)).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionDestroyingPreActive, s2hv1beta1.ActivePromotionDestroyingPreviousActive:
-			atpStateList["destroying"] = float64(time.Now().Unix())
+			atpStateList[Destroying] = float64(time.Now().Unix())
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,
-					state).Set(val)
+					string(state)).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionFinished:
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,
-					state).Set(val)
+					string(state)).Set(val)
 			}
 		}
 	}
