@@ -113,50 +113,50 @@ func SetHealthStatusMetric(version, gitCommit string, ts float64) {
 		gitCommit).Set(ts)
 }
 
-func SetActivePromotionMetric(activeProm *s2hv1beta1.ActivePromotion) {
-	activePromStateList := map[string]float64{"waiting": 0, "deploying": 0, "testing": 0, "promoting": 0, "destroying": 0}
-	atpState := activeProm.Status.State
+func SetActivePromotionMetric(atpComp *s2hv1beta1.ActivePromotion) {
+	atpStateList := map[string]float64{"waiting": 0, "deploying": 0, "testing": 0, "promoting": 0, "destroying": 0}
+	atpState := atpComp.Status.State
 	if atpState != "" {
 		switch atpState {
 		case s2hv1beta1.ActivePromotionWaiting:
-			activePromStateList["waiting"] = float64(time.Now().Unix())
-			for state, val := range activePromStateList {
+			atpStateList["waiting"] = float64(time.Now().Unix())
+			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
-					activeProm.Name,
+					atpComp.Name,
 					state).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionDeployingComponents, s2hv1beta1.ActivePromotionCreatingPreActive:
-			activePromStateList["deploying"] = float64(time.Now().Unix())
-			for state, val := range activePromStateList {
+			atpStateList["deploying"] = float64(time.Now().Unix())
+			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
-					activeProm.Name,
+					atpComp.Name,
 					state).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionTestingPreActive, s2hv1beta1.ActivePromotionCollectingPreActiveResult:
-			activePromStateList["testing"] = float64(time.Now().Unix())
-			for state, val := range activePromStateList {
+			atpStateList["testing"] = float64(time.Now().Unix())
+			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
-					activeProm.Name,
+					atpComp.Name,
 					state).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionActiveEnvironment, s2hv1beta1.ActivePromotionDemoting:
-			activePromStateList["promoting"] = float64(time.Now().Unix())
-			for state, val := range activePromStateList {
+			atpStateList["promoting"] = float64(time.Now().Unix())
+			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
-					activeProm.Name,
+					atpComp.Name,
 					state).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionDestroyingPreActive, s2hv1beta1.ActivePromotionDestroyingPreviousActive:
-			activePromStateList["destroying"] = float64(time.Now().Unix())
-			for state, val := range activePromStateList {
+			atpStateList["destroying"] = float64(time.Now().Unix())
+			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
-					activeProm.Name,
+					atpComp.Name,
 					state).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionFinished:
-			for state, val := range activePromStateList {
+			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
-					activeProm.Name,
+					atpComp.Name,
 					state).Set(val)
 			}
 		}
