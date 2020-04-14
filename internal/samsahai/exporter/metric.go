@@ -81,42 +81,46 @@ func SetActivePromotionMetric(activeProm *s2hv1beta1.ActivePromotion) {
 	if atpState != "" {
 		switch atpState {
 		case s2hv1beta1.ActivePromotionWaiting:
-			activePromStateList["waiting"] = 1
+			activePromStateList["waiting"] = float64(time.Now().Unix())
 			for state, val := range activePromStateList {
 				ActivePromotionMetric.WithLabelValues(
 					activeProm.Name,
 					state).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionDeployingComponents, s2hv1beta1.ActivePromotionCreatingPreActive:
-			activePromStateList["deploying"] = 1
+			activePromStateList["deploying"] = float64(time.Now().Unix())
 			for state, val := range activePromStateList {
 				ActivePromotionMetric.WithLabelValues(
 					activeProm.Name,
 					state).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionTestingPreActive, s2hv1beta1.ActivePromotionCollectingPreActiveResult:
-			activePromStateList["testing"] = 1
+			activePromStateList["testing"] = float64(time.Now().Unix())
 			for state, val := range activePromStateList {
 				ActivePromotionMetric.WithLabelValues(
 					activeProm.Name,
 					state).Set(val)
 			}
 		case s2hv1beta1.ActivePromotionActiveEnvironment, s2hv1beta1.ActivePromotionDemoting:
-			activePromStateList["promoting"] = 1
+			activePromStateList["promoting"] = float64(time.Now().Unix())
 			for state, val := range activePromStateList {
 				ActivePromotionMetric.WithLabelValues(
 					activeProm.Name,
 					state).Set(val)
 			}
-		case s2hv1beta1.ActivePromotionDestroyingPreActive, s2hv1beta1.ActivePromotionDestroyingPreviousActive,
-			s2hv1beta1.ActivePromotionFinished:
-			activePromStateList["destroying"] = 1
+		case s2hv1beta1.ActivePromotionDestroyingPreActive, s2hv1beta1.ActivePromotionDestroyingPreviousActive:
+			activePromStateList["destroying"] = float64(time.Now().Unix())
 			for state, val := range activePromStateList {
 				ActivePromotionMetric.WithLabelValues(
 					activeProm.Name,
 					state).Set(val)
 			}
-
+		case s2hv1beta1.ActivePromotionFinished:
+			for state, val := range activePromStateList {
+				ActivePromotionMetric.WithLabelValues(
+					activeProm.Name,
+					state).Set(val)
+			}
 		}
 	}
 }
