@@ -20,10 +20,12 @@ import (
 )
 
 var _ = Describe("config controller [e2e]", func() {
-	var controller internal.ConfigController
-	var namespace string
-	var client rclient.Client
-	var teamName = "teamtest"
+	var (
+		controller internal.ConfigController
+		client     rclient.Client
+		namespace  string
+		teamName   = "teamtest"
+	)
 
 	BeforeEach(func(done Done) {
 		defer close(done)
@@ -39,19 +41,15 @@ var _ = Describe("config controller [e2e]", func() {
 
 		controller = configctrl.New(nil, configctrl.WithClient(client))
 		Expect(controller).NotTo(BeNil(), "Should successfully init Config controller")
-
-		_ = controller.Delete(teamName)
 	}, 5)
 
 	AfterEach(func(done Done) {
 		defer close(done)
-
 		_ = controller.Delete(teamName)
 	}, 5)
 
 	It("should successfully get/delete Config", func(done Done) {
 		defer close(done)
-
 		ctx := context.TODO()
 
 		By("Creating Config")
@@ -87,7 +85,5 @@ var _ = Describe("config controller [e2e]", func() {
 		config = &s2hv1beta1.Config{}
 		err = client.Get(context.TODO(), types.NamespacedName{Name: teamName}, config)
 		Expect(err).To(HaveOccurred())
-
 	}, 10)
-
 })

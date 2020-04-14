@@ -81,11 +81,11 @@ var _ = Describe("Samsahai Webhook", func() {
 				InternalAuthToken: "123456",
 			},
 		}
-
-		s2hCtrl = samsahai.New(nil, namespace, s2hConfig, configCtrl,
+		s2hCtrl = samsahai.New(nil, namespace, s2hConfig,
 			samsahai.WithClient(c),
 			samsahai.WithDisableLoaders(true, false, true),
-			samsahai.WithScheme(scheme.Scheme))
+			samsahai.WithScheme(scheme.Scheme),
+			samsahai.WithConfigCtrl(configCtrl))
 
 		r := New(s2hCtrl)
 
@@ -121,7 +121,6 @@ var _ = Describe("Samsahai Webhook", func() {
 		Expect(c.Create(context.TODO(), qh)).NotTo(HaveOccurred())
 		Expect(c.Create(context.TODO(), ath)).NotTo(HaveOccurred())
 
-		//c.Create(ctx, )
 		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "test", "data", "team", "team.yaml"))
 		g.Expect(err).NotTo(HaveOccurred())
 		obj, _ := util.MustParseYAMLtoRuntimeObject(yamlTeam)

@@ -50,7 +50,6 @@ const (
 
 var (
 	stableComponentCtrl  internal.StableComponentController
-	cfgCtrl              internal.ConfigController
 	activePromotionCtrl  internal.ActivePromotionController
 	samsahaiCtrl         internal.SamsahaiController
 	stagingPreActiveCtrl internal.StagingController
@@ -83,6 +82,10 @@ var (
 		"created-for": "s2h-testing",
 	}
 
+	redisCompName     = "redis"
+	mariaDBCompName   = "mariadb"
+	wordpressCompName = "wordpress"
+
 	mockTeam = s2hv1beta1.Team{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
@@ -101,9 +104,21 @@ var (
 		Status: s2hv1beta1.TeamStatus{
 			Namespace: s2hv1beta1.TeamNamespace{},
 			DesiredComponentImageCreatedTime: map[string]map[string]s2hv1beta1.DesiredImageTime{
-				"mariadb": {
+				mariaDBCompName: {
 					stringutils.ConcatImageString("bitnami/mariadb", "10.3.18-debian-9-r32"): s2hv1beta1.DesiredImageTime{
 						Image:       &s2hv1beta1.Image{Repository: "bitnami/mariadb", Tag: "10.3.18-debian-9-r32"},
+						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
+					},
+				},
+				redisCompName: {
+					stringutils.ConcatImageString("bitnami/redis", "5.0.7-debian-9-r56"): s2hv1beta1.DesiredImageTime{
+						Image:       &s2hv1beta1.Image{Repository: "bitnami/redis", Tag: "5.0.7-debian-9-r56"},
+						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
+					},
+				},
+				wordpressCompName: {
+					stringutils.ConcatImageString("bitnami/wordpress", "5.2.4-debian-9-r18"): s2hv1beta1.DesiredImageTime{
+						Image:       &s2hv1beta1.Image{Repository: "bitnami/wordpress", Tag: "5.2.4-debian-9-r18"},
 						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 					},
 				},
@@ -153,39 +168,52 @@ var (
 	}
 
 	stableMariaDB = s2hv1beta1.StableComponent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "mariadb",
-			Namespace: stgNamespace,
-		},
-		Spec: s2hv1beta1.StableComponentSpec{
-			Name:       "mariadb",
-			Version:    "10.3.18-debian-9-r32",
-			Repository: "bitnami/mariadb",
-		},
+		ObjectMeta: metav1.ObjectMeta{Name: mariaDBCompName, Namespace: stgNamespace},
+		Spec:       s2hv1beta1.StableComponentSpec{Name: mariaDBCompName, Version: "10.3.18-debian-9-r32", Repository: "bitnami/mariadb"},
 	}
 
 	stableAtvMariaDB = s2hv1beta1.StableComponent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "mariadb",
-			Namespace: atvNamespace,
-		},
-		Spec: s2hv1beta1.StableComponentSpec{
-			Name:       "mariadb",
-			Version:    "10.3.18-debian-9-r32",
-			Repository: "bitnami/mariadb",
-		},
+		ObjectMeta: metav1.ObjectMeta{Name: mariaDBCompName, Namespace: atvNamespace},
+		Spec:       s2hv1beta1.StableComponentSpec{Name: mariaDBCompName, Version: "10.3.18-debian-9-r32", Repository: "bitnami/mariadb"},
 	}
 
 	stableRedis = s2hv1beta1.StableComponent{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "redis",
-			Namespace: stgNamespace,
+		ObjectMeta: metav1.ObjectMeta{Name: redisCompName, Namespace: stgNamespace},
+		Spec:       s2hv1beta1.StableComponentSpec{Name: redisCompName, Version: "5.0.5-debian-9-r160", Repository: "bitnami/redis"},
+	}
+
+	mockDesiredCompList = &s2hv1beta1.DesiredComponentList{
+		Items: []s2hv1beta1.DesiredComponent{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: mariaDBCompName, Namespace: stgNamespace},
+				Spec:       s2hv1beta1.DesiredComponentSpec{Name: mariaDBCompName, Repository: "bitnami/mariadb", Version: "10.3.18-debian-9-r32"},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: redisCompName, Namespace: stgNamespace},
+				Spec:       s2hv1beta1.DesiredComponentSpec{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.7-debian-9-r56"},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: wordpressCompName, Namespace: stgNamespace},
+				Spec:       s2hv1beta1.DesiredComponentSpec{Name: wordpressCompName, Repository: "bitnami/wordpress", Version: "5.2.4-debian-9-r18"},
+			},
 		},
-		Spec: s2hv1beta1.StableComponentSpec{
-			Name:       "redis",
-			Version:    "5.0.5-debian-9-r160",
-			Repository: "bitnami/redis",
+	}
+
+	mockQueueList = &s2hv1beta1.QueueList{
+		Items: []s2hv1beta1.Queue{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: redisCompName, Namespace: stgNamespace},
+				Spec:       s2hv1beta1.QueueSpec{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.7-debian-9-r56"},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: wordpressCompName, Namespace: stgNamespace},
+				Spec:       s2hv1beta1.QueueSpec{Name: wordpressCompName, Repository: "bitnami/wordpress", Version: "5.2.4-debian-9-r18"},
+			},
 		},
+	}
+
+	mockStableCompList = &s2hv1beta1.StableComponentList{
+		Items: []s2hv1beta1.StableComponent{stableMariaDB, stableRedis},
 	}
 
 	mockSecret = corev1.Secret{
@@ -209,10 +237,10 @@ var (
 	}
 	compSource      = s2hv1beta1.UpdatingSource("public-registry")
 	redisConfigComp = s2hv1beta1.Component{
-		Name: "redis",
+		Name: redisCompName,
 		Chart: s2hv1beta1.ComponentChart{
 			Repository: "https://kubernetes-charts.storage.googleapis.com",
-			Name:       "redis",
+			Name:       redisCompName,
 		},
 		Image: s2hv1beta1.ComponentImage{
 			Repository: "bitnami/redis",
@@ -236,10 +264,10 @@ var (
 		},
 	}
 	wordpressConfigComp = s2hv1beta1.Component{
-		Name: "wordpress",
+		Name: wordpressCompName,
 		Chart: s2hv1beta1.ComponentChart{
 			Repository: "https://kubernetes-charts.storage.googleapis.com",
-			Name:       "wordpress",
+			Name:       wordpressCompName,
 		},
 		Image: s2hv1beta1.ComponentImage{
 			Repository: "bitnami/wordpress",
@@ -248,7 +276,7 @@ var (
 		Source: &compSource,
 		Dependencies: []*s2hv1beta1.Component{
 			{
-				Name: "mariadb",
+				Name: mariaDBCompName,
 				Image: s2hv1beta1.ComponentImage{
 					Repository: "bitnami/mariadb",
 					Pattern:    "10\\.3.*debian-9.*",
@@ -263,7 +291,7 @@ var (
 			"persistence": map[string]interface{}{
 				"enabled": false,
 			},
-			"mariadb": map[string]interface{}{
+			mariaDBCompName: map[string]interface{}{
 				"enabled": true,
 				"replication": map[string]interface{}{
 					"enabled": false,
@@ -355,10 +383,8 @@ var _ = Describe("Main Controller [e2e]", func() {
 				InternalAuthToken: samsahaiAuthToken,
 			},
 		}
-		cfgCtrl = configctrl.New(mgr)
-		Expect(cfgCtrl).ToNot(BeNil())
 
-		samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig, cfgCtrl)
+		samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig)
 		Expect(samsahaiCtrl).ToNot(BeNil())
 
 		activePromotionCtrl = activepromotion.New(mgr, samsahaiCtrl, s2hConfig)
@@ -390,9 +416,30 @@ var _ = Describe("Main Controller [e2e]", func() {
 		defer close(done)
 		ctx := context.TODO()
 
+		By("Deleting all DesiredComponents")
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.DesiredComponent{}, crclient.InNamespace(stgNamespace))
+		Expect(err).NotTo(HaveOccurred())
+
+		By("Deleting all Queues")
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Queue{}, crclient.InNamespace(stgNamespace))
+		Expect(err).NotTo(HaveOccurred())
+
 		By("Deleting all StableComponents")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, crclient.InNamespace(stgNamespace))
 		Expect(err).NotTo(HaveOccurred())
+		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+			stableList := s2hv1beta1.StableComponentList{}
+			err = runtimeClient.List(ctx, &stableList, &crclient.ListOptions{Namespace: stgNamespace})
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			if len(stableList.Items) == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Deleting all StableComponents error")
 
 		By("Deleting all Teams")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Team{}, crclient.MatchingLabels(testLabels))
@@ -475,6 +522,9 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("Deleting Secret")
 		secret := mockSecret
 		Expect(runtimeClient.Delete(context.TODO(), &secret)).NotTo(HaveOccurred())
+
+		By("Deleting Config")
+		Expect(samsahaiCtrl.GetConfigController().Delete(teamName)).NotTo(HaveOccurred())
 
 		close(chStop)
 		samsahaiServer.Close()
@@ -737,7 +787,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 			By("Get Stable Values")
 			{
-				parentComps, err := cfgCtrl.GetParentComponents(team.Name)
+				parentComps, err := samsahaiCtrl.GetConfigController().GetParentComponents(team.Name)
 				Expect(err).NotTo(HaveOccurred())
 
 				compName := ""
@@ -1262,9 +1312,8 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
 		By("Send webhook")
-		component := "redis"
 		jsonData, err := json.Marshal(map[string]interface{}{
-			"component": component,
+			"component": redisCompName,
 		})
 		Expect(err).NotTo(HaveOccurred())
 		_, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
@@ -1275,7 +1324,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonData)
 
 			dc := s2hv1beta1.DesiredComponent{}
-			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: component, Namespace: stgNamespace}, &dc); err != nil {
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dc); err != nil {
 				return false, nil
 			}
 
@@ -1333,16 +1382,15 @@ var _ = Describe("Main Controller [e2e]", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
-		components, err := cfgCtrl.GetComponents(team.Name)
+		components, err := samsahaiCtrl.GetConfigController().GetComponents(team.Name)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Send webhook")
-		component := "redis"
 		jsonData, err := json.Marshal(map[string]interface{}{
-			"component": component,
+			"component": redisCompName,
 		})
 
-		componentRepository := components[component].Image.Repository
+		componentRepository := components[redisCompName].Image.Repository
 		Expect(err).NotTo(HaveOccurred())
 		_, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
 		Expect(err).NotTo(HaveOccurred())
@@ -1359,7 +1407,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 			}
 
 			image := stringutils.ConcatImageString(componentRepository, "image-missing")
-			if _, ok = teamComp.Status.DesiredComponentImageCreatedTime["redis"][image]; !ok {
+			if _, ok = teamComp.Status.DesiredComponentImageCreatedTime[redisCompName][image]; !ok {
 				return false, nil
 			}
 
@@ -1376,7 +1424,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 				dc := s2hv1beta1.DesiredComponent{}
 				err := runtimeClient.Get(
 					ctx,
-					types.NamespacedName{Name: component, Namespace: team.Status.Namespace.Staging},
+					types.NamespacedName{Name: redisCompName, Namespace: team.Status.Namespace.Staging},
 					&dc)
 				if err != nil {
 					count++
@@ -1393,6 +1441,157 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(found).To(BeFalse())
 
 	}, 60)
+
+	It("should successfully detect changed components", func(done Done) {
+		defer close(done)
+
+		By("Starting Samsahai internal process")
+		go samsahaiCtrl.Start(chStop)
+
+		By("Starting http server")
+		mux := http.NewServeMux()
+		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
+		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		ctx := context.TODO()
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		teamComp := mockTeam
+		Expect(runtimeClient.Create(ctx, &teamComp)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Send webhook")
+		jsonDataRedis, err := json.Marshal(map[string]interface{}{
+			"component": redisCompName,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		jsonDataWordpress, err := json.Marshal(map[string]interface{}{
+			"component": wordpressCompName,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		By("Verifying redis DesiredComponent has been created")
+		err = wait.PollImmediate(1*time.Second, 50*time.Second, func() (ok bool, err error) {
+			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataRedis)
+			dRedis := s2hv1beta1.DesiredComponent{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dRedis); err != nil {
+				return false, nil
+			}
+
+			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataWordpress)
+			dWordpress := s2hv1beta1.DesiredComponent{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: wordpressCompName, Namespace: stgNamespace}, &dWordpress); err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify DesiredComponent error")
+
+		By("Checking all desired components have been set")
+		desiredComps := &s2hv1beta1.DesiredComponentList{}
+		Expect(runtimeClient.List(ctx, desiredComps, &crclient.ListOptions{Namespace: stgNamespace}))
+		Expect(len(desiredComps.Items)).To(Equal(2))
+
+		By("Creating Queues")
+		for _, q := range mockQueueList.Items {
+			Expect(runtimeClient.Create(ctx, &q)).To(BeNil())
+		}
+
+		By("Checking all queues have been set")
+		queues := &s2hv1beta1.QueueList{}
+		Expect(runtimeClient.List(ctx, queues, &crclient.ListOptions{Namespace: stgNamespace}))
+		Expect(len(queues.Items)).To(Equal(2))
+
+		By("Creating StableComponents")
+		for _, s := range mockStableCompList.Items {
+			Expect(runtimeClient.Create(ctx, &s)).To(BeNil())
+		}
+
+		By("Checking all stable components have been set")
+		stableComps := &s2hv1beta1.StableComponentList{}
+		Expect(runtimeClient.List(ctx, stableComps, &crclient.ListOptions{Namespace: stgNamespace}))
+		Expect(len(queues.Items)).To(Equal(2))
+
+		By("Updating components config")
+		configComp := s2hv1beta1.Config{}
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &configComp)).To(BeNil())
+		configComp.Spec.Components = []*s2hv1beta1.Component{{Name: redisCompName}}
+		Expect(runtimeClient.Update(ctx, &configComp)).To(BeNil())
+
+		time.Sleep(1 * time.Second)
+		By("Checking DesiredComponents")
+		dRedis := s2hv1beta1.DesiredComponent{}
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &dRedis)).To(BeNil())
+		dWordpress := s2hv1beta1.DesiredComponent{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &dWordpress)
+		Expect(errors.IsNotFound(err)).To(BeTrue())
+
+		By("Checking TeamDesiredComponents")
+		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
+			teamComp = s2hv1beta1.Team{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &teamComp); err != nil {
+				return false, nil
+			}
+
+			if _, ok := teamComp.Status.DesiredComponentImageCreatedTime[redisCompName]; !ok {
+				return false, nil
+			}
+
+			if _, ok := teamComp.Status.DesiredComponentImageCreatedTime[wordpressCompName]; ok {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify TeamDesiredComponent error")
+
+		By("Checking Queues")
+		qRedis := s2hv1beta1.Queue{}
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &qRedis)).To(BeNil())
+		qWordpress := s2hv1beta1.Queue{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &qWordpress)
+		Expect(errors.IsNotFound(err)).To(BeTrue())
+
+		By("Checking StableComponents")
+		err = wait.PollImmediate(1*time.Second, 10*time.Second, func() (ok bool, err error) {
+			sRedis := s2hv1beta1.StableComponent{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &sRedis); err != nil {
+				return false, nil
+			}
+
+			sMaria := s2hv1beta1.StableComponent{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: mariaDBCompName}, &sMaria); err != nil && !errors.IsNotFound(err) {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify StableComponents error")
+	}, 100)
 
 	XIt("should correctly get image missing list", func(done Done) {
 		defer close(done)
@@ -1520,10 +1719,8 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 				InternalAuthToken: samsahaiAuthToken,
 			},
 		}
-		cfgCtrl = configctrl.New(mgr)
-		Expect(cfgCtrl).ToNot(BeNil())
 
-		samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig, cfgCtrl)
+		samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig)
 		Expect(samsahaiCtrl).ToNot(BeNil())
 
 		activePromotionCtrl = activepromotion.New(mgr, samsahaiCtrl, s2hConfig)
@@ -1558,6 +1755,19 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		By("Deleting all StableComponents")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, crclient.InNamespace(stgNamespace))
 		Expect(err).NotTo(HaveOccurred())
+		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+			stableList := s2hv1beta1.StableComponentList{}
+			err = runtimeClient.List(ctx, &stableList, &crclient.ListOptions{Namespace: stgNamespace})
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			if len(stableList.Items) == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Deleting all StableComponents error")
 
 		By("Deleting all Teams")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Team{}, crclient.MatchingLabels(testLabels))

@@ -3,13 +3,12 @@ package stablecomponent
 import (
 	"context"
 
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cr "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
+	k8scontroller "sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -18,15 +17,15 @@ import (
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 )
 
-var logger = s2hlog.Log.WithName(CtrlName)
+var logger = s2hlog.Log.WithName(ctrlName)
 
 const (
-	CtrlName                = "stable-component-ctrl"
+	ctrlName                = "stable-component-ctrl"
 	stableFinalizerName     = "stable.finalizers.samsahai.io"
-	MaxConcurrentReconciles = 1
+	maxConcurrentReconciles = 1
 )
 
-type reconciler struct {
+type controller struct {
 	client  client.Client
 	s2hCtrl internal.SamsahaiController
 }
@@ -35,13 +34,13 @@ func New(
 	mgr cr.Manager,
 	s2hCtrl internal.SamsahaiController,
 ) internal.StableComponentController {
-	c := &reconciler{
+	c := &controller{
 		s2hCtrl: s2hCtrl,
 	}
 
 	if mgr != nil {
 		c.client = mgr.GetClient()
-		if err := c.SetupWithManager(mgr); err != nil {
+		if err := c.setupWithManager(mgr); err != nil {
 			logger.Error(err, "cannot add new controller to manager")
 			return nil
 		}
@@ -50,15 +49,15 @@ func New(
 	return c
 }
 
-func (r *reconciler) SetupWithManager(mgr cr.Manager) error {
+func (c *controller) setupWithManager(mgr cr.Manager) error {
 	return cr.NewControllerManagedBy(mgr).
-		WithOptions(controller.Options{MaxConcurrentReconciles: MaxConcurrentReconciles}).
+		WithOptions(k8scontroller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}).
 		For(&s2hv1beta1.StableComponent{}).
-		Complete(r)
+		Complete(c)
 }
 
-func (r *reconciler) updateStable(stableComp *s2hv1beta1.StableComponent) error {
-	if err := r.client.Update(context.Background(), stableComp); err != nil {
+func (c *controller) updateStable(stableComp *s2hv1beta1.StableComponent) error {
+	if err := c.client.Update(context.Background(), stableComp); err != nil {
 		logger.Error(err, "cannot update stable component", "name", stableComp.Name, "namespace", stableComp.Namespace)
 		return errors.Wrap(err, "cannot update stable component")
 	}
@@ -66,20 +65,20 @@ func (r *reconciler) updateStable(stableComp *s2hv1beta1.StableComponent) error 
 	return nil
 }
 
-func (r *reconciler) updateTeam(team *s2hv1beta1.Team) error {
-	if err := r.client.Update(context.Background(), team); err != nil {
+func (c *controller) updateTeam(team *s2hv1beta1.Team) error {
+	if err := c.client.Update(context.Background(), team); err != nil {
 		return errors.Wrap(err, "cannot update team")
 	}
 
 	return nil
 }
 
-func (r *reconciler) getTeamStaging(stableComp *s2hv1beta1.StableComponent) (*s2hv1beta1.Team, error) {
+func (c *controller) getTeamStaging(stableComp *s2hv1beta1.StableComponent) (*s2hv1beta1.Team, error) {
 	var team *s2hv1beta1.Team
 	labels := stableComp.GetLabels()
 	if teamName, ok := labels[internal.GetTeamLabelKey()]; ok && teamName != "" {
 		team = &s2hv1beta1.Team{}
-		err := r.s2hCtrl.GetTeam(teamName, team)
+		err := c.s2hCtrl.GetTeam(teamName, team)
 		if err != nil {
 			// ignore if team not found
 			if k8serrors.IsNotFound(err) {
@@ -99,7 +98,7 @@ func (r *reconciler) getTeamStaging(stableComp *s2hv1beta1.StableComponent) (*s2
 		return team, nil
 	}
 
-	teams, err := r.s2hCtrl.GetTeams()
+	teams, err := c.s2hCtrl.GetTeams()
 	if err != nil {
 		logger.Error(err, "cannot list teams")
 		return nil, err
@@ -116,12 +115,12 @@ func (r *reconciler) getTeamStaging(stableComp *s2hv1beta1.StableComponent) (*s2
 	return nil, nil
 }
 
-func (r *reconciler) addFinalizer(stableComp *s2hv1beta1.StableComponent) error {
+func (c *controller) addFinalizer(stableComp *s2hv1beta1.StableComponent) error {
 	// The object is not being deleted, so if it does not have our finalizer,
 	// then lets add the finalizer and update the object.
 	if !stringutils.ContainsString(stableComp.ObjectMeta.Finalizers, stableFinalizerName) {
 		stableComp.ObjectMeta.Finalizers = append(stableComp.ObjectMeta.Finalizers, stableFinalizerName)
-		if err := r.updateStable(stableComp); err != nil {
+		if err := c.updateStable(stableComp); err != nil {
 			return err
 		}
 	}
@@ -129,17 +128,17 @@ func (r *reconciler) addFinalizer(stableComp *s2hv1beta1.StableComponent) error 
 	return nil
 }
 
-func (r *reconciler) deleteFinalizer(stableComp *s2hv1beta1.StableComponent, team *s2hv1beta1.Team) error {
+func (c *controller) deleteFinalizer(stableComp *s2hv1beta1.StableComponent, team *s2hv1beta1.Team) error {
 	if stringutils.ContainsString(stableComp.ObjectMeta.Finalizers, stableFinalizerName) {
 		if team.Status.SetStableComponents(stableComp, true) {
-			if err := r.updateTeam(team); err != nil && !k8serrors.IsNotFound(err) {
+			if err := c.updateTeam(team); err != nil && !k8serrors.IsNotFound(err) {
 				return err
 			}
 		}
 
 		// remove our finalizer from the list and update it.
 		stableComp.ObjectMeta.Finalizers = stringutils.RemoveString(stableComp.ObjectMeta.Finalizers, stableFinalizerName)
-		if err := r.updateStable(stableComp); err != nil {
+		if err := c.updateStable(stableComp); err != nil {
 			return err
 		}
 
@@ -149,10 +148,10 @@ func (r *reconciler) deleteFinalizer(stableComp *s2hv1beta1.StableComponent, tea
 	return nil
 }
 
-func (r *reconciler) Reconcile(req cr.Request) (cr.Result, error) {
+func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	ctx := context.Background()
 	stableComp := &s2hv1beta1.StableComponent{}
-	if err := r.client.Get(ctx, req.NamespacedName, stableComp); err != nil {
+	if err := c.client.Get(ctx, req.NamespacedName, stableComp); err != nil {
 		if k8serrors.IsNotFound(err) {
 			// Object not found, return. Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
@@ -163,7 +162,7 @@ func (r *reconciler) Reconcile(req cr.Request) (cr.Result, error) {
 		return cr.Result{}, err
 	}
 
-	team, err := r.getTeamStaging(stableComp)
+	team, err := c.getTeamStaging(stableComp)
 	if err != nil {
 		return cr.Result{}, err
 	}
@@ -175,18 +174,18 @@ func (r *reconciler) Reconcile(req cr.Request) (cr.Result, error) {
 
 	// The object is being deleted
 	if !stableComp.ObjectMeta.DeletionTimestamp.IsZero() {
-		if err := r.deleteFinalizer(stableComp, team); err != nil {
+		if err := c.deleteFinalizer(stableComp, team); err != nil {
 			return reconcile.Result{}, err
 		}
 
 		return reconcile.Result{}, nil
 	}
 
-	if err := r.addFinalizer(stableComp); err != nil {
+	if err := c.addFinalizer(stableComp); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	if ok := r.detectSpecChanged(stableComp, team); !ok {
+	if ok := c.detectSpecChanged(stableComp, team); !ok {
 		return reconcile.Result{}, nil
 	}
 
@@ -198,20 +197,20 @@ func (r *reconciler) Reconcile(req cr.Request) (cr.Result, error) {
 
 	// Update team if stable component has changes
 	if team.Status.SetStableComponents(stableComp, false) {
-		if err := r.updateTeam(team); err != nil {
+		if err := c.updateTeam(team); err != nil {
 			return cr.Result{}, err
 		}
 	}
 
 	// Update stable component status
-	if err := r.updateStable(stableComp); err != nil {
+	if err := c.updateStable(stableComp); err != nil {
 		return cr.Result{}, err
 	}
 
 	return cr.Result{}, nil
 }
 
-func (r *reconciler) detectSpecChanged(stableComp *s2hv1beta1.StableComponent, teamComp *s2hv1beta1.Team) bool {
+func (c *controller) detectSpecChanged(stableComp *s2hv1beta1.StableComponent, teamComp *s2hv1beta1.Team) bool {
 	if stableComp != nil {
 		teamStableComp := teamComp.Status.GetStableComponent(stableComp.Name)
 		if teamStableComp != nil {
