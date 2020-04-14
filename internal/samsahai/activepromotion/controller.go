@@ -99,7 +99,9 @@ func (c *controller) setup(ctx context.Context, atpComp *s2hv1beta1.ActivePromot
 		atpComp.Spec.SetTearDownDuration(duration)
 	}
 
+	atpComp.Labels = c.getStateLabel(stateWaiting)
 	atpComp.SetState(s2hv1beta1.ActivePromotionWaiting, "Waiting in queue")
+	logger.Info("activepromotion is waiting in queue", "team", atpComp.Name)
 	return nil
 }
 
@@ -286,20 +288,20 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.TODO()
 
-	isTriggered, err := c.manageQueue(ctx)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	if isTriggered {
-		return reconcile.Result{}, nil
-	}
-
 	atpComp := &s2hv1beta1.ActivePromotion{}
 	if err := c.client.Get(ctx, req.NamespacedName, atpComp); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
+	}
+
+	if isTriggered, err := c.manageQueue(ctx, atpComp); err != nil || isTriggered {
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		// current active promotion has been updated, it will re-trigger the reconcile
+		return reconcile.Result{}, nil
 	}
 
 	if _, err := c.getTeam(ctx, atpComp.Name); err != nil && k8serrors.IsNotFound(err) {
@@ -311,11 +313,10 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
-	isSkipped, err := c.deleteFinalizerWhenFinished(ctx, atpComp)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	if isSkipped {
+	if isSkipped, err := c.deleteFinalizerWhenFinished(ctx, atpComp); err != nil || isSkipped {
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 		return reconcile.Result{}, nil
 	}
 
@@ -337,8 +338,10 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		}
 
 	case s2hv1beta1.ActivePromotionWaiting:
-		logger.Debug("activepromotion is waiting in queue", "team", atpComp.Name)
-		return reconcile.Result{}, nil
+		return reconcile.Result{
+			Requeue:      true,
+			RequeueAfter: 2 * time.Second,
+		}, nil
 
 	case s2hv1beta1.ActivePromotionCreatingPreActive:
 		if err := c.createPreActiveEnvAndDeployStableCompObjects(ctx, atpComp); err != nil {
