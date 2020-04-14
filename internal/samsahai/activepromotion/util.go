@@ -89,3 +89,12 @@ func (c *controller) getTeam(ctx context.Context, teamName string) (*s2hv1beta1.
 
 	return teamComp, nil
 }
+
+const (
+	stateWaiting = "waiting"
+	stateRunning = "running"
+)
+
+func (c *controller) getStateLabel(state string) map[string]string {
+	return map[string]string{"state": state}
+}

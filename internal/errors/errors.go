@@ -91,7 +91,7 @@ func IsNewNamespacePromotionCreated(err error) bool {
 
 // IsEnsuringPreActiveEnvironmentCreated checks ensuring pre-active created
 func IsEnsuringPreActiveEnvironmentCreated(err error) bool {
-	return ErrEnsureActivePromoted.Error() == err.Error()
+	return ErrEnsurePreActiveEnvironmentCreated.Error() == err.Error()
 }
 
 // IsEnsuringActivePromoted checks ensuring active promoted

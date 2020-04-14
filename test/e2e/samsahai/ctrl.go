@@ -939,26 +939,25 @@ var _ = Describe("Main Controller [e2e]", func() {
 		atpQ3.Name = teamForQ3
 		Expect(runtimeClient.Create(ctx, &atpQ3)).To(BeNil())
 
-		By("Waiting ActivePromotion Q1 state to be `Deploying`, other ActivePromotion states to be `Waiting`")
+		By("Waiting ActivePromotion Q1 state to be `Deploying`, other ActivePromotion states to be waiting")
 		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
 			atpCompQ1 := s2hv1beta1.ActivePromotion{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: teamForQ1}, &atpCompQ1); err != nil {
 				return false, nil
 			}
 
-			atpCompQ2 := s2hv1beta1.ActivePromotion{}
-			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: teamForQ2}, &atpCompQ2); err != nil {
+			if atpCompQ1.Status.State != s2hv1beta1.ActivePromotionDeployingComponents {
 				return false, nil
 			}
 
-			atpCompQ3 := s2hv1beta1.ActivePromotion{}
-			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: teamForQ2}, &atpCompQ3); err != nil {
+			waitingAtpList := &s2hv1beta1.ActivePromotionList{}
+			selectors := map[string]string{"state": "waiting"}
+			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(selectors)}
+			if err := runtimeClient.List(ctx, waitingAtpList, listOpt); err != nil {
 				return false, nil
 			}
 
-			if atpCompQ1.Status.State == s2hv1beta1.ActivePromotionDeployingComponents &&
-				atpCompQ2.Status.State == s2hv1beta1.ActivePromotionWaiting &&
-				atpCompQ3.Status.State == s2hv1beta1.ActivePromotionWaiting {
+			if len(waitingAtpList.Items) == 2 {
 				return true, nil
 			}
 
