@@ -67,7 +67,7 @@ service:
   http: 8080
 
 exporter:
-  enabled: true
+  enabled: false
   port: 8081
 
 ingress:
