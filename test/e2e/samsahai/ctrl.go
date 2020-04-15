@@ -1979,7 +1979,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 				Expect(err).To(HaveOccurred())
 			}
 		}
-	}, 230)
+	}, 250)
 
 	It("should not set active namespace on new team creation", func(done Done) {
 		defer close(done)

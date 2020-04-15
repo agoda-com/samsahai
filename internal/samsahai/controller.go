@@ -993,7 +993,22 @@ func getNodeIP(nodes *corev1.NodeList) string {
 }
 
 func (c *controller) destroyAllStableComponents(namespace string) error {
-	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.StableComponent{}, client.InNamespace(namespace))
+	ctx := context.TODO()
+	if err := c.client.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, client.InNamespace(namespace)); err != nil {
+		return err
+	}
+
+	stableList := &s2hv1beta1.StableComponentList{}
+	if err := c.client.List(ctx, stableList, &client.ListOptions{Namespace: namespace}); err != nil {
+		logger.Error(err, "cannot list stable components", "namespace", namespace)
+		return err
+	}
+
+	if len(stableList.Items) > 0 {
+		return errors.ErrEnsureStableComponentsDestroyed
+	}
+
+	return nil
 }
 
 func (c *controller) destroyClusterRole(namespace string) error {
