@@ -35,6 +35,7 @@ const (
 	ErrDeletingReleases                  = Error("deleting releases")
 	ErrForceDeletingComponents           = Error("force deleting components")
 	ErrRollingBackActivePromotion        = Error("rolling back active promotion process")
+	ErrEnsureStableComponentsDestroyed   = Error("all stable components has not been destroyed")
 
 	ErrUnauthorized      = Error("unauthorized")
 	ErrAuthTokenNotFound = Error("auth token not found")

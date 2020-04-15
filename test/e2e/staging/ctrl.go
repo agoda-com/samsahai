@@ -41,6 +41,11 @@ import (
 )
 
 var _ = Describe("Staging Controller [e2e]", func() {
+	const (
+		verifyTime1s  = 1 * time.Second
+		verifyTime10s = 10 * time.Second
+	)
+
 	var (
 		stagingCtrl   internal.StagingController
 		queueCtrl     internal.QueueController
@@ -177,7 +182,8 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 	mockConfig := s2hv1beta1.Config{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: teamName,
+			Name:   teamName,
+			Labels: testLabels,
 		},
 		Spec: s2hv1beta1.ConfigSpec{
 			Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
@@ -257,7 +263,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		By("Deleting all teams")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Team{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(1*time.Second, 10*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			teamList := s2hv1beta1.TeamList{}
 			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = runtimeClient.List(ctx, &teamList, listOpt)
@@ -271,6 +277,24 @@ var _ = Describe("Staging Controller [e2e]", func() {
 			return false, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Delete all teams error")
+
+		By("Deleting all Configs")
+		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Config{}, crclient.MatchingLabels(testLabels))
+		Expect(err).NotTo(HaveOccurred())
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			configList := s2hv1beta1.ConfigList{}
+			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
+			err = runtimeClient.List(ctx, &configList, listOpt)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			if len(configList.Items) == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Deleting all configs error")
 
 		By("Deleting all StableComponents")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, crclient.InNamespace(namespace))
@@ -309,14 +333,24 @@ var _ = Describe("Staging Controller [e2e]", func() {
 	It("should successfully start and stop", func(done Done) {
 		defer close(done)
 
-		authToken := "12345"
-
 		By("Creating Config")
 		config := mockConfig
 		ctx := context.Background()
-		_ = runtimeClient.Delete(ctx, &config)
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
+		By("Verifying config has been created")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			config := &s2hv1beta1.Config{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify config error")
+
+		authToken := "12345"
 		stagingCfgCtrl := configctrl.New(mgr)
 		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, stagingCfgCtrl,
 			"", "", "", internal.StagingConfig{})
@@ -332,13 +366,12 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		swp := stableWordPress
 		Expect(runtimeClient.Create(context.TODO(), &swp)).To(BeNil())
 
-		By("creating queue")
+		By("Creating Queue")
 		newQueue := queue.NewUpgradeQueue(teamName, namespace,
 			"redis", "bitnami/redis", "5.0.5-debian-9-r160")
 		Expect(queueCtrl.Add(newQueue)).To(BeNil())
 
-		By("deploying")
-
+		By("Deploying")
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			queue := &v1beta1.Queue{}
 			err = runtimeClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: newQueue.Name}, queue)
@@ -353,15 +386,13 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Deploying error")
 
-		By("testing")
-
+		By("Testing")
 		err = wait.PollImmediate(2*time.Second, testingTimeout.Duration, func() (ok bool, err error) {
 			return !stagingCtrl.IsBusy(), nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Testing error")
 
-		By("collecting")
-
+		By("Collecting")
 		err = wait.PollImmediate(2*time.Second, 30*time.Second, func() (ok bool, err error) {
 			stableComp := &v1beta1.StableComponent{}
 			err = runtimeClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: newQueue.Name}, stableComp)
@@ -374,7 +405,6 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "Collecting error")
 
 		By("Ensure Pre Active Components")
-
 		redisServiceName := fmt.Sprintf("%s-redis-master", namespace)
 
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
@@ -414,7 +444,6 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		Expect(queue.DeletePreActiveQueue(runtimeClient, namespace))
 
 		By("Demote from Active")
-
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			queue, err := queue.EnsureDemoteFromActiveComponents(runtimeClient, teamName, namespace)
 			if err != nil {
@@ -436,7 +465,6 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		Expect(queue.DeleteDemoteFromActiveQueue(runtimeClient, namespace))
 
 		By("Promote to Active")
-
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			queue, err := queue.EnsurePromoteToActiveComponents(runtimeClient, teamName, namespace)
 			if err != nil {
@@ -459,7 +487,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 
 	}, 300)
 
-	It("Should create error log in case of deploy failed", func(done Done) {
+	It("should create error log in case of deploy failed", func(done Done) {
 		defer close(done)
 
 		By("Creating Config")
@@ -468,7 +496,6 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		config.Spec.Staging.Deployment.Timeout = metav1.Duration{Duration: 10 * time.Second}
 		config.Spec.Components[0].Values["master"].(map[string]interface{})["command"] = "exit 1"
 		ctx := context.Background()
-		_ = runtimeClient.Delete(ctx, &config)
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
@@ -517,7 +544,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "Should have waiting queue")
 	}, 120)
 
-	It("Should successfully get health check", func(done Done) {
+	It("should successfully get health check", func(done Done) {
 		defer close(done)
 
 		stagingCtrl = staging.NewController(teamName, namespace, "", nil, mgr, queueCtrl,
