@@ -43,8 +43,13 @@ import (
 )
 
 const (
-	verifyTimeout10        = 10 * time.Second
-	verifyNSCreatedTimeout = 15 * time.Second
+	verifyTime1s           = 1 * time.Second
+	verifyTime5s           = 5 * time.Second
+	verifyTime10s          = 10 * time.Second
+	verifyTime15s          = 15 * time.Second
+	verifyTime30s          = 30 * time.Second
+	verifyTime60s          = 60 * time.Second
+	verifyNSCreatedTimeout = verifyTime15s
 	promoteTimeOut         = 220 * time.Second
 )
 
@@ -427,7 +432,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("Deleting all StableComponents")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, crclient.InNamespace(stgNamespace))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			stableList := s2hv1beta1.StableComponentList{}
 			err = runtimeClient.List(ctx, &stableList, &crclient.ListOptions{Namespace: stgNamespace})
 			if err != nil && errors.IsNotFound(err) {
@@ -444,7 +449,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("Deleting all Teams")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Team{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			teamList := s2hv1beta1.TeamList{}
 			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = runtimeClient.List(ctx, &teamList, listOpt)
@@ -462,7 +467,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("Deleting all Configs")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Config{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			configList := s2hv1beta1.ConfigList{}
 			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = runtimeClient.List(ctx, &configList, listOpt)
@@ -480,7 +485,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("Deleting active namespace")
 		atvNs := activeNamespace
 		_ = runtimeClient.Delete(context.TODO(), &atvNs)
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: atvNamespace}, &namespace)
 			if err != nil && errors.IsNotFound(err) {
@@ -492,7 +497,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("Deleting all ActivePromotions")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotion{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpList := s2hv1beta1.ActivePromotionList{}
 			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = runtimeClient.List(ctx, &atpList, listOpt)
@@ -546,7 +551,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying staging related objects has been created")
-		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace)
 			if err != nil {
@@ -713,7 +718,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(len(stableComps.Items)).To(Equal(1))
 
 		By("previous active namespace should be deleted")
-		err = wait.PollImmediate(1*time.Second, promoteTimeOut, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, promoteTimeOut, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: atvNamespace}, &namespace)
 			if err != nil && errors.IsNotFound(err) {
@@ -725,7 +730,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete previous namespace error")
 
 		By("ActivePromotion should be deleted")
-		err = wait.PollImmediate(1*time.Second, 45*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: atp.Name}, &atpTemp)
 			if err != nil && errors.IsNotFound(err) {
@@ -822,7 +827,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &atvNs)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
@@ -846,7 +851,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &atp)).To(BeNil())
 
 		By("Waiting ActivePromotion state to be `PromotingActiveEnvironment`")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpComp := s2hv1beta1.ActivePromotion{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &atpComp); err != nil {
 				return false, nil
@@ -898,7 +903,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &config3)).To(BeNil())
 
 		By("Verifying all teams have been created")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			teamList := s2hv1beta1.TeamList{}
 			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			if err := runtimeClient.List(ctx, &teamList, listOpt); err != nil {
@@ -933,14 +938,13 @@ var _ = Describe("Main Controller [e2e]", func() {
 		atpQ2.Name = teamForQ2
 		Expect(runtimeClient.Create(ctx, &atpQ2)).To(BeNil())
 
-		time.Sleep(1 * time.Second)
-
+		time.Sleep(verifyTime1s)
 		atpQ3 := activePromotion
 		atpQ3.Name = teamForQ3
 		Expect(runtimeClient.Create(ctx, &atpQ3)).To(BeNil())
 
 		By("Waiting ActivePromotion Q1 state to be `Deploying`, other ActivePromotion states to be waiting")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpCompQ1 := s2hv1beta1.ActivePromotion{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: teamForQ1}, &atpCompQ1); err != nil {
 				return false, nil
@@ -969,7 +973,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		atpCompQ2 := s2hv1beta1.ActivePromotion{}
 		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: teamForQ2}, &atpCompQ2)).To(BeNil())
 		Expect(runtimeClient.Delete(context.TODO(), &atpCompQ2)).NotTo(HaveOccurred())
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamForQ2}, &atpTemp)
 			if err != nil && errors.IsNotFound(err) {
@@ -996,7 +1000,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &deActiveQ)).To(BeNil())
 
 		By("Verifying delete ActivePromotion Q1")
-		err = wait.PollImmediate(1*time.Second, 30*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamForQ1}, &atpTemp)
 			if err != nil && errors.IsNotFound(err) {
@@ -1008,7 +1012,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete active promotion for Team1 error")
 
 		By("Checking ActivePromotion Q3 should be run")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: teamForQ3}, &atpTemp); err != nil {
 				return false, nil
@@ -1047,7 +1051,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &smd)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
@@ -1068,7 +1072,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &atp)).To(BeNil())
 
 		By("Waiting ActivePromotion state to be `Deploying`")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpComp := s2hv1beta1.ActivePromotion{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &atpComp); err != nil {
 				return false, nil
@@ -1101,7 +1105,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		By("pre-active namespace should be deleted")
 		preActiveNs := atpComp.Status.TargetNamespace
-		err = wait.PollImmediate(1*time.Second, 15*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: preActiveNs}, &namespace)
 			if err != nil && errors.IsNotFound(err) {
@@ -1113,7 +1117,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete pre-active namespace error")
 
 		By("ActivePromotion should be deleted")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: atp.Name}, &atpTemp)
 			if err != nil && errors.IsNotFound(err) {
@@ -1152,7 +1156,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
@@ -1177,7 +1181,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &atp)).To(BeNil())
 
 		By("ActivePromotion should be deleted")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: atp.Name}, &atpTemp)
 			if err != nil && errors.IsNotFound(err) {
@@ -1203,7 +1207,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			team := s2hv1beta1.Team{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
 				return false, nil
@@ -1228,7 +1232,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Delete(ctx, &team)).To(BeNil())
 
 		By("Verifying Config should be deleted")
-		err = wait.PollImmediate(1*time.Second, 15*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
 			config := s2hv1beta1.Config{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &config)
 			if err != nil && errors.IsNotFound(err) {
@@ -1251,7 +1255,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Team should be error if missing Config")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			team := s2hv1beta1.Team{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
 				return false, nil
@@ -1294,7 +1298,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
@@ -1319,7 +1323,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Verifying DesiredComponent has been created")
-		err = wait.PollImmediate(1*time.Second, 30*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonData)
 
 			dc := s2hv1beta1.DesiredComponent{}
@@ -1365,7 +1369,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
@@ -1399,7 +1403,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &team)).NotTo(HaveOccurred())
 
 		By("Verifying DesiredComponentImageCreatedTime has been updated")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			teamComp := s2hv1beta1.Team{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
 				return false, nil
@@ -1465,7 +1469,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &teamComp)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
@@ -1493,7 +1497,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Verifying redis DesiredComponent has been created")
-		err = wait.PollImmediate(1*time.Second, 50*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, 50*time.Second, func() (ok bool, err error) {
 			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataRedis)
 			dRedis := s2hv1beta1.DesiredComponent{}
 			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dRedis); err != nil {
@@ -1541,7 +1545,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		configComp.Spec.Components = []*s2hv1beta1.Component{{Name: redisCompName}}
 		Expect(runtimeClient.Update(ctx, &configComp)).To(BeNil())
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(verifyTime1s)
 		By("Checking DesiredComponents")
 		dRedis := s2hv1beta1.DesiredComponent{}
 		Expect(runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &dRedis)).To(BeNil())
@@ -1550,7 +1554,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(errors.IsNotFound(err)).To(BeTrue())
 
 		By("Checking TeamDesiredComponents")
-		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
 			teamComp = s2hv1beta1.Team{}
 			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, &teamComp); err != nil {
 				return false, nil
@@ -1569,14 +1573,23 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify TeamDesiredComponent error")
 
 		By("Checking Queues")
-		qRedis := s2hv1beta1.Queue{}
-		Expect(runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &qRedis)).To(BeNil())
-		qWordpress := s2hv1beta1.Queue{}
-		err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &qWordpress)
-		Expect(errors.IsNotFound(err)).To(BeTrue())
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			qRedis := s2hv1beta1.Queue{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &qRedis); err != nil {
+				return false, nil
+			}
+
+			qWordpress := s2hv1beta1.Queue{}
+			if err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &qWordpress); err != nil && !errors.IsNotFound(err) {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify StableComponents error")
 
 		By("Checking StableComponents")
-		err = wait.PollImmediate(1*time.Second, 10*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			sRedis := s2hv1beta1.StableComponent{}
 			if err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &sRedis); err != nil {
 				return false, nil
@@ -1618,7 +1631,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
@@ -1754,7 +1767,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		By("Deleting all StableComponents")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, crclient.InNamespace(stgNamespace))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			stableList := s2hv1beta1.StableComponentList{}
 			err = runtimeClient.List(ctx, &stableList, &crclient.ListOptions{Namespace: stgNamespace})
 			if err != nil && errors.IsNotFound(err) {
@@ -1771,7 +1784,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		By("Deleting all Teams")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Team{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			teamList := s2hv1beta1.TeamList{}
 			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = runtimeClient.List(ctx, &teamList, listOpt)
@@ -1789,7 +1802,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		By("Deleting all Configs")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Config{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			configList := s2hv1beta1.ConfigList{}
 			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = runtimeClient.List(ctx, &configList, listOpt)
@@ -1807,7 +1820,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		By("Deleting all ActivePromotions")
 		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotion{}, crclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpList := s2hv1beta1.ActivePromotionList{}
 			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = runtimeClient.List(ctx, &atpList, listOpt)
@@ -1850,7 +1863,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
@@ -1925,7 +1938,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		}
 
 		By("ActivePromotion should be deleted")
-		err = wait.PollImmediate(1*time.Second, promoteTimeOut, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, promoteTimeOut, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
 			if err != nil && errors.IsNotFound(err) {
@@ -1994,7 +2007,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(1*time.Second, verifyNSCreatedTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
@@ -2035,7 +2048,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		Expect(atpRes.Status.PreviousActiveNamespace).To(BeEmpty())
 
 		By("Waiting ActivePromotion state to be `Deploying`")
-		err = wait.PollImmediate(1*time.Second, 60*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
 			atpComp := s2hv1beta1.ActivePromotion{}
 			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp); err != nil {
 				return false, nil
@@ -2063,7 +2076,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 
 		By("pre-active namespace should be deleted")
 		preActiveNs := atpComp.Status.TargetNamespace
-		err = wait.PollImmediate(1*time.Second, 15*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: preActiveNs}, &namespace)
 			if err != nil && errors.IsNotFound(err) {
@@ -2075,7 +2088,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete pre-active namespace error")
 
 		By("ActivePromotion should be deleted")
-		err = wait.PollImmediate(1*time.Second, verifyTimeout10, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
 			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
 			if err != nil && errors.IsNotFound(err) {
