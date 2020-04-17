@@ -22,7 +22,6 @@ extraEnvs: {}
 configs:
   S2H_CONFIG_PATH: "samsahai.yaml"
   S2H_SERVICE_NAME: '{{ include "samsahai.fullname" . }}'
-  NO_PROXY: '.{{ .Release.Namespace }}'
 
 fileConfigs:
   s2hImage: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'
@@ -55,6 +54,13 @@ fileConfigs:
     # would you like to auto promote active namespace when team is created?
     # if you do not set this flag, the default value is true
     promoteOnTeamCreation: true
+
+  # environment variables for staging controller
+  stagingEnvs:
+    NO_PROXY: '.{{ .Release.Namespace }}'
+
+    # how many days of queue histories will be kept?
+    QUEUE_MAX_HISTORY_DAYS: "7"
 
 # the value in this field should be base64 encoder
 credentials: null
