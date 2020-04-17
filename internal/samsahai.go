@@ -46,15 +46,6 @@ type SamsahaiConfig struct {
 	// SamsahaiExternalURL defines a Samsahai external url
 	SamsahaiExternalURL string `json:"s2hExternalURL" yaml:"s2hExternalURL"`
 
-	// SamsahaiHTTPProxy defines a Samsahai http proxy
-	SamsahaiHTTPProxy string `json:"s2hHTTPProxy" yaml:"s2hHTTPProxy"`
-
-	// SamsahaiHTTPSProxy defines a Samsahai https proxy
-	SamsahaiHTTPSProxy string `json:"s2hHTTPSProxy" yaml:"s2hHTTPSProxy"`
-
-	// SamsahaiNoProxy defines a Samsahai no proxy
-	SamsahaiNoProxy string `json:"s2hNoProxy" yaml:"s2hNoProxy"`
-
 	// TeamcityURL defines a Teamcity url
 	TeamcityURL string `json:"teamcityURL" yaml:"teamcityURL"`
 
@@ -68,6 +59,9 @@ type SamsahaiConfig struct {
 	PostNamespaceCreation *struct {
 		s2hv1beta1.CommandAndArgs
 	} `json:"postNamespaceCreation,omitempty" yaml:"postNamespaceCreation,omitempty"`
+
+	// StagingEnvs defines environment variables of staging controller
+	StagingEnvs map[string]string `json:"stagingEnvs,omitempty" yaml:"stagingEnvs,omitempty"`
 
 	SamsahaiURL        string             `json:"-" yaml:"-"`
 	SamsahaiCredential SamsahaiCredential `json:"-" yaml:"-"`
