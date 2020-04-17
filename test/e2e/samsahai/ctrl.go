@@ -625,7 +625,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		By("Checking stable component has been set")
 		teamComp := s2hv1beta1.Team{}
 		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
-		teamSpecStableComps := teamComp.Status.StableComponents[0].Spec
+		teamSpecStableComps := teamComp.Status.StableComponents[mariaDBCompName].Spec
 		Expect(teamSpecStableComps.Name).To(Equal(stableAtvMariaDB.Spec.Name))
 		Expect(teamSpecStableComps.Repository).To(Equal(stableAtvMariaDB.Spec.Repository))
 		Expect(teamSpecStableComps.Version).To(Equal(stableAtvMariaDB.Spec.Version))

@@ -767,9 +767,7 @@ definitions:
         description: |-
           StableComponentList represents a list of stable components
           +optional
-        items:
-          $ref: '#/definitions/v1beta1.StableComponent'
-        type: array
+        type: object
     type: object
   v1beta1.Teamcity:
     properties:

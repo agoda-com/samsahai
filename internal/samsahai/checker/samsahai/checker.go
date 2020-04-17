@@ -84,18 +84,9 @@ func (c *checker) GetVersion(repository, name, pattern string) (string, error) {
 			return "", errors.Wrap(err, "cannot get team")
 		}
 
-		var stableComp *v1beta1.StableComponent
 		// create the stable components map
-		for i := range team.Status.StableComponents {
-			c := &team.Status.StableComponents[i]
-			if c.Spec.Name == name {
-				stableComp = c
-				break
-			}
-		}
-
-		if stableComp == nil {
-			// ignore component not found
+		stableComp, ok := team.Status.StableComponents[name]
+		if !ok {
 			continue
 		}
 
