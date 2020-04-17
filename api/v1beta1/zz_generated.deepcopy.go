@@ -257,9 +257,9 @@ func (in *ActivePromotionStatus) DeepCopyInto(out *ActivePromotionStatus) {
 	}
 	if in.ActiveComponents != nil {
 		in, out := &in.ActiveComponents, &out.ActiveComponents
-		*out = make([]StableComponent, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+		*out = make(map[string]StableComponent, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	if in.OutdatedComponents != nil {
@@ -1641,9 +1641,9 @@ func (in *TeamStatus) DeepCopyInto(out *TeamStatus) {
 	}
 	if in.ActiveComponents != nil {
 		in, out := &in.ActiveComponents, &out.ActiveComponents
-		*out = make([]StableComponent, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+		*out = make(map[string]StableComponent, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	if in.Conditions != nil {

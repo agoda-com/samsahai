@@ -712,10 +712,7 @@
             "properties": {
                 "activeComponents": {
                     "description": "ActiveComponents represents a list of promoted active components\n+optional",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1beta1.StableComponent"
-                    }
+                    "type": "object"
                 },
                 "activePromotionHistoryName": {
                     "description": "ActivePromotionHistoryName represents created ActivePromotionHistoryName name\n+optional",
@@ -1526,10 +1523,7 @@
             "properties": {
                 "activeComponents": {
                     "description": "ActiveComponents represents a list of stable components in active namespace\n+optional",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1beta1.StableComponent"
-                    }
+                    "type": "object"
                 },
                 "conditions": {
                     "description": "Conditions contains observations of the resource's state e.g.,\nTeam namespace is created, destroyed\n+optional\n+patchMergeKey=type\n+patchStrategy=merge",
