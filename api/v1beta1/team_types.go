@@ -89,11 +89,11 @@ type TeamStatus struct {
 
 	// StableComponentList represents a list of stable components
 	// +optional
-	StableComponents []StableComponent `json:"stableComponents,omitempty"`
+	StableComponents map[string]StableComponent `json:"stableComponents,omitempty"`
 
 	// ActiveComponents represents a list of stable components in active namespace
 	// +optional
-	ActiveComponents []StableComponent `json:"activeComponents,omitempty"`
+	ActiveComponents map[string]StableComponent `json:"activeComponents,omitempty"`
 
 	// Conditions contains observations of the resource's state e.g.,
 	// Team namespace is created, destroyed
@@ -108,15 +108,17 @@ type TeamStatus struct {
 	DesiredComponentImageCreatedTime map[string]map[string]DesiredImageTime `json:"desiredComponentImageCreatedTime,omitempty"`
 }
 
-func (ts *TeamStatus) GetStableComponent(stableCompName string) *StableComponent {
-	for i := 0; i < len(ts.StableComponents); i++ {
-		comp := ts.StableComponents[i]
-		if comp.Spec.Name == stableCompName {
-			return &comp
-		}
+func (ts *TeamStatus) GetStableComponent(stableCompName string) StableComponent {
+	if len(ts.StableComponents) == 0 {
+		return StableComponent{}
 	}
 
-	return nil
+	stableComp, ok := ts.StableComponents[stableCompName]
+	if !ok {
+		return StableComponent{}
+	}
+
+	return stableComp
 }
 
 // SetStableComponents sets stable components
@@ -125,49 +127,47 @@ func (ts *TeamStatus) SetStableComponents(stableComp *StableComponent, isDeleted
 		return false
 	}
 
-	for i := 0; i < len(ts.StableComponents); i++ {
-		comp := ts.StableComponents[i]
-		if isDeleted {
-			if comp.Spec.Name == stableComp.Spec.Name {
-				ts.StableComponents[i] = ts.StableComponents[len(ts.StableComponents)-1]
-				ts.StableComponents = ts.StableComponents[:len(ts.StableComponents)-1]
-				return true
-			}
-
-			continue
-		}
-
-		if comp.Spec.Name == stableComp.Spec.Name {
-			if comp.Spec != stableComp.Spec {
-				ts.StableComponents[i].Spec = stableComp.Spec
-				ts.StableComponents[i].Status = stableComp.Status
-				return true
-			}
-
-			return false
-		}
+	if ts.StableComponents == nil {
+		ts.StableComponents = make(map[string]StableComponent)
 	}
 
-	if !isDeleted {
+	tStableComp, ok := ts.StableComponents[stableComp.Name]
+	if !ok && !isDeleted {
 		// add new stable component
-		ts.StableComponents = append(ts.StableComponents, StableComponent{
+		ts.StableComponents[stableComp.Name] = StableComponent{
 			Spec:   stableComp.Spec,
 			Status: stableComp.Status,
-		})
+		}
 		return true
+	}
+
+	if ok {
+		if isDeleted {
+			delete(ts.StableComponents, stableComp.Name)
+			return true
+		}
+
+		if tStableComp.Spec != stableComp.Spec {
+			sComp := StableComponent{
+				Spec:   stableComp.Spec,
+				Status: stableComp.Status,
+			}
+			ts.StableComponents[stableComp.Name] = sComp
+			return true
+		}
 	}
 
 	return false
 }
 
 // SetActiveComponents sets active components
-func (ts *TeamStatus) SetActiveComponents(comps []StableComponent) {
-	ts.ActiveComponents = make([]StableComponent, 0)
-	for _, currentComp := range comps {
-		ts.ActiveComponents = append(ts.ActiveComponents, StableComponent{
+func (ts *TeamStatus) SetActiveComponents(comps map[string]StableComponent) {
+	ts.ActiveComponents = make(map[string]StableComponent)
+	for compName, currentComp := range comps {
+		ts.ActiveComponents[compName] = StableComponent{
 			Spec:   currentComp.Spec,
 			Status: currentComp.Status,
-		})
+		}
 	}
 }
 

@@ -161,7 +161,7 @@ type ActivePromotionStatus struct {
 	IsTimeout bool `json:"isTimeout,omitempty"`
 	// ActiveComponents represents a list of promoted active components
 	// +optional
-	ActiveComponents []StableComponent `json:"activeComponents,omitempty"`
+	ActiveComponents map[string]StableComponent `json:"activeComponents,omitempty"`
 	// OutdatedComponents represents map of outdated components
 	// +optional
 	OutdatedComponents map[string]OutdatedComponent `json:"outdatedComponents,omitempty"`
@@ -217,12 +217,12 @@ func (s *ActivePromotionStatus) SetPreActiveQueue(qs QueueStatus) {
 }
 
 func (s *ActivePromotionStatus) SetActiveComponents(comps []StableComponent) {
-	s.ActiveComponents = make([]StableComponent, 0)
+	s.ActiveComponents = make(map[string]StableComponent)
 	for _, currentComp := range comps {
-		s.ActiveComponents = append(s.ActiveComponents, StableComponent{
+		s.ActiveComponents[currentComp.Spec.Name] = StableComponent{
 			Spec:   currentComp.Spec,
 			Status: currentComp.Status,
-		})
+		}
 	}
 }
 

@@ -82,8 +82,8 @@ var _ = Describe("", func() {
 		obj, _ := util.MustParseYAMLtoRuntimeObject(yamlTeam)
 
 		team, _ := obj.(*s2hv1beta1.Team)
-		team.Status.StableComponents = []s2hv1beta1.StableComponent{
-			{
+		team.Status.StableComponents = map[string]s2hv1beta1.StableComponent{
+			"redis": {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "redis",
 					Namespace: namespace,
@@ -94,7 +94,7 @@ var _ = Describe("", func() {
 					Version:    "10.0.0-r0",
 				},
 			},
-			{
+			"mariadb": {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "mariadb",
 					Namespace: namespace,

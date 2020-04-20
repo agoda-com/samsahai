@@ -328,7 +328,7 @@ func (c *controller) CreatePreActiveEnvironment(teamName, namespace string) erro
 func (c *controller) PromoteActiveEnvironment(
 	teamComp *s2hv1beta1.Team,
 	namespace string,
-	comps []s2hv1beta1.StableComponent,
+	comps map[string]s2hv1beta1.StableComponent,
 ) error {
 	preActiveNamespace := teamComp.Status.Namespace.PreActive
 	activeNamespace := teamComp.Status.Namespace.Active
@@ -374,7 +374,7 @@ func (c *controller) PromoteActiveEnvironment(
 		preActiveNamespace + " (team pre-active namespace), so this pre-active namespace cannot be switched")
 }
 
-func (c *controller) storeActiveComponentsToTeam(teamComp *s2hv1beta1.Team, comps []s2hv1beta1.StableComponent) error {
+func (c *controller) storeActiveComponentsToTeam(teamComp *s2hv1beta1.Team, comps map[string]s2hv1beta1.StableComponent) error {
 	teamComp.Status.SetActiveComponents(comps)
 	return nil
 }
