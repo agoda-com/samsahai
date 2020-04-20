@@ -6,6 +6,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crctrl "sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -18,6 +19,7 @@ import (
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/queue"
+	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 )
 
 const (
@@ -106,6 +108,15 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	err = c.queueCtrl.Add(q)
 	if err != nil {
 		return reconcile.Result{}, err
+	}
+
+	queue := &s2hv1beta1.Queue{}
+	if err = c.client.Get(ctx, types.NamespacedName{
+		Name:      q.Name,
+		Namespace: req.Namespace}, queue); err != nil {
+		logger.Error(err, "cannot get the queue")
+	} else {
+		exporter.SetQueueMetric(queue)
 	}
 
 	comp.Status.UpdatedAt = &now

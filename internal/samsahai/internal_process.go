@@ -260,14 +260,14 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	}
 
 	// Add metric updateQueueMetric
-	queue := &s2hv1beta1.Queue{}
-	if err = c.client.Get(ctx, types.NamespacedName{
-		Name:      compName,
-		Namespace: compNs}, queue); err != nil {
-		logger.Error(err, "cannot get the queue")
-	} else {
-		exporter.SetQueueMetric(queue)
-	}
+	//queue := &s2hv1beta1.Queue{}
+	//if err = c.client.Get(ctx, types.NamespacedName{
+	//	Name:      compName,
+	//	Namespace: compNs}, queue); err != nil {
+	//	logger.Error(err, "cannot get the queue")
+	//} else {
+	//	exporter.SetQueueMetric(queue)
+	//}
 
 	return nil
 }

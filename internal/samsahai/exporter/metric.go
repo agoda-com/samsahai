@@ -36,7 +36,7 @@ var HealthStatusMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 var QueueMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "samsahai_queue",
 	Help: "Show components in queue",
-}, []string{ "teamName", "component", "version", "state","order", "no_of_processed"})
+}, []string{"teamName", "component", "version", "state", "order", "no_of_processed"})
 
 var ActivePromotionMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "samsahai_active_promotion",
