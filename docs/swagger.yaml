@@ -62,9 +62,7 @@ definitions:
         description: |-
           ActiveComponents represents a list of promoted active components
           +optional
-        items:
-          $ref: '#/definitions/v1beta1.StableComponent'
-        type: array
+        type: object
       activePromotionHistoryName:
         description: |-
           ActivePromotionHistoryName represents created ActivePromotionHistoryName name
@@ -740,9 +738,7 @@ definitions:
         description: |-
           ActiveComponents represents a list of stable components in active namespace
           +optional
-        items:
-          $ref: '#/definitions/v1beta1.StableComponent'
-        type: array
+        type: object
       conditions:
         description: |-
           Conditions contains observations of the resource's state e.g.,
@@ -767,9 +763,7 @@ definitions:
         description: |-
           StableComponentList represents a list of stable components
           +optional
-        items:
-          $ref: '#/definitions/v1beta1.StableComponent'
-        type: array
+        type: object
     type: object
   v1beta1.Teamcity:
     properties:

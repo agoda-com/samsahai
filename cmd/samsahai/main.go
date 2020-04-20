@@ -146,9 +146,6 @@ func startCtrlCmd() *cobra.Command {
 					httpServerPort),
 				SamsahaiExternalURL: viper.GetString(s2h.VKS2HExternalURL),
 				SamsahaiImage:       viper.GetString(s2h.VKS2HImage),
-				SamsahaiHTTPProxy:   viper.GetString(s2h.VKS2HHTTPProxy),
-				SamsahaiHTTPSProxy:  viper.GetString(s2h.VKS2HHTTPSProxy),
-				SamsahaiNoProxy:     viper.GetString(s2h.VKS2HNoProxy),
 				ClusterDomain:       viper.GetString(s2h.VKClusterDomain),
 				ActivePromotion: s2h.ActivePromotionConfig{
 					Concurrences:          viper.GetInt(s2h.VKActivePromotionConcurrences),
@@ -236,9 +233,6 @@ func startCtrlCmd() *cobra.Command {
 	cmd.Flags().String(s2h.VKS2HServiceScheme, "http", "Scheme to use for connecting to Samsahai.")
 	cmd.Flags().String(s2h.VKS2HServiceName, "samsahai", "Service name for connecting to Samsahai.")
 	cmd.Flags().String(s2h.VKS2HExternalURL, "http://localhost:8080", "External url for Samsahai.")
-	cmd.Flags().String(s2h.VKS2HHTTPProxy, "", "http proxy for Samsahai.")
-	cmd.Flags().String(s2h.VKS2HHTTPSProxy, "", "https proxy for Samsahai.")
-	cmd.Flags().String(s2h.VKS2HNoProxy, "", "no proxy for Samsahai.")
 	cmd.Flags().String(s2h.VKTeamcityURL, "", "Teamcity Base URL.")
 	cmd.Flags().String(s2h.VKTeamcityUsername, "", "Teamcity Username.")
 	cmd.Flags().String(s2h.VKTeamcityPassword, "", "Teamcity Password.")

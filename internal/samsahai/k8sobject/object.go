@@ -85,24 +85,10 @@ func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceN
 		},
 	}
 
-	if configs.SamsahaiHTTPProxy != "" {
+	for key, value := range configs.StagingEnvs {
 		envVars = append(envVars, corev1.EnvVar{
-			Name:  "HTTP_PROXY",
-			Value: configs.SamsahaiHTTPProxy,
-		})
-	}
-
-	if configs.SamsahaiHTTPSProxy != "" {
-		envVars = append(envVars, corev1.EnvVar{
-			Name:  "HTTPS_PROXY",
-			Value: configs.SamsahaiHTTPSProxy,
-		})
-	}
-
-	if configs.SamsahaiNoProxy != "" {
-		envVars = append(envVars, corev1.EnvVar{
-			Name:  "NO_PROXY",
-			Value: configs.SamsahaiNoProxy,
+			Name:  key,
+			Value: value,
 		})
 	}
 

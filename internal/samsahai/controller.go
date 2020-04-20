@@ -328,7 +328,7 @@ func (c *controller) CreatePreActiveEnvironment(teamName, namespace string) erro
 func (c *controller) PromoteActiveEnvironment(
 	teamComp *s2hv1beta1.Team,
 	namespace string,
-	comps []s2hv1beta1.StableComponent,
+	comps map[string]s2hv1beta1.StableComponent,
 ) error {
 	preActiveNamespace := teamComp.Status.Namespace.PreActive
 	activeNamespace := teamComp.Status.Namespace.Active
@@ -374,7 +374,7 @@ func (c *controller) PromoteActiveEnvironment(
 		preActiveNamespace + " (team pre-active namespace), so this pre-active namespace cannot be switched")
 }
 
-func (c *controller) storeActiveComponentsToTeam(teamComp *s2hv1beta1.Team, comps []s2hv1beta1.StableComponent) error {
+func (c *controller) storeActiveComponentsToTeam(teamComp *s2hv1beta1.Team, comps map[string]s2hv1beta1.StableComponent) error {
 	teamComp.Status.SetActiveComponents(comps)
 	return nil
 }
@@ -993,7 +993,22 @@ func getNodeIP(nodes *corev1.NodeList) string {
 }
 
 func (c *controller) destroyAllStableComponents(namespace string) error {
-	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.StableComponent{}, client.InNamespace(namespace))
+	ctx := context.TODO()
+	if err := c.client.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, client.InNamespace(namespace)); err != nil {
+		return err
+	}
+
+	stableList := &s2hv1beta1.StableComponentList{}
+	if err := c.client.List(ctx, stableList, &client.ListOptions{Namespace: namespace}); err != nil {
+		logger.Error(err, "cannot list stable components", "namespace", namespace)
+		return err
+	}
+
+	if len(stableList.Items) > 0 {
+		return errors.ErrEnsureStableComponentsDestroyed
+	}
+
+	return nil
 }
 
 func (c *controller) destroyClusterRole(namespace string) error {
