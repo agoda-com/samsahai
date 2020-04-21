@@ -23,8 +23,11 @@ const (
 
 // MSTeams is the interface of Microsoft Teams using Microsoft Graph api
 type MSTeams interface {
+	// GetAccessToken returns an access token on behalf of a user
+	GetAccessToken() (string, error)
+
 	//PostMessage posts message to the given Microsoft Teams group and channel
-	PostMessage(groupID, channelID, message string) error
+	PostMessage(groupID, channelID, message string, opts ...PostMsgOption) error
 }
 
 var _ MSTeams = &Client{}
@@ -36,6 +39,8 @@ type Client struct {
 	clientSecret string
 	username     string
 	password     string
+
+	postMsgOption postMsgOption
 }
 
 // NewClient creates a new client of MSTeams
@@ -51,78 +56,9 @@ func NewClient(tenantID, clientID, clientSecret, username, password string) *Cli
 	return &client
 }
 
-type messageReq struct {
-	Body messageBody `json:"body"`
-}
-
-type messageBody struct {
-	Content string `json:"content"`
-}
-
-// PostMessage implements the Microsoft Teams PostMessage function
-func (c *Client) PostMessage(groupID, channelID, message string) error {
-	logger.Debug("Posting message", "groupID", groupID, "channelID", channelID)
-
-	timeout := 10 * time.Second
-	postMessageAPI := fmt.Sprintf(postMessageAPI, groupID, channelID)
-
-	resCh := make(chan []byte, 1)
-	errCh := make(chan error, 1)
-	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
-	defer cancelFunc()
-
-	go func() {
-		accessToken, err := c.getAccessToken()
-		if err != nil {
-			errCh <- err
-			return
-		}
-
-		opts := []http.Option{
-			http.WithTimeout(timeout),
-			http.WithContext(ctx),
-			http.WithHeader("Authorization", accessToken),
-		}
-
-		reqJson := messageReq{
-			Body: messageBody{Content: message},
-		}
-
-		reqBody, err := json.Marshal(reqJson)
-		if err != nil {
-			logger.Error(err, "cannot marshal request data", "data", reqBody)
-			errCh <- err
-			return
-		}
-
-		res, err := post(postMessageAPI, reqBody, opts...)
-		if err != nil {
-			errCh <- err
-			return
-		}
-
-		resCh <- res
-	}()
-
-	select {
-	case <-ctx.Done():
-		logger.Error(s2herrors.ErrRequestTimeout,
-			fmt.Sprintf("posting message to group: %s, channel: %s took longer than %v",
-				groupID, channelID, requestTimeout))
-		return s2herrors.ErrRequestTimeout
-	case err := <-errCh:
-		logger.Error(err, "cannot post message", "groupID", groupID, "channelID", channelID)
-		return err
-	case <-resCh:
-		logger.Info("message successfully sent to channel",
-			"groupID", groupID, "channelID", channelID)
-		return nil
-	}
-}
-
-// getAccessToken returns an access token on behalf of a user
-func (c *Client) getAccessToken() (string, error) {
-	logger.Debug("getting MS Teams access token")
+// GetAccessToken returns an access token on behalf of a user
+func (c *Client) GetAccessToken() (string, error) {
+	logger.Debug("getting Microsoft Teams access token")
 
 	timeout := 5 * time.Second
 	tokenAPI := fmt.Sprintf(tokenAPI, c.tenantID)
@@ -147,7 +83,7 @@ func (c *Client) getAccessToken() (string, error) {
 		reqBody.Set("userName", c.username)
 		reqBody.Set("password", c.password)
 
-		res, err := post(tokenAPI, []byte(reqBody.Encode()), opts...)
+		_, res, err := post(tokenAPI, []byte(reqBody.Encode()), opts...)
 		if err != nil {
 			errCh <- err
 			return
@@ -177,12 +113,130 @@ func (c *Client) getAccessToken() (string, error) {
 	}
 }
 
-func post(reqURL string, body []byte, opts ...http.Option) ([]byte, error) {
-	res, err := http.Post(reqURL, body, opts...)
-	if err != nil {
-		logger.Error(err, "POST request failed", "url", reqURL, "body", string(body))
-		return []byte{}, err
+type messageReq struct {
+	Body messageBody `json:"body"`
+}
+
+type messageBody struct {
+	ContentType string `json:"contentType,omitempty"`
+	Content     string `json:"content"`
+}
+
+type postMsgOption struct {
+	accessToken string
+	contentType MessageContentType
+}
+
+// PostMsgOption allows specifying various configuration
+type PostMsgOption func(*Client)
+
+func WithAccessToken(accessToken string) PostMsgOption {
+	return func(c *Client) {
+		c.postMsgOption.accessToken = accessToken
+	}
+}
+
+// MessageContentType defines a message content type
+type MessageContentType string
+
+const (
+	PlainText MessageContentType = "text"
+	HTML      MessageContentType = "html"
+)
+
+func WithContentType(contentType MessageContentType) PostMsgOption {
+	return func(c *Client) {
+		c.postMsgOption.contentType = contentType
+	}
+}
+
+// PostMessage implements the Microsoft Teams PostMessage function
+func (c *Client) PostMessage(groupID, channelID, message string, opts ...PostMsgOption) error {
+	logger.Debug("Posting message", "groupID", groupID, "channelID", channelID)
+
+	// apply the new options
+	for _, opt := range opts {
+		opt(c)
 	}
 
-	return res, nil
+	timeout := 10 * time.Second
+	postMessageAPI := fmt.Sprintf(postMessageAPI, groupID, channelID)
+
+	resCh := make(chan []byte, 1)
+	errCh := make(chan error, 1)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	defer cancelFunc()
+
+	go func() {
+		for {
+			if c.postMsgOption.accessToken == "" {
+				var err error
+				c.postMsgOption.accessToken, err = c.GetAccessToken()
+				if err != nil {
+					errCh <- err
+					return
+				}
+			}
+
+			opts := []http.Option{
+				http.WithTimeout(timeout),
+				http.WithContext(ctx),
+				http.WithHeader("Authorization", c.postMsgOption.accessToken),
+			}
+
+			reqJSON := messageReq{
+				Body: messageBody{
+					ContentType: string(c.postMsgOption.contentType),
+					Content:     message,
+				},
+			}
+
+			reqBody, err := json.Marshal(reqJSON)
+			if err != nil {
+				logger.Error(err, "cannot marshal request data", "data", reqBody)
+				errCh <- err
+				return
+			}
+
+			respCode, res, err := post(postMessageAPI, reqBody, opts...)
+			if err != nil {
+				// reset access token if it's expired
+				if respCode == 401 {
+					c.postMsgOption.accessToken = ""
+					continue
+				}
+
+				errCh <- err
+				return
+			}
+
+			resCh <- res
+			return
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		logger.Error(s2herrors.ErrRequestTimeout,
+			fmt.Sprintf("posting message to group: %s, channel: %s took longer than %v",
+				groupID, channelID, requestTimeout))
+		return s2herrors.ErrRequestTimeout
+	case err := <-errCh:
+		logger.Error(err, "cannot post message", "groupID", groupID, "channelID", channelID)
+		return err
+	case <-resCh:
+		logger.Info("message successfully sent to channel",
+			"groupID", groupID, "channelID", channelID)
+		return nil
+	}
+}
+
+func post(reqURL string, body []byte, opts ...http.Option) (int, []byte, error) {
+	respCode, res, err := http.Post(reqURL, body, opts...)
+	if err != nil {
+		logger.Error(err, "POST request failed", "url", reqURL, "body", string(body))
+		return respCode, []byte{}, err
+	}
+
+	return respCode, res, nil
 }

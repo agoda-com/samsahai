@@ -11,7 +11,7 @@ var logger = s2hlog.S2HLog.WithName("Slack-util")
 // Slack is the interface of slack
 type Slack interface {
 	// PostMessage posts message to slack channel
-	PostMessage(channelNameOrID, message, username string) (channelID, timestamp string, err error)
+	PostMessage(channelNameOrID, message string, opts ...slack.MsgOption) error
 }
 
 var _ Slack = &Client{}
@@ -31,16 +31,17 @@ func NewClient(token string) *Client {
 }
 
 // PostMessage implements the slack PostMessage function
-func (c *Client) PostMessage(channelNameOrID, message, username string) (channelID, timestamp string, err error) {
-	channelID, timestamp, err = c.api.PostMessage(
+func (c *Client) PostMessage(channelNameOrID, message string, opts ...slack.MsgOption) error {
+	opts = append(opts, slack.MsgOptionText(message, false))
+
+	_, _, err := c.api.PostMessage(
 		channelNameOrID,
-		slack.MsgOptionText(message, false),
-		slack.MsgOptionUsername(username),
+		opts...,
 	)
 	if err != nil {
-		return "", "", err
+		return err
 	}
 
 	logger.Info("message successfully sent to channel", "channel", channelNameOrID)
-	return
+	return nil
 }

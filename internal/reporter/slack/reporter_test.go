@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nlopes/slack"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -11,7 +12,7 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
-	"github.com/agoda-com/samsahai/internal/reporter/slack"
+	slackutil "github.com/agoda-com/samsahai/internal/reporter/slack"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
@@ -40,7 +41,7 @@ var _ = Describe("send slack message", func() {
 				Runs:             2,
 			}
 			mockSlackCli := &mockSlack{}
-			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+			r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url"}}
 			comp := internal.NewComponentUpgradeReporter(
 				rpcComp,
@@ -77,7 +78,7 @@ var _ = Describe("send slack message", func() {
 				IsReverify: false,
 			}
 			mockSlackCli := &mockSlack{}
-			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+			r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
 			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
@@ -93,7 +94,7 @@ var _ = Describe("send slack message", func() {
 				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
 			}
 			mockSlackCli := &mockSlack{}
-			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+			r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
 			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
@@ -118,7 +119,7 @@ var _ = Describe("send slack message", func() {
 				IsReverify: true,
 			}
 			mockSlackCli := &mockSlack{}
-			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+			r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
 			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
@@ -167,7 +168,7 @@ var _ = Describe("send slack message", func() {
 			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner", "owner-123456")
 
 			mockSlackCli := &mockSlack{}
-			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+			r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
@@ -198,7 +199,7 @@ var _ = Describe("send slack message", func() {
 			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner", "owner-123456")
 
 			mockSlackCli := &mockSlack{}
-			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+			r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
@@ -245,7 +246,7 @@ var _ = Describe("send slack message", func() {
 				atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner", "owner-123456")
 
 				mockSlackCli := &mockSlack{}
-				r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+				r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 				err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 				g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 				g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
@@ -277,7 +278,7 @@ var _ = Describe("send slack message", func() {
 			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner", "owner-123456")
 
 			mockSlackCli := &mockSlack{}
-			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+			r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
@@ -300,7 +301,7 @@ var _ = Describe("send slack message", func() {
 			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner", "owner-123456")
 
 			mockSlackCli := &mockSlack{}
-			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+			r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
@@ -321,7 +322,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			mockSlackCli := &mockSlack{}
-			r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+			r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 			err := r.SendImageMissing("mock", configCtrl, &rpc.Image{Repository: "registry/comp-1", Tag: "1.0.0"})
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
@@ -336,7 +337,7 @@ var _ = Describe("send slack message", func() {
 
 		rpcComp := &rpc.ComponentUpgrade{}
 		mockSlackCli := &mockSlack{}
-		r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+		r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 		comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
 		err := r.SendComponentUpgrade(configCtrl, comp)
 		g.Expect(err).Should(BeNil())
@@ -351,7 +352,7 @@ var _ = Describe("send slack message", func() {
 			IsReverify: true,
 		}
 		mockSlackCli := &mockSlack{}
-		r := slack.New("mock-token", slack.WithSlackClient(mockSlackCli))
+		r := slackutil.New("mock-token", slackutil.WithSlackClient(mockSlackCli))
 		comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
 		err := r.SendComponentUpgrade(configCtrl, comp)
 		g.Expect(err).To(HaveOccurred())
@@ -363,21 +364,19 @@ type mockSlack struct {
 	postMessageCalls int
 	channels         []string
 	message          string
-	username         string
 }
 
 // PostMessage mocks PostMessage function
-func (s *mockSlack) PostMessage(channelNameOrID, message, username string) (channelID, timestamp string, err error) {
+func (s *mockSlack) PostMessage(channelNameOrID, message string, opts ...slack.MsgOption) error {
 	if channelNameOrID == "error" {
-		return channelNameOrID, "", errors.New("error")
+		return errors.New("error")
 	}
 
 	s.postMessageCalls++
 	s.channels = append(s.channels, channelNameOrID)
 	s.message = message
-	s.username = username
 
-	return channelNameOrID, "", nil
+	return nil
 }
 
 type mockConfigCtrl struct {

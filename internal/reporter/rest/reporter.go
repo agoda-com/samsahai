@@ -184,7 +184,8 @@ func (r *reporter) send(url string, body []byte, event internal.EventType) error
 	}
 
 	logger.Debug("start sending data via http POST", "event", event, "url", url)
-	if _, err := restCli.Post("/", body); err != nil {
+	// TODO: pohfy, use same method
+	if _, _, err := restCli.Post("/", body); err != nil {
 		return errors.Wrap(err, fmt.Sprintf("cannot send request to %s", restCli.BaseURL))
 	}
 

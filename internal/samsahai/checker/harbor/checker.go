@@ -103,7 +103,7 @@ func (c *checker) check(ctx context.Context, domain, repository string, matcher 
 			if len(c.httpOpts) > 0 {
 				opts = append(opts, c.httpOpts...)
 			}
-			data, err = http.Get(reqURL, opts...)
+			_, data, err = http.Get(reqURL, opts...)
 			if err != nil {
 				logger.Error(err, "GET request failed", "url", reqURL)
 				errCh <- err

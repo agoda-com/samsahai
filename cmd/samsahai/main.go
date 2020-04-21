@@ -138,6 +138,7 @@ func startCtrlCmd() *cobra.Command {
 			}
 
 			configs := s2h.SamsahaiConfig{
+				// TODO: pohfy, move to credential
 				TeamcityURL: viper.GetString(s2h.VKTeamcityURL),
 				SamsahaiURL: fmt.Sprintf("%s://%s.%s:%s",
 					viper.GetString(s2h.VKS2HServiceScheme),

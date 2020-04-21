@@ -3,11 +3,13 @@ package slack
 import (
 	"strings"
 
+	"github.com/nlopes/slack"
+
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
-	"github.com/agoda-com/samsahai/internal/util/slack"
+	slackutil "github.com/agoda-com/samsahai/internal/util/slack"
 	"github.com/agoda-com/samsahai/internal/util/template"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
@@ -23,14 +25,14 @@ const (
 )
 
 type reporter struct {
-	slack slack.Slack
+	slack slackutil.Slack
 }
 
 // NewOption allows specifying various configuration
 type NewOption func(*reporter)
 
 // WithSlackClient specifies slack client to override when create slack reporter
-func WithSlackClient(slack slack.Slack) NewOption {
+func WithSlackClient(slack slackutil.Slack) NewOption {
 	if slack == nil {
 		panic("Slack client should not be nil")
 	}
@@ -54,9 +56,9 @@ func New(token string, opts ...NewOption) internal.Reporter {
 	return r
 }
 
-// newSlack returns reporter for sending report to slack at specific `channels`
-func newSlack(token string) slack.Slack {
-	return slack.NewClient(token)
+// newSlack returns reporter for sending report via slack into specific channels
+func newSlack(token string) slackutil.Slack {
+	return slackutil.NewClient(token)
 }
 
 // GetName returns slack type
@@ -300,8 +302,8 @@ func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event int
 		"event", event, "channels", slackConfig.Channels)
 	var globalErr error
 	for _, channel := range slackConfig.Channels {
-		if _, _, err := r.slack.PostMessage(channel, message, username); err != nil {
-			logger.Error(err, "cannot post message to slack", "channel", channel)
+		if err := r.slack.PostMessage(channel, message, slack.MsgOptionUsername(username)); err != nil {
+			logger.Error(err, "cannot post message to slack", "event", event, "channel", channel)
 			globalErr = err
 			continue
 		}

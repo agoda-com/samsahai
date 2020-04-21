@@ -28,9 +28,20 @@ func GetTeamLabelKey() string {
 type SamsahaiCredential struct {
 	InternalAuthToken string
 	SlackToken        string
+	MSTeams           MSTeamsCredential
 	TeamcityUsername  string
 	TeamcityPassword  string
 }
+
+type MSTeamsCredential struct {
+	TenantID     string
+	ClientID     string
+	ClientSecret string
+	Username     string
+	Password     string
+}
+
+// TODO: pohfy, teamcity credentials
 
 // SamsahaiConfig represents configuration of Samsahai itself
 type SamsahaiConfig struct {

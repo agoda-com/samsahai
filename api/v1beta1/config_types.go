@@ -160,6 +160,8 @@ type ConfigReporter struct {
 	// +optional
 	Slack *Slack `json:"slack,omitempty"`
 	// +optional
+	MSTeams *MSTeams `json:"msTeams,omitempty"`
+	// +optional
 	Rest *Rest `json:"rest,omitempty"`
 	// +optional
 	Shell *Shell `json:"cmd,omitempty"`
@@ -200,6 +202,19 @@ type Slack struct {
 	Channels []string `json:"channels"`
 	// +optional
 	ComponentUpgrade *ConfigComponentUpgrade `json:"componentUpgrade,omitempty"`
+}
+
+// MSTeams defines a configuration of Microsoft Teams
+type MSTeams struct {
+	Groups []MSTeamsGroup `json:"groups"`
+	// +optional
+	ComponentUpgrade *ConfigComponentUpgrade `json:"componentUpgrade,omitempty"`
+}
+
+// MSTeamsGroup defines group id and channel id of Microsoft Teams
+type MSTeamsGroup struct {
+	GroupID    string   `json:"groupID"`
+	ChannelIDs []string `json:"channelIDs"`
 }
 
 // ConfigComponentUpgrade defines a configuration of component upgrade report

@@ -134,7 +134,7 @@ var _ = Describe("Samsahai Exporter", func() {
 	}, timeout)
 
 	It("Should show team name correctly ", func() {
-		data, err := http.Get("http://localhost:8008/metrics")
+		_, data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
 		expectedData := strings.Contains(string(data), `samsahai_team{teamName="testQTeamName1"} 1`)
 		g.Expect(expectedData).To(BeTrue())
@@ -142,7 +142,7 @@ var _ = Describe("Samsahai Exporter", func() {
 
 	It("Should show queue metric correctly  ", func(done Done) {
 		defer close(done)
-		data, err := http.Get("http://localhost:8008/metrics")
+		_, data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
 		expectedData := strings.Contains(string(data), `samsahai_queue{component="qName1",no_of_processed="1",order="0",state="waiting",teamName="testQTeamName1",version="10.9.8.7"} 1`)
 		g.Expect(expectedData).To(BeTrue())
@@ -152,7 +152,7 @@ var _ = Describe("Samsahai Exporter", func() {
 
 	It("Should show active promotion correctly", func(done Done) {
 		defer close(done)
-		data, err := http.Get("http://localhost:8008/metrics")
+		_, data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
 		expectedData := strings.Contains(string(data), `samsahai_active_promotion{state="waiting",teamName="testAPName1"} 1`)
 		g.Expect(expectedData).To(BeTrue())
@@ -160,7 +160,7 @@ var _ = Describe("Samsahai Exporter", func() {
 
 	It("Should show health metric correctly", func(done Done) {
 		defer close(done)
-		data, err := http.Get("http://localhost:8008/metrics")
+		_, data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
 		expectedData := strings.Contains(string(data), `samsahai_health{gitCommit="777888999",version="9.9.9.8"} 234000`)
 		g.Expect(expectedData).To(BeTrue())

@@ -40,7 +40,7 @@ func (c *checker) DockerHubFindTag(ctx context.Context, repository string, match
 		var err error
 
 		for {
-			data, err = http.Get(reqURL, http.WithTimeout(MaxOneRequestTimeout), http.WithContext(ctx))
+			_, data, err = http.Get(reqURL, http.WithTimeout(MaxOneRequestTimeout), http.WithContext(ctx))
 			if err != nil {
 				logger.Error(err, "GET request failed", "url", reqURL)
 				errCh <- err
