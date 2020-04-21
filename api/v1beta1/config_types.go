@@ -175,26 +175,26 @@ type ReportOption struct {
 	Value string `json:"value"`
 }
 
-// SlackInterval represents how often of sending component upgrade notification within a retry cycle
-type SlackInterval string
+// ReporterInterval represents how often of sending component upgrade notification within a retry cycle
+type ReporterInterval string
 
 const (
 	// IntervalEveryTime means sending slack notification in every component upgrade runs
-	IntervalEveryTime SlackInterval = "everytime"
+	IntervalEveryTime ReporterInterval = "everytime"
 	// IntervalRetry means sending slack notification after retry only
-	IntervalRetry SlackInterval = "retry"
+	IntervalRetry ReporterInterval = "retry"
 )
 
-// SlackCriteria represents a criteria of sending component upgrade notification
-type SlackCriteria string
+// ReporterCriteria represents a criteria of sending component upgrade notification
+type ReporterCriteria string
 
 const (
 	// CriteriaSuccess means sending slack notification when component upgrade is success only
-	CriteriaSuccess SlackCriteria = "success"
+	CriteriaSuccess ReporterCriteria = "success"
 	// CriteriaFailure means sending slack notification when component upgrade is failure only
-	CriteriaFailure SlackCriteria = "failure"
+	CriteriaFailure ReporterCriteria = "failure"
 	// CriteriaBoth means sending slack notification whether component upgrade is success or failure
-	CriteriaBoth SlackCriteria = "both"
+	CriteriaBoth ReporterCriteria = "both"
 )
 
 // Slack defines a configuration of slack
@@ -220,9 +220,9 @@ type MSTeamsGroup struct {
 // ConfigComponentUpgrade defines a configuration of component upgrade report
 type ConfigComponentUpgrade struct {
 	// +optional
-	Interval SlackInterval `json:"interval,omitempty"`
+	Interval ReporterInterval `json:"interval,omitempty"`
 	// +optional
-	Criteria SlackCriteria `json:"criteria,omitempty"`
+	Criteria ReporterCriteria `json:"criteria,omitempty"`
 }
 
 // Rest defines a configuration of http rest

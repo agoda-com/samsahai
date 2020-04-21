@@ -20,9 +20,9 @@ const (
 	componentUpgradeInterval = s2hv1beta1.IntervalRetry
 	componentUpgradeCriteria = s2hv1beta1.CriteriaFailure
 
-	styleDanger  = "style=\"color:#FF0000\""
-	styleWarning = "style=\"color:#FFCC00\""
-	styleInfo    = "style=\"color:#00FF00\""
+	styleDanger  = `style="color:#FF0000"`
+	styleWarning = `style="color:#FFCC00"`
+	styleInfo    = `style="color:#00FF00"`
 )
 
 type reporter struct {
@@ -200,7 +200,7 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
 	message := `
-<b>Component Upgrade:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure {{ end }}</span>
+<b>Component Upgrade:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure{{ end }}</span>
 <li><b>Issue type:</b> {{ .IssueTypeStr }}</li>
 <li><b>Run:</b>{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}</li>
 <li><b>Component:</b> {{ .Name }}</li>
@@ -210,7 +210,7 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 <li><b>Namespace:</b> {{ .Namespace }}</li>
 {{- if eq .Status 0 }}
  {{- if .TestRunner.Teamcity.BuildURL }}
-<li><b>Teamcity url:</b> <{{ .TestRunner.Teamcity.BuildURL }}|Click here></li>
+<li><b>Teamcity url:</b> <a href="{{ .TestRunner.Teamcity.BuildURL }}">Click here</a></li>
  {{- end }}
 <li><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log">Download here</a></li>
 <li><b>Deployment history:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}">Click here</a></li>

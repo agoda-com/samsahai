@@ -196,7 +196,7 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
 	message := `
-*Component Upgrade*{{ if eq .Status 1 }} Success {{ else }} Failure {{ end }}
+*Component Upgrade:*{{ if eq .Status 1 }} Success {{ else }} Failure {{ end }}
 >*Issue type:* {{ .IssueTypeStr }}
 >*Run:*{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}
 >*Component:* {{ .Name }}
