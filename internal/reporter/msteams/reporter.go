@@ -19,6 +19,10 @@ const (
 
 	componentUpgradeInterval = s2hv1beta1.IntervalRetry
 	componentUpgradeCriteria = s2hv1beta1.CriteriaFailure
+
+	styleDanger  = "style=\"color:#FF0000\""
+	styleWarning = "style=\"color:#FFCC00\""
+	styleInfo    = "style=\"color:#00FF00\""
 )
 
 type reporter struct {
@@ -80,7 +84,7 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 
 	message := r.makeComponentUpgradeReport(comp)
 	if len(comp.ImageMissingList) > 0 {
-		message += "</br></br>"
+		message += "<hr/>"
 		message += r.makeImageMissingListReport(comp.ImageMissingList)
 	}
 
@@ -136,31 +140,34 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 
 	imageMissingList := atpRpt.ActivePromotionStatus.PreActiveQueue.ImageMissingList
 	if len(imageMissingList) > 0 {
-		message += "</br>"
+		message += "<hr/>"
 		message += r.makeImageMissingListReport(convertImageListToRPCImageList(imageMissingList))
 	}
 
-	message += "</br>"
 	if atpRpt.HasOutdatedComponent {
+		message += "<hr/>"
 		message += r.makeOutdatedComponentsReport(atpRpt.OutdatedComponents)
 	} else {
+		message += "<br/>"
 		message += r.makeNoOutdatedComponentsReport()
 	}
 
+	message += "<br/>"
+
 	isDemotionFailed := atpRpt.DemotionStatus == s2hv1beta1.ActivePromotionDemotionFailure
 	if isDemotionFailed {
-		message += "</br>"
+		message += "<br/>"
 		message += r.makeActiveDemotingFailureReport()
 	}
 
 	if atpRpt.RollbackStatus == s2hv1beta1.ActivePromotionRollbackFailure {
-		message += "</br>"
+		message += "<br/>"
 		message += r.makeActivePromotionRollbackFailureReport()
 	}
 
 	hasPreviousActiveNamespace := atpRpt.PreviousActiveNamespace != ""
 	if atpRpt.Result == s2hv1beta1.ActivePromotionSuccess && hasPreviousActiveNamespace && !isDemotionFailed {
-		message += "</br>"
+		message += "<br/>"
 		message += r.makeDestroyedPreviousActiveTimeReport(&atpRpt.ActivePromotionStatus)
 	}
 
@@ -193,15 +200,15 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
 	message := `
-<b>Component Upgrade{{ if eq .Status 1 }} Successfully {{ else }} Failed {{ end }}</b>
-<li><b>Owner:</b> {{ .TeamName }}</li>
+<b>Component Upgrade:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure {{ end }}</span>
+<li><b>Issue type:</b> {{ .IssueTypeStr }}</li>
 <li><b>Run:</b>{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}</li>
-<li><b>Namespace:</b> {{ .Namespace }}</li>
 <li><b>Component:</b> {{ .Name }}</li>
 <li><b>Version:</b> {{ .Image.Tag }}</li>
 <li><b>Repository:</b> {{ .Image.Repository }}</li>
+<li><b>Owner:</b> {{ .TeamName }}</li>
+<li><b>Namespace:</b> {{ .Namespace }}</li>
 {{- if eq .Status 0 }}
-<li><b>Issue type:</b> {{ .IssueTypeStr }}</li>
  {{- if .TestRunner.Teamcity.BuildURL }}
 <li><b>Teamcity url:</b> <{{ .TestRunner.Teamcity.BuildURL }}|Click here></li>
  {{- end }}
@@ -214,23 +221,23 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 
 func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotionReporter) string {
 	var message = `
-<b>Active Promotion:</b> {{ .Result }}
+<b>Active Promotion:</b> <span {{ if eq .Result "Success" }}` + styleInfo + `{{ else if eq .Result "Failure" }}` + styleDanger + `{{ end }}>{{ .Result }}</span>
 {{- if ne .Result "Success" }}
 {{- range .Conditions }}
  {{- if eq .Type "` + string(s2hv1beta1.ActivePromotionCondActivePromoted) + `" }}
-<b>Reason:</b> {{ .Message }}
+<br/><b>Reason:</b> {{ .Message }}
  {{- end }}
 {{- end }}
 {{- end }}
-<b>Owner:</b> {{ .TeamName }}
-<b>Current Active Namespace:</b> {{ .CurrentActiveNamespace }}
+<li><b>Current Active Namespace:</b> {{ .CurrentActiveNamespace }}</li>
+<li><b>Owner:</b> {{ .TeamName }}</li>
 {{- if and .PreActiveQueue.TestRunner (and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL) }}
-<b>Teamcity url:</b> <a href="{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}">Click here</a>
+<li><b>Teamcity url:</b> <a href="{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}">Click here</a></li>
 {{- end }}
 {{- if eq .Result "Failure" }}
-<b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log">Download here</a>
+<li><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log">Download here</a></li>
 {{- end }}
-<b>Active Promotion History:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}">Click here</a>
+<li><b>Active Promotion History:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}">Click here</a></li>
 `
 
 	return strings.TrimSpace(template.TextRender("MSTeamsActivePromotionStatus", message, comp))
@@ -264,19 +271,19 @@ func (r *reporter) makeNoOutdatedComponentsReport() string {
 }
 
 func (r *reporter) makeActivePromotionRollbackFailureReport() string {
-	var message = "`ERROR: cannot rollback an active promotion process due to timeout`"
+	var message = "<b " + styleDanger + ">ERROR:</b> cannot rollback an active promotion process due to timeout`"
 
 	return strings.TrimSpace(template.TextRender("RollbackFailure", message, ""))
 }
 
 func (r *reporter) makeActiveDemotingFailureReport() string {
-	var message = "`WARNING: cannot demote a previous active environment, previous active namespace has been destroyed immediately`"
+	var message = "<b " + styleWarning + ">WARNING:</b> cannot demote a previous active environment, previous active namespace has been destroyed immediately"
 
 	return strings.TrimSpace(template.TextRender("DemotionFailure", message, ""))
 }
 
 func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.ActivePromotionStatus) string {
-	var message = "<b>NOTES:</b> previous active namespace `{{ .PreviousActiveNamespace }}` will be destroyed at `{{ .DestroyedTime }}`"
+	var message = "<b " + styleWarning + ">NOTES:</b> previous active namespace <code>{{ .PreviousActiveNamespace }}</code> will be destroyed at <code>{{ .DestroyedTime }}</code>"
 
 	return strings.TrimSpace(template.TextRender("DestroyedTime", message, status))
 }
@@ -285,7 +292,7 @@ func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.Acti
 func (r *reporter) makeImageMissingListReport(images []*rpc.Image) string {
 	var message = `
 <b>Image Missing List</b>
-</br>
+<br/>
 {{- range .Images }}
 - {{ .Repository }}:{{ .Tag }}
 {{- end }}

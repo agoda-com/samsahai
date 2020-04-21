@@ -196,15 +196,15 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
 	message := `
-*Component Upgrade{{ if eq .Status 1 }} Successfully {{ else }} Failed {{ end }}*
->*Owner:* {{ .TeamName }}
->*Namespace:* {{ .Namespace }}
+*Component Upgrade*{{ if eq .Status 1 }} Success {{ else }} Failure {{ end }}
+>*Issue type:* {{ .IssueTypeStr }}
 >*Run:*{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}
 >*Component:* {{ .Name }}
 >*Version:* {{ .Image.Tag }}
 >*Repository:* {{ .Image.Repository }}
+>*Owner:* {{ .TeamName }}
+>*Namespace:* {{ .Namespace }}
 {{- if eq .Status 0 }}
->*Issue type:* {{ .IssueTypeStr }}
   {{- if .TestRunner.Teamcity.BuildURL }}
 >*Teamcity url:* <{{ .TestRunner.Teamcity.BuildURL }}|Click here>
   {{- end }}
@@ -221,19 +221,19 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 {{- if ne .Result "Success" }}
 {{- range .Conditions }}
   {{- if eq .Type "` + string(s2hv1beta1.ActivePromotionCondActivePromoted) + `" }}
-*Reason:* {{ .Message }}
+>*Reason:* {{ .Message }}
   {{- end }}
 {{- end }}
 {{- end }}
-*Owner:* {{ .TeamName }}
-*Current Active Namespace:* {{ .CurrentActiveNamespace }}
+>*Current Active Namespace:* {{ .CurrentActiveNamespace }}
+>*Owner:* {{ .TeamName }}
 {{- if and .PreActiveQueue.TestRunner (and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL) }}
-*Teamcity url:* <{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}|Click here>
+>*Teamcity url:* <{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}|Click here>
 {{- end }}
 {{- if eq .Result "Failure" }}
-*Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log|Download here>
+>*Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log|Download here>
 {{- end }}
-*Active Promotion History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}|Click here>
+>*Active Promotion History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}|Click here>
 `
 
 	return strings.TrimSpace(template.TextRender("SlackActivePromotionStatus", message, comp))
