@@ -248,6 +248,7 @@ func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1beta1.Outd
 <b>Outdated Components:</b>
 {{- range $name, $component := .Components }}
 {{- if gt .OutdatedDuration 0 }}
+<br/>
 <b>{{ $name }}</b>
 <li>Not update for {{ .OutdatedDuration | FmtDurationToStr }}</li>
 <li>Current Version: <a href="{{ .CurrentImage.Repository | ConcatHTTPStr }}">{{ .CurrentImage.Tag }}</a></li>
@@ -271,7 +272,7 @@ func (r *reporter) makeNoOutdatedComponentsReport() string {
 }
 
 func (r *reporter) makeActivePromotionRollbackFailureReport() string {
-	var message = "<b " + styleDanger + ">ERROR:</b> cannot rollback an active promotion process due to timeout`"
+	var message = "<b " + styleDanger + ">ERROR:</b> cannot rollback an active promotion process due to timeout"
 
 	return strings.TrimSpace(template.TextRender("RollbackFailure", message, ""))
 }
@@ -292,9 +293,8 @@ func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.Acti
 func (r *reporter) makeImageMissingListReport(images []*rpc.Image) string {
 	var message = `
 <b>Image Missing List</b>
-<br/>
 {{- range .Images }}
-- {{ .Repository }}:{{ .Tag }}
+<li>{{ .Repository }}:{{ .Tag }}</li>
 {{- end }}
 `
 

@@ -135,8 +135,8 @@ var _ = Describe("send ms teams message", func() {
 			// Should contain information
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Reverify"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Image Missing List"))
-			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("- image-2:1.1.0"))
-			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("- image-3:1.2.0"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("image-2:1.1.0"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("image-3:1.2.0"))
 		})
 	})
 
@@ -187,6 +187,7 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Not update for 1d 0h 0m"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`Current Version: <a href="http://repo/comp1">1.1.0</a>`))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`Latest Version: <a href="http://repo/comp1">1.1.2</a>`))
+			g.Expect(mockMSTeamsCli.message).ShouldNot(ContainSubstring("comp2"))
 			g.Expect(err).Should(BeNil())
 		})
 
@@ -263,13 +264,14 @@ var _ = Describe("send ms teams message", func() {
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/activepromotions/histories/owner-12345/log">Download here</a>`))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/activepromotions/histories/owner-12345">Click here</a>`))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Image Missing List"))
-				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("- repo1:1.xx"))
-				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("- repo2:2.xx"))
+				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("repo1:1.xx"))
+				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("repo2:2.xx"))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Outdated Components"))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("comp1"))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Not update for 1d 0h 0m"))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`Current Version: <a href="http://repo/comp1">1.1.0</a>`))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`Latest Version: <a href="http://repo/comp1">1.1.2</a>`))
+				g.Expect(mockMSTeamsCli.message).ShouldNot(ContainSubstring("comp2"))
 				g.Expect(err).Should(BeNil())
 			})
 
