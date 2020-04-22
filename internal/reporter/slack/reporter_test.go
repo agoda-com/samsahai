@@ -202,7 +202,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Success"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/activepromotions/histories/owner-12345|Click here>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("All components are up to date!"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("previous active namespace `owner-prevns` will be destroyed at `" + timeNow.Format("2006-01-02 15:04:05")))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("previous active namespace `owner-prevns` will be destroyed at `" + timeNow.Format("2006-01-02 15:04:05 MST")))
 			g.Expect(err).Should(BeNil())
 		})
 

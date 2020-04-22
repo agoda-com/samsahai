@@ -20,9 +20,9 @@ const (
 	componentUpgradeInterval = s2hv1beta1.IntervalRetry
 	componentUpgradeCriteria = s2hv1beta1.CriteriaFailure
 
-	styleDanger  = `style="color:#FF0000"`
+	styleDanger  = `style="color:#EE2828"`
 	styleWarning = `style="color:#FFCC00"`
-	styleInfo    = `style="color:#00FF00"`
+	styleInfo    = `style="color:#2EB44E"`
 )
 
 type reporter struct {
@@ -284,7 +284,7 @@ func (r *reporter) makeActiveDemotingFailureReport() string {
 }
 
 func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.ActivePromotionStatus) string {
-	var message = "<b " + styleWarning + ">NOTES:</b> previous active namespace <code>{{ .PreviousActiveNamespace }}</code> will be destroyed at <code>{{ .DestroyedTime }}</code>"
+	var message = "<b " + styleWarning + ">NOTES:</b> previous active namespace <code>{{ .PreviousActiveNamespace }}</code> will be destroyed at <code>{{ .DestroyedTime | TimeFormat }}</code>"
 
 	return strings.TrimSpace(template.TextRender("DestroyedTime", message, status))
 }

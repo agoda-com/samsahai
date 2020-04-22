@@ -222,7 +222,7 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Success"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/activepromotions/histories/owner-12345">Click here</a>`))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("All components are up to date!"))
-			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("previous active namespace <code>owner-prevns</code> will be destroyed at <code>" + timeNow.Format("2006-01-02 15:04:05")))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("previous active namespace <code>owner-prevns</code> will be destroyed at <code>" + timeNow.Format("2006-01-02 15:04:05 MST</code>")))
 			g.Expect(err).Should(BeNil())
 		})
 

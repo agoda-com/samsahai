@@ -279,7 +279,7 @@ func (r *reporter) makeActiveDemotingFailureReport() string {
 }
 
 func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.ActivePromotionStatus) string {
-	var message = "*NOTES:* previous active namespace `{{ .PreviousActiveNamespace }}` will be destroyed at `{{ .DestroyedTime }}`"
+	var message = "*NOTES:* previous active namespace `{{ .PreviousActiveNamespace }}` will be destroyed at `{{ .DestroyedTime | TimeFormat }}`"
 
 	return strings.TrimSpace(template.TextRender("DestroyedTime", message, status))
 }
