@@ -32,7 +32,7 @@ type reporter struct {
 // NewOption allows specifying various configuration
 type NewOption func(*reporter)
 
-// WithMSTeamsClient specifies msteams client to override when create Microsoft Teams reporter
+// WithMSTeamsClient specifies msteams client to override when creating Microsoft Teams reporter
 func WithMSTeamsClient(msTeams msteams.MSTeams) NewOption {
 	if msTeams == nil {
 		panic("Microsoft Teams client should not be nil")

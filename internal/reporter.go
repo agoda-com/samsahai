@@ -20,14 +20,14 @@ const (
 // ComponentUpgradeOption allows specifying various configuration
 type ComponentUpgradeOption func(*ComponentUpgradeReporter)
 
-// WithTestRunner specifies test runner to override when create component upgrade reporter object
+// WithTestRunner specifies test runner to override when creating component upgrade reporter object
 func WithTestRunner(tr s2hv1beta1.TestRunner) ComponentUpgradeOption {
 	return func(c *ComponentUpgradeReporter) {
 		c.TestRunner = tr
 	}
 }
 
-// WithQueueHistoryName specifies queuehistory name to override when create component upgrade reporter object
+// WithQueueHistoryName specifies queuehistory name to override when creating component upgrade reporter object
 // QueueHistoryName will be the latest failure of component upgrade
 // if reverification is success, QueueHistoryName will be the history of queue before running reverification
 func WithQueueHistoryName(qHist string) ComponentUpgradeOption {
@@ -89,6 +89,7 @@ const (
 // ActivePromotionOption allows specifying various configuration
 type ActivePromotionOption func(*ActivePromotionReporter)
 
+// TODO: should override tc credential per team
 // WithCredential specifies credential to override when create active promotion reporter object
 func WithCredential(creds s2hv1beta1.Credential) ActivePromotionOption {
 	return func(c *ActivePromotionReporter) {

@@ -41,7 +41,7 @@ type MSTeamsCredential struct {
 	Password     string
 }
 
-// TODO: pohfy, teamcity credentials
+// TODO: add tc credential
 
 // SamsahaiConfig represents configuration of Samsahai itself
 type SamsahaiConfig struct {

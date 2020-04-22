@@ -31,7 +31,7 @@ type reporter struct {
 // NewOption allows specifying various configuration
 type NewOption func(*reporter)
 
-// WithSlackClient specifies slack client to override when create slack reporter
+// WithSlackClient specifies slack client to override when creating slack reporter
 func WithSlackClient(slack slackutil.Slack) NewOption {
 	if slack == nil {
 		panic("Slack client should not be nil")

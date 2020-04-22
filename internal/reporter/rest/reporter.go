@@ -57,7 +57,7 @@ func NewReporterJSON() ReporterJSON {
 // NewOption allows specifying various configuration
 type NewOption func(*reporter)
 
-// WithRestClient specifies rest client to override when create rest reporter
+// WithRestClient specifies rest client to override when creating rest reporter
 func WithRestClient(rest *http.Client) NewOption {
 	if rest == nil {
 		panic("Rest client should not be nil")
@@ -184,7 +184,7 @@ func (r *reporter) send(url string, body []byte, event internal.EventType) error
 	}
 
 	logger.Debug("start sending data via http POST", "event", event, "url", url)
-	// TODO: pohfy, use same method
+	// TODO: duplicate get/post
 	if _, _, err := restCli.Post("/", body); err != nil {
 		return errors.Wrap(err, fmt.Sprintf("cannot send request to %s", restCli.BaseURL))
 	}
