@@ -211,10 +211,10 @@ type MSTeams struct {
 	ComponentUpgrade *ConfigComponentUpgrade `json:"componentUpgrade,omitempty"`
 }
 
-// MSTeamsGroup defines group id and channel id of Microsoft Teams
+// MSTeamsGroup defines group name/id and channel name/id of Microsoft Teams
 type MSTeamsGroup struct {
-	GroupID    string   `json:"groupID"`
-	ChannelIDs []string `json:"channelIDs"`
+	GroupNameOrID    string   `json:"groupNameOrID"`
+	ChannelNameOrIDs []string `json:"channelNameOrIDs"`
 }
 
 // ConfigComponentUpgrade defines a configuration of component upgrade report

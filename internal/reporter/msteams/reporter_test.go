@@ -52,7 +52,9 @@ var _ = Describe("send ms teams message", func() {
 			)
 			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockMSTeamsCli.accessTokenCall).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
+			g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.channels).Should(Equal([]string{"chan1-1", "chan1-2", "chan2-1"}))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Failure"))
@@ -102,7 +104,7 @@ var _ = Describe("send ms teams message", func() {
 			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
 			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockMSTeamsCli.accessTokenCall).Should(Equal(0))
+			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(0))
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(0))
 		})
 
@@ -129,7 +131,9 @@ var _ = Describe("send ms teams message", func() {
 			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
 			err := r.SendComponentUpgrade(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockMSTeamsCli.accessTokenCall).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
+			g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Failure"))
 			// Should contain information
@@ -175,7 +179,9 @@ var _ = Describe("send ms teams message", func() {
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
 			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
-			g.Expect(mockMSTeamsCli.accessTokenCall).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
+			g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.channels).Should(Equal([]string{"chan1-1", "chan1-2", "chan2-1"}))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Success"))
@@ -209,7 +215,9 @@ var _ = Describe("send ms teams message", func() {
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
 			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
-			g.Expect(mockMSTeamsCli.accessTokenCall).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
+			g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Success"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/activepromotions/histories/owner-12345">Click here</a>`))
@@ -255,7 +263,9 @@ var _ = Describe("send ms teams message", func() {
 				r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
 					"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
 				err := r.SendActivePromotionStatus(configCtrl, atpRpt)
-				g.Expect(mockMSTeamsCli.accessTokenCall).Should(Equal(1))
+				g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
+				g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
+				g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(3))
 				g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 				g.Expect(mockMSTeamsCli.channels).Should(Equal([]string{"chan1-1", "chan1-2", "chan2-1"}))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Failure"))
@@ -289,7 +299,9 @@ var _ = Describe("send ms teams message", func() {
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
 			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
-			g.Expect(mockMSTeamsCli.accessTokenCall).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
+			g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Failure"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("All components are up to date!"))
@@ -311,7 +323,9 @@ var _ = Describe("send ms teams message", func() {
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
 			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
-			g.Expect(mockMSTeamsCli.accessTokenCall).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
+			g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Failure"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(
@@ -331,7 +345,9 @@ var _ = Describe("send ms teams message", func() {
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
 			err := r.SendImageMissing("mock", configCtrl, &rpc.Image{Repository: "registry/comp-1", Tag: "1.0.0"})
-			g.Expect(mockMSTeamsCli.accessTokenCall).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
+			g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.channels).Should(Equal([]string{"chan1-1", "chan1-2", "chan2-1"}))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("registry/comp-1:1.0.0"))
@@ -371,20 +387,22 @@ var _ = Describe("send ms teams message", func() {
 
 // mockMSTeams mocks MS Teams interface
 type mockMSTeams struct {
-	postMessageCalls int
-	accessTokenCall  int
-	channels         []string
-	message          string
+	postMessageCalls  int
+	accessTokenCalls  int
+	getGroupIDCalls   int
+	getChannelIDCalls int
+	channels          []string
+	message           string
 }
 
-// GetAccessToken returns an access token on behalf of a user
+// GetAccessToken mocks GetAccessToken function
 func (s *mockMSTeams) GetAccessToken() (string, error) {
-	s.accessTokenCall++
+	s.accessTokenCalls++
 	return "12345", nil
 }
 
 // PostMessage mocks PostMessage function
-func (s *mockMSTeams) PostMessage(groupID, channelID, message string, opts ...msteams.PostMsgOption) error {
+func (s *mockMSTeams) PostMessage(groupID, channelID, message string, opts ...msteams.Option) error {
 	if channelID == "error" {
 		return errors.New("error")
 	}
@@ -394,6 +412,18 @@ func (s *mockMSTeams) PostMessage(groupID, channelID, message string, opts ...ms
 	s.message = message
 
 	return nil
+}
+
+// GetGroupID mocks GetGroupID function
+func (s *mockMSTeams) GetGroupID(groupNameOrID string, opts ...msteams.Option) (string, error) {
+	s.getGroupIDCalls++
+	return groupNameOrID, nil
+}
+
+// GetChannelID mocks GetChannelID function
+func (s *mockMSTeams) GetChannelID(groupID, channelNameOrID string, opts ...msteams.Option) (string, error) {
+	s.getChannelIDCalls++
+	return channelNameOrID, nil
 }
 
 type mockConfigCtrl struct {
@@ -421,8 +451,8 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 					MSTeams: &s2hv1beta1.MSTeams{
 						Groups: []s2hv1beta1.MSTeamsGroup{
 							{
-								GroupID:    "group-1",
-								ChannelIDs: []string{"error"},
+								GroupNameOrID:    "group-1",
+								ChannelNameOrIDs: []string{"error"},
 							},
 						},
 					},
@@ -436,12 +466,12 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 					MSTeams: &s2hv1beta1.MSTeams{
 						Groups: []s2hv1beta1.MSTeamsGroup{
 							{
-								GroupID:    "group1",
-								ChannelIDs: []string{"chan1-1", "chan1-2"},
+								GroupNameOrID:    "group1",
+								ChannelNameOrIDs: []string{"chan1-1", "chan1-2"},
 							},
 							{
-								GroupID:    "group2",
-								ChannelIDs: []string{"chan2-1"},
+								GroupNameOrID:    "group2",
+								ChannelNameOrIDs: []string{"chan2-1"},
 							},
 						},
 						ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgrade{
