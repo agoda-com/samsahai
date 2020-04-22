@@ -953,6 +953,11 @@
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.Shell"
                 },
+                "msTeams": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.MSTeams"
+                },
                 "optionals": {
                     "description": "+optional",
                     "type": "array",
@@ -1096,6 +1101,36 @@
                     "type": "string"
                 },
                 "tag": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1beta1.MSTeams": {
+            "type": "object",
+            "properties": {
+                "componentUpgrade": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigComponentUpgrade"
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1beta1.MSTeamsGroup"
+                    }
+                }
+            }
+        },
+        "v1beta1.MSTeamsGroup": {
+            "type": "object",
+            "properties": {
+                "channelNameOrIDs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "groupNameOrID": {
                     "type": "string"
                 }
             }
