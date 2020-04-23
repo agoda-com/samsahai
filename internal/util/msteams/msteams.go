@@ -34,13 +34,13 @@ type MSTeams interface {
 	GetAccessToken() (string, error)
 
 	//PostMessage posts message to the given Microsoft Teams group and channel
-	PostMessage(groupID, channelID, message string, opts ...Option) error
+	PostMessage(groupID, channelID, message, accessToken string, opts ...PostMsgOption) error
 
 	// GetGroupID returns group id from group name or id
-	GetGroupID(groupNameOrID string, opts ...Option) (string, error)
+	GetGroupID(groupNameOrID, accessToken string) (string, error)
 
 	// GetGroupID returns channel id from channel name or id
-	GetChannelID(groupID, channelNameOrID string, opts ...Option) (string, error)
+	GetChannelID(groupID, channelNameOrID, accessToken string) (string, error)
 }
 
 var _ MSTeams = &Client{}
@@ -53,10 +53,10 @@ type Client struct {
 	username     string
 	password     string
 
+	contentType MessageContentType
+
 	baseLoginURL string
 	baseGraphURL string
-
-	option option
 }
 
 // NewOption allows specifying various configuration
@@ -78,6 +78,7 @@ func NewClient(tenantID, clientID, clientSecret, username, password string, opts
 		clientSecret: clientSecret,
 		username:     username,
 		password:     password,
+		contentType:  PlainText,
 		baseLoginURL: "https://login.microsoftonline.com",
 		baseGraphURL: "https://graph.microsoft.com/beta",
 	}
@@ -156,35 +157,25 @@ type messageBody struct {
 	Content     string `json:"content"`
 }
 
-type option struct {
-	accessToken string
-	contentType MessageContentType
-}
-
-// Option allows specifying various configuration
-type Option func(*Client)
-
-func WithAccessToken(accessToken string) Option {
-	return func(c *Client) {
-		c.option.accessToken = accessToken
-	}
-}
+// PostMsgOption allows specifying various configuration
+type PostMsgOption func(*Client)
 
 // MessageContentType defines a message content type
 type MessageContentType string
 
 const (
-	HTML MessageContentType = "html"
+	PlainText MessageContentType = "text"
+	HTML      MessageContentType = "html"
 )
 
-func WithContentType(contentType MessageContentType) Option {
+func WithContentType(contentType MessageContentType) PostMsgOption {
 	return func(c *Client) {
-		c.option.contentType = contentType
+		c.contentType = contentType
 	}
 }
 
 // PostMessage implements the Microsoft Teams PostMessage function
-func (c *Client) PostMessage(groupID, channelID, message string, opts ...Option) error {
+func (c *Client) PostMessage(groupID, channelID, message, accessToken string, opts ...PostMsgOption) error {
 	logger.Debug("Posting message", "groupID", groupID, "channelID", channelID)
 
 	// apply the new options
@@ -201,9 +192,9 @@ func (c *Client) PostMessage(groupID, channelID, message string, opts ...Option)
 	defer cancelFunc()
 	go func() {
 		for {
-			if c.option.accessToken == "" {
+			if accessToken == "" {
 				var err error
-				c.option.accessToken, err = c.GetAccessToken()
+				accessToken, err = c.GetAccessToken()
 				if err != nil {
 					errCh <- err
 					return
@@ -213,12 +204,12 @@ func (c *Client) PostMessage(groupID, channelID, message string, opts ...Option)
 			opts := []http.Option{
 				http.WithTimeout(timeout),
 				http.WithContext(ctx),
-				http.WithHeader("Authorization", c.option.accessToken),
+				http.WithHeader("Authorization", accessToken),
 			}
 
 			reqJSON := messageReq{
 				Body: messageBody{
-					ContentType: string(c.option.contentType),
+					ContentType: string(c.contentType),
 					Content:     message,
 				},
 			}
@@ -234,7 +225,7 @@ func (c *Client) PostMessage(groupID, channelID, message string, opts ...Option)
 			if err != nil {
 				// reset access token if it's expired
 				if respCode == 401 {
-					c.option.accessToken = ""
+					accessToken = ""
 					continue
 				}
 
@@ -264,38 +255,28 @@ func (c *Client) PostMessage(groupID, channelID, message string, opts ...Option)
 }
 
 // GetGroupID implements the Microsoft Teams GetGroupID function
-func (c *Client) GetGroupID(groupNameOrID string, opts ...Option) (string, error) {
-	// apply the new options
-	for _, opt := range opts {
-		opt(c)
-	}
-
+func (c *Client) GetGroupID(groupNameOrID, accessToken string) (string, error) {
 	if !validateGroupID(groupNameOrID) {
-		return c.getMatchedGroupID(groupNameOrID)
+		return c.getMatchedGroupID(groupNameOrID, accessToken)
 	}
 
 	return groupNameOrID, nil
 }
 
 // GetChannelID implements the Microsoft Teams GetChannelID function
-func (c *Client) GetChannelID(groupID, channelNameOrID string, opts ...Option) (string, error) {
-	// apply the new options
-	for _, opt := range opts {
-		opt(c)
-	}
-
-	if err := c.getChannelInfo(groupID, channelNameOrID); err != nil {
-		return c.getMatchedChannelID(groupID, channelNameOrID)
+func (c *Client) GetChannelID(groupID, channelNameOrID, accessToken string) (string, error) {
+	if err := c.getChannelInfo(groupID, channelNameOrID, accessToken); err != nil {
+		return c.getMatchedChannelID(groupID, channelNameOrID, accessToken)
 	}
 
 	return channelNameOrID, nil
 }
 
 // getMatchedGroupID returns group id of the given group name
-func (c *Client) getMatchedGroupID(groupName string) (string, error) {
+func (c *Client) getMatchedGroupID(groupName, accessToken string) (string, error) {
 	timeout := 30 * time.Second
 
-	userID, err := c.getMyUserID()
+	userID, err := c.getMyUserID(accessToken)
 	if err != nil {
 		logger.Error(err, "cannot get user id of ms teams application")
 		return "", err
@@ -310,9 +291,9 @@ func (c *Client) getMatchedGroupID(groupName string) (string, error) {
 		nextLink := ""
 
 		for {
-			if c.option.accessToken == "" {
+			if accessToken == "" {
 				var err error
-				c.option.accessToken, err = c.GetAccessToken()
+				accessToken, err = c.GetAccessToken()
 				if err != nil {
 					errCh <- err
 					return
@@ -327,14 +308,14 @@ func (c *Client) getMatchedGroupID(groupName string) (string, error) {
 			opts := []http.Option{
 				http.WithTimeout(requestTimeout),
 				http.WithContext(ctx),
-				http.WithHeader("Authorization", c.option.accessToken),
+				http.WithHeader("Authorization", accessToken),
 			}
 
 			respCode, res, err := getRequest(getGroupsAPI, opts...)
 			if err != nil {
 				// reset access token if it's expired
 				if respCode == 401 {
-					c.option.accessToken = ""
+					accessToken = ""
 					continue
 				}
 
@@ -383,7 +364,7 @@ func (c *Client) getMatchedGroupID(groupName string) (string, error) {
 }
 
 // getMatchedChannelID returns channel id of the given channel name
-func (c *Client) getMatchedChannelID(groupID, channelName string) (string, error) {
+func (c *Client) getMatchedChannelID(groupID, channelName, accessToken string) (string, error) {
 	timeout := 30 * time.Second
 
 	channelIDCh := make(chan string, 1)
@@ -395,9 +376,9 @@ func (c *Client) getMatchedChannelID(groupID, channelName string) (string, error
 		nextLink := ""
 
 		for {
-			if c.option.accessToken == "" {
+			if accessToken == "" {
 				var err error
-				c.option.accessToken, err = c.GetAccessToken()
+				accessToken, err = c.GetAccessToken()
 				if err != nil {
 					errCh <- err
 					return
@@ -412,14 +393,14 @@ func (c *Client) getMatchedChannelID(groupID, channelName string) (string, error
 			opts := []http.Option{
 				http.WithTimeout(requestTimeout),
 				http.WithContext(ctx),
-				http.WithHeader("Authorization", c.option.accessToken),
+				http.WithHeader("Authorization", accessToken),
 			}
 
 			respCode, res, err := getRequest(getChannelsAPI, opts...)
 			if err != nil {
 				// reset access token if it's expired
 				if respCode == 401 {
-					c.option.accessToken = ""
+					accessToken = ""
 					continue
 				}
 
@@ -467,7 +448,7 @@ func (c *Client) getMatchedChannelID(groupID, channelName string) (string, error
 	}
 }
 
-func (c *Client) getMyUserID() (string, error) {
+func (c *Client) getMyUserID(accessToken string) (string, error) {
 	logger.Debug("getting service account ID of MS Teams app")
 
 	resCh := make(chan []byte, 1)
@@ -477,19 +458,10 @@ func (c *Client) getMyUserID() (string, error) {
 
 	go func() {
 		for {
-			if c.option.accessToken == "" {
-				var err error
-				c.option.accessToken, err = c.GetAccessToken()
-				if err != nil {
-					errCh <- err
-					return
-				}
-			}
-
 			opts := []http.Option{
 				http.WithTimeout(requestTimeout),
 				http.WithContext(ctx),
-				http.WithHeader("Authorization", c.option.accessToken),
+				http.WithHeader("Authorization", accessToken),
 			}
 
 			profileAPI := fmt.Sprintf(profileAPI, c.baseGraphURL)
@@ -497,7 +469,7 @@ func (c *Client) getMyUserID() (string, error) {
 			if err != nil {
 				// reset access token if it's expired
 				if respCode == 401 {
-					c.option.accessToken = ""
+					accessToken = ""
 					continue
 				}
 
@@ -530,7 +502,7 @@ func (c *Client) getMyUserID() (string, error) {
 	}
 }
 
-func (c *Client) getChannelInfo(groupID, channelNameOrID string) error {
+func (c *Client) getChannelInfo(groupID, channelNameOrID, accessToken string) error {
 	channelInfoAPI := fmt.Sprintf(channelInfoAPI, c.baseGraphURL, groupID, channelNameOrID)
 
 	resCh := make(chan []byte, 1)
@@ -540,9 +512,9 @@ func (c *Client) getChannelInfo(groupID, channelNameOrID string) error {
 
 	go func() {
 		for {
-			if c.option.accessToken == "" {
+			if accessToken == "" {
 				var err error
-				c.option.accessToken, err = c.GetAccessToken()
+				accessToken, err = c.GetAccessToken()
 				if err != nil {
 					errCh <- err
 					return
@@ -552,14 +524,14 @@ func (c *Client) getChannelInfo(groupID, channelNameOrID string) error {
 			opts := []http.Option{
 				http.WithTimeout(requestTimeout),
 				http.WithContext(ctx),
-				http.WithHeader("Authorization", c.option.accessToken),
+				http.WithHeader("Authorization", accessToken),
 			}
 
 			respCode, res, err := getRequest(channelInfoAPI, opts...)
 			if err != nil {
 				// reset access token if it's expired
 				if respCode == 401 {
-					c.option.accessToken = ""
+					accessToken = ""
 					continue
 				}
 

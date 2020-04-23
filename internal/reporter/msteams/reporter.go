@@ -316,7 +316,7 @@ func (r *reporter) post(msTeamsConfig *s2hv1beta1.MSTeams, message string, event
 	var globalErr error
 	for _, group := range msTeamsConfig.Groups {
 		// get group id from group name
-		groupID, err := r.msTeams.GetGroupID(group.GroupNameOrID, msteams.WithAccessToken(accessToken))
+		groupID, err := r.msTeams.GetGroupID(group.GroupNameOrID, accessToken)
 		if err != nil {
 			logger.Error(err, "cannot get group id",
 				"event", event, "group", group.GroupNameOrID)
@@ -325,15 +325,14 @@ func (r *reporter) post(msTeamsConfig *s2hv1beta1.MSTeams, message string, event
 
 		for _, channelNameOrID := range group.ChannelNameOrIDs {
 			// get channel id from channel name
-			channelID, err := r.msTeams.GetChannelID(groupID, channelNameOrID, msteams.WithAccessToken(accessToken))
+			channelID, err := r.msTeams.GetChannelID(groupID, channelNameOrID, accessToken)
 			if err != nil {
 				logger.Error(err, "cannot get channel id",
 					"event", event, "group", group.GroupNameOrID, "channel", channelNameOrID)
 				continue
 			}
 
-			if err := r.msTeams.PostMessage(groupID, channelID, message,
-				msteams.WithAccessToken(accessToken), msteams.WithContentType(msteams.HTML)); err != nil {
+			if err := r.msTeams.PostMessage(groupID, channelID, message, accessToken, msteams.WithContentType(msteams.HTML)); err != nil {
 				logger.Error(err, "cannot post message to Microsoft Teams",
 					"event", event, "group", group.GroupNameOrID, "channel", channelNameOrID)
 				globalErr = err

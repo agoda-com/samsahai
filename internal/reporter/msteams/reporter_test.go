@@ -404,7 +404,7 @@ func (s *mockMSTeams) GetAccessToken() (string, error) {
 }
 
 // PostMessage mocks PostMessage function
-func (s *mockMSTeams) PostMessage(groupID, channelID, message string, opts ...msteams.Option) error {
+func (s *mockMSTeams) PostMessage(groupID, channelID, message, accessTokens string, opts ...msteams.PostMsgOption) error {
 	if channelID == "msg-error" {
 		return errors.New("error")
 	}
@@ -417,7 +417,7 @@ func (s *mockMSTeams) PostMessage(groupID, channelID, message string, opts ...ms
 }
 
 // GetGroupID mocks GetGroupID function
-func (s *mockMSTeams) GetGroupID(groupNameOrID string, opts ...msteams.Option) (string, error) {
+func (s *mockMSTeams) GetGroupID(groupNameOrID, accessToken string) (string, error) {
 	if groupNameOrID == "group-error" {
 		return "", errors.New("error")
 	}
@@ -427,7 +427,7 @@ func (s *mockMSTeams) GetGroupID(groupNameOrID string, opts ...msteams.Option) (
 }
 
 // GetChannelID mocks GetChannelID function
-func (s *mockMSTeams) GetChannelID(groupID, channelNameOrID string, opts ...msteams.Option) (string, error) {
+func (s *mockMSTeams) GetChannelID(groupID, channelNameOrID, accessToken string) (string, error) {
 	if channelNameOrID == "chan-error" {
 		return "", errors.New("error")
 	}
