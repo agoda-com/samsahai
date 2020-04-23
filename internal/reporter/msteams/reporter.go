@@ -210,7 +210,7 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 <li><b>Namespace:</b> {{ .Namespace }}</li>
 {{- if eq .Status 0 }}
  {{- if .TestRunner.Teamcity.BuildURL }}
-<li><b>Teamcity url:</b> <a href="{{ .TestRunner.Teamcity.BuildURL }}">Click here</a></li>
+<li><b>Teamcity URL:</b> <a href="{{ .TestRunner.Teamcity.BuildURL }}">Click here</a></li>
  {{- end }}
 <li><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log">Download here</a></li>
 <li><b>Deployment history:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}">Click here</a></li>
@@ -232,7 +232,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 <li><b>Current Active Namespace:</b> {{ .CurrentActiveNamespace }}</li>
 <li><b>Owner:</b> {{ .TeamName }}</li>
 {{- if and .PreActiveQueue.TestRunner (and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL) }}
-<li><b>Teamcity url:</b> <a href="{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}">Click here</a></li>
+<li><b>Teamcity URL:</b> <a href="{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}">Click here</a></li>
 {{- end }}
 {{- if eq .Result "Failure" }}
 <li><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log">Download here</a></li>

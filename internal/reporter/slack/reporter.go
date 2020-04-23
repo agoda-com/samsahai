@@ -206,7 +206,7 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 >*Namespace:* {{ .Namespace }}
 {{- if eq .Status 0 }}
   {{- if .TestRunner.Teamcity.BuildURL }}
->*Teamcity url:* <{{ .TestRunner.Teamcity.BuildURL }}|Click here>
+>*Teamcity URL:* <{{ .TestRunner.Teamcity.BuildURL }}|Click here>
   {{- end }}
 >*Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log|Download here>
 >*Deployment history:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}|Click here>
@@ -228,7 +228,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 >*Current Active Namespace:* {{ .CurrentActiveNamespace }}
 >*Owner:* {{ .TeamName }}
 {{- if and .PreActiveQueue.TestRunner (and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL) }}
->*Teamcity url:* <{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}|Click here>
+>*Teamcity URL:* <{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}|Click here>
 {{- end }}
 {{- if eq .Result "Failure" }}
 >*Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log|Download here>
