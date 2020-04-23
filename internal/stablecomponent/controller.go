@@ -213,7 +213,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 func (c *controller) detectSpecChanged(stableComp *s2hv1beta1.StableComponent, teamComp *s2hv1beta1.Team) bool {
 	if stableComp != nil {
 		teamStableComp := teamComp.Status.GetStableComponent(stableComp.Name)
-		if teamStableComp.Name != "" {
+		if teamStableComp.Spec.Name != "" {
 			if teamStableComp.Spec == stableComp.Spec {
 				return false
 			}
