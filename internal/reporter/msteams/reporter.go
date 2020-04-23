@@ -201,7 +201,9 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
 	message := `
 <b>Component Upgrade:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure{{ end }}</span>
+{{- if eq .Status 0 }}
 <li><b>Issue type:</b> {{ .IssueTypeStr }}</li>
+{{- end }}
 <li><b>Run:</b>{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}</li>
 <li><b>Component:</b> {{ .Name }}</li>
 <li><b>Version:</b> {{ .Image.Tag }}</li>
@@ -213,7 +215,7 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 <li><b>Teamcity URL:</b> <a href="{{ .TestRunner.Teamcity.BuildURL }}">Click here</a></li>
  {{- end }}
 <li><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log">Download here</a></li>
-<li><b>Deployment history:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}">Click here</a></li>
+<li><b>Deployment History:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}">Click here</a></li>
 {{- end}}
 `
 	return strings.TrimSpace(template.TextRender("MSTeamsComponentUpgradeFailure", message, comp))

@@ -197,7 +197,9 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
 	message := `
 *Component Upgrade:*{{ if eq .Status 1 }} Success {{ else }} Failure {{ end }}
+{{- if eq .Status 0 }}
 >*Issue type:* {{ .IssueTypeStr }}
+{{- end }}
 >*Run:*{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}
 >*Component:* {{ .Name }}
 >*Version:* {{ .Image.Tag }}
@@ -209,7 +211,7 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 >*Teamcity URL:* <{{ .TestRunner.Teamcity.BuildURL }}|Click here>
   {{- end }}
 >*Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log|Download here>
->*Deployment history:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}|Click here>
+>*Deployment History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}|Click here>
 {{- end}}
 `
 	return strings.TrimSpace(template.TextRender("SlackComponentUpgradeFailure", message, comp))
