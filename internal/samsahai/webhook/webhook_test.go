@@ -147,7 +147,7 @@ var _ = Describe("Samsahai Webhook", func() {
 
 	It("Should successfully get version", func(done Done) {
 		defer close(done)
-		data, err := http.Get(server.URL + s2h.URIVersion)
+		_, data, err := http.Get(server.URL + s2h.URIVersion)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(data).NotTo(BeEmpty())
 		g.Expect(gjson.ValidBytes(data)).To(BeTrue())
@@ -155,7 +155,7 @@ var _ = Describe("Samsahai Webhook", func() {
 
 	It("Should successfully get health check", func(done Done) {
 		defer close(done)
-		data, err := http.Get(server.URL + s2h.URIHealthz)
+		_, data, err := http.Get(server.URL + s2h.URIHealthz)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(data).NotTo(BeEmpty())
 		g.Expect(gjson.ValidBytes(data)).To(BeTrue())
@@ -171,7 +171,7 @@ var _ = Describe("Samsahai Webhook", func() {
 			}
 			b, err := json.Marshal(reqData)
 			g.Expect(err).NotTo(HaveOccurred())
-			_, err = http.Post(server.URL+"/webhook/"+pluginName, b)
+			_, _, err = http.Post(server.URL+"/webhook/"+pluginName, b)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(s2hCtrl.QueueLen()).To(Equal(1))
 		}, timeout)
@@ -182,7 +182,7 @@ var _ = Describe("Samsahai Webhook", func() {
 			defer close(done)
 			defer GinkgoRecover()
 
-			data, err := http.Get(server.URL + "/teams")
+			_, data, err := http.Get(server.URL + "/teams")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -190,7 +190,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		It("Should successfully get team", func(done Done) {
 			defer close(done)
 
-			data, err := http.Get(server.URL + "/teams/" + teamName)
+			_, data, err := http.Get(server.URL + "/teams/" + teamName)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -198,14 +198,14 @@ var _ = Describe("Samsahai Webhook", func() {
 		Specify("Unknown team", func(done Done) {
 			defer close(done)
 
-			_, err := http.Get(server.URL + "/teams/" + "unknown")
+			_, _, err := http.Get(server.URL + "/teams/" + "unknown")
 			g.Expect(err).To(HaveOccurred())
 		}, timeout)
 
 		It("Should successfully get team configuration", func(done Done) {
 			defer close(done)
 
-			data, err := http.Get(server.URL + "/teams/" + teamName + "/config")
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/config")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -213,7 +213,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		It("Should successfully get team component", func(done Done) {
 			defer close(done)
 
-			data, err := http.Get(server.URL + "/teams/" + teamName + "/components")
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/components")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -221,7 +221,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		It("Should successfully get stable values from team", func(done Done) {
 			defer close(done)
 
-			data, err := http.Get(server.URL + "/teams/" + teamName + "/components/redis/values")
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/components/redis/values")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -229,7 +229,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		It("Should successfully get zip log from queue history", func(done Done) {
 			defer close(done)
 
-			data, err := http.Get(server.URL + "/teams/" + teamName + "/queue/histories/test-history/log")
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/queue/histories/test-history/log")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -237,7 +237,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		It("Should successfully get zip log from active promotion history", func(done Done) {
 			defer close(done)
 
-			data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions/histories/activepromotion-history/log")
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions/histories/activepromotion-history/log")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -248,7 +248,7 @@ var _ = Describe("Samsahai Webhook", func() {
 			defer close(done)
 			defer GinkgoRecover()
 
-			data, err := http.Get(server.URL + "/activepromotions")
+			_, data, err := http.Get(server.URL + "/activepromotions")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -256,7 +256,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		It("Should successfully get team activepromotion", func(done Done) {
 			defer close(done)
 
-			data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions")
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -264,7 +264,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		It("Should successfully get team activepromotion histories", func(done Done) {
 			defer close(done)
 
-			data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions/histories")
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions/histories")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -272,7 +272,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		Specify("Unknown active promotion", func(done Done) {
 			defer close(done)
 
-			_, err := http.Get(server.URL + "/teams/unknown/activepromotions")
+			_, _, err := http.Get(server.URL + "/teams/unknown/activepromotions")
 			g.Expect(err).To(HaveOccurred())
 		}, timeout)
 	})

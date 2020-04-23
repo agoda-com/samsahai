@@ -7,6 +7,8 @@ import (
 	"text/template"
 	"time"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 )
 
@@ -23,6 +25,7 @@ func TextRender(name, tmpl string, data interface{}) string {
 		"FmtDurationToStr":    fmtDurationToStr,
 		"ConcatHTTPStr":       concatHTTPStr,
 		"JoinStringWithComma": joinStringWithComma,
+		"TimeFormat":          timeFormat,
 	}
 
 	defer func() {
@@ -63,4 +66,8 @@ func joinStringWithComma(str []string) string {
 	}
 
 	return strings.TrimSuffix(out, ",")
+}
+
+func timeFormat(t *v1.Time) string {
+	return t.Format("2006-01-02 15:04:05 MST")
 }

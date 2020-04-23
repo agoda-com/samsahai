@@ -85,10 +85,10 @@ func NewClient(baseURL string, opts ...Option) *Client {
 }
 
 // Post sends http post
-func (c *Client) Post(reqURI string, data []byte, opts ...Option) ([]byte, error) {
+func (c *Client) Post(reqURI string, data []byte, opts ...Option) (int, []byte, error) {
 	baseURL, err := url.Parse(c.BaseURL.String())
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	baseURL.Path = path.Join(baseURL.Path, reqURI)
@@ -96,7 +96,7 @@ func (c *Client) Post(reqURI string, data []byte, opts ...Option) ([]byte, error
 	req, err := http.NewRequest("POST", baseURL.String(), bytes.NewBuffer(data))
 
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	for _, opt := range opts {
@@ -107,17 +107,17 @@ func (c *Client) Post(reqURI string, data []byte, opts ...Option) ([]byte, error
 }
 
 // Get sends http get
-func (c *Client) Get(reqURI string, opts ...Option) ([]byte, error) {
+func (c *Client) Get(reqURI string, opts ...Option) (int, []byte, error) {
 	baseURL, err := url.Parse(c.BaseURL.String())
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	baseURL.Path = path.Join(baseURL.Path, reqURI)
 
 	req, err := http.NewRequest("GET", baseURL.String(), nil)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	for _, opt := range opts {
@@ -127,7 +127,7 @@ func (c *Client) Get(reqURI string, opts ...Option) ([]byte, error) {
 	return c.request(req)
 }
 
-func Get(reqURI string, opts ...Option) ([]byte, error) {
+func Get(reqURI string, opts ...Option) (int, []byte, error) {
 	var err error
 	var client = Client{
 		client: &http.Client{},
@@ -135,12 +135,12 @@ func Get(reqURI string, opts ...Option) ([]byte, error) {
 
 	reqURL, err := url.Parse(reqURI)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	client.req, err = http.NewRequest("GET", reqURL.String(), nil)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	for _, opt := range opts {
@@ -151,7 +151,7 @@ func Get(reqURI string, opts ...Option) ([]byte, error) {
 }
 
 // Post sends http post
-func Post(reqURI string, data []byte, opts ...Option) ([]byte, error) {
+func Post(reqURI string, data []byte, opts ...Option) (int, []byte, error) {
 	var err error
 	var client = Client{
 		client: &http.Client{},
@@ -159,12 +159,12 @@ func Post(reqURI string, data []byte, opts ...Option) ([]byte, error) {
 
 	reqURL, err := url.Parse(reqURI)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	client.req, err = http.NewRequest("POST", reqURL.String(), bytes.NewBuffer(data))
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	for _, opt := range opts {
@@ -174,7 +174,7 @@ func Post(reqURI string, data []byte, opts ...Option) ([]byte, error) {
 	return client.request(client.req)
 }
 
-func (c *Client) request(req *http.Request) ([]byte, error) {
+func (c *Client) request(req *http.Request) (int, []byte, error) {
 	if req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -184,18 +184,18 @@ func (c *Client) request(req *http.Request) ([]byte, error) {
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return resp.StatusCode, nil, err
 	}
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		return body, nil
+		return resp.StatusCode, body, nil
 	}
 
-	return nil, fmt.Errorf("%d - %s", resp.StatusCode, body)
+	return resp.StatusCode, nil, fmt.Errorf("%d - %s", resp.StatusCode, body)
 }

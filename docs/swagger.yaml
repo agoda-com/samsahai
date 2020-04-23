@@ -294,6 +294,10 @@ definitions:
         $ref: '#/definitions/v1beta1.Shell'
         description: +optional
         type: object
+      msTeams:
+        $ref: '#/definitions/v1beta1.MSTeams'
+        description: +optional
+        type: object
       optionals:
         description: +optional
         items:
@@ -409,6 +413,26 @@ definitions:
       repository:
         type: string
       tag:
+        type: string
+    type: object
+  v1beta1.MSTeams:
+    properties:
+      componentUpgrade:
+        $ref: '#/definitions/v1beta1.ConfigComponentUpgrade'
+        description: +optional
+        type: object
+      groups:
+        items:
+          $ref: '#/definitions/v1beta1.MSTeamsGroup'
+        type: array
+    type: object
+  v1beta1.MSTeamsGroup:
+    properties:
+      channelNameOrIDs:
+        items:
+          type: string
+        type: array
+      groupNameOrID:
         type: string
     type: object
   v1beta1.OutdatedNotification:
