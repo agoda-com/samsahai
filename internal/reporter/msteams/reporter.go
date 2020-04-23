@@ -21,7 +21,7 @@ const (
 	componentUpgradeCriteria = s2hv1beta1.CriteriaFailure
 
 	styleDanger  = `style="color:#EE2828"`
-	styleWarning = `style="color:#FFCC00"`
+	styleWarning = `style="color:#EEA328"`
 	styleInfo    = `style="color:#2EB44E"`
 )
 
