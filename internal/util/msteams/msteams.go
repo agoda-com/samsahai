@@ -20,12 +20,12 @@ var logger = s2hlog.S2HLog.WithName("MS-Teams-util")
 const requestTimeout = 5 * time.Second
 
 const (
-	tokenAPI       = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
-	postMessageAPI = "https://graph.microsoft.com/beta/teams/%s/channels/%s/messages"
-	profileAPI     = "https://graph.microsoft.com/beta/me"
-	channelInfoAPI = "https://graph.microsoft.com/beta/teams/%s/channels/%s"
-	joinedTeamsAPI = "https://graph.microsoft.com/beta/users/%s/joinedTeams"
-	channelsAPI    = "https://graph.microsoft.com/beta/teams/%s/channels"
+	tokenAPI       = "%s/%s/oauth2/v2.0/token"          // base login url, tenantID
+	postMessageAPI = "%s/teams/%s/channels/%s/messages" // base graph url, groupID, channelID
+	profileAPI     = "%s/me"                            // base graph url
+	channelInfoAPI = "%s/teams/%s/channels/%s"          // base graph url, groupID, channelID
+	joinedTeamsAPI = "%s/users/%s/joinedTeams"          // base graph url, userID
+	channelsAPI    = "%s/teams/%s/channels"             // base graph url, groupID
 )
 
 // MSTeams is the interface of Microsoft Teams using Microsoft Graph api
@@ -53,20 +53,41 @@ type Client struct {
 	username     string
 	password     string
 
+	baseLoginURL string
+	baseGraphURL string
+
 	option option
 }
 
+// NewOption allows specifying various configuration
+type NewOption func(*Client)
+
+// WithBaseURL specifies base api url to override when creating Microsoft Teams Client
+func WithBaseURL(baseLoginURL, baseGraphURL string) NewOption {
+	return func(r *Client) {
+		r.baseLoginURL = baseLoginURL
+		r.baseGraphURL = baseGraphURL
+	}
+}
+
 // NewClient creates a new client of MSTeams
-func NewClient(tenantID, clientID, clientSecret, username, password string) *Client {
-	client := Client{
+func NewClient(tenantID, clientID, clientSecret, username, password string, opts ...NewOption) *Client {
+	client := &Client{
 		tenantID:     tenantID,
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		username:     username,
 		password:     password,
+		baseLoginURL: "https://login.microsoftonline.com",
+		baseGraphURL: "https://graph.microsoft.com/beta",
 	}
 
-	return &client
+	// apply the new options
+	for _, opt := range opts {
+		opt(client)
+	}
+
+	return client
 }
 
 // GetAccessToken returns an access token on behalf of a user
@@ -74,7 +95,7 @@ func (c *Client) GetAccessToken() (string, error) {
 	logger.Debug("getting Microsoft Teams access token")
 
 	timeout := 5 * time.Second
-	tokenAPI := fmt.Sprintf(tokenAPI, c.tenantID)
+	tokenAPI := fmt.Sprintf(tokenAPI, c.baseLoginURL, c.tenantID)
 
 	resCh := make(chan []byte, 1)
 	errCh := make(chan error, 1)
@@ -172,7 +193,7 @@ func (c *Client) PostMessage(groupID, channelID, message string, opts ...Option)
 	}
 
 	timeout := 10 * time.Second
-	postMessageAPI := fmt.Sprintf(postMessageAPI, groupID, channelID)
+	postMessageAPI := fmt.Sprintf(postMessageAPI, c.baseGraphURL, groupID, channelID)
 
 	resCh := make(chan []byte, 1)
 	errCh := make(chan error, 1)
@@ -300,7 +321,7 @@ func (c *Client) getMatchedGroupID(groupName string) (string, error) {
 
 			getGroupsAPI := nextLink
 			if nextLink == "" {
-				getGroupsAPI = fmt.Sprintf(joinedTeamsAPI, userID)
+				getGroupsAPI = fmt.Sprintf(joinedTeamsAPI, c.baseGraphURL, userID)
 			}
 
 			opts := []http.Option{
@@ -322,7 +343,7 @@ func (c *Client) getMatchedGroupID(groupName string) (string, error) {
 			}
 
 			var respJSON struct {
-				NextLink string `json:"@odata.nextLink"`
+				NextLink string `json:"@odata.nextLink,omitempty"`
 				Values   []struct {
 					ID          string `json:"id"`
 					DisplayName string `json:"displayName"`
@@ -385,7 +406,7 @@ func (c *Client) getMatchedChannelID(groupID, channelName string) (string, error
 
 			getChannelsAPI := nextLink
 			if nextLink == "" {
-				getChannelsAPI = fmt.Sprintf(channelsAPI, groupID)
+				getChannelsAPI = fmt.Sprintf(channelsAPI, c.baseGraphURL, groupID)
 			}
 
 			opts := []http.Option{
@@ -407,7 +428,7 @@ func (c *Client) getMatchedChannelID(groupID, channelName string) (string, error
 			}
 
 			var respJSON struct {
-				NextLink string `json:"@odata.nextLink"`
+				NextLink string `json:"@odata.nextLink,omitempty"`
 				Values   []struct {
 					ID          string `json:"id"`
 					DisplayName string `json:"displayName"`
@@ -471,6 +492,7 @@ func (c *Client) getMyUserID() (string, error) {
 				http.WithHeader("Authorization", c.option.accessToken),
 			}
 
+			profileAPI := fmt.Sprintf(profileAPI, c.baseGraphURL)
 			respCode, res, err := getRequest(profileAPI, opts...)
 			if err != nil {
 				// reset access token if it's expired
@@ -509,7 +531,7 @@ func (c *Client) getMyUserID() (string, error) {
 }
 
 func (c *Client) getChannelInfo(groupID, channelNameOrID string) error {
-	channelInfoAPI := fmt.Sprintf(channelInfoAPI, groupID, channelNameOrID)
+	channelInfoAPI := fmt.Sprintf(channelInfoAPI, c.baseGraphURL, groupID, channelNameOrID)
 
 	resCh := make(chan []byte, 1)
 	errCh := make(chan error, 1)

@@ -381,6 +381,8 @@ var _ = Describe("send ms teams message", func() {
 			"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
 		comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
 		err := r.SendComponentUpgrade(configCtrl, comp)
+		g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(1))
+		g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(1))
 		g.Expect(err).To(HaveOccurred())
 	})
 })
@@ -403,7 +405,7 @@ func (s *mockMSTeams) GetAccessToken() (string, error) {
 
 // PostMessage mocks PostMessage function
 func (s *mockMSTeams) PostMessage(groupID, channelID, message string, opts ...msteams.Option) error {
-	if channelID == "error" {
+	if channelID == "msg-error" {
 		return errors.New("error")
 	}
 
@@ -416,12 +418,20 @@ func (s *mockMSTeams) PostMessage(groupID, channelID, message string, opts ...ms
 
 // GetGroupID mocks GetGroupID function
 func (s *mockMSTeams) GetGroupID(groupNameOrID string, opts ...msteams.Option) (string, error) {
+	if groupNameOrID == "group-error" {
+		return "", errors.New("error")
+	}
+
 	s.getGroupIDCalls++
 	return groupNameOrID, nil
 }
 
 // GetChannelID mocks GetChannelID function
 func (s *mockMSTeams) GetChannelID(groupID, channelNameOrID string, opts ...msteams.Option) (string, error) {
+	if channelNameOrID == "chan-error" {
+		return "", errors.New("error")
+	}
+
 	s.getChannelIDCalls++
 	return channelNameOrID, nil
 }
@@ -452,7 +462,11 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 						Groups: []s2hv1beta1.MSTeamsGroup{
 							{
 								GroupNameOrID:    "group-1",
-								ChannelNameOrIDs: []string{"error"},
+								ChannelNameOrIDs: []string{"msg-error", "chan-error"},
+							},
+							{
+								GroupNameOrID:    "group-error",
+								ChannelNameOrIDs: []string{"chan-1"},
 							},
 						},
 					},

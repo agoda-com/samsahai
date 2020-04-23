@@ -320,6 +320,7 @@ func (r *reporter) post(msTeamsConfig *s2hv1beta1.MSTeams, message string, event
 		if err != nil {
 			logger.Error(err, "cannot get group id",
 				"event", event, "group", group.GroupNameOrID)
+			continue
 		}
 
 		for _, channelNameOrID := range group.ChannelNameOrIDs {
@@ -328,6 +329,7 @@ func (r *reporter) post(msTeamsConfig *s2hv1beta1.MSTeams, message string, event
 			if err != nil {
 				logger.Error(err, "cannot get channel id",
 					"event", event, "group", group.GroupNameOrID, "channel", channelNameOrID)
+				continue
 			}
 
 			if err := r.msTeams.PostMessage(groupID, channelID, message,
