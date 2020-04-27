@@ -12,6 +12,7 @@ import (
 )
 
 type ActivePromotionMetricState string
+type QueueMetricState string
 
 const (
 	stateWaiting        ActivePromotionMetricState = "waiting"
@@ -19,10 +20,10 @@ const (
 	stateTesting        ActivePromotionMetricState = "testing"
 	statePromoting      ActivePromotionMetricState = "promoting"
 	stateDestroying     ActivePromotionMetricState = "destroying"
-	queueStateWaiting   string                     = "waiting"
-	queueStateDeploying string                     = "deploying"
-	queueStateTesting   string                     = "testing"
-	queueStateCleaning  string                     = "cleaning"
+	queueStateWaiting   QueueMetricState           = "waiting"
+	queueStateDeploying QueueMetricState           = "deploying"
+	queueStateTesting   QueueMetricState           = "testing"
+	queueStateCleaning  QueueMetricState           = "cleaning"
 )
 
 var logger = s2hlog.S2HLog.WithName("exporter")
@@ -67,7 +68,7 @@ func SetHealthStatusMetric(version, gitCommit string, ts float64) {
 }
 
 func SetQueueMetric(queue *s2hv1beta1.Queue) {
-	var queueState string
+	var queueState QueueMetricState
 	switch queue.Status.State {
 	case s2hv1beta1.Waiting:
 		queueState = queueStateWaiting
@@ -89,7 +90,7 @@ func SetQueueMetric(queue *s2hv1beta1.Queue) {
 		queue.Spec.TeamName,
 		queue.Name,
 		queue.Spec.Version,
-		queueState,
+		string(queueState),
 		strconv.Itoa(queue.Spec.NoOfOrder),
 		strconv.Itoa(queue.Status.NoOfProcessed)).Set(float64(time.Now().Unix()))
 }
