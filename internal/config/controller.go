@@ -205,7 +205,7 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envTy
 
 	baseValues := map[string]interface{}{}
 	for _, url := range urls {
-		valuesBytes, err := http.Get(url, opts...)
+		_, valuesBytes, err := http.Get(url, opts...)
 		if err != nil {
 			return nil, errors.Wrapf(err,
 				"cannot get values file of %s env from url %s", envType, url)

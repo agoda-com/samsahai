@@ -41,7 +41,7 @@ func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *
 		},
 	}
 
-	if err := c.client.Create(ctx, history); err != nil && !k8serrors.IsNotFound(err) {
+	if err := c.client.Create(ctx, history); err != nil && !k8serrors.IsAlreadyExists(err) {
 		return "", errors.Wrapf(err, "cannot create activepromotionhistory of %s", atpComp.Name)
 	}
 

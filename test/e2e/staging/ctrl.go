@@ -553,7 +553,7 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		server := httptest.NewServer(stagingCtrl)
 		defer server.Close()
 
-		data, err := httputil.Get(server.URL + internal.URIHealthz)
+		_, data, err := httputil.Get(server.URL + internal.URIHealthz)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(data).NotTo(BeEmpty())
 		Expect(gjson.ValidBytes(data)).To(BeTrue())

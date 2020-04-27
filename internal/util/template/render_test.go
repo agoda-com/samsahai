@@ -11,7 +11,7 @@ import (
 )
 
 func TestUnit(t *testing.T) {
-	unittest.InitGinkgo(t, "Reporter utils")
+	unittest.InitGinkgo(t, "Template utils")
 }
 
 var _ = Describe("render template", func() {

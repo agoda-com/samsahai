@@ -19,27 +19,73 @@ Imagine if your testing environment is downstream and to make your environment r
 Go, ETCD, Kubernetes, Helm
 
 ### Staging Workflow
-![Staging Workflow flowchart diagram](docs/images/flow-staging.png)
+![](docs/images/flow-staging.png)
 
 This flow is for verifying your new component version by running regression tests against staging environment.
-  - Once the testing is passed, the verified version will be marked as `stable`.
-  - Unfortunately, if it is failed, the verified version will be re-queued to verify in next round.
-If it is still failed until reaching the retry limits (configurable), the component upgrade notification will be sent.
+  - Once the testing passed, the verified version will be marked as `stable`.
+  - Unfortunately, if it failed, the verified version will be re-queued to verify in next round.
+If it is still failed until reaching retry limits (configurable), the component upgrade notification will be sent.
+
+#### Verification Types
+There are 2 verification types; upgrade and reverify.
+1. **Upgrade** is a normal verification of particular component by deploying its desired version against all stable components.
+2. **Reverify** will happen only when your desired version cannot be upgraded until reaching the maximum of retry time.
+For this process, all stable components will be deployed instead which can help us to scope the issue either
+environment, or the desired version issue.
+
+#### Verification States
+These are the meaning of verification states which happen in particular upgrading component version.
+
+![](docs/images/flow-staging-verification.png)
+
+1. **Waiting:** the component is waiting for the verification process.
+2. **Cleaning before:** cleaning the staging namespace before deploying components.
+3. **Detecting image missing:** checking the desired version exists or not. If not this verification process will be finished.
+4. **Creating:** deploying the component's desired version with other components' stable version.
+4. **Testing:** testing the ready staging namespace against CI pipeline.
+5. **Collecting:** collecting the result from CI pipeline.
+6. **Cleaning after:** cleaning the staging namespace after deploying components.
+7. **Finished:** the verification process has been finished.
 
 ### Active Promotion Workflow
-![Active Promotion Workflow flowchart diagram](docs/images/flow-active.png)
+![](docs/images/flow-active.png)
 
 This flow is for promoting new ready active environment of all stable components.
 By the way, before becoming to be an active namespace, Samsahai will call the new namespace as `pre-active` first.
 
-  - In case the testing is passed, the `pre-active` will be switched to `active`
+  - In case the testing passed, the `pre-active` will be switched to `active`
 and `old active` will be switched to `previous active` and it will be destroyed in xx minutes depends on your `teardownDuration` configuration.
-  - In case the testing is failed, the switching namespace will not be proceeded and `pre-active` namespace will be destroyed.
+  - In case the testing failed, the switching namespace will not be proceeded and `pre-active` namespace will be destroyed.
 So your `old active` namespace is still there as it is.
 
 > Note: At the promotion time, there will be 3 namespaces running in parallel; staging, pre-active and active.
 > As in our use case, we use active namespace for testing the pull requests and we don't want to break it.
 > So we let the `pre-active` namespace setting up finished, then we destroy `previous active` namespace without downtime.
+
+#### Active Promotion States
+These are the meaning of verification states which happen in particular active promotion.
+
+![](docs/images/flow-active-verification.png)
+
+1. **Waiting:** the active promotion process is waiting in queue.
+2. **Creating pre-active environment:** creating pre-active namespace.
+3. **Deploying stable components:** deploying all stable components to pre-active namespace.
+4. **Testing pre-active environment:** testing the ready pre-active namespace against CI pipeline.
+5. **Collecting pre-active result:** collecting the result from CI pipeline
+and there are 2 different processes between testing passes and fails.
+
+**Testing Passes**
+1. **Demoting active environment:** demoting previous active namespace.
+2. **Promoting active environment:** promoting pre-active to active namespace.
+3. **Destroying previous active environment:** destroying previous active namespace.
+4. **Finished:** the active promotion process has been finished.
+
+> Note: The rollback state can happen when demoting or promoting process is timeout.
+> By the way, the new active namespace will be switched because the testing has passed.
+
+**Testing Fails**
+1. **Destroying pre-active environment:** destroying pre-active namespace.
+2. **Finished** the active promotion process has been finished without switching active namespace.
 
 ## Installation
 ### Prerequisites

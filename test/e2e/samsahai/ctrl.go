@@ -770,7 +770,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 		{
 			By("Get team")
 			{
-				data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name)
+				_, data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(data).NotTo(BeNil())
 
@@ -779,14 +779,14 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 			By("Get team Queue")
 			{
-				data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue")
+				_, data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(data).NotTo(BeNil())
 			}
 
 			By("Get team Queue not found")
 			{
-				_, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue/histories/" + "unknown")
+				_, _, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue/histories/" + "unknown")
 				Expect(err).To(HaveOccurred())
 			}
 
@@ -801,7 +801,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 				}
 
 				url := fmt.Sprintf("%s/teams/%s/components/%s/values", samsahaiServer.URL, team.Name, compName)
-				data, err := utilhttp.Get(url, utilhttp.WithHeader("Accept", "text/yaml"))
+				_, data, err := utilhttp.Get(url, utilhttp.WithHeader("Accept", "text/yaml"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(data).NotTo(BeNil())
 			}
@@ -1319,12 +1319,12 @@ var _ = Describe("Main Controller [e2e]", func() {
 			"component": redisCompName,
 		})
 		Expect(err).NotTo(HaveOccurred())
-		_, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
+		_, _, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Verifying DesiredComponent has been created")
 		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
-			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonData)
+			_, _, _ = utilhttp.Post(server.URL+"/webhook/component", jsonData)
 
 			dc := s2hv1beta1.DesiredComponent{}
 			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dc); err != nil {
@@ -1395,7 +1395,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		componentRepository := components[redisCompName].Image.Repository
 		Expect(err).NotTo(HaveOccurred())
-		_, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
+		_, _, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(componentRepository).NotTo(Equal(""))
 
@@ -1498,13 +1498,13 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		By("Verifying redis DesiredComponent has been created")
 		err = wait.PollImmediate(verifyTime1s, 50*time.Second, func() (ok bool, err error) {
-			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataRedis)
+			_, _, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataRedis)
 			dRedis := s2hv1beta1.DesiredComponent{}
 			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dRedis); err != nil {
 				return false, nil
 			}
 
-			_, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataWordpress)
+			_, _, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataWordpress)
 			dWordpress := s2hv1beta1.DesiredComponent{}
 			if err = runtimeClient.Get(ctx, types.NamespacedName{Name: wordpressCompName, Namespace: stgNamespace}, &dWordpress); err != nil {
 				return false, nil
@@ -1973,7 +1973,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		{
 			By("Get team")
 			{
-				data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name)
+				_, data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(data).NotTo(BeNil())
 				Expect(gjson.GetBytes(data, "teamName").Str).To(Equal(team.Name))
@@ -1981,14 +1981,14 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 
 			By("Get team Queue")
 			{
-				data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue")
+				_, data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(data).NotTo(BeNil())
 			}
 
 			By("Get team QueueHistories not found")
 			{
-				_, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue/histories/" + "unknown")
+				_, _, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue/histories/" + "unknown")
 				Expect(err).To(HaveOccurred())
 			}
 		}

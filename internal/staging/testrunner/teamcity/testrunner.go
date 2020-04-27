@@ -168,7 +168,7 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 			return
 		}
 
-		resp, err := http.Post(apiURL, reqBody, opts...)
+		_, resp, err := http.Post(apiURL, reqBody, opts...)
 		if err != nil {
 			logger.Error(err, "POST request failed", "url", apiURL, "data", string(reqBody))
 			errCh <- err
@@ -218,7 +218,7 @@ func (t *testRunner) GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueu
 		http.WithBasicAuth(t.username, t.password),
 	}
 
-	resp, err := http.Get(apiURL, opts...)
+	_, resp, err := http.Get(apiURL, opts...)
 	if err != nil {
 		logger.Error(err, "The HTTP request failed")
 		return false, false, err

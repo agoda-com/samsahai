@@ -39,7 +39,7 @@ func (c *checker) QuayIOFindTag(ctx context.Context, repo string, matcher *regex
 		for {
 			reqURL := fmt.Sprintf("%s/%s/tag/?onlyActiveTags=true&page=%d", quayioAPIURL, repo, page)
 
-			data, err := http.Get(reqURL, http.WithTimeout(MaxOneRequestTimeout), http.WithContext(ctx))
+			_, data, err := http.Get(reqURL, http.WithTimeout(MaxOneRequestTimeout), http.WithContext(ctx))
 			if err != nil {
 				logger.Error(err, "GET request failed", "url", reqURL)
 				errCh <- err

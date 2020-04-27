@@ -35,6 +35,7 @@ import (
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	"github.com/agoda-com/samsahai/internal/reporter/msteams"
 	"github.com/agoda-com/samsahai/internal/reporter/reportermock"
 	"github.com/agoda-com/samsahai/internal/reporter/rest"
 	"github.com/agoda-com/samsahai/internal/reporter/shell"
@@ -192,16 +193,24 @@ func WithConfigCtrl(configCtrl internal.ConfigController) Option {
 	}
 }
 
+// TODO: be able to override per team from secret
 func (c *controller) loadReporters() {
 	// init reporters
+	cred := c.configs.SamsahaiCredential
 	reporters := []internal.Reporter{
 		reportermock.New(),
 		rest.New(),
 		shell.New(),
 	}
 
-	if c.configs.SamsahaiCredential.SlackToken != "" {
-		reporters = append(reporters, slack.New(c.configs.SamsahaiCredential.SlackToken))
+	if cred.SlackToken != "" {
+		reporters = append(reporters, slack.New(cred.SlackToken))
+	}
+
+	if cred.MSTeams.TenantID != "" && cred.MSTeams.ClientID != "" && cred.MSTeams.ClientSecret != "" &&
+		cred.MSTeams.Username != "" && cred.MSTeams.Password != "" {
+		reporters = append(reporters, msteams.New(cred.MSTeams.TenantID, cred.MSTeams.ClientID, cred.MSTeams.ClientSecret,
+			cred.MSTeams.Username, cred.MSTeams.Password))
 	}
 
 	for _, reporter := range reporters {

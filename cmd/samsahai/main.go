@@ -138,6 +138,7 @@ func startCtrlCmd() *cobra.Command {
 			}
 
 			configs := s2h.SamsahaiConfig{
+				// TODO: move to credential
 				TeamcityURL: viper.GetString(s2h.VKTeamcityURL),
 				SamsahaiURL: fmt.Sprintf("%s://%s.%s:%s",
 					viper.GetString(s2h.VKS2HServiceScheme),
@@ -161,6 +162,13 @@ func startCtrlCmd() *cobra.Command {
 					SlackToken:        viper.GetString(s2h.VKSlackToken),
 					TeamcityUsername:  viper.GetString(s2h.VKTeamcityUsername),
 					TeamcityPassword:  viper.GetString(s2h.VKTeamcityPassword),
+					MSTeams: s2h.MSTeamsCredential{
+						TenantID:     viper.GetString(s2h.VKMSTeamsTenantID),
+						ClientID:     viper.GetString(s2h.VKMSTeamsClientID),
+						ClientSecret: viper.GetString(s2h.VKMSTeamsClientSecret),
+						Username:     viper.GetString(s2h.VKMSTeamsUsername),
+						Password:     viper.GetString(s2h.VKMSTeamsPassword),
+					},
 				},
 			}
 
@@ -233,9 +241,14 @@ func startCtrlCmd() *cobra.Command {
 	cmd.Flags().String(s2h.VKS2HServiceScheme, "http", "Scheme to use for connecting to Samsahai.")
 	cmd.Flags().String(s2h.VKS2HServiceName, "samsahai", "Service name for connecting to Samsahai.")
 	cmd.Flags().String(s2h.VKS2HExternalURL, "http://localhost:8080", "External url for Samsahai.")
-	cmd.Flags().String(s2h.VKTeamcityURL, "", "Teamcity Base URL.")
-	cmd.Flags().String(s2h.VKTeamcityUsername, "", "Teamcity Username.")
-	cmd.Flags().String(s2h.VKTeamcityPassword, "", "Teamcity Password.")
+	cmd.Flags().String(s2h.VKTeamcityURL, "", "Teamcity base URL used for initializing Teamcity test runner.")
+	cmd.Flags().String(s2h.VKTeamcityUsername, "", "Teamcity username used for initializing Teamcity test runner.")
+	cmd.Flags().String(s2h.VKTeamcityPassword, "", "Teamcity password used for initializing Teamcity test runner.")
+	cmd.Flags().String(s2h.VKMSTeamsTenantID, "", "Microsoft Teams tenant ID used for initializing Microsoft Teams reporter.")
+	cmd.Flags().String(s2h.VKMSTeamsClientID, "", "Microsoft Teams client ID used for initializing Microsoft Teams reporter.")
+	cmd.Flags().String(s2h.VKMSTeamsClientSecret, "", "Microsoft Teams client secret used for initializing Microsoft Teams reporter.")
+	cmd.Flags().String(s2h.VKMSTeamsUsername, "", "Microsoft Teams username used for initializing Microsoft Teams reporter.")
+	cmd.Flags().String(s2h.VKMSTeamsPassword, "", "Microsoft Teams password used for initializing Microsoft Teams reporter.")
 	cmd.Flags().Int(s2h.VKActivePromotionConcurrences, 1, "Concurrent active promotions.")
 	cmd.Flags().Duration(s2h.VKActivePromotionTimeout, 30*time.Minute, "Active promotion timeout.")
 	cmd.Flags().Duration(s2h.VKActivePromotionDemotionTimeout, 3*time.Minute, "Active demotion timeout.")
