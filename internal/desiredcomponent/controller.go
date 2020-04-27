@@ -3,10 +3,11 @@ package desiredcomponent
 import (
 	"context"
 	"fmt"
+	"net/http"
 
+	"github.com/twitchtv/twirp"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crctrl "sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -19,7 +20,7 @@ import (
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/queue"
-	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
+	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 const (
@@ -32,6 +33,8 @@ type controller struct {
 	teamName  string
 	queueCtrl internal.QueueController
 	client    client.Client
+	authToken string
+	s2hClient samsahairpc.RPC
 }
 
 var _ internal.DesiredComponentController = &controller{}
@@ -40,6 +43,8 @@ func New(
 	teamName string,
 	mgr manager.Manager,
 	queueCtrl internal.QueueController,
+	authToken string,
+	s2hClient samsahairpc.RPC,
 ) internal.DesiredComponentController {
 	if queueCtrl == nil {
 		logger.Error(s2herrors.ErrInternalError, "queue ctrl cannot be nil")
@@ -50,6 +55,8 @@ func New(
 		teamName:  teamName,
 		queueCtrl: queueCtrl,
 		client:    mgr.GetClient(),
+		authToken: authToken,
+		s2hClient: s2hClient,
 	}
 
 	if err := add(mgr, c); err != nil {
@@ -110,13 +117,21 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
-	queue := &s2hv1beta1.Queue{}
-	if err = c.client.Get(ctx, types.NamespacedName{
-		Name:      q.Name,
-		Namespace: req.Namespace}, queue); err != nil {
-		logger.Error(err, "cannot get the queue")
-	} else {
-		exporter.SetQueueMetric(queue)
+	headers := make(http.Header)
+	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
+	ctx, err = twirp.WithHTTPRequestHeaders(ctx, headers)
+	if err != nil {
+		logger.Error(err, "cannot set request header")
+	}
+
+	rpcComp := &samsahairpc.ComponentUpgrade{
+		Name:      q.Spec.Name,
+		Namespace: q.Namespace,
+	}
+	if c.s2hClient != nil {
+		if _, err := c.s2hClient.SendUpdateStateQueueMetric(ctx, rpcComp); err != nil {
+			logger.Error(err, "cannot send updateQueueWithState queue metric")
+		}
 	}
 
 	comp.Status.UpdatedAt = &now

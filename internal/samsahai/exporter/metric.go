@@ -14,11 +14,15 @@ import (
 type ActivePromotionMetricState string
 
 const (
-	stateWaiting    ActivePromotionMetricState = "waiting"
-	stateDeploying  ActivePromotionMetricState = "deploying"
-	stateTesting    ActivePromotionMetricState = "testing"
-	statePromoting  ActivePromotionMetricState = "promoting"
-	stateDestroying ActivePromotionMetricState = "destroying"
+	stateWaiting        ActivePromotionMetricState = "waiting"
+	stateDeploying      ActivePromotionMetricState = "deploying"
+	stateTesting        ActivePromotionMetricState = "testing"
+	statePromoting      ActivePromotionMetricState = "promoting"
+	stateDestroying     ActivePromotionMetricState = "destroying"
+	queueStateWaiting   string                     = "waiting"
+	queueStateDeploying string                     = "deploying"
+	queueStateTesting   string                     = "testing"
+	queueStateCleaning  string                     = "cleaning"
 )
 
 var logger = s2hlog.S2HLog.WithName("exporter")
@@ -56,20 +60,31 @@ func SetTeamNameMetric(teamList *s2hv1beta1.TeamList) {
 	}
 }
 
+func SetHealthStatusMetric(version, gitCommit string, ts float64) {
+	HealthStatusMetric.WithLabelValues(
+		version,
+		gitCommit).Set(ts)
+}
+
 func SetQueueMetric(queue *s2hv1beta1.Queue) {
 	var queueState string
 	switch queue.Status.State {
 	case s2hv1beta1.Waiting:
-		queueState = "waiting"
+		queueState = queueStateWaiting
 	case s2hv1beta1.Testing, s2hv1beta1.Collecting:
-		queueState = "testing"
-	case s2hv1beta1.Finished:
-		queueState = "finished"
+		queueState = queueStateTesting
 	case s2hv1beta1.DetectingImageMissing, s2hv1beta1.Creating:
-		queueState = "deploying"
-	case s2hv1beta1.CleaningBefore, s2hv1beta1.CleaningAfter:
-		queueState = "cleaning"
+		queueState = queueStateDeploying
+	case s2hv1beta1.CleaningBefore:
+		queueState = queueStateCleaning
+	case s2hv1beta1.CleaningAfter:
+		q, err := QueueMetric.CurryWith(prometheus.Labels{"component": queue.Name, "version": queue.Spec.Version})
+		if err != nil {
+			logger.Error(err, "cannot get finished queue metric")
+		}
+		q.Reset()
 	}
+
 	QueueMetric.WithLabelValues(
 		queue.Spec.TeamName,
 		queue.Name,
@@ -77,12 +92,6 @@ func SetQueueMetric(queue *s2hv1beta1.Queue) {
 		queueState,
 		strconv.Itoa(queue.Spec.NoOfOrder),
 		strconv.Itoa(queue.Status.NoOfProcessed)).Set(float64(time.Now().Unix()))
-}
-
-func SetHealthStatusMetric(version, gitCommit string, ts float64) {
-	HealthStatusMetric.WithLabelValues(
-		version,
-		gitCommit).Set(ts)
 }
 
 func SetActivePromotionMetric(atpComp *s2hv1beta1.ActivePromotion) {
