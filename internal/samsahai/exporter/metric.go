@@ -12,13 +12,18 @@ import (
 )
 
 type ActivePromotionMetricState string
+type QueueMetricState string
 
 const (
-	stateWaiting    ActivePromotionMetricState = "waiting"
-	stateDeploying  ActivePromotionMetricState = "deploying"
-	stateTesting    ActivePromotionMetricState = "testing"
-	statePromoting  ActivePromotionMetricState = "promoting"
-	stateDestroying ActivePromotionMetricState = "destroying"
+	stateWaiting        ActivePromotionMetricState = "waiting"
+	stateDeploying      ActivePromotionMetricState = "deploying"
+	stateTesting        ActivePromotionMetricState = "testing"
+	statePromoting      ActivePromotionMetricState = "promoting"
+	stateDestroying     ActivePromotionMetricState = "destroying"
+	queueStateWaiting   QueueMetricState           = "waiting"
+	queueStateDeploying QueueMetricState           = "deploying"
+	queueStateTesting   QueueMetricState           = "testing"
+	queueStateCleaning  QueueMetricState           = "cleaning"
 )
 
 var logger = s2hlog.S2HLog.WithName("exporter")
@@ -36,7 +41,7 @@ var HealthStatusMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 var QueueMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "samsahai_queue",
 	Help: "Show components in queue",
-}, []string{"order", "teamName", "component", "version", "state", "no_of_processed"})
+}, []string{"teamName", "component", "version", "state", "order", "no_of_processed"})
 
 var ActivePromotionMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "samsahai_active_promotion",
@@ -56,71 +61,38 @@ func SetTeamNameMetric(teamList *s2hv1beta1.TeamList) {
 	}
 }
 
-func SetQueueMetric(queue *s2hv1beta1.Queue) {
-	queueStateList := map[string]float64{"waiting": 0, "testing": 0, "finished": 0, "deploying": 0, "cleaning": 0}
-	switch queue.Status.State {
-	case s2hv1beta1.Waiting:
-		queueStateList["waiting"] = 1
-		for state, val := range queueStateList {
-			QueueMetric.WithLabelValues(
-				strconv.Itoa(queue.Spec.NoOfOrder),
-				queue.Spec.TeamName,
-				queue.Name,
-				queue.Spec.Version,
-				state,
-				strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
-		}
-	case s2hv1beta1.Testing, s2hv1beta1.Collecting:
-		queueStateList["testing"] = 1
-		for state, val := range queueStateList {
-			QueueMetric.WithLabelValues(
-				strconv.Itoa(queue.Spec.NoOfOrder),
-				queue.Spec.TeamName,
-				queue.Name,
-				queue.Spec.Version,
-				state,
-				strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
-		}
-	case s2hv1beta1.Finished:
-		queueStateList["finished"] = 1
-		for state, val := range queueStateList {
-			QueueMetric.WithLabelValues(
-				strconv.Itoa(queue.Spec.NoOfOrder),
-				queue.Spec.TeamName,
-				queue.Name,
-				queue.Spec.Version,
-				state,
-				strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
-		}
-	case s2hv1beta1.DetectingImageMissing, s2hv1beta1.Creating:
-		queueStateList["deploying"] = 1
-		for state, val := range queueStateList {
-			QueueMetric.WithLabelValues(
-				strconv.Itoa(queue.Spec.NoOfOrder),
-				queue.Spec.TeamName,
-				queue.Name,
-				queue.Spec.Version,
-				state,
-				strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
-		}
-	case s2hv1beta1.CleaningBefore, s2hv1beta1.CleaningAfter:
-		queueStateList["cleaning"] = 1
-		for state, val := range queueStateList {
-			QueueMetric.WithLabelValues(
-				strconv.Itoa(queue.Spec.NoOfOrder),
-				queue.Spec.TeamName,
-				queue.Name,
-				queue.Spec.Version,
-				state,
-				strconv.Itoa(queue.Status.NoOfProcessed)).Set(val)
-		}
-	}
-}
-
 func SetHealthStatusMetric(version, gitCommit string, ts float64) {
 	HealthStatusMetric.WithLabelValues(
 		version,
 		gitCommit).Set(ts)
+}
+
+func SetQueueMetric(queue *s2hv1beta1.Queue) {
+	var queueState QueueMetricState
+	switch queue.Status.State {
+	case s2hv1beta1.Waiting:
+		queueState = queueStateWaiting
+	case s2hv1beta1.Testing, s2hv1beta1.Collecting:
+		queueState = queueStateTesting
+	case s2hv1beta1.DetectingImageMissing, s2hv1beta1.Creating:
+		queueState = queueStateDeploying
+	case s2hv1beta1.CleaningBefore:
+		queueState = queueStateCleaning
+	case s2hv1beta1.CleaningAfter:
+		q, err := QueueMetric.CurryWith(prometheus.Labels{"component": queue.Name, "version": queue.Spec.Version})
+		if err != nil {
+			logger.Error(err, "cannot get finished queue metric")
+		}
+		q.Reset()
+	}
+
+	QueueMetric.WithLabelValues(
+		queue.Spec.TeamName,
+		queue.Name,
+		queue.Spec.Version,
+		string(queueState),
+		strconv.Itoa(queue.Spec.NoOfOrder),
+		strconv.Itoa(queue.Status.NoOfProcessed)).Set(float64(time.Now().Unix()))
 }
 
 func SetActivePromotionMetric(atpComp *s2hv1beta1.ActivePromotion) {
