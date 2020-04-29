@@ -288,10 +288,29 @@ func deleteDesiredMappingOutOfRange(team *s2hv1beta1.Team, maxDesiredMapping int
 		if len(desiredList) > maxDesiredMapping {
 			sortDesiredList(desiredList)
 			for i := len(desiredList) - 1; i > maxDesiredMapping-1; i-- {
-				delete(desiredMap[compName], desiredList[i].image)
+				desiredImage := desiredList[i].image
+				if isImageInActive(team, compName, desiredImage) {
+					break
+				}
+
+				delete(desiredMap[compName], desiredImage)
 			}
 		}
 	}
+}
+
+func isImageInActive(team *s2hv1beta1.Team, compName, desiredImage string) bool {
+	activeComponents := team.Status.ActiveComponents
+	if activeComp, ok := activeComponents[compName]; ok {
+		if activeComp.Spec.Name != "" {
+			activeImage := stringutils.ConcatImageString(activeComp.Spec.Repository, activeComp.Spec.Version)
+			if activeImage == desiredImage {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // sortDesiredList by timestamp DESC
