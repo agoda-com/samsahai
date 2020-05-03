@@ -40,7 +40,7 @@ import (
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-var _ = Describe("Staging Controller [e2e]", func() {
+var _ = Describe("[e2e] Staging controller", func() {
 	const (
 		verifyTime1s  = 1 * time.Second
 		verifyTime10s = 10 * time.Second
@@ -559,49 +559,4 @@ var _ = Describe("Staging Controller [e2e]", func() {
 		Expect(gjson.ValidBytes(data)).To(BeTrue())
 
 	}, 5)
-
-	// TODO: disable by phantomnat
-	XIt("should successfully clean all k8s resources in case of there are zombie pods", func(done Done) {
-		defer close(done)
-
-		authToken := "12345"
-
-		stagingCfgCtrl := configctrl.New(mgr)
-		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl, stagingCfgCtrl,
-			"", "", "", internal.StagingConfig{})
-
-		go stagingCtrl.Start(chStop)
-
-		By("Creating Config")
-		config := mockConfig
-		ctx := context.Background()
-		_ = runtimeClient.Delete(ctx, &config)
-		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
-
-		By("deploying nginx deployment, to pretend as zombie pod with same release name")
-		// TODO: create pod instead of deployment
-		nginx := deployNginx
-		Expect(runtimeClient.Create(context.TODO(), &nginx)).To(BeNil())
-
-		time.Sleep(5 * time.Second)
-
-		By("creating queue")
-		newQueue := queue.NewUpgradeQueue(teamName, namespace, "redis", "bitnami/redis", "5.0.5-debian-9-r160")
-		Expect(queueCtrl.Add(newQueue)).To(BeNil())
-
-		By("cleaning before")
-		err = wait.PollImmediate(1*time.Second, 30*time.Second, func() (ok bool, err error) {
-			queue := &v1beta1.Queue{}
-			err = runtimeClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: newQueue.Name}, queue)
-			if err != nil {
-				return false, nil
-			}
-			if queue.Status.IsConditionTrue(v1beta1.QueueCleanedBefore) {
-				ok = true
-				return
-			}
-			return
-		})
-		Expect(err).NotTo(HaveOccurred(), "Cleaning error")
-	}, 60)
 })

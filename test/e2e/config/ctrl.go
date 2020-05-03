@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,7 +20,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/util"
 )
 
-var _ = Describe("config controller [e2e]", func() {
+var _ = Describe("[e2e] Config controller", func() {
 	var (
 		controller internal.ConfigController
 		client     rclient.Client
@@ -84,6 +85,6 @@ var _ = Describe("config controller [e2e]", func() {
 
 		config = &s2hv1beta1.Config{}
 		err = client.Get(context.TODO(), types.NamespacedName{Name: teamName}, config)
-		Expect(err).To(HaveOccurred())
+		Expect(errors.IsNotFound(err)).To(BeTrue())
 	}, 10)
 })

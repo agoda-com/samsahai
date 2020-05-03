@@ -13,7 +13,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
-	"github.com/twitchtv/twirp"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -116,8 +115,8 @@ var (
 					},
 				},
 				redisCompName: {
-					stringutils.ConcatImageString("bitnami/redis", "5.0.7-debian-9-r56"): s2hv1beta1.DesiredImageTime{
-						Image:       &s2hv1beta1.Image{Repository: "bitnami/redis", Tag: "5.0.7-debian-9-r56"},
+					stringutils.ConcatImageString("bitnami/redis", "5.0.5-debian-9-r160"): s2hv1beta1.DesiredImageTime{
+						Image:       &s2hv1beta1.Image{Repository: "bitnami/redis", Tag: "5.0.5-debian-9-r160"},
 						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 					},
 				},
@@ -172,19 +171,20 @@ var (
 		},
 	}
 
-	stableMariaDB = s2hv1beta1.StableComponent{
+	stableSpecMariaDB = s2hv1beta1.StableComponentSpec{Name: mariaDBCompName, Version: "10.3.18-debian-9-r32", Repository: "bitnami/mariadb"}
+	stableMariaDB     = s2hv1beta1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{Name: mariaDBCompName, Namespace: stgNamespace},
-		Spec:       s2hv1beta1.StableComponentSpec{Name: mariaDBCompName, Version: "10.3.18-debian-9-r32", Repository: "bitnami/mariadb"},
+		Spec:       stableSpecMariaDB,
 	}
-
 	stableAtvMariaDB = s2hv1beta1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{Name: mariaDBCompName, Namespace: atvNamespace},
-		Spec:       s2hv1beta1.StableComponentSpec{Name: mariaDBCompName, Version: "10.3.18-debian-9-r32", Repository: "bitnami/mariadb"},
+		Spec:       stableSpecMariaDB,
 	}
 
-	stableRedis = s2hv1beta1.StableComponent{
+	stableSpecRedis = s2hv1beta1.StableComponentSpec{Name: redisCompName, Version: "5.0.5-debian-9-r160", Repository: "bitnami/redis"}
+	stableRedis     = s2hv1beta1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{Name: redisCompName, Namespace: stgNamespace},
-		Spec:       s2hv1beta1.StableComponentSpec{Name: redisCompName, Version: "5.0.5-debian-9-r160", Repository: "bitnami/redis"},
+		Spec:       stableSpecRedis,
 	}
 
 	mockDesiredCompList = &s2hv1beta1.DesiredComponentList{
@@ -240,8 +240,24 @@ var (
 			},
 		},
 	}
+	configStg = &s2hv1beta1.ConfigStaging{
+		Deployment: &deployConfig,
+	}
+	configAtp = &s2hv1beta1.ConfigActivePromotion{
+		Timeout:          metav1.Duration{Duration: 10 * time.Minute},
+		MaxHistories:     2,
+		TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+		OutdatedNotification: &s2hv1beta1.OutdatedNotification{
+			ExceedDuration:            metav1.Duration{Duration: 24 * time.Hour},
+			ExcludeWeekendCalculation: true,
+		},
+		Deployment: &deployConfig,
+	}
+	configReporter = &s2hv1beta1.ConfigReporter{
+		ReportMock: true,
+	}
 	compSource      = s2hv1beta1.UpdatingSource("public-registry")
-	redisConfigComp = s2hv1beta1.Component{
+	configCompRedis = s2hv1beta1.Component{
 		Name: redisCompName,
 		Chart: s2hv1beta1.ComponentChart{
 			Repository: "https://kubernetes-charts.storage.googleapis.com",
@@ -268,7 +284,7 @@ var (
 			},
 		},
 	}
-	wordpressConfigComp = s2hv1beta1.Component{
+	configCompWordpress = s2hv1beta1.Component{
 		Name: wordpressCompName,
 		Chart: s2hv1beta1.ComponentChart{
 			Repository: "https://kubernetes-charts.storage.googleapis.com",
@@ -316,56 +332,41 @@ var (
 			Labels: testLabels,
 		},
 		Spec: s2hv1beta1.ConfigSpec{
-			Staging: &s2hv1beta1.ConfigStaging{
-				Deployment: &deployConfig,
-			},
-			ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
-				Timeout:          metav1.Duration{Duration: 10 * time.Minute},
-				MaxHistories:     2,
-				TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
-				OutdatedNotification: &s2hv1beta1.OutdatedNotification{
-					ExceedDuration:            metav1.Duration{Duration: 24 * time.Hour},
-					ExcludeWeekendCalculation: true,
-				},
-				Deployment: &deployConfig,
-			},
-			Reporter: &s2hv1beta1.ConfigReporter{
-				ReportMock: true,
-			},
+			Staging:         configStg,
+			ActivePromotion: configAtp,
+			Reporter:        configReporter,
 			Components: []*s2hv1beta1.Component{
-				&redisConfigComp,
-				&wordpressConfigComp,
+				&configCompRedis,
+				&configCompWordpress,
+			},
+		},
+	}
+
+	mockConfigOnlyRedis = s2hv1beta1.Config{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   teamName,
+			Labels: testLabels,
+		},
+		Spec: s2hv1beta1.ConfigSpec{
+			Staging:         configStg,
+			ActivePromotion: configAtp,
+			Reporter:        configReporter,
+			Components: []*s2hv1beta1.Component{
+				&configCompRedis,
 			},
 		},
 	}
 )
 
-var _ = Describe("Main Controller [e2e]", func() {
+var _ = Describe("[e2e] Main controller", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
-
 		chStop = make(chan struct{})
 
 		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
 
-		adminClient, err := crclient.New(adminRestConfig, crclient.Options{Scheme: scheme.Scheme})
-		Expect(err).NotTo(HaveOccurred(), "should create runtime client successfully")
-
-		ctx := context.TODO()
-		// get token for samsahai user
 		restCfg = rest.CopyConfig(adminRestConfig)
-		restCfg.Username = ""
-		// get token
-		samsahaiSA := &corev1.ServiceAccount{}
-		err = adminClient.Get(ctx, types.NamespacedName{Name: "samsahai", Namespace: samsahaiSystemNs}, samsahaiSA)
-		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get sa: %s/%s", samsahaiSystemNs, "samsahai"))
-		Expect(len(samsahaiSA.Secrets)).To(BeNumerically(">=", 1))
-		samsahaiSecret := &corev1.Secret{}
-		err = adminClient.Get(ctx, types.NamespacedName{Namespace: samsahaiSystemNs, Name: samsahaiSA.Secrets[0].Name}, samsahaiSecret)
-		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get secret: %s/%s", samsahaiSystemNs, samsahaiSA.Secrets[0].Name))
-		restCfg.BearerToken = string(samsahaiSecret.Data["token"])
-
 		mgr, err = manager.New(restCfg, manager.Options{MetricsBindAddress: "0"})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
@@ -413,7 +414,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		By("Creating Secret")
 		secret := mockSecret
-		_ = runtimeClient.Delete(context.TODO(), &secret)
 		_ = runtimeClient.Create(context.TODO(), &secret)
 	}, 60)
 
@@ -539,7 +539,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 	It("should successfully promote an active environment", func(done Done) {
 		defer close(done)
 		ctx := context.TODO()
-		preActiveNs := ""
 
 		By("Creating Config")
 		config := mockConfig
@@ -671,21 +670,10 @@ var _ = Describe("Main Controller [e2e]", func() {
 		atpRes := <-atpResCh
 
 		By("Start staging controller for pre-active")
-		preActiveNs = atpRes.Status.TargetNamespace
+		preActiveNs := atpRes.Status.TargetNamespace
 		{
-			stagingCfg := rest.CopyConfig(restCfg)
-			stagingCfg.Username = ""
-			// get token
-			stagingSA := &corev1.ServiceAccount{}
-			err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: preActiveNs}, stagingSA)
-			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get sa: %s", internal.StagingCtrlName))
-			Expect(len(stagingSA.Secrets)).To(BeNumerically(">=", 1))
-			stagingSecret := &corev1.Secret{}
-			err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: preActiveNs, Name: stagingSA.Secrets[0].Name}, stagingSecret)
-			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get secret: %s", stagingSA.Secrets[0].Name))
-			stagingCfg.BearerToken = string(stagingSecret.Data["token"])
-
 			// create mgr from config
+			stagingCfg := rest.CopyConfig(restCfg)
 			stagingMgr, err := manager.New(stagingCfg, manager.Options{
 				Namespace:          preActiveNs,
 				MetricsBindAddress: "0",
@@ -706,7 +694,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		By("Checking pre-active namespace has been set")
 		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: atp.Name}, &teamComp))
-
 		Expect(teamComp.Status.Namespace.PreActive).ToNot(BeEmpty())
 		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
 		Expect(atpRes.Status.PreviousActiveNamespace).To(Equal(atvNamespace))
@@ -750,6 +737,12 @@ var _ = Describe("Main Controller [e2e]", func() {
 		err = runtimeClient.Get(ctx, types.NamespacedName{Name: atvNamespace}, &atvNs)
 		Expect(errors.IsNotFound(err)).To(BeTrue())
 
+		By("Current active components should be set")
+		teamComp = s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(len(teamComp.Status.ActiveComponents)).ToNot(BeZero())
+
 		By("ActivePromotionHistory should be created")
 		atpHists := &s2hv1beta1.ActivePromotionHistoryList{}
 		listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
@@ -760,12 +753,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(atpHists.Items[1].Name).ToNot(Equal(atpHist.Name + "-1"))
 		Expect(atpHists.Items[1].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())
 
-		By("Current active components should be set")
-		teamComp = s2hv1beta1.Team{}
-		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
-		Expect(err).To(BeNil())
-		Expect(len(teamComp.Status.ActiveComponents)).ToNot(BeZero())
-
 		By("Public API")
 		{
 			By("Get team")
@@ -773,7 +760,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 				_, data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(data).NotTo(BeNil())
-
 				Expect(gjson.GetBytes(data, "teamName").Str).To(Equal(team.Name))
 			}
 
@@ -810,7 +796,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 	It("should successfully promote an active environment even demote timeout", func(done Done) {
 		defer close(done)
-
 		ctx := context.TODO()
 
 		By("Creating Config")
@@ -1030,7 +1015,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 	It("should successfully rollback and delete active promotion", func(done Done) {
 		defer close(done)
-
 		ctx := context.TODO()
 
 		By("Creating Config")
@@ -1128,18 +1112,18 @@ var _ = Describe("Main Controller [e2e]", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
 
+		By("Current active components should not be set")
+		teamComp := s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
+
 		atpHists := &s2hv1beta1.ActivePromotionHistoryList{}
 		listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
 		err = runtimeClient.List(context.TODO(), atpHists, listOpt)
 		Expect(err).To(BeNil())
 		Expect(len(atpHists.Items)).To(Equal(1))
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())
-
-		By("Current active components should not be set")
-		teamComp := s2hv1beta1.Team{}
-		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
-		Expect(err).To(BeNil())
-		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
 	}, 60)
 
 	It("should rollback active environment timeout", func(done Done) {
@@ -1195,7 +1179,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 	It("should successfully delete config when delete team", func(done Done) {
 		defer close(done)
-
 		ctx := context.TODO()
 
 		By("Creating Config")
@@ -1247,7 +1230,6 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 	It("should be error when creating team if config does not exist", func(done Done) {
 		defer close(done)
-
 		ctx := context.TODO()
 
 		By("Creating Team")
@@ -1353,7 +1335,7 @@ var _ = Describe("Main Controller [e2e]", func() {
 
 		By("Creating Config")
 		config := mockConfig
-		redisComp := redisConfigComp
+		redisComp := configCompRedis
 		redisComp.Image.Repository = "bitnami/rediss"
 		redisComp.Image.Pattern = "image-missing"
 		redisComp.Values = map[string]interface{}{
@@ -1605,110 +1587,126 @@ var _ = Describe("Main Controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify StableComponents error")
 	}, 100)
 
-	XIt("should correctly get image missing list", func(done Done) {
+	It("should successfully create outdated component when no any active namespace left but there are active components in team", func(done Done) {
 		defer close(done)
-
-		// TODO: should check image missing faster, maybe use the image that have less tags than bitnami/*
-
-		By("Starting Samsahai internal process")
-		go samsahaiCtrl.Start(chStop)
-
-		By("Starting http server")
-		mux := http.NewServeMux()
-		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
-		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
-		server := httptest.NewServer(mux)
-		defer server.Close()
-
 		ctx := context.TODO()
 
 		By("Creating Config")
-		config := mockConfig
+		config := mockConfigOnlyRedis
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
 		team := mockTeam
+		team.Status.ActiveComponents = map[string]s2hv1beta1.StableComponent{
+			redisCompName: {Spec: stableSpecRedis},
+		}
 		Expect(runtimeClient.Create(ctx, &team)).To(BeNil())
 
-		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-			namespace := corev1.Namespace{}
-			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+		By("Current active components should be set to Team")
+		teamComp := s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(len(teamComp.Status.ActiveComponents)).ToNot(BeZero())
+
+		By("Creating ActivePromotion")
+		atp := activePromotion
+		Expect(runtimeClient.Create(ctx, &atp)).To(BeNil())
+
+		By("Waiting pre-active environment is successfully created")
+		atpResCh := make(chan s2hv1beta1.ActivePromotion)
+		go func() {
+			atpTemp := s2hv1beta1.ActivePromotion{}
+			for {
+				_ = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
+				if atpTemp.Status.IsConditionTrue(s2hv1beta1.ActivePromotionCondPreActiveCreated) {
+					break
+				}
+				time.Sleep(500 * time.Millisecond)
+			}
+			atpResCh <- atpTemp
+		}()
+		atpRes := <-atpResCh
+
+		By("Checking pre-active namespace has been set")
+		teamComp = s2hv1beta1.Team{}
+		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).To(BeNil())
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
+		Expect(teamComp.Status.Namespace.PreActive).ToNot(BeEmpty())
+		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
+		Expect(atpRes.Status.PreviousActiveNamespace).To(BeEmpty())
+
+		By("Waiting ActivePromotion state to be `Deploying`")
+		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
+			atpComp := s2hv1beta1.ActivePromotion{}
+			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp); err != nil {
 				return false, nil
 			}
 
-			config := s2hv1beta1.Config{}
-			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
-			if err != nil {
-				return false, nil
+			if atpComp.Status.State == s2hv1beta1.ActivePromotionDeployingComponents {
+				return true, nil
 			}
 
-			return true, nil
+			return false, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+		Expect(err).NotTo(HaveOccurred(), "Change active promotion state to `Deploying` error")
 
-		By("Creating StableComponent")
-		smd := stableMariaDB
-		smd.Spec.Version = "10.3.18-debian-9-r32-missing"
-		Expect(runtimeClient.Create(ctx, &smd)).To(BeNil())
+		By("Updating ActivePromotion state to be `DestroyingPreActiveEnvironment`")
+		atpComp := s2hv1beta1.ActivePromotion{}
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp))
+		atpComp.Status.State = s2hv1beta1.ActivePromotionDestroyingPreActive
+		atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondPreActiveDestroyed, corev1.ConditionTrue, "failed")
+		Expect(runtimeClient.Update(ctx, &atpComp)).To(BeNil())
 
-		By("Set up RPC")
-		headers := make(http.Header)
-		headers.Set(internal.SamsahaiAuthHeader, samsahaiAuthToken)
-		ctx, err = twirp.WithHTTPRequestHeaders(ctx, headers)
-		Expect(err).NotTo(HaveOccurred(), "should set request headers successfully")
+		By("Delete ActivePromotion")
+		atpComp = s2hv1beta1.ActivePromotion{}
+		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp))
+		Expect(runtimeClient.Delete(context.TODO(), &atpComp)).To(BeNil())
 
-		By("RPC GetMissingVersion")
-		comp := &samsahairpc.TeamWithCurrentComponent{
-			TeamName: team.Name,
-			CompName: stableMariaDB.Name,
-			Image:    &samsahairpc.Image{Repository: stableMariaDB.Spec.Repository, Tag: stableMariaDB.Spec.Version},
-		}
-		imgList, err := samsahaiClient.GetMissingVersion(ctx, comp)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(imgList).NotTo(BeNil())
-		Expect(imgList.Images).To(BeNil(), "should not get image missing list")
+		By("Pre-active namespace should be deleted")
+		preActiveNs := atpComp.Status.TargetNamespace
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: preActiveNs}, &namespace)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
 
-		comp = &samsahairpc.TeamWithCurrentComponent{
-			TeamName: team.Name,
-			CompName: stableRedis.Name,
-			Image:    &samsahairpc.Image{Repository: stableRedis.Spec.Repository, Tag: stableRedis.Spec.Version},
-		}
-		imgList, err = samsahaiClient.GetMissingVersion(ctx, comp)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(imgList).NotTo(BeNil())
-		Expect(imgList.Images).NotTo(BeNil())
-		Expect(len(imgList.Images)).To(Equal(1), "should get image missing list")
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete pre-active namespace error")
 
-	}, 150)
+		By("ActivePromotion should be deleted")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			atpTemp := s2hv1beta1.ActivePromotion{}
+			err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
+
+		By("ActivePromotionHistory should be created")
+		atpHists := &s2hv1beta1.ActivePromotionHistoryList{}
+		listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
+		err = runtimeClient.List(context.TODO(), atpHists, listOpt)
+		Expect(err).To(BeNil())
+		Expect(len(atpHists.Items)).To(Equal(1))
+		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())
+	}, 60)
 })
 
-var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
+var _ = Describe("[e2e] Main controller promote on team creation", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
-
 		chStop = make(chan struct{})
 
 		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
 
-		adminClient, err := crclient.New(adminRestConfig, crclient.Options{Scheme: scheme.Scheme})
-		Expect(err).NotTo(HaveOccurred(), "should create runtime client successfully")
-
-		ctx := context.TODO()
-		// get token for samsahai user
 		restCfg = rest.CopyConfig(adminRestConfig)
-		restCfg.Username = ""
-		// get token
-		samsahaiSA := &corev1.ServiceAccount{}
-		err = adminClient.Get(ctx, types.NamespacedName{Name: "samsahai", Namespace: samsahaiSystemNs}, samsahaiSA)
-		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get sa: %s/%s", samsahaiSystemNs, "samsahai"))
-		Expect(len(samsahaiSA.Secrets)).To(BeNumerically(">=", 1))
-		samsahaiSecret := &corev1.Secret{}
-		err = adminClient.Get(ctx, types.NamespacedName{Namespace: samsahaiSystemNs, Name: samsahaiSA.Secrets[0].Name}, samsahaiSecret)
-		Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get secret: %s/%s", samsahaiSystemNs, samsahaiSA.Secrets[0].Name))
-		restCfg.BearerToken = string(samsahaiSecret.Data["token"])
-
 		mgr, err = manager.New(restCfg, manager.Options{MetricsBindAddress: "0"})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
@@ -1756,7 +1754,6 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 
 		By("Creating Secret")
 		secret := mockSecret
-		_ = runtimeClient.Delete(context.TODO(), &secret)
 		_ = runtimeClient.Create(context.TODO(), &secret)
 	}, 60)
 
@@ -1855,7 +1852,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		ctx := context.TODO()
 
 		By("Creating Config")
-		config := mockConfig
+		config := mockConfigOnlyRedis
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
@@ -1907,18 +1904,6 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		preActiveNs := atpRes.Status.TargetNamespace
 		{
 			stagingCfg := rest.CopyConfig(restCfg)
-			stagingCfg.Username = ""
-			// get token
-			stagingSA := &corev1.ServiceAccount{}
-			err = runtimeClient.Get(ctx, types.NamespacedName{Name: internal.StagingCtrlName, Namespace: preActiveNs}, stagingSA)
-			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get sa: %s", internal.StagingCtrlName))
-			Expect(len(stagingSA.Secrets)).To(BeNumerically(">=", 1))
-			stagingSecret := &corev1.Secret{}
-			err = runtimeClient.Get(ctx, types.NamespacedName{Namespace: preActiveNs, Name: stagingSA.Secrets[0].Name}, stagingSecret)
-			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("cannot get secret: %s", stagingSA.Secrets[0].Name))
-			stagingCfg.BearerToken = string(stagingSecret.Data["token"])
-
-			// create mgr from config
 			stagingMgr, err := manager.New(stagingCfg, manager.Options{
 				Namespace:          preActiveNs,
 				MetricsBindAddress: "0",
@@ -1949,11 +1934,26 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
 
-		By("Checking active namespace has been set")
+		By("Active namespace should be set")
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+			teamComp = s2hv1beta1.Team{}
+			if err := runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
+				return false, nil
+			}
+
+			if teamComp.Status.Namespace.Active == preActiveNs {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Active namespace is not set")
+
+		By("Current active components should not be set as it is first time promotion")
 		teamComp = s2hv1beta1.Team{}
 		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
 		Expect(err).To(BeNil())
-		Expect(teamComp.Status.Namespace.Active).To(Equal(preActiveNs))
+		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
 
 		By("ActivePromotionHistory should be created")
 		atpHists := &s2hv1beta1.ActivePromotionHistoryList{}
@@ -1962,12 +1962,6 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		Expect(err).To(BeNil())
 		Expect(len(atpHists.Items)).To(Equal(1))
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).To(BeNil())
-
-		By("Current active components should not be set as it is first time promotion")
-		teamComp = s2hv1beta1.Team{}
-		err = runtimeClient.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
-		Expect(err).To(BeNil())
-		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
 
 		By("Public API")
 		{
@@ -1994,12 +1988,12 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		}
 	}, 250)
 
-	It("should not set active namespace on new team creation", func(done Done) {
+	It("should not set active namespace on new team creation when failed active promotion", func(done Done) {
 		defer close(done)
 		ctx := context.TODO()
 
 		By("Creating Config")
-		config := mockConfig
+		config := mockConfigOnlyRedis
 		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
@@ -2021,7 +2015,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 
 			return true, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
+		Expect(err).NotTo(HaveOccurred(), "Create staging related objects error")
 
 		By("Waiting pre-active environment is successfully created")
 		atpResCh := make(chan s2hv1beta1.ActivePromotion)
@@ -2074,7 +2068,7 @@ var _ = Describe("Main Controller Promote On Team Creation [e2e]", func() {
 		Expect(runtimeClient.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp))
 		Expect(runtimeClient.Delete(context.TODO(), &atpComp)).To(BeNil())
 
-		By("pre-active namespace should be deleted")
+		By("Pre-active namespace should be deleted")
 		preActiveNs := atpComp.Status.TargetNamespace
 		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
