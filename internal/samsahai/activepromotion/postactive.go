@@ -78,33 +78,42 @@ func (c *controller) sendReport(ctx context.Context, atpComp *s2hv1beta1.ActiveP
 }
 
 func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
-	teamName := atpComp.Name
-	teamComp, err := c.getTeam(ctx, teamName)
+	configCtrl := c.s2hCtrl.GetConfigController()
+	config, err := configCtrl.Get(atpComp.Name)
 	if err != nil {
 		return err
 	}
 
-	configCtrl := c.s2hCtrl.GetConfigController()
-	atpNs := c.getTargetNamespace(atpComp)
+	targetNs := c.getTargetNamespace(atpComp)
 	if atpComp.Status.Result != s2hv1beta1.ActivePromotionSuccess {
-		atpNs = atpComp.Status.PreviousActiveNamespace
+		targetNs = atpComp.Status.PreviousActiveNamespace
 	}
 
 	stableCompList := &s2hv1beta1.StableComponentList{}
-	err = c.client.List(ctx, stableCompList, &client.ListOptions{Namespace: atpNs})
+	if targetNs != "" {
+		err = c.client.List(ctx, stableCompList, &client.ListOptions{Namespace: targetNs})
+		if err != nil {
+			return err
+		}
+	}
+
+	var currentActiveComps = make(map[string]s2hv1beta1.StableComponent)
+	for _, stableComp := range stableCompList.Items {
+		currentActiveComps[stableComp.Name] = s2hv1beta1.StableComponent{
+			Spec: stableComp.Spec,
+		}
+	}
+
+	teamComp, err := c.getTeam(ctx, atpComp.Name)
 	if err != nil {
 		return err
 	}
 
+	if len(currentActiveComps) == 0 {
+		currentActiveComps = teamComp.Status.ActiveComponents
+	}
 	desiredCompsImageCreatedTime := teamComp.Status.DesiredComponentImageCreatedTime
-	stableComps := stableCompList.Items
-
-	config, err := configCtrl.Get(teamName)
-	if err != nil {
-		return err
-	}
-
-	o := outdated.New(&config.Spec, desiredCompsImageCreatedTime, stableComps)
+	o := outdated.New(&config.Spec, desiredCompsImageCreatedTime, currentActiveComps)
 	atpStatus := &atpComp.Status
 	o.SetOutdatedDuration(atpStatus)
 	return nil
