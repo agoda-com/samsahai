@@ -24,6 +24,7 @@ const (
 	queueStateDeploying QueueMetricState           = "deploying"
 	queueStateTesting   QueueMetricState           = "testing"
 	queueStateCleaning  QueueMetricState           = "cleaning"
+	queueStateFinished  QueueMetricState           = "finished"
 )
 
 var logger = s2hlog.S2HLog.WithName("exporter")
@@ -79,11 +80,7 @@ func SetQueueMetric(queue *s2hv1beta1.Queue) {
 	case s2hv1beta1.CleaningBefore:
 		queueState = queueStateCleaning
 	case s2hv1beta1.CleaningAfter:
-		q, err := QueueMetric.CurryWith(prometheus.Labels{"component": queue.Name, "version": queue.Spec.Version})
-		if err != nil {
-			logger.Error(err, "cannot get finished queue metric")
-		}
-		q.Reset()
+		queueState = queueStateFinished
 	}
 
 	QueueMetric.WithLabelValues(
