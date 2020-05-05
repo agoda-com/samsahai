@@ -21,21 +21,20 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	crclient "sigs.k8s.io/controller-runtime/pkg/client"
+	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/agoda-com/samsahai/internal"
-	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
-
 	"github.com/agoda-com/samsahai/api/v1beta1"
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	"github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/k8s/helmrelease"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/internal/samsahai"
 	"github.com/agoda-com/samsahai/internal/staging"
+	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
 	httputil "github.com/agoda-com/samsahai/internal/util/http"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
@@ -47,17 +46,17 @@ var _ = Describe("[e2e] Staging controller", func() {
 	)
 
 	var (
-		stagingCtrl   internal.StagingController
-		queueCtrl     internal.QueueController
-		namespace     string
-		cfgCtrl       internal.ConfigController
-		runtimeClient crclient.Client
-		restCfg       *rest.Config
-		hrClient      internal.HelmReleaseClient
-		wgStop        *sync.WaitGroup
-		chStop        chan struct{}
-		mgr           manager.Manager
-		err           error
+		stagingCtrl internal.StagingController
+		queueCtrl   internal.QueueController
+		namespace   string
+		cfgCtrl     internal.ConfigController
+		client      rclient.Client
+		restCfg     *rest.Config
+		hrClient    internal.HelmReleaseClient
+		wgStop      *sync.WaitGroup
+		chStop      chan struct{}
+		mgr         manager.Manager
+		err         error
 	)
 
 	logger := s2hlog.Log.WithName(fmt.Sprintf("%s-test", internal.StagingCtrlName))
@@ -230,16 +229,16 @@ var _ = Describe("[e2e] Staging controller", func() {
 		mgr, err = manager.New(restCfg, manager.Options{Namespace: namespace, MetricsBindAddress: "0"})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
-		runtimeClient, err = crclient.New(restCfg, crclient.Options{Scheme: scheme.Scheme})
+		client, err = rclient.New(restCfg, rclient.Options{Scheme: scheme.Scheme})
 		Expect(err).NotTo(HaveOccurred(), "should create runtime client successfully")
 
-		queueCtrl = queue.New(namespace, runtimeClient)
+		queueCtrl = queue.New(namespace, client)
 		Expect(queueCtrl).ToNot(BeNil())
 
 		cfgCtrl = configctrl.New(mgr)
 		Expect(cfgCtrl).ToNot(BeNil())
 
-		hrClient = helmrelease.New(namespace, runtimeClient)
+		hrClient = helmrelease.New(namespace, client)
 		Expect(hrClient).NotTo(BeNil())
 
 		wgStop = &sync.WaitGroup{}
@@ -258,15 +257,15 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Deleting nginx deployment")
 		deploy := &deployNginx
-		_ = runtimeClient.Delete(ctx, deploy)
+		_ = client.Delete(ctx, deploy)
 
 		By("Deleting all teams")
-		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Team{}, crclient.MatchingLabels(testLabels))
+		err = client.DeleteAllOf(ctx, &s2hv1beta1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			teamList := s2hv1beta1.TeamList{}
-			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
-			err = runtimeClient.List(ctx, &teamList, listOpt)
+			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
+			err = client.List(ctx, &teamList, listOpt)
 			if err != nil && errors.IsNotFound(err) {
 				return true, nil
 			}
@@ -279,12 +278,12 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete all teams error")
 
 		By("Deleting all Configs")
-		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Config{}, crclient.MatchingLabels(testLabels))
+		err = client.DeleteAllOf(ctx, &s2hv1beta1.Config{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			configList := s2hv1beta1.ConfigList{}
-			listOpt := &crclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
-			err = runtimeClient.List(ctx, &configList, listOpt)
+			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
+			err = client.List(ctx, &configList, listOpt)
 			if err != nil && errors.IsNotFound(err) {
 				return true, nil
 			}
@@ -297,24 +296,24 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Deleting all configs error")
 
 		By("Deleting all StableComponents")
-		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, crclient.InNamespace(namespace))
+		err = client.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, rclient.InNamespace(namespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Deleting all Queues")
-		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.Queue{}, crclient.InNamespace(namespace))
+		err = client.DeleteAllOf(ctx, &s2hv1beta1.Queue{}, rclient.InNamespace(namespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Deleting all QueueHistories")
-		err = runtimeClient.DeleteAllOf(ctx, &s2hv1beta1.QueueHistory{}, crclient.InNamespace(namespace))
+		err = client.DeleteAllOf(ctx, &s2hv1beta1.QueueHistory{}, rclient.InNamespace(namespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		ql := &v1beta1.QueueList{}
-		err = runtimeClient.List(context.Background(), ql, &crclient.ListOptions{Namespace: namespace})
+		err = client.List(context.Background(), ql, &rclient.ListOptions{Namespace: namespace})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(ql.Items).To(BeEmpty())
 
 		sl := &v1beta1.StableComponentList{}
-		err = runtimeClient.List(context.Background(), sl, &crclient.ListOptions{Namespace: namespace})
+		err = client.List(context.Background(), sl, &rclient.ListOptions{Namespace: namespace})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sl.Items).To(BeEmpty())
 
@@ -336,12 +335,12 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Creating Config")
 		config := mockConfig
 		ctx := context.Background()
-		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Verifying config has been created")
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			config := &s2hv1beta1.Config{}
-			err = runtimeClient.Get(ctx, types.NamespacedName{Name: teamName}, config)
+			err = client.Get(ctx, types.NamespacedName{Name: teamName}, config)
 			if err != nil {
 				return false, nil
 			}
@@ -364,7 +363,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		testingTimeout := cfg.Spec.Staging.Deployment.TestRunner.Timeout
 
 		swp := stableWordPress
-		Expect(runtimeClient.Create(context.TODO(), &swp)).To(BeNil())
+		Expect(client.Create(context.TODO(), &swp)).To(BeNil())
 
 		By("Creating Queue")
 		newQueue := queue.NewUpgradeQueue(teamName, namespace,
@@ -374,7 +373,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Deploying")
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			queue := &v1beta1.Queue{}
-			err = runtimeClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: newQueue.Name}, queue)
+			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: newQueue.Name}, queue)
 			if err != nil {
 				return false, nil
 			}
@@ -395,7 +394,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Collecting")
 		err = wait.PollImmediate(2*time.Second, 30*time.Second, func() (ok bool, err error) {
 			stableComp := &v1beta1.StableComponent{}
-			err = runtimeClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: newQueue.Name}, stableComp)
+			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: newQueue.Name}, stableComp)
 			if err != nil {
 				return false, nil
 			}
@@ -408,7 +407,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		redisServiceName := fmt.Sprintf("%s-redis-master", namespace)
 
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
-			queue, err := queue.EnsurePreActiveComponents(runtimeClient, teamName, namespace)
+			queue, err := queue.EnsurePreActiveComponents(client, teamName, namespace)
 			if err != nil {
 				logger.Error(err, "cannot ensure pre-active components")
 				return false, nil
@@ -419,7 +418,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 			}
 
 			svc := corev1.Service{}
-			err = runtimeClient.Get(context.TODO(), crclient.ObjectKey{Name: redisServiceName, Namespace: namespace}, &svc)
+			err = client.Get(context.TODO(), rclient.ObjectKey{Name: redisServiceName, Namespace: namespace}, &svc)
 			if err != nil {
 				return
 			}
@@ -435,17 +434,17 @@ var _ = Describe("[e2e] Staging controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Ensure Pre Active error")
 
-		q, err := queue.EnsurePreActiveComponents(runtimeClient, teamName, namespace)
+		q, err := queue.EnsurePreActiveComponents(client, teamName, namespace)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(q.IsDeploySuccess()).To(BeTrue())
 		Expect(q.IsTestSuccess()).To(BeTrue())
 
 		By("Delete Pre Active Queue")
-		Expect(queue.DeletePreActiveQueue(runtimeClient, namespace))
+		Expect(queue.DeletePreActiveQueue(client, namespace))
 
 		By("Demote from Active")
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
-			queue, err := queue.EnsureDemoteFromActiveComponents(runtimeClient, teamName, namespace)
+			queue, err := queue.EnsureDemoteFromActiveComponents(client, teamName, namespace)
 			if err != nil {
 				logger.Error(err, "cannot ensure demote from active components")
 				return false, nil
@@ -462,11 +461,11 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Demote from Active error")
 
 		By("Delete Demote from Active Queue")
-		Expect(queue.DeleteDemoteFromActiveQueue(runtimeClient, namespace))
+		Expect(queue.DeleteDemoteFromActiveQueue(client, namespace))
 
 		By("Promote to Active")
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
-			queue, err := queue.EnsurePromoteToActiveComponents(runtimeClient, teamName, namespace)
+			queue, err := queue.EnsurePromoteToActiveComponents(client, teamName, namespace)
 			if err != nil {
 				logger.Error(err, "cannot ensure promote to active components")
 				return false, nil
@@ -483,7 +482,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Promote to Active error")
 
 		By("Delete Promote to Active Queue")
-		Expect(queue.DeletePromoteToActiveQueue(runtimeClient, namespace))
+		Expect(queue.DeletePromoteToActiveQueue(client, namespace))
 
 	}, 300)
 
@@ -496,16 +495,16 @@ var _ = Describe("[e2e] Staging controller", func() {
 		config.Spec.Staging.Deployment.Timeout = metav1.Duration{Duration: 10 * time.Second}
 		config.Spec.Components[0].Values["master"].(map[string]interface{})["command"] = "exit 1"
 		ctx := context.Background()
-		Expect(runtimeClient.Create(ctx, &config)).To(BeNil())
+		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
 		team := mockTeam
-		Expect(runtimeClient.Create(context.TODO(), &team)).To(BeNil())
+		Expect(client.Create(context.TODO(), &team)).To(BeNil())
 
 		authToken := "12345"
 		s2hConfig := internal.SamsahaiConfig{SamsahaiCredential: internal.SamsahaiCredential{InternalAuthToken: authToken}}
 		samsahaiCtrl := samsahai.New(mgr, namespace, s2hConfig,
-			samsahai.WithClient(runtimeClient),
+			samsahai.WithClient(client),
 			samsahai.WithDisableLoaders(true, true, true))
 		server := httptest.NewServer(samsahaiCtrl)
 		defer server.Close()
@@ -518,11 +517,11 @@ var _ = Describe("[e2e] Staging controller", func() {
 		go stagingCtrl.Start(chStop)
 
 		redis := queue.NewUpgradeQueue(teamName, namespace, "redis", "bitnami/redis", "5.0.5-debian-9-r160")
-		Expect(runtimeClient.Create(context.TODO(), redis)).To(BeNil())
+		Expect(client.Create(context.TODO(), redis)).To(BeNil())
 
 		qhl := &v1beta1.QueueHistoryList{}
 		err = wait.PollImmediate(1*time.Second, 60*time.Second, func() (ok bool, err error) {
-			err = runtimeClient.List(context.TODO(), qhl, &crclient.ListOptions{})
+			err = client.List(context.TODO(), qhl, &rclient.ListOptions{})
 			if err != nil || len(qhl.Items) < 1 {
 				return false, nil
 			}
@@ -535,7 +534,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
 			q := &v1beta1.Queue{}
-			err = runtimeClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: "redis"}, q)
+			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: "redis"}, q)
 			if err != nil || q.Status.State != v1beta1.Waiting || q.Spec.Type != v1beta1.QueueTypeUpgrade {
 				return false, nil
 			}
