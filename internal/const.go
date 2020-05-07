@@ -1,7 +1,7 @@
 package internal
 
 import (
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 )
 
 const (
@@ -55,6 +55,6 @@ const (
 )
 
 type ConfigurationJSON struct {
-	GitRevision   string                 `json:"gitRevision"`
-	Configuration *s2hv1beta1.ConfigSpec `json:"config"`
+	GitRevision   string            `json:"gitRevision"`
+	Configuration *s2hv1.ConfigSpec `json:"config"`
 }

@@ -19,11 +19,11 @@ KUBEBUILDER_VERSION 	?= 2.2.0
 KUBEBULIDER_FILENAME	= kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
 KUBEBUILDER_PATH		?= /usr/local/kubebuilder/
 GORELEASER_VERSION		?= 0.124.1
-K3S_DOCKER_IMAGE 		?= rancher/k3s:v0.9.1
+K3S_DOCKER_IMAGE 		?= rancher/k3s:v1.18.2-rc2-k3s1
 KUBECONFIG 				= /tmp/s2h/k3s-kubeconfig
 K3S_DOCKER_NAME			?= s2h-k3s-server
 K3S_PORT				?= 7443
-K8S_VERSION				?= 1.15.7
+K8S_VERSION				?= 1.18.0
 KUSTOMIZE_VERSION		?= 3.5.3
 HELM_VERSION			?= 3.0.2
 POD_NAMESPACE			?= default
@@ -486,7 +486,7 @@ CONTROLLER_GEN=go run $$GOPATH/pkg/mod/github.com/phantomnat/controller-tools@v0
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	go get sigs.k8s.io/controller-tools
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." output:crd:artifacts:config=config/crds output:none
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." crd:crdVersions=v1 output:crd:artifacts:config=config/crds output:none
 
 # Generate code
 generate: controller-gen

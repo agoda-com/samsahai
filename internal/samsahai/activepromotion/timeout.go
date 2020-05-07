@@ -3,7 +3,7 @@ package activepromotion
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 )
 
@@ -16,7 +16,7 @@ const (
 	timeoutActiveDemotionForRollback timeoutType = "ActiveDemotionForRollbackTimeout"
 )
 
-func (c *controller) isTimeoutFromConfig(atpComp *s2hv1beta1.ActivePromotion, timeoutType timeoutType) (bool, error) {
+func (c *controller) isTimeoutFromConfig(atpComp *s2hv1.ActivePromotion, timeoutType timeoutType) (bool, error) {
 	configCtrl := c.s2hCtrl.GetConfigController()
 
 	var timeout metav1.Duration
@@ -25,16 +25,16 @@ func (c *controller) isTimeoutFromConfig(atpComp *s2hv1beta1.ActivePromotion, ti
 	switch timeoutType {
 	case timeoutActivePromotion:
 		timeout = c.getActivePromotionTimeout(atpComp.Name, configCtrl)
-		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondStarted)
+		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1.ActivePromotionCondStarted)
 	case timeoutActiveDemotion:
 		timeout = c.getActiveDemotionTimeout(atpComp.Name, configCtrl)
-		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondActiveDemotionStarted)
+		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1.ActivePromotionCondActiveDemotionStarted)
 	case timeoutActivePromotionRollback:
 		timeout = c.getActivePromotionRollbackTimeout(atpComp.Name, configCtrl)
-		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondRollbackStarted)
+		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1.ActivePromotionCondRollbackStarted)
 	case timeoutActiveDemotionForRollback:
 		timeout = c.getActiveDemotionTimeout(atpComp.Name, configCtrl)
-		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondRollbackStarted)
+		startedTime = atpComp.Status.GetConditionLatestTime(s2hv1.ActivePromotionCondRollbackStarted)
 	}
 
 	if startedTime == nil {

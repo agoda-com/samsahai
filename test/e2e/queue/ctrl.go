@@ -9,7 +9,7 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	"github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/queue"
 )
@@ -70,7 +70,7 @@ var _ = Describe("queue controller [e2e]", func() {
 		defer close(done)
 
 		var err error
-		var first *v1beta1.Queue
+		var first *v1.Queue
 		var alpine390 = queue.NewUpgradeQueue(teamName, namespace, "alpine", "alpine", "3.9.0")
 		var alpine391 = queue.NewUpgradeQueue(teamName, namespace, "alpine", "alpine", "3.9.1")
 		var alpine392 = queue.NewUpgradeQueue(teamName, namespace, "alpine", "alpine", "3.9.2")

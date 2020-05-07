@@ -5,12 +5,12 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/queue"
 )
 
-func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	teamName := atpComp.Name
 	targetNs := c.getTargetNamespace(atpComp)
 	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs)
@@ -31,36 +31,36 @@ func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1beta1.Acti
 	}
 
 	if len(q.Status.ImageMissingList) > 0 {
-		atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondVerified, corev1.ConditionTrue,
+		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondVerified, corev1.ConditionTrue,
 			"Image missing")
 	}
 
 	if atpComp.IsActivePromotionFailure() || atpComp.IsActivePromotionCanceled() {
 		logger.Debug("destroying pre-active environment due to failure or cancel",
 			"team", teamName, "namespace", targetNs)
-		atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondResultCollected, corev1.ConditionTrue,
+		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondResultCollected, corev1.ConditionTrue,
 			"Result has been collected")
-		atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondActivePromoted, corev1.ConditionFalse,
+		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActivePromoted, corev1.ConditionFalse,
 			c.getActivePromotionVerificationReason(atpComp))
-		atpComp.SetState(s2hv1beta1.ActivePromotionDestroyingPreActive, "Destroying pre-active environment")
+		atpComp.SetState(s2hv1.ActivePromotionDestroyingPreActive, "Destroying pre-active environment")
 
 		return nil
 	}
 
-	atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondActiveDemotionStarted, corev1.ConditionTrue,
+	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemotionStarted, corev1.ConditionTrue,
 		"Active demotion has been started")
-	atpComp.SetState(s2hv1beta1.ActivePromotionDemoting, "Demoting an active environment")
+	atpComp.SetState(s2hv1.ActivePromotionDemoting, "Demoting an active environment")
 
 	return nil
 }
 
-func (c *controller) getActivePromotionVerificationReason(atpComp *s2hv1beta1.ActivePromotion) string {
+func (c *controller) getActivePromotionVerificationReason(atpComp *s2hv1.ActivePromotion) string {
 	if atpComp.Status.IsTimeout {
 		return "Active promotion has been timeout"
 	}
 
 	for _, cond := range atpComp.Status.Conditions {
-		if cond.Type == s2hv1beta1.ActivePromotionCondVerified {
+		if cond.Type == s2hv1.ActivePromotionCondVerified {
 			return cond.Message
 		}
 	}

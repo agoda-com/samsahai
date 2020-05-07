@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	"github.com/agoda-com/samsahai/api/v1"
 )
 
 type DeployEngine interface {
@@ -12,7 +12,7 @@ type DeployEngine interface {
 	GetValues() (map[string][]byte, error)
 
 	// Create creates environment
-	Create(refName string, comp *v1beta1.Component, parentComp *v1beta1.Component, values map[string]interface{}) error
+	Create(refName string, comp *v1.Component, parentComp *v1.Component, values map[string]interface{}) error
 
 	// Delete deletes environment
 	Delete(refName string) error
@@ -21,7 +21,7 @@ type DeployEngine interface {
 	ForceDelete(refName string) error
 
 	// IsReady checks the environment is ready to use or not
-	IsReady(queue *v1beta1.Queue) (bool, error)
+	IsReady(queue *v1.Queue) (bool, error)
 
 	// GetLabelSelector returns map of label for select the components that created by the engine
 	GetLabelSelectors(refName string) map[string]string

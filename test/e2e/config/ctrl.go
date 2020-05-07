@@ -13,7 +13,7 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/util"
@@ -57,7 +57,7 @@ var _ = Describe("config controller [e2e]", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		obj, _ := util.MustParseYAMLtoRuntimeObject(yamlTeam)
-		config, _ := obj.(*s2hv1beta1.Config)
+		config, _ := obj.(*s2hv1.Config)
 		Expect(client.Create(ctx, config)).To(BeNil())
 
 		By("Get Config")
@@ -82,7 +82,7 @@ var _ = Describe("config controller [e2e]", func() {
 		By("Delete Config")
 		_ = controller.Delete(teamName)
 
-		config = &s2hv1beta1.Config{}
+		config = &s2hv1.Config{}
 		err = client.Get(context.TODO(), types.NamespacedName{Name: teamName}, config)
 		Expect(err).To(HaveOccurred())
 	}, 10)

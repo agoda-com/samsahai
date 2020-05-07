@@ -24,12 +24,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
+func (c *controller) collectResult(queue *s2hv1.Queue) error {
 	// check deploy and test result
 
 	if queue.Status.KubeZipLog == "" {
@@ -47,7 +47,7 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 
 	// Queue will finished if type are Active promotion related
 	if queue.IsActivePromotionQueue() {
-		return c.updateQueueWithState(queue, s2hv1beta1.Finished)
+		return c.updateQueueWithState(queue, s2hv1.Finished)
 	}
 
 	// Create queue history
@@ -59,14 +59,14 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 		return err
 	}
 
-	queue.Status.SetCondition(s2hv1beta1.QueueCleaningAfterStarted, corev1.ConditionTrue,
+	queue.Status.SetCondition(s2hv1.QueueCleaningAfterStarted, corev1.ConditionTrue,
 		"starts cleaning the namespace after running task")
 
 	// made queue to clean after state
-	return c.updateQueueWithState(queue, s2hv1beta1.CleaningAfter)
+	return c.updateQueueWithState(queue, s2hv1.CleaningAfter)
 }
 
-func (c *controller) setStableAndSendReport(queue *s2hv1beta1.Queue) error {
+func (c *controller) setStableAndSendReport(queue *s2hv1.Queue) error {
 	isDeploySuccess, isTestSuccess, isReverify := queue.IsDeploySuccess(), queue.IsTestSuccess(), queue.IsReverify()
 
 	compUpgradeStatus := rpc.ComponentUpgrade_UpgradeStatus_FAILURE
@@ -87,7 +87,7 @@ func (c *controller) setStableAndSendReport(queue *s2hv1beta1.Queue) error {
 	return nil
 }
 
-func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
+func (c *controller) createQueueHistory(q *s2hv1.Queue) error {
 	ctx := context.TODO()
 
 	if err := c.deleteQueueHistoryOutOfRange(ctx, c.namespace); err != nil {
@@ -95,8 +95,8 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 	}
 
 	now := metav1.Now()
-	spec := s2hv1beta1.QueueHistorySpec{
-		Queue: &s2hv1beta1.Queue{
+	spec := s2hv1.QueueHistorySpec{
+		Queue: &s2hv1.Queue{
 			Spec:   q.Spec,
 			Status: q.Status,
 		},
@@ -108,7 +108,7 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 		CreatedAt:        &now,
 	}
 
-	history := &s2hv1beta1.QueueHistory{
+	history := &s2hv1.QueueHistory{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      q.Status.QueueHistoryName,
 			Namespace: c.namespace,
@@ -117,7 +117,7 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 		Spec: spec,
 	}
 
-	fetched := &s2hv1beta1.QueueHistory{}
+	fetched := &s2hv1.QueueHistory{}
 	err := c.client.Get(ctx, types.NamespacedName{Name: history.Name, Namespace: history.Namespace}, fetched)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -136,7 +136,7 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 }
 
 func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace string) error {
-	queueHists := s2hv1beta1.QueueHistoryList{}
+	queueHists := s2hv1.QueueHistoryList{}
 	if err := c.client.List(ctx, &queueHists, &client.ListOptions{Namespace: namespace}); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil
@@ -188,10 +188,10 @@ func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace
 }
 
 // setStableComponent creates or updates StableComponent to match with Queue
-func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
+func (c *controller) setStableComponent(queue *s2hv1.Queue) (err error) {
 	const updatedBy = "samsahai"
 
-	stableComp := &s2hv1beta1.StableComponent{}
+	stableComp := &s2hv1.StableComponent{}
 	err = c.client.Get(
 		context.TODO(),
 		types.NamespacedName{Namespace: queue.GetNamespace(), Name: queue.GetName()},
@@ -200,19 +200,19 @@ func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 		now := metav1.Now()
 		stableLabels := internal.GetDefaultLabels(c.teamName)
 		stableLabels["app"] = queue.Name
-		stableComp := &s2hv1beta1.StableComponent{
+		stableComp := &s2hv1.StableComponent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      queue.Name,
 				Namespace: queue.Namespace,
 				Labels:    stableLabels,
 			},
-			Spec: s2hv1beta1.StableComponentSpec{
+			Spec: s2hv1.StableComponentSpec{
 				Name:       queue.Spec.Name,
 				Version:    queue.Spec.Version,
 				Repository: queue.Spec.Repository,
 				UpdatedBy:  updatedBy,
 			},
-			Status: s2hv1beta1.StableComponentStatus{
+			Status: s2hv1.StableComponentStatus{
 				CreatedAt: &now,
 				UpdatedAt: &now,
 			},
@@ -252,7 +252,7 @@ func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 // createDeploymentZipLogs creates log files in zip format
 //
 // output is base64 encoded string of the zif file
-func (c *controller) createDeploymentZipLogs(q *s2hv1beta1.Queue) (string, error) {
+func (c *controller) createDeploymentZipLogs(q *s2hv1.Queue) (string, error) {
 	pods := &corev1.PodList{}
 	err := c.client.List(context.TODO(), pods, &client.ListOptions{})
 	if err != nil {
@@ -376,7 +376,7 @@ func execCommand(cmd string, args ...string) []byte {
 	return out
 }
 
-func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_UpgradeStatus, queue *s2hv1beta1.Queue) error {
+func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_UpgradeStatus, queue *s2hv1.Queue) error {
 	var err error
 	headers := make(http.Header)
 	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
@@ -416,7 +416,7 @@ func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_Upgr
 	return nil
 }
 
-func (c *controller) getIssueType(imageMissingList []*rpc.Image, queue *s2hv1beta1.Queue) rpc.ComponentUpgrade_IssueType {
+func (c *controller) getIssueType(imageMissingList []*rpc.Image, queue *s2hv1.Queue) rpc.ComponentUpgrade_IssueType {
 	switch {
 	case len(imageMissingList) > 0:
 		return rpc.ComponentUpgrade_IssueType_IMAGE_MISSING
@@ -429,7 +429,7 @@ func (c *controller) getIssueType(imageMissingList []*rpc.Image, queue *s2hv1bet
 	}
 }
 
-func (c *controller) getReverificationStatus(queue *s2hv1beta1.Queue) rpc.ComponentUpgrade_ReverificationStatus {
+func (c *controller) getReverificationStatus(queue *s2hv1.Queue) rpc.ComponentUpgrade_ReverificationStatus {
 	if !queue.IsReverify() {
 		return rpc.ComponentUpgrade_ReverificationStatus_UNKNOWN
 	}

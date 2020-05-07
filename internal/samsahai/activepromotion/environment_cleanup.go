@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/k8s/helmrelease"
@@ -28,7 +28,7 @@ const (
 	previousActiveEnvirontment envType = "previousActive"
 )
 
-func (c *controller) destroyPreviousActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) destroyPreviousActiveEnvironment(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	teamName := atpComp.Name
 	prevNs := atpComp.Status.PreviousActiveNamespace
 	destroyedTime := atpComp.Status.DestroyedTime
@@ -38,11 +38,11 @@ func (c *controller) destroyPreviousActiveEnvironment(ctx context.Context, atpCo
 
 	logger.Debug("previous active namespace has been destroyed",
 		"team", teamName, "status", atpComp.Status.Result, "namespace", prevNs)
-	atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondPreviousActiveDestroyed, corev1.ConditionTrue,
+	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondPreviousActiveDestroyed, corev1.ConditionTrue,
 		"Previous active namespace has been destroyed")
-	atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondFinished, corev1.ConditionTrue,
+	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondFinished, corev1.ConditionTrue,
 		"Active promotion process has been finished")
-	atpComp.SetState(s2hv1beta1.ActivePromotionFinished, "Completed")
+	atpComp.SetState(s2hv1.ActivePromotionFinished, "Completed")
 
 	return nil
 }
@@ -68,27 +68,27 @@ func (c *controller) destroyPreviousActiveEnvironmentAt(ctx context.Context, tea
 	return nil
 }
 
-func (c *controller) destroyPreActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) destroyPreActiveEnvironment(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	targetNs := c.getTargetNamespace(atpComp)
 	teamName := atpComp.Name
 
-	startedCleaningTime := atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondActivePromoted)
+	startedCleaningTime := atpComp.Status.GetConditionLatestTime(s2hv1.ActivePromotionCondActivePromoted)
 	if err := c.ensureDestroyEnvironment(ctx, preActiveEnvirontment, teamName, targetNs, startedCleaningTime); err != nil {
 		return err
 	}
 
 	logger.Debug("pre-active environment has been destroyed",
 		"team", teamName, "status", atpComp.Status.Result, "namespace", targetNs)
-	atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondPreActiveDestroyed, corev1.ConditionTrue,
+	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondPreActiveDestroyed, corev1.ConditionTrue,
 		"Pre-active environment has been destroyed")
-	atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondFinished, corev1.ConditionTrue,
+	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondFinished, corev1.ConditionTrue,
 		"Active promotion process has been finished")
-	atpComp.SetState(s2hv1beta1.ActivePromotionFinished, "Completed")
+	atpComp.SetState(s2hv1.ActivePromotionFinished, "Completed")
 
 	return nil
 }
 
-func (c *controller) destroyActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion, startedCleanupTime *metav1.Time) error {
+func (c *controller) destroyActiveEnvironment(ctx context.Context, atpComp *s2hv1.ActivePromotion, startedCleanupTime *metav1.Time) error {
 	teamName := atpComp.Name
 	prevNs := atpComp.Status.PreviousActiveNamespace
 	if err := c.ensureDestroyEnvironment(ctx, activeEnvirontment, teamName, prevNs, startedCleanupTime); err != nil {

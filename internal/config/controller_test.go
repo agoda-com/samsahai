@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
@@ -16,20 +16,20 @@ func TestConfig(t *testing.T) {
 }
 
 var _ = Describe("Config Controller", func() {
-	compSource := s2hv1beta1.UpdatingSource("public-registry")
+	compSource := s2hv1.UpdatingSource("public-registry")
 	redisCompName := "redis"
-	redisConfigComp := s2hv1beta1.Component{
+	redisConfigComp := s2hv1.Component{
 		Name: redisCompName,
-		Chart: s2hv1beta1.ComponentChart{
+		Chart: s2hv1.ComponentChart{
 			Repository: "https://kubernetes-charts.storage.googleapis.com",
 			Name:       redisCompName,
 		},
-		Image: s2hv1beta1.ComponentImage{
+		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/redis",
 			Pattern:    "5.*debian-9.*",
 		},
 		Source: &compSource,
-		Values: s2hv1beta1.ComponentValues{
+		Values: s2hv1.ComponentValues{
 			"image": map[string]interface{}{
 				"repository": "bitnami/redis",
 				"pullPolicy": "IfNotPresent",
@@ -46,13 +46,13 @@ var _ = Describe("Config Controller", func() {
 		},
 	}
 
-	mockConfig := s2hv1beta1.ConfigSpec{
-		Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
+	mockConfig := s2hv1.ConfigSpec{
+		Envs: map[s2hv1.EnvType]s2hv1.ChartValuesURLs{
 			"staging": map[string][]string{
 				redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
 			},
 		},
-		Components: []*s2hv1beta1.Component{
+		Components: []*s2hv1.Component{
 			&redisConfigComp,
 		},
 	}
@@ -61,9 +61,9 @@ var _ = Describe("Config Controller", func() {
 		g := NewWithT(GinkgoT())
 
 		config := mockConfig
-		compValues, err := configctrl.GetEnvValues(&config, s2hv1beta1.EnvStaging)
+		compValues, err := configctrl.GetEnvValues(&config, s2hv1.EnvStaging)
 		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(compValues).To(Equal(map[string]s2hv1beta1.ComponentValues{
+		g.Expect(compValues).To(Equal(map[string]s2hv1.ComponentValues{
 			redisCompName: {
 				"master": map[string]interface{}{
 					"service": map[string]interface{}{
@@ -79,9 +79,9 @@ var _ = Describe("Config Controller", func() {
 		g := NewWithT(GinkgoT())
 
 		config := mockConfig
-		compValues, err := configctrl.GetEnvComponentValues(&config, redisCompName, s2hv1beta1.EnvStaging)
+		compValues, err := configctrl.GetEnvComponentValues(&config, redisCompName, s2hv1.EnvStaging)
 		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(compValues).To(Equal(s2hv1beta1.ComponentValues{
+		g.Expect(compValues).To(Equal(s2hv1.ComponentValues{
 			"master": map[string]interface{}{
 				"service": map[string]interface{}{
 					"nodePort": float64(31001),

@@ -8,11 +8,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 )
 
-func (c *controller) manageQueue(ctx context.Context, currentAtpComp *s2hv1beta1.ActivePromotion) (bool, error) {
-	runningAtpComps := s2hv1beta1.ActivePromotionList{}
+func (c *controller) manageQueue(ctx context.Context, currentAtpComp *s2hv1.ActivePromotion) (bool, error) {
+	runningAtpComps := s2hv1.ActivePromotionList{}
 	listOpts := client.ListOptions{LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateRunning))}
 	if err := c.client.List(ctx, &runningAtpComps, &listOpts); err != nil {
 		return false, errors.Wrap(err, "cannot list activepromotions")
@@ -23,7 +23,7 @@ func (c *controller) manageQueue(ctx context.Context, currentAtpComp *s2hv1beta1
 		return false, nil
 	}
 
-	waitingAtpComps := s2hv1beta1.ActivePromotionList{}
+	waitingAtpComps := s2hv1.ActivePromotionList{}
 	listOpts = client.ListOptions{LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateWaiting))}
 	if err := c.client.List(ctx, &waitingAtpComps, &listOpts); err != nil {
 		return false, errors.Wrap(err, "cannot list activepromotions")
@@ -40,9 +40,9 @@ func (c *controller) manageQueue(ctx context.Context, currentAtpComp *s2hv1beta1
 		logger.Info("start active promotion process", "team", waitingAtpComps.Items[0].Name)
 
 		c.addFinalizer(&waitingAtpComps.Items[0])
-		waitingAtpComps.Items[0].SetState(s2hv1beta1.ActivePromotionCreatingPreActive,
+		waitingAtpComps.Items[0].SetState(s2hv1.ActivePromotionCreatingPreActive,
 			"Creating pre-active environment")
-		waitingAtpComps.Items[0].Status.SetCondition(s2hv1beta1.ActivePromotionCondStarted, corev1.ConditionTrue,
+		waitingAtpComps.Items[0].Status.SetCondition(s2hv1.ActivePromotionCondStarted, corev1.ConditionTrue,
 			"Active promotion has been started")
 		waitingAtpComps.Items[0].Labels = c.getStateLabel(stateRunning)
 		if err := c.updateActivePromotion(ctx, &waitingAtpComps.Items[0]); err != nil {

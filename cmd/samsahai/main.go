@@ -42,7 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	docs2 "github.com/agoda-com/samsahai/docs"
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -75,7 +75,7 @@ func init() {
 	cobra.OnInitialize(util.InitViper)
 
 	_ = clientgoscheme.AddToScheme(scheme)
-	_ = s2hv1beta1.AddToScheme(scheme)
+	_ = s2hv1.AddToScheme(scheme)
 	_ = fluxv1beta1.SchemeBuilder.AddToScheme(scheme)
 	//_ = appv1beta1.AddToScheme(scheme)
 

@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
@@ -35,12 +35,12 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 		return nil, err
 	}
 
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamInfo.TeamName, teamComp); err != nil {
 		return nil, errors.Wrapf(err, "cannot get of team %s", teamComp.Name)
 	}
 
-	stableList := &s2hv1beta1.StableComponentList{}
+	stableList := &s2hv1.StableComponentList{}
 
 	if teamComp.Status.Namespace.Staging == "" {
 		return nil, errors.Wrap(fmt.Errorf("staging namespace of %s is empty", teamInfo.TeamName),
@@ -82,7 +82,7 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 	return imgList, nil
 }
 
-func (c *controller) detectAndAddImageMissing(source s2hv1beta1.UpdatingSource, repo, name, version string, imgList *rpc.ImageList) {
+func (c *controller) detectAndAddImageMissing(source s2hv1.UpdatingSource, repo, name, version string, imgList *rpc.ImageList) {
 	checker := c.checkers[string(source)]
 	if err := checker.EnsureVersion(repo, name, version); err != nil {
 		if s2herrors.IsImageNotFound(err) || s2herrors.IsErrRequestTimeout(err) {
@@ -97,7 +97,7 @@ func (c *controller) detectAndAddImageMissing(source s2hv1beta1.UpdatingSource, 
 	}
 }
 
-func (c *controller) getImageSource(comps map[string]*s2hv1beta1.Component, name string) (*s2hv1beta1.UpdatingSource, bool) {
+func (c *controller) getImageSource(comps map[string]*s2hv1.Component, name string) (*s2hv1.UpdatingSource, bool) {
 	if _, ok := comps[name]; !ok {
 		return nil, false
 	}
@@ -119,7 +119,7 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 		return nil, err
 	}
 
-	queueHist := &s2hv1beta1.QueueHistory{}
+	queueHist := &s2hv1.QueueHistory{}
 	if err := c.getQueueHistory(comp.QueueHistoryName, comp.Namespace, queueHist); err != nil {
 		return nil, errors.Wrapf(err,
 			"cannot get queue history, name: %s, namespace: %s", comp.QueueHistoryName, comp.Namespace)
@@ -130,7 +130,7 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 	}
 
 	// Add metric updateQueueMetric & histories
-	queue := &s2hv1beta1.Queue{}
+	queue := &s2hv1.Queue{}
 	if err := c.client.Get(context.TODO(), types.NamespacedName{
 		Namespace: comp.GetNamespace(),
 		Name:      comp.GetName()}, queue); err != nil {
@@ -141,7 +141,7 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 	return &rpc.Empty{}, nil
 }
 
-func (c *controller) sendComponentUpgradeReport(queueHist *s2hv1beta1.QueueHistory, comp *rpc.ComponentUpgrade) error {
+func (c *controller) sendComponentUpgradeReport(queueHist *s2hv1.QueueHistory, comp *rpc.ComponentUpgrade) error {
 	configCtrl := c.GetConfigController()
 
 	for _, reporter := range c.reporters {
@@ -155,7 +155,7 @@ func (c *controller) sendComponentUpgradeReport(queueHist *s2hv1beta1.QueueHisto
 			}
 		}
 
-		testRunner := s2hv1beta1.TestRunner{}
+		testRunner := s2hv1.TestRunner{}
 		if qHist.Spec.Queue != nil {
 			testRunner = qHist.Spec.Queue.Status.TestRunner
 		}
@@ -176,28 +176,28 @@ func (c *controller) sendComponentUpgradeReport(queueHist *s2hv1beta1.QueueHisto
 	return nil
 }
 
-func (c *controller) getQueueHistory(queueHistName, ns string, queueHist *s2hv1beta1.QueueHistory) error {
+func (c *controller) getQueueHistory(queueHistName, ns string, queueHist *s2hv1.QueueHistory) error {
 	return c.client.Get(context.TODO(), types.NamespacedName{Name: queueHistName, Namespace: ns}, queueHist)
 }
 
-func (c *controller) getLatestFailureQueueHistory(comp *rpc.ComponentUpgrade) (*s2hv1beta1.QueueHistory, error) {
+func (c *controller) getLatestFailureQueueHistory(comp *rpc.ComponentUpgrade) (*s2hv1.QueueHistory, error) {
 	qLabels := s2h.GetDefaultLabels(comp.TeamName)
 	qLabels["app"] = comp.Name
 	qHists, err := c.listQueueHistory(qLabels)
 	if err != nil {
-		return &s2hv1beta1.QueueHistory{}, errors.Wrapf(err,
+		return &s2hv1.QueueHistory{}, errors.Wrapf(err,
 			"cannot list queue history, labels: %+v, namespace: %s", qLabels, comp.Namespace)
 	}
 
-	qHist := &s2hv1beta1.QueueHistory{}
+	qHist := &s2hv1.QueueHistory{}
 	if len(qHists.Items) > 1 {
 		qHist = &qHists.Items[1]
 	}
 	return qHist, nil
 }
 
-func (c *controller) listQueueHistory(selectors map[string]string) (*s2hv1beta1.QueueHistoryList, error) {
-	queueHists := &s2hv1beta1.QueueHistoryList{}
+func (c *controller) listQueueHistory(selectors map[string]string) (*s2hv1.QueueHistoryList, error) {
+	queueHists := &s2hv1.QueueHistoryList{}
 	listOpt := &client.ListOptions{LabelSelector: labels.SelectorFromSet(selectors)}
 	err := c.client.List(context.TODO(), queueHists, listOpt)
 	queueHists.SortDESC()
@@ -211,7 +211,7 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 
 	compName := comp.GetName()
 	if compName != "" {
-		queue := &s2hv1beta1.Queue{}
+		queue := &s2hv1.Queue{}
 		if err := c.client.Get(context.TODO(), types.NamespacedName{
 			Namespace: comp.GetNamespace(),
 			Name:      compName}, queue); err != nil {

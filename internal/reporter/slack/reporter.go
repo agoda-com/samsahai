@@ -5,7 +5,7 @@ import (
 
 	"github.com/nlopes/slack"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -20,8 +20,8 @@ const (
 	ReporterName = "slack"
 	username     = "Samsahai Notification"
 
-	componentUpgradeInterval = s2hv1beta1.IntervalRetry
-	componentUpgradeCriteria = s2hv1beta1.CriteriaFailure
+	componentUpgradeInterval = s2hv1.IntervalRetry
+	componentUpgradeCriteria = s2hv1.CriteriaFailure
 )
 
 type reporter struct {
@@ -90,14 +90,14 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	return r.post(slackConfig, message, internal.ComponentUpgradeType)
 }
 
-func (r *reporter) checkMatchingInterval(slackConfig *s2hv1beta1.Slack, isReverify bool) error {
+func (r *reporter) checkMatchingInterval(slackConfig *s2hv1.Slack, isReverify bool) error {
 	interval := componentUpgradeInterval
 	if slackConfig.ComponentUpgrade != nil && slackConfig.ComponentUpgrade.Interval != "" {
 		interval = slackConfig.ComponentUpgrade.Interval
 	}
 
 	switch interval {
-	case s2hv1beta1.IntervalEveryTime:
+	case s2hv1.IntervalEveryTime:
 	default:
 		if !isReverify {
 			return s2herrors.New("interval was not matched")
@@ -107,15 +107,15 @@ func (r *reporter) checkMatchingInterval(slackConfig *s2hv1beta1.Slack, isReveri
 	return nil
 }
 
-func (r *reporter) checkMatchingCriteria(slackConfig *s2hv1beta1.Slack, status rpc.ComponentUpgrade_UpgradeStatus) error {
+func (r *reporter) checkMatchingCriteria(slackConfig *s2hv1.Slack, status rpc.ComponentUpgrade_UpgradeStatus) error {
 	criteria := componentUpgradeCriteria
 	if slackConfig.ComponentUpgrade != nil && slackConfig.ComponentUpgrade.Criteria != "" {
 		criteria = slackConfig.ComponentUpgrade.Criteria
 	}
 
 	switch criteria {
-	case s2hv1beta1.CriteriaBoth:
-	case s2hv1beta1.CriteriaSuccess:
+	case s2hv1.CriteriaBoth:
+	case s2hv1.CriteriaSuccess:
 		if status != rpc.ComponentUpgrade_UpgradeStatus_SUCCESS {
 			return s2herrors.New("criteria was not matched")
 		}
@@ -150,19 +150,19 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 		message += r.makeNoOutdatedComponentsReport()
 	}
 
-	isDemotionFailed := atpRpt.DemotionStatus == s2hv1beta1.ActivePromotionDemotionFailure
+	isDemotionFailed := atpRpt.DemotionStatus == s2hv1.ActivePromotionDemotionFailure
 	if isDemotionFailed {
 		message += "\n"
 		message += r.makeActiveDemotingFailureReport()
 	}
 
-	if atpRpt.RollbackStatus == s2hv1beta1.ActivePromotionRollbackFailure {
+	if atpRpt.RollbackStatus == s2hv1.ActivePromotionRollbackFailure {
 		message += "\n"
 		message += r.makeActivePromotionRollbackFailureReport()
 	}
 
 	hasPreviousActiveNamespace := atpRpt.PreviousActiveNamespace != ""
-	if atpRpt.Result == s2hv1beta1.ActivePromotionSuccess && hasPreviousActiveNamespace && !isDemotionFailed {
+	if atpRpt.Result == s2hv1.ActivePromotionSuccess && hasPreviousActiveNamespace && !isDemotionFailed {
 		message += "\n"
 		message += r.makeDestroyedPreviousActiveTimeReport(&atpRpt.ActivePromotionStatus)
 	}
@@ -170,7 +170,7 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 	return r.post(slackConfig, message, internal.ActivePromotionType)
 }
 
-func convertImageListToRPCImageList(images []s2hv1beta1.Image) []*rpc.Image {
+func convertImageListToRPCImageList(images []s2hv1.Image) []*rpc.Image {
 	rpcImages := make([]*rpc.Image, 0)
 	for _, img := range images {
 		rpcImages = append(rpcImages, &rpc.Image{
@@ -222,7 +222,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 *Active Promotion:* {{ .Result }}
 {{- if ne .Result "Success" }}
 {{- range .Conditions }}
-  {{- if eq .Type "` + string(s2hv1beta1.ActivePromotionCondActivePromoted) + `" }}
+  {{- if eq .Type "` + string(s2hv1.ActivePromotionCondActivePromoted) + `" }}
 >*Reason:* {{ .Message }}
   {{- end }}
 {{- end }}
@@ -241,7 +241,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 	return strings.TrimSpace(template.TextRender("SlackActivePromotionStatus", message, comp))
 }
 
-func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1beta1.OutdatedComponent) string {
+func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1.OutdatedComponent) string {
 	var message = `
 *Outdated Components:*
 {{- range $name, $component := .Components }}
@@ -255,7 +255,7 @@ func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1beta1.Outd
 `
 
 	ocObj := struct {
-		Components map[string]s2hv1beta1.OutdatedComponent
+		Components map[string]s2hv1.OutdatedComponent
 	}{Components: comps}
 	return strings.TrimSpace(template.TextRender("SlackOutdatedComponents", message, ocObj))
 }
@@ -280,7 +280,7 @@ func (r *reporter) makeActiveDemotingFailureReport() string {
 	return strings.TrimSpace(template.TextRender("DemotionFailure", message, ""))
 }
 
-func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.ActivePromotionStatus) string {
+func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1.ActivePromotionStatus) string {
 	var message = "*NOTES:* previous active namespace `{{ .PreviousActiveNamespace }}` will be destroyed at `{{ .DestroyedTime | TimeFormat }}`"
 
 	return strings.TrimSpace(template.TextRender("DestroyedTime", message, status))
@@ -299,7 +299,7 @@ func (r *reporter) makeImageMissingListReport(images []*rpc.Image) string {
 	return strings.TrimSpace(template.TextRender("SlackImageMissingList", message, imagesObj))
 }
 
-func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event internal.EventType) error {
+func (r *reporter) post(slackConfig *s2hv1.Slack, message string, event internal.EventType) error {
 	logger.Debug("start sending message to slack channels",
 		"event", event, "channels", slackConfig.Channels)
 	var globalErr error
@@ -313,7 +313,7 @@ func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event int
 	return globalErr
 }
 
-func (r *reporter) getSlackConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1beta1.Slack, error) {
+func (r *reporter) getSlackConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1.Slack, error) {
 	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return nil, err

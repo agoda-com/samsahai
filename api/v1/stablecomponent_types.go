@@ -14,51 +14,54 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// DesiredComponentSpec defines the desired state of DesiredComponent
-type DesiredComponentSpec struct {
-	Name       string `json:"name"`
-	Version    string `json:"version"`
+// StableComponentSpec defines the desired state of StableComponent
+type StableComponentSpec struct {
+	// Name represents Component name
+	Name string `json:"name"`
+
+	// Repository represents Docker image repository
 	Repository string `json:"repository"`
+
+	// Version represents Docker image tag version
+	Version string `json:"version"`
+
+	// UpdatedBy represents a person who updated the StableComponent
+	// +optional
+	UpdatedBy string `json:"updatedBy,omitempty"`
 }
 
-// DesiredComponentStatus defines the observed state of DesiredComponent
-type DesiredComponentStatus struct {
+// StableComponentStatus defines the observed state of StableComponent
+type StableComponentStatus struct {
 	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
 	UpdatedAt *metav1.Time `json:"updatedAt,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// DesiredComponent is the Schema for the desiredcomponents API
-type DesiredComponent struct {
+// StableComponent is the Schema for the stablecomponents API
+type StableComponent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   DesiredComponentSpec   `json:"spec,omitempty"`
-	Status DesiredComponentStatus `json:"status,omitempty"`
-}
-
-func (c *DesiredComponent) IsSame(d *DesiredComponent) bool {
-	return c.Spec.Name == d.Spec.Name &&
-		c.Spec.Repository == d.Spec.Repository &&
-		c.Spec.Version == d.Spec.Version
+	Spec   StableComponentSpec   `json:"spec,omitempty"`
+	Status StableComponentStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// DesiredComponentList contains a list of DesiredComponent
-type DesiredComponentList struct {
+// StableComponentList contains a list of StableComponent
+type StableComponentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DesiredComponent `json:"items"`
+	Items           []StableComponent `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&DesiredComponent{}, &DesiredComponentList{})
+	SchemeBuilder.Register(&StableComponent{}, &StableComponentList{})
 }

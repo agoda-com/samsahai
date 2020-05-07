@@ -7,12 +7,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/util/template"
 )
 
 // ExecuteCommand executes command at defined executed path
-func ExecuteCommand(ctx context.Context, exePath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
+func ExecuteCommand(ctx context.Context, exePath string, cmdObj *s2hv1.CommandAndArgs) ([]byte, error) {
 	command, args, err := parseCommand(cmdObj)
 	if err != nil {
 		return []byte{}, err
@@ -21,9 +21,9 @@ func ExecuteCommand(ctx context.Context, exePath string, cmdObj *s2hv1beta1.Comm
 	return execute(ctx, exePath, command, args...)
 }
 
-func RenderTemplate(commands, args []string, obj interface{}) *s2hv1beta1.CommandAndArgs {
+func RenderTemplate(commands, args []string, obj interface{}) *s2hv1.CommandAndArgs {
 	// render from template
-	cmdObj := &s2hv1beta1.CommandAndArgs{}
+	cmdObj := &s2hv1.CommandAndArgs{}
 	for _, c := range commands {
 		cmdObj.Command = append(cmdObj.Command, template.TextRender("CommandsRendering", c, obj))
 	}
@@ -35,7 +35,7 @@ func RenderTemplate(commands, args []string, obj interface{}) *s2hv1beta1.Comman
 	return cmdObj
 }
 
-func parseCommand(cmdObj *s2hv1beta1.CommandAndArgs) (command string, args []string, err error) {
+func parseCommand(cmdObj *s2hv1.CommandAndArgs) (command string, args []string, err error) {
 	if cmdObj == nil || len(cmdObj.Command) == 0 {
 		err = errors.Wrap(fmt.Errorf("no command to execute"), "cannot parse data to command")
 		return

@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -21,7 +21,7 @@ const (
 type ComponentUpgradeOption func(*ComponentUpgradeReporter)
 
 // WithTestRunner specifies test runner to override when creating component upgrade reporter object
-func WithTestRunner(tr s2hv1beta1.TestRunner) ComponentUpgradeOption {
+func WithTestRunner(tr s2hv1.TestRunner) ComponentUpgradeOption {
 	return func(c *ComponentUpgradeReporter) {
 		c.TestRunner = tr
 	}
@@ -38,11 +38,11 @@ func WithQueueHistoryName(qHist string) ComponentUpgradeOption {
 
 // ComponentUpgradeReporter manages component upgrade report
 type ComponentUpgradeReporter struct {
-	IssueTypeStr IssueType             `json:"issueTypeStr,omitempty"`
-	StatusStr    StatusType            `json:"statusStr,omitempty"`
-	StatusInt    int32                 `json:"statusInt,omitempty"`
-	TestRunner   s2hv1beta1.TestRunner `json:"testRunner,omitempty"`
-	Credential   s2hv1beta1.Credential `json:"credential,omitempty"`
+	IssueTypeStr IssueType        `json:"issueTypeStr,omitempty"`
+	StatusStr    StatusType       `json:"statusStr,omitempty"`
+	StatusInt    int32            `json:"statusInt,omitempty"`
+	TestRunner   s2hv1.TestRunner `json:"testRunner,omitempty"`
+	Credential   s2hv1.Credential `json:"credential,omitempty"`
 	Envs         map[string]string
 
 	rpc.ComponentUpgrade
@@ -91,7 +91,7 @@ type ActivePromotionOption func(*ActivePromotionReporter)
 
 // TODO: should override tc credential per team
 // WithCredential specifies credential to override when create active promotion reporter object
-func WithCredential(creds s2hv1beta1.Credential) ActivePromotionOption {
+func WithCredential(creds s2hv1.Credential) ActivePromotionOption {
 	return func(c *ActivePromotionReporter) {
 		c.Credential = creds
 	}
@@ -99,16 +99,16 @@ func WithCredential(creds s2hv1beta1.Credential) ActivePromotionOption {
 
 // ActivePromotionReporter manages active promotion report
 type ActivePromotionReporter struct {
-	TeamName               string                `json:"teamName,omitempty"`
-	CurrentActiveNamespace string                `json:"currentActiveNamespace,omitempty"`
-	Credential             s2hv1beta1.Credential `json:"credential,omitempty"`
+	TeamName               string           `json:"teamName,omitempty"`
+	CurrentActiveNamespace string           `json:"currentActiveNamespace,omitempty"`
+	Credential             s2hv1.Credential `json:"credential,omitempty"`
 	Envs                   map[string]string
-	s2hv1beta1.ActivePromotionStatus
+	s2hv1.ActivePromotionStatus
 	SamsahaiConfig
 }
 
 // NewActivePromotionReporter creates active promotion reporter object
-func NewActivePromotionReporter(status *s2hv1beta1.ActivePromotionStatus, s2hConfig SamsahaiConfig, teamName, currentNs string, opts ...ActivePromotionOption) *ActivePromotionReporter {
+func NewActivePromotionReporter(status *s2hv1.ActivePromotionStatus, s2hConfig SamsahaiConfig, teamName, currentNs string, opts ...ActivePromotionOption) *ActivePromotionReporter {
 	c := &ActivePromotionReporter{
 		SamsahaiConfig:         s2hConfig,
 		TeamName:               teamName,

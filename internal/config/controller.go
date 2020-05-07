@@ -12,7 +12,7 @@ import (
 	k8scontroller "sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -67,29 +67,29 @@ func New(mgr cr.Manager, options ...Option) internal.ConfigController {
 func (c *controller) SetupWithManager(mgr cr.Manager) error {
 	return cr.NewControllerManagedBy(mgr).
 		WithOptions(k8scontroller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}).
-		For(&s2hv1beta1.Config{}).
+		For(&s2hv1.Config{}).
 		Complete(c)
 }
 
 // Get returns configuration from Config CRD
-func (c *controller) Get(configName string) (*s2hv1beta1.Config, error) {
+func (c *controller) Get(configName string) (*s2hv1.Config, error) {
 	return c.getConfig(configName)
 }
 
 // GetComponents returns all components from `Configuration` that has valid `Source`
-func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+func (c *controller) GetComponents(configName string) (map[string]*s2hv1.Component, error) {
 	config, err := c.Get(configName)
 	if err != nil {
 		logger.Error(err, "cannot get Config", "name", configName)
-		return map[string]*s2hv1beta1.Component{}, err
+		return map[string]*s2hv1.Component{}, err
 	}
 
 	c.assignParent(&config.Spec)
 
-	filteredComps := map[string]*s2hv1beta1.Component{}
+	filteredComps := map[string]*s2hv1.Component{}
 
-	var comps []*s2hv1beta1.Component
-	var comp *s2hv1beta1.Component
+	var comps []*s2hv1.Component
+	var comp *s2hv1.Component
 
 	comps = append(comps, config.Spec.Components...)
 
@@ -98,7 +98,7 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Co
 		if len(comp.Dependencies) > 0 {
 			// add to comps
 			for _, dep := range comp.Dependencies {
-				comps = append(comps, &s2hv1beta1.Component{
+				comps = append(comps, &s2hv1.Component{
 					Parent: comp.Name,
 					Name:   dep.Name,
 					Image:  dep.Image,
@@ -120,10 +120,10 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Co
 }
 
 // GetParentComponents returns components that doesn't have parent (nil Parent)
-func (c *controller) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+func (c *controller) GetParentComponents(configName string) (map[string]*s2hv1.Component, error) {
 	filteredComps, err := c.GetComponents(configName)
 	if err != nil {
-		return map[string]*s2hv1beta1.Component{}, err
+		return map[string]*s2hv1.Component{}, err
 	}
 
 	for name, v := range filteredComps {
@@ -136,7 +136,7 @@ func (c *controller) GetParentComponents(configName string) (map[string]*s2hv1be
 }
 
 // Update updates Config CRD
-func (c *controller) Update(config *s2hv1beta1.Config) error {
+func (c *controller) Update(config *s2hv1.Config) error {
 	if err := c.client.Update(context.TODO(), config); err != nil {
 		return err
 	}
@@ -164,21 +164,21 @@ func (c *controller) Delete(configName string) error {
 }
 
 // GetEnvValues returns component values per component name by the given env type
-func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType) (
-	map[string]s2hv1beta1.ComponentValues, error) {
+func GetEnvValues(config *s2hv1.ConfigSpec, envType s2hv1.EnvType) (
+	map[string]s2hv1.ComponentValues, error) {
 
 	chartValuesURLs, ok := config.Envs[envType]
 	if !ok {
-		return map[string]s2hv1beta1.ComponentValues{}, nil
+		return map[string]s2hv1.ComponentValues{}, nil
 	}
 
 	var err error
-	out := make(map[string]s2hv1beta1.ComponentValues)
+	out := make(map[string]s2hv1.ComponentValues)
 
 	for chart := range chartValuesURLs {
 		out[chart], err = GetEnvComponentValues(config, chart, envType)
 		if err != nil {
-			return map[string]s2hv1beta1.ComponentValues{}, err
+			return map[string]s2hv1.ComponentValues{}, err
 		}
 	}
 
@@ -186,8 +186,8 @@ func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType) (
 }
 
 // GetEnvComponentValues returns component values by the given env type and component name
-func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envType s2hv1beta1.EnvType) (
-	s2hv1beta1.ComponentValues, error) {
+func GetEnvComponentValues(config *s2hv1.ConfigSpec, compName string, envType s2hv1.EnvType) (
+	s2hv1.ComponentValues, error) {
 
 	opts := []http.Option{
 		http.WithTimeout(10 * time.Second),
@@ -195,12 +195,12 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envTy
 
 	chartValuesURLs, ok := config.Envs[envType]
 	if !ok {
-		return s2hv1beta1.ComponentValues{}, nil
+		return s2hv1.ComponentValues{}, nil
 	}
 
 	urls, ok := chartValuesURLs[compName]
 	if !ok {
-		return s2hv1beta1.ComponentValues{}, nil
+		return s2hv1.ComponentValues{}, nil
 	}
 
 	baseValues := map[string]interface{}{}
@@ -226,7 +226,7 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envTy
 
 // assignParent assigns Parent to SubComponent
 // only support 1 level of dependencies
-func (c *controller) assignParent(config *s2hv1beta1.ConfigSpec) {
+func (c *controller) assignParent(config *s2hv1.ConfigSpec) {
 	comps := config.Components
 	for i := range config.Components {
 		for j := range comps[i].Dependencies {
@@ -235,8 +235,8 @@ func (c *controller) assignParent(config *s2hv1beta1.ConfigSpec) {
 	}
 }
 
-func (c *controller) getConfig(configName string) (*s2hv1beta1.Config, error) {
-	config := &s2hv1beta1.Config{}
+func (c *controller) getConfig(configName string) (*s2hv1.Config, error) {
+	config := &s2hv1.Config{}
 	if err := c.client.Get(context.TODO(), types.NamespacedName{Name: configName}, config); err != nil {
 		return config, err
 	}
@@ -274,7 +274,7 @@ func (c *controller) ensureComponentChanged(teamName, namespace string) error {
 	return nil
 }
 
-func (c *controller) notifyComponentChanged(teamName, namespace string, comps map[string]*s2hv1beta1.Component) {
+func (c *controller) notifyComponentChanged(teamName, namespace string, comps map[string]*s2hv1.Component) {
 	if c.s2hCtrl == nil {
 		logger.Debug("no s2h ctrl, skip notify changed")
 	}
@@ -285,9 +285,9 @@ func (c *controller) notifyComponentChanged(teamName, namespace string, comps ma
 	}
 }
 
-func (c *controller) detectRemovedDesiredComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
+func (c *controller) detectRemovedDesiredComponents(comps map[string]*s2hv1.Component, namespace string) error {
 	ctx := context.Background()
-	desiredComps := &s2hv1beta1.DesiredComponentList{}
+	desiredComps := &s2hv1.DesiredComponentList{}
 	if err := c.client.List(ctx, desiredComps, &client.ListOptions{Namespace: namespace}); err != nil {
 		logger.Error(err, "cannot list desired components", "namespace", namespace)
 		return err
@@ -310,14 +310,14 @@ func (c *controller) detectRemovedDesiredComponents(comps map[string]*s2hv1beta1
 	return nil
 }
 
-func (c *controller) detectRemovedTeamDesiredComponents(comps map[string]*s2hv1beta1.Component, teamName string) error {
+func (c *controller) detectRemovedTeamDesiredComponents(comps map[string]*s2hv1.Component, teamName string) error {
 	if c.s2hCtrl == nil {
 		logger.Debug("no s2h ctrl, skip detect team desired", "team", teamName)
 		return nil
 	}
 
 	ctx := context.Background()
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.s2hCtrl.GetTeam(teamName, teamComp); err != nil {
 		logger.Error(err, "cannot get team", "team", teamName)
 		return err
@@ -340,9 +340,9 @@ func (c *controller) detectRemovedTeamDesiredComponents(comps map[string]*s2hv1b
 	return nil
 }
 
-func (c *controller) detectRemovedQueues(comps map[string]*s2hv1beta1.Component, namespace string) error {
+func (c *controller) detectRemovedQueues(comps map[string]*s2hv1.Component, namespace string) error {
 	ctx := context.Background()
-	qComps := &s2hv1beta1.QueueList{}
+	qComps := &s2hv1.QueueList{}
 	if err := c.client.List(ctx, qComps, &client.ListOptions{Namespace: namespace}); err != nil {
 		logger.Error(err, "cannot list queues", "namespace", namespace)
 		return err
@@ -365,9 +365,9 @@ func (c *controller) detectRemovedQueues(comps map[string]*s2hv1beta1.Component,
 	return nil
 }
 
-func (c *controller) detectRemovedStableComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
+func (c *controller) detectRemovedStableComponents(comps map[string]*s2hv1.Component, namespace string) error {
 	ctx := context.Background()
-	stableComps := &s2hv1beta1.StableComponentList{}
+	stableComps := &s2hv1.StableComponentList{}
 	if err := c.client.List(ctx, stableComps, &client.ListOptions{Namespace: namespace}); err != nil {
 		logger.Error(err, "cannot list stable components", "namespace", namespace)
 		return err
@@ -392,7 +392,7 @@ func (c *controller) detectRemovedStableComponents(comps map[string]*s2hv1beta1.
 
 func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	ctx := context.Background()
-	configComp := &s2hv1beta1.Config{}
+	configComp := &s2hv1.Config{}
 	if err := c.client.Get(ctx, req.NamespacedName, configComp); err != nil {
 		if k8serrors.IsNotFound(err) {
 			// Object not found, return. Created objects are automatically garbage collected.
@@ -409,7 +409,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		return cr.Result{}, nil
 	}
 
-	teamComp := s2hv1beta1.Team{}
+	teamComp := s2hv1.Team{}
 	if err := c.s2hCtrl.GetTeam(req.Name, &teamComp); err != nil {
 		logger.Error(err, "cannot get team", "team", req.Name)
 		return cr.Result{}, err

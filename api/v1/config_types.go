@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,7 +36,21 @@ type Component struct {
 	// +optional
 	Source *UpdatingSource `json:"source,omitempty"`
 	// +optional
-	Dependencies []*Component `json:"dependencies,omitempty"`
+	Dependencies []*Dependency `json:"dependencies,omitempty"`
+}
+
+// Dependency represents a chart of dependency
+type Dependency struct {
+	// +optional
+	Parent string `json:"parent,omitempty"`
+	Name   string `json:"name"`
+	// +optional
+	Chart ComponentChart `json:"chart"`
+	Image ComponentImage `json:"image,omitempty"`
+	// +optional
+	Values ComponentValues `json:"values,omitempty"`
+	// +optional
+	Source *UpdatingSource `json:"source,omitempty"`
 }
 
 // ComponentImage represents an image repository, tag and pattern which is a regex of tag

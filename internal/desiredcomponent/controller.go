@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -77,7 +77,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to DesiredComponent
-	err = c.Watch(&source.Kind{Type: &s2hv1beta1.DesiredComponent{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &s2hv1.DesiredComponent{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.TODO()
 	now := metav1.Now()
-	comp := &s2hv1beta1.DesiredComponent{}
+	comp := &s2hv1.DesiredComponent{}
 	err := c.client.Get(ctx, req.NamespacedName, comp)
 	if err != nil {
 		if errors.IsNotFound(err) {

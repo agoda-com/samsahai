@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 
 	_ "github.com/agoda-com/samsahai/test/e2e/checkers"
@@ -50,7 +50,7 @@ var _ = BeforeSuite(func(done Done) {
 	err = corev1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred(), "should register scheme `corev1` successfully")
 
-	err = s2hv1beta1.AddToScheme(scheme.Scheme)
+	err = s2hv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred(), "should register scheme `samsahai` successfully")
 
 	err = fluxv1beta1.AddToScheme(scheme.Scheme)

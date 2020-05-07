@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/util"
@@ -40,7 +40,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypeUpgrade, comps["redis"])
+			values = applyEnvBaseConfig(&config.Spec, values, s2hv1.QueueTypeUpgrade, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -51,7 +51,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypePreActive, comps["redis"])
+			values = applyEnvBaseConfig(&config.Spec, values, s2hv1.QueueTypePreActive, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -62,7 +62,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypePromoteToActive, comps["redis"])
+			values = applyEnvBaseConfig(&config.Spec, values, s2hv1.QueueTypePromoteToActive, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -73,7 +73,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypeDemoteFromActive, comps["redis"])
+			values = applyEnvBaseConfig(&config.Spec, values, s2hv1.QueueTypeDemoteFromActive, comps["redis"])
 			val, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(val).To(BeNil())
@@ -88,7 +88,7 @@ var _ = Describe("Apply Env Based Config", func() {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		wordpress := comps["wordpress"]
-		envValues, err := configctrl.GetEnvComponentValues(&config.Spec, "wordpress", s2hv1beta1.EnvBase)
+		envValues, err := configctrl.GetEnvComponentValues(&config.Spec, "wordpress", s2hv1.EnvBase)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		values := valuesutil.GenStableComponentValues(wordpress, nil, envValues)
@@ -107,30 +107,30 @@ func newMockConfigCtrl() internal.ConfigController {
 	return &mockConfigCtrl{}
 }
 
-func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 	engine := "flux-helm"
-	deployConfig := s2hv1beta1.ConfigDeploy{
+	deployConfig := s2hv1.ConfigDeploy{
 		Timeout: metav1.Duration{Duration: 5 * time.Minute},
 		Engine:  &engine,
-		TestRunner: &s2hv1beta1.ConfigTestRunner{
-			TestMock: &s2hv1beta1.ConfigTestMock{
+		TestRunner: &s2hv1.ConfigTestRunner{
+			TestMock: &s2hv1.ConfigTestMock{
 				Result: true,
 			},
 		},
 	}
-	compSource := s2hv1beta1.UpdatingSource("public-registry")
-	redisConfigComp := s2hv1beta1.Component{
+	compSource := s2hv1.UpdatingSource("public-registry")
+	redisConfigComp := s2hv1.Component{
 		Name: "redis",
-		Chart: s2hv1beta1.ComponentChart{
+		Chart: s2hv1.ComponentChart{
 			Repository: "https://kubernetes-charts.storage.googleapis.com",
 			Name:       "redis",
 		},
-		Image: s2hv1beta1.ComponentImage{
+		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/redis",
 			Pattern:    "5.*debian-9.*",
 		},
 		Source: &compSource,
-		Values: s2hv1beta1.ComponentValues{
+		Values: s2hv1.ComponentValues{
 			"image": map[string]interface{}{
 				"repository": "bitnami/redis",
 				"pullPolicy": "IfNotPresent",
@@ -146,21 +146,21 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 			},
 		},
 	}
-	wordpressConfigComp := s2hv1beta1.Component{
+	wordpressConfigComp := s2hv1.Component{
 		Name: "wordpress",
-		Chart: s2hv1beta1.ComponentChart{
+		Chart: s2hv1.ComponentChart{
 			Repository: "https://kubernetes-charts.storage.googleapis.com",
 			Name:       "wordpress",
 		},
-		Image: s2hv1beta1.ComponentImage{
+		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/wordpress",
 			Pattern:    "5\\.2.*debian-9.*",
 		},
 		Source: &compSource,
-		Dependencies: []*s2hv1beta1.Component{
+		Dependencies: []*s2hv1.Component{
 			{
 				Name: "mariadb",
-				Image: s2hv1beta1.ComponentImage{
+				Image: s2hv1.ComponentImage{
 					Repository: "bitnami/mariadb",
 					Pattern:    "10\\.3.*debian-9.*",
 				},
@@ -168,9 +168,9 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		},
 	}
 
-	mockConfig := &s2hv1beta1.Config{
-		Spec: s2hv1beta1.ConfigSpec{
-			Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
+	mockConfig := &s2hv1.Config{
+		Spec: s2hv1.ConfigSpec{
+			Envs: map[s2hv1.EnvType]s2hv1.ChartValuesURLs{
 				"staging": map[string][]string{
 					"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
 				},
@@ -184,16 +184,16 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 					"wordpress": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/base/wordpress.yaml"},
 				},
 			},
-			Staging: &s2hv1beta1.ConfigStaging{
+			Staging: &s2hv1.ConfigStaging{
 				MaxRetry:   3,
 				Deployment: &deployConfig,
 			},
-			ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+			ActivePromotion: &s2hv1.ConfigActivePromotion{
 				Timeout:          metav1.Duration{Duration: 10 * time.Minute},
 				TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
 				Deployment:       &deployConfig,
 			},
-			Components: []*s2hv1beta1.Component{
+			Components: []*s2hv1.Component{
 				&redisConfigComp,
 				&wordpressConfigComp,
 			},
@@ -203,10 +203,10 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 	return mockConfig, nil
 }
 
-func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1.Component, error) {
 	config, _ := c.Get(configName)
 
-	comps := map[string]*s2hv1beta1.Component{
+	comps := map[string]*s2hv1.Component{
 		"redis":     config.Spec.Components[0],
 		"wordpress": config.Spec.Components[1],
 		"mariadb":   config.Spec.Components[1].Dependencies[0],
@@ -217,10 +217,10 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 	return comps, nil
 }
 
-func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1.Component, error) {
 	config, _ := c.Get(configName)
 
-	comps := map[string]*s2hv1beta1.Component{
+	comps := map[string]*s2hv1.Component{
 		"redis":     config.Spec.Components[0],
 		"wordpress": config.Spec.Components[1],
 	}
@@ -228,7 +228,7 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	return comps, nil
 }
 
-func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+func (c *mockConfigCtrl) Update(config *s2hv1.Config) error {
 	return nil
 }
 

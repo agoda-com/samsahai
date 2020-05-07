@@ -12,12 +12,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
 
-func (c *controller) createPreActiveEnvAndDeployStableCompObjects(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) createPreActiveEnvAndDeployStableCompObjects(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	teamName := atpComp.Name
 	suffix := c.randomToken(tokenLength, atpComp.CreationTimestamp.UnixNano())
 	targetNs := fmt.Sprintf("%s%s-%s", internal.AppPrefix, teamName, suffix)
@@ -42,16 +42,16 @@ func (c *controller) createPreActiveEnvAndDeployStableCompObjects(ctx context.Co
 	logger.Debug("start deploying stable components into target namespace",
 		"team", teamName, "namespace", targetNs)
 	atpComp.Status.SetNamespace(targetNs, teamComp.Status.Namespace.Active)
-	atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondPreActiveCreated, corev1.ConditionTrue,
+	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondPreActiveCreated, corev1.ConditionTrue,
 		"Pre-active environment has been created")
-	atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondVerificationStarted, corev1.ConditionTrue,
+	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondVerificationStarted, corev1.ConditionTrue,
 		"Verifying pre-active environment")
-	atpComp.SetState(s2hv1beta1.ActivePromotionDeployingComponents,
+	atpComp.SetState(s2hv1.ActivePromotionDeployingComponents,
 		"Deploying stable components into target namespace")
 	return nil
 }
 
-func (c *controller) ensureActiveEnvironmentPromoted(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) ensureActiveEnvironmentPromoted(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	targetNs := c.getTargetNamespace(atpComp)
 
 	teamComp, err := c.getTeam(ctx, atpComp.Name)
@@ -100,7 +100,7 @@ func (c *controller) createPreActiveEnvironment(ctx context.Context, teamName, p
 
 func (c *controller) copyStableComponentObjectsToTargetNamespace(
 	ctx context.Context,
-	atpComp *s2hv1beta1.ActivePromotion,
+	atpComp *s2hv1.ActivePromotion,
 	baseNs, targetNs string,
 ) error {
 	stableComps, err := c.getStableComponentObjects(ctx, baseNs)
@@ -117,22 +117,22 @@ func (c *controller) copyStableComponentObjectsToTargetNamespace(
 	return nil
 }
 
-func (c *controller) getStableComponentObjects(ctx context.Context, ns string) (*s2hv1beta1.StableComponentList, error) {
-	stableComps := &s2hv1beta1.StableComponentList{}
+func (c *controller) getStableComponentObjects(ctx context.Context, ns string) (*s2hv1.StableComponentList, error) {
+	stableComps := &s2hv1.StableComponentList{}
 	if err := c.client.List(ctx, stableComps, &client.ListOptions{Namespace: ns}); err != nil {
-		return &s2hv1beta1.StableComponentList{}, err
+		return &s2hv1.StableComponentList{}, err
 	}
 
 	return stableComps, nil
 }
 
-func (c *controller) deployStableComponentObjects(ctx context.Context, comps *s2hv1beta1.StableComponentList, targetNS string) error {
+func (c *controller) deployStableComponentObjects(ctx context.Context, comps *s2hv1.StableComponentList, targetNS string) error {
 	if targetNS == "" {
 		return errors.Wrap(fmt.Errorf("target namespace is empty"), "cannot deploy stable components")
 	}
 
 	for _, comp := range comps.Items {
-		newComp := s2hv1beta1.StableComponent{
+		newComp := s2hv1.StableComponent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      comp.Name,
 				Namespace: targetNS,
@@ -144,7 +144,7 @@ func (c *controller) deployStableComponentObjects(ctx context.Context, comps *s2
 		if err := c.client.Create(ctx, &newComp); err != nil {
 			if k8serrors.IsAlreadyExists(err) {
 				// update stable components
-				ctemp := s2hv1beta1.StableComponent{}
+				ctemp := s2hv1.StableComponent{}
 				err := c.client.Get(ctx, types.NamespacedName{Name: comp.Name, Namespace: targetNS}, &ctemp)
 				if err != nil {
 					return err

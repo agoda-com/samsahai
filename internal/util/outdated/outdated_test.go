@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
@@ -20,7 +20,7 @@ func TestUnit(t *testing.T) {
 var _ = Describe("set outdated duration when input objects are empty", func() {
 	g := NewGomegaWithT(GinkgoT())
 	It("should return empty outdated component when input objects are nil", func() {
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
+		atpRpt := &s2hv1.ActivePromotionStatus{}
 		nowMockTime := time.Date(2019, 10, 3, 9, 0, 0, 0, time.UTC)
 		oMock := newMock(nil, nil, nil, nowMockTime)
 		oMock.SetOutdatedDuration(atpRpt)
@@ -29,8 +29,8 @@ var _ = Describe("set outdated duration when input objects are empty", func() {
 	})
 
 	It("should return empty outdated component when stable component list is nil", func() {
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		desiredComps := make(map[string]map[string]s2hv1beta1.DesiredImageTime)
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		desiredComps := make(map[string]map[string]s2hv1.DesiredImageTime)
 		nowMockTime := time.Date(2019, 10, 3, 9, 0, 0, 0, time.UTC)
 		oMock := newMock(nil, desiredComps, nil, nowMockTime)
 		oMock.SetOutdatedDuration(atpRpt)
@@ -39,10 +39,10 @@ var _ = Describe("set outdated duration when input objects are empty", func() {
 	})
 
 	It("should return empty outdated component when desired version time list is nil", func() {
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		stableComps := []s2hv1beta1.StableComponent{
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		stableComps := []s2hv1.StableComponent{
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       "comp1",
 					Repository: "image-1",
 					Version:    "1.1.0",
@@ -59,18 +59,18 @@ var _ = Describe("set outdated duration when input objects are empty", func() {
 
 	It("should return empty outdated component when version in stable and desired do not match", func() {
 		var comp1, repoComp1, v110, v1 = "comp1", "repo/comp1", "1.1.0", "v1"
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		desiredComps := map[string]map[string]s2hv1beta1.DesiredImageTime{
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		desiredComps := map[string]map[string]s2hv1.DesiredImageTime{
 			comp1: {
-				stringutils.ConcatImageString(repoComp1, v110): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
+				stringutils.ConcatImageString(repoComp1, v110): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 				},
 			},
 		}
-		stableComps := []s2hv1beta1.StableComponent{
+		stableComps := []s2hv1.StableComponent{
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v1,
@@ -88,36 +88,36 @@ var _ = Describe("set outdated duration when input objects are empty", func() {
 
 var _ = Describe("set outdated duration when active stable version is eq to latest desired version", func() {
 	g := NewGomegaWithT(GinkgoT())
-	cfg := &s2hv1beta1.ConfigSpec{}
+	cfg := &s2hv1.ConfigSpec{}
 
 	It("should return outdated duration as zero", func() {
 		var comp1, repoComp1, v110 = "comp1", "repo/comp1", "1.1.0"
 		var comp2, repoComp2, v212 = "comp2", "repo/comp2", "2.1.2"
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		desiredComps := map[string]map[string]s2hv1beta1.DesiredImageTime{
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		desiredComps := map[string]map[string]s2hv1.DesiredImageTime{
 			comp1: {
-				stringutils.ConcatImageString(repoComp1, v110): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
+				stringutils.ConcatImageString(repoComp1, v110): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 				},
 			},
 			comp2: {
-				stringutils.ConcatImageString(repoComp2, v212): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp2, Tag: v212},
+				stringutils.ConcatImageString(repoComp2, v212): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp2, Tag: v212},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 2, 9, 0, 0, 0, time.UTC)},
 				},
 			},
 		}
-		stableComps := []s2hv1beta1.StableComponent{
+		stableComps := []s2hv1.StableComponent{
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v110,
 				},
 			},
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp2,
 					Repository: repoComp2,
 					Version:    v212,
@@ -143,26 +143,26 @@ var _ = Describe("set outdated duration when active stable version is eq to late
 	It("should return outdated duration as zero when rollback version is latest desired version", func() {
 		var comp1, repoComp1 = "comp1", "repo/comp1"
 		var v110, v113, v114 = "1.1.0", "1.1.3", "1.1.4"
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		desiredComps := map[string]map[string]s2hv1beta1.DesiredImageTime{
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		desiredComps := map[string]map[string]s2hv1.DesiredImageTime{
 			comp1: {
-				stringutils.ConcatImageString(repoComp1, v110): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
+				stringutils.ConcatImageString(repoComp1, v110): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v114): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v114},
+				stringutils.ConcatImageString(repoComp1, v114): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v114},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 5, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v113): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v113},
+				stringutils.ConcatImageString(repoComp1, v113): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v113},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 6, 2, 0, 0, 0, time.UTC)},
 				},
 			},
 		}
-		stableComps := []s2hv1beta1.StableComponent{
+		stableComps := []s2hv1.StableComponent{
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v113,
@@ -183,48 +183,48 @@ var _ = Describe("set outdated duration when active stable version is eq to late
 
 var _ = Describe("set outdated duration when active stable version is not eq to latest desired version", func() {
 	g := NewGomegaWithT(GinkgoT())
-	cfg := &s2hv1beta1.ConfigSpec{
-		ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
-			OutdatedNotification: &s2hv1beta1.OutdatedNotification{},
+	cfg := &s2hv1.ConfigSpec{
+		ActivePromotion: &s2hv1.ConfigActivePromotion{
+			OutdatedNotification: &s2hv1.OutdatedNotification{},
 		},
 	}
 
 	It("should return outdated duration correctly when outdated for 1 version", func() {
 		var comp1, repoComp1, v110, v113 = "comp1", "repo/comp1", "1.1.0", "1.1.3"
 		var comp2, repoComp2, v210, v212 = "comp2", "repo/comp2", "2.1.0", "2.1.2"
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		desiredComps := map[string]map[string]s2hv1beta1.DesiredImageTime{
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		desiredComps := map[string]map[string]s2hv1.DesiredImageTime{
 			comp1: {
-				stringutils.ConcatImageString(repoComp1, v110): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
+				stringutils.ConcatImageString(repoComp1, v110): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v113): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v113},
+				stringutils.ConcatImageString(repoComp1, v113): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v113},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 3, 2, 0, 0, 0, time.UTC)},
 				},
 			},
 			comp2: {
-				stringutils.ConcatImageString(repoComp2, v210): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp2, Tag: v210},
+				stringutils.ConcatImageString(repoComp2, v210): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp2, Tag: v210},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp2, v212): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp2, Tag: v212},
+				stringutils.ConcatImageString(repoComp2, v212): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp2, Tag: v212},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 2, 2, 0, 0, 0, time.UTC)},
 				},
 			},
 		}
-		stableComps := []s2hv1beta1.StableComponent{
+		stableComps := []s2hv1.StableComponent{
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v110,
 				},
 			},
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp2,
 					Repository: repoComp2,
 					Version:    v210,
@@ -250,34 +250,34 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 	It("should return outdated duration correctly when outdated for 2 versions", func() {
 		var comp1, repoComp1 = "comp1", "repo/comp1"
 		var v110, v113, v114, v115, v116 = "1.1.0", "1.1.3", "1.1.4", "1.1.5", "1.1.6"
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		desiredComps := map[string]map[string]s2hv1beta1.DesiredImageTime{
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		desiredComps := map[string]map[string]s2hv1.DesiredImageTime{
 			comp1: {
-				stringutils.ConcatImageString(repoComp1, v110): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
+				stringutils.ConcatImageString(repoComp1, v110): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v113): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v113},
+				stringutils.ConcatImageString(repoComp1, v113): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v113},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 3, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v114): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v114},
+				stringutils.ConcatImageString(repoComp1, v114): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v114},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 5, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v115): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v115},
+				stringutils.ConcatImageString(repoComp1, v115): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v115},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 5, 15, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v116): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v116},
+				stringutils.ConcatImageString(repoComp1, v116): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v116},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 7, 2, 0, 0, 0, time.UTC)},
 				},
 			},
 		}
-		stableComps := []s2hv1beta1.StableComponent{
+		stableComps := []s2hv1.StableComponent{
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v114,
@@ -298,30 +298,30 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 	It("should return outdated duration correctly when there are 2 new versions in the same day", func() {
 		var comp1, repoComp1 = "comp1", "repo/comp1"
 		var v110, v113, v114, v115 = "1.1.0", "1.1.3", "1.1.4", "1.1.5"
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		desiredComps := map[string]map[string]s2hv1beta1.DesiredImageTime{
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		desiredComps := map[string]map[string]s2hv1.DesiredImageTime{
 			comp1: {
-				stringutils.ConcatImageString(repoComp1, v110): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
+				stringutils.ConcatImageString(repoComp1, v110): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v113): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v113},
+				stringutils.ConcatImageString(repoComp1, v113): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v113},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 3, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v114): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v114},
+				stringutils.ConcatImageString(repoComp1, v114): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v114},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 5, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v115): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v115},
+				stringutils.ConcatImageString(repoComp1, v115): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v115},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 5, 15, 0, 0, 0, time.UTC)},
 				},
 			},
 		}
-		stableComps := []s2hv1beta1.StableComponent{
+		stableComps := []s2hv1.StableComponent{
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v114,
@@ -342,26 +342,26 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 	It("should return outdated duration correctly when rollback but there is another latest desired version", func() {
 		var comp1, repoComp1 = "comp1", "repo/comp1"
 		var v110, v113, v114 = "1.1.0", "1.1.3", "1.1.4"
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		desiredComps := map[string]map[string]s2hv1beta1.DesiredImageTime{
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		desiredComps := map[string]map[string]s2hv1.DesiredImageTime{
 			"comp1": {
-				stringutils.ConcatImageString(repoComp1, v110): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
+				stringutils.ConcatImageString(repoComp1, v110): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v113): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v113},
+				stringutils.ConcatImageString(repoComp1, v113): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v113},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 6, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v114): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v114},
+				stringutils.ConcatImageString(repoComp1, v114): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v114},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 7, 9, 0, 0, 0, time.UTC)},
 				},
 			},
 		}
-		stableComps := []s2hv1beta1.StableComponent{
+		stableComps := []s2hv1.StableComponent{
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v113,
@@ -381,22 +381,22 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 
 	It("should return outdated duration correctly when outdated for 1 version by different repository", func() {
 		var comp1, repoComp1, repoComp11, v110 = "comp1", "repo/comp1", "repo/comp11", "1.1.0"
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		desiredComps := map[string]map[string]s2hv1beta1.DesiredImageTime{
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		desiredComps := map[string]map[string]s2hv1.DesiredImageTime{
 			comp1: {
-				stringutils.ConcatImageString(repoComp1, v110): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
+				stringutils.ConcatImageString(repoComp1, v110): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp11, v110): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp11, Tag: v110},
+				stringutils.ConcatImageString(repoComp11, v110): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp11, Tag: v110},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 3, 2, 0, 0, 0, time.UTC)},
 				},
 			},
 		}
-		stableComps := []s2hv1beta1.StableComponent{
+		stableComps := []s2hv1.StableComponent{
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v110,
@@ -419,9 +419,9 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 
 var _ = Describe("set outdated duration when exceed duration configuration is 24h", func() {
 	g := NewGomegaWithT(GinkgoT())
-	cfg := &s2hv1beta1.ConfigSpec{
-		ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
-			OutdatedNotification: &s2hv1beta1.OutdatedNotification{
+	cfg := &s2hv1.ConfigSpec{
+		ActivePromotion: &s2hv1.ConfigActivePromotion{
+			OutdatedNotification: &s2hv1.OutdatedNotification{
 				ExceedDuration: metav1.Duration{Duration: 24 * time.Hour},
 			},
 		},
@@ -430,22 +430,22 @@ var _ = Describe("set outdated duration when exceed duration configuration is 24
 	It("should return no outdated duration correctly when outdated duration does not exceed than config", func() {
 		var comp1, repoComp1 = "comp1", "repo/comp1"
 		var v110, v113 = "1.1.0", "1.1.3"
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		desiredComps := map[string]map[string]s2hv1beta1.DesiredImageTime{
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		desiredComps := map[string]map[string]s2hv1.DesiredImageTime{
 			comp1: {
-				stringutils.ConcatImageString(repoComp1, v110): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
+				stringutils.ConcatImageString(repoComp1, v110): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v113): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v113},
+				stringutils.ConcatImageString(repoComp1, v113): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v113},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 3, 2, 0, 0, 0, time.UTC)},
 				},
 			},
 		}
-		stableComps := []s2hv1beta1.StableComponent{
+		stableComps := []s2hv1.StableComponent{
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v110,
@@ -468,39 +468,39 @@ var _ = Describe("set outdated duration when exceed duration configuration is 24
 		var v110, v113 = "1.1.0", "1.1.3"
 		var comp2, repoComp2 = "comp2", "repo/comp2"
 		var v210, v212 = "2.1.0", "2.1.2"
-		atpRpt := &s2hv1beta1.ActivePromotionStatus{}
-		desiredComps := map[string]map[string]s2hv1beta1.DesiredImageTime{
+		atpRpt := &s2hv1.ActivePromotionStatus{}
+		desiredComps := map[string]map[string]s2hv1.DesiredImageTime{
 			comp1: {
-				stringutils.ConcatImageString(repoComp1, v110): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
+				stringutils.ConcatImageString(repoComp1, v110): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp1, v113): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp1, Tag: v113},
+				stringutils.ConcatImageString(repoComp1, v113): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp1, Tag: v113},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 3, 2, 0, 0, 0, time.UTC)},
 				},
 			},
 			comp2: {
-				stringutils.ConcatImageString(repoComp2, v210): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp2, Tag: v210},
+				stringutils.ConcatImageString(repoComp2, v210): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp2, Tag: v210},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 2, 0, 0, 0, time.UTC)},
 				},
-				stringutils.ConcatImageString(repoComp2, v212): s2hv1beta1.DesiredImageTime{
-					Image:       &s2hv1beta1.Image{Repository: repoComp2, Tag: v212},
+				stringutils.ConcatImageString(repoComp2, v212): s2hv1.DesiredImageTime{
+					Image:       &s2hv1.Image{Repository: repoComp2, Tag: v212},
 					CreatedTime: metav1.Time{Time: time.Date(2019, 10, 2, 2, 0, 0, 0, time.UTC)},
 				},
 			},
 		}
-		stableComps := []s2hv1beta1.StableComponent{
+		stableComps := []s2hv1.StableComponent{
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v110,
 				},
 			},
 			{
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       comp2,
 					Repository: repoComp2,
 					Version:    v210,
@@ -526,15 +526,15 @@ var _ = Describe("set outdated duration when exceed duration configuration is 24
 
 var _ = Describe("calculate outdated duration without weekend duration", func() {
 	g := NewGomegaWithT(GinkgoT())
-	cfg := &s2hv1beta1.ConfigSpec{
-		ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
-			OutdatedNotification: &s2hv1beta1.OutdatedNotification{
+	cfg := &s2hv1.ConfigSpec{
+		ActivePromotion: &s2hv1.ConfigActivePromotion{
+			OutdatedNotification: &s2hv1.OutdatedNotification{
 				ExcludeWeekendCalculation: true,
 			},
 		},
 	}
-	desiredComps := make(map[string]map[string]s2hv1beta1.DesiredImageTime)
-	var stableComps []s2hv1beta1.StableComponent
+	desiredComps := make(map[string]map[string]s2hv1.DesiredImageTime)
+	var stableComps []s2hv1.StableComponent
 
 	It("should return outdated duration correctly when atp stable desired is on working day", func() {
 		nowMockTime := time.Date(2019, 10, 7, 9, 0, 0, 0, time.UTC)
@@ -577,7 +577,7 @@ var _ = Describe("calculate outdated duration without weekend duration", func() 
 	})
 })
 
-func newMock(cfg *s2hv1beta1.ConfigSpec, desiredComps map[string]map[string]s2hv1beta1.DesiredImageTime, stableComps []s2hv1beta1.StableComponent, nowMockTime time.Time) *Outdated {
+func newMock(cfg *s2hv1.ConfigSpec, desiredComps map[string]map[string]s2hv1.DesiredImageTime, stableComps []s2hv1.StableComponent, nowMockTime time.Time) *Outdated {
 	o := &Outdated{
 		cfg:                   cfg,
 		desiredCompsImageTime: desiredComps,

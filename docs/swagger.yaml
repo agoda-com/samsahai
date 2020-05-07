@@ -2,10 +2,10 @@ definitions:
   v1beta1.ActivePromotion:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.ActivePromotionSpec'
+        $ref: '#/definitions/v1.ActivePromotionSpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.ActivePromotionStatus'
+        $ref: '#/definitions/v1.ActivePromotionStatus'
         type: object
     type: object
   v1beta1.ActivePromotionCondition:
@@ -27,16 +27,16 @@ definitions:
   v1beta1.ActivePromotionHistory:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.ActivePromotionHistorySpec'
+        $ref: '#/definitions/v1.ActivePromotionHistorySpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.ActivePromotionHistoryStatus'
+        $ref: '#/definitions/v1.ActivePromotionHistoryStatus'
         type: object
     type: object
   v1beta1.ActivePromotionHistorySpec:
     properties:
       activePromotion:
-        $ref: '#/definitions/v1beta1.ActivePromotion'
+        $ref: '#/definitions/v1.ActivePromotion'
         type: object
       createdAt:
         description: 'TODO: store values file of all components'
@@ -76,7 +76,7 @@ definitions:
           +patchMergeKey=type
           +patchStrategy=merge
         items:
-          $ref: '#/definitions/v1beta1.ActivePromotionCondition'
+          $ref: '#/definitions/v1.ActivePromotionCondition'
         type: array
       demotionStatus:
         description: |-
@@ -109,7 +109,7 @@ definitions:
           +optional
         type: object
       preActiveQueue:
-        $ref: '#/definitions/v1beta1.QueueStatus'
+        $ref: '#/definitions/v1.QueueStatus'
         description: |-
           PreActiveQueue represents a pre-active queue status
           +optional
@@ -165,15 +165,15 @@ definitions:
   v1beta1.Component:
     properties:
       chart:
-        $ref: '#/definitions/v1beta1.ComponentChart'
+        $ref: '#/definitions/v1.ComponentChart'
         type: object
       dependencies:
         description: +optional
         items:
-          $ref: '#/definitions/v1beta1.Component'
+          $ref: '#/definitions/v1.Component'
         type: array
       image:
-        $ref: '#/definitions/v1beta1.ComponentImage'
+        $ref: '#/definitions/v1.ComponentImage'
         type: object
       name:
         type: string
@@ -184,7 +184,7 @@ definitions:
         description: +optional
         type: string
       values:
-        $ref: '#/definitions/v1beta1.ComponentValues'
+        $ref: '#/definitions/v1.ComponentValues'
         description: +optional
         type: object
     type: object
@@ -221,7 +221,7 @@ definitions:
           +optional
         type: string
       deployment:
-        $ref: '#/definitions/v1beta1.ConfigDeploy'
+        $ref: '#/definitions/v1.ConfigDeploy'
         description: Deployment represents configuration about deploy
         type: object
       maxHistories:
@@ -230,7 +230,7 @@ definitions:
           +optional
         type: integer
       outdatedNotification:
-        $ref: '#/definitions/v1beta1.OutdatedNotification'
+        $ref: '#/definitions/v1.OutdatedNotification'
         description: |-
           OutdatedNotification defines a configuration of outdated notification
           +optional
@@ -277,7 +277,7 @@ definitions:
           +optional
         type: string
       testRunner:
-        $ref: '#/definitions/v1beta1.ConfigTestRunner'
+        $ref: '#/definitions/v1.ConfigTestRunner'
         description: |-
           TestRunner represents configuration about test
           +optional
@@ -291,34 +291,34 @@ definitions:
   v1beta1.ConfigReporter:
     properties:
       cmd:
-        $ref: '#/definitions/v1beta1.Shell'
+        $ref: '#/definitions/v1.Shell'
         description: +optional
         type: object
       msTeams:
-        $ref: '#/definitions/v1beta1.MSTeams'
+        $ref: '#/definitions/v1.MSTeams'
         description: +optional
         type: object
       optionals:
         description: +optional
         items:
-          $ref: '#/definitions/v1beta1.ReportOption'
+          $ref: '#/definitions/v1.ReportOption'
         type: array
       reportMock:
         description: +optional
         type: boolean
       rest:
-        $ref: '#/definitions/v1beta1.Rest'
+        $ref: '#/definitions/v1.Rest'
         description: +optional
         type: object
       slack:
-        $ref: '#/definitions/v1beta1.Slack'
+        $ref: '#/definitions/v1.Slack'
         description: +optional
         type: object
     type: object
   v1beta1.ConfigSpec:
     properties:
       activePromotion:
-        $ref: '#/definitions/v1beta1.ConfigActivePromotion'
+        $ref: '#/definitions/v1.ConfigActivePromotion'
         description: |-
           ActivePromotion represents configuration about active promotion
           +optional
@@ -326,7 +326,7 @@ definitions:
       components:
         description: Components represents all components that are managed
         items:
-          $ref: '#/definitions/v1beta1.Component'
+          $ref: '#/definitions/v1.Component'
         type: array
       envs:
         description: |-
@@ -335,20 +335,20 @@ definitions:
           +optional
         type: object
       report:
-        $ref: '#/definitions/v1beta1.ConfigReporter'
+        $ref: '#/definitions/v1.ConfigReporter'
         description: |-
           Reporter represents configuration about reporter
           +optional
         type: object
       staging:
-        $ref: '#/definitions/v1beta1.ConfigStaging'
+        $ref: '#/definitions/v1.ConfigStaging'
         description: Staging represents configuration about staging
         type: object
     type: object
   v1beta1.ConfigStaging:
     properties:
       deployment:
-        $ref: '#/definitions/v1beta1.ConfigDeploy'
+        $ref: '#/definitions/v1.ConfigDeploy'
         description: Deployment represents configuration about deploy
         type: object
       maxHistoryDays:
@@ -380,11 +380,11 @@ definitions:
         description: +optional
         type: string
       teamcity:
-        $ref: '#/definitions/v1beta1.ConfigTeamcity'
+        $ref: '#/definitions/v1.ConfigTeamcity'
         description: +optional
         type: object
       testMock:
-        $ref: '#/definitions/v1beta1.ConfigTestMock'
+        $ref: '#/definitions/v1.ConfigTestMock'
         description: +optional
         type: object
       timeout:
@@ -397,7 +397,7 @@ definitions:
         description: SecretName
         type: string
       teamcity:
-        $ref: '#/definitions/v1beta1.UsernamePasswordCredential'
+        $ref: '#/definitions/v1.UsernamePasswordCredential'
         description: |-
           Teamcity
           +optional
@@ -418,12 +418,12 @@ definitions:
   v1beta1.MSTeams:
     properties:
       componentUpgrade:
-        $ref: '#/definitions/v1beta1.ConfigComponentUpgrade'
+        $ref: '#/definitions/v1.ConfigComponentUpgrade'
         description: +optional
         type: object
       groups:
         items:
-          $ref: '#/definitions/v1beta1.MSTeamsGroup'
+          $ref: '#/definitions/v1.MSTeamsGroup'
         type: array
     type: object
   v1beta1.MSTeamsGroup:
@@ -447,10 +447,10 @@ definitions:
   v1beta1.Queue:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.QueueSpec'
+        $ref: '#/definitions/v1.QueueSpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.QueueStatus'
+        $ref: '#/definitions/v1.QueueStatus'
         type: object
     type: object
   v1beta1.QueueCondition:
@@ -472,16 +472,16 @@ definitions:
   v1beta1.QueueHistory:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.QueueHistorySpec'
+        $ref: '#/definitions/v1.QueueHistorySpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.QueueHistoryStatus'
+        $ref: '#/definitions/v1.QueueHistoryStatus'
         type: object
     type: object
   v1beta1.QueueHistorySpec:
     properties:
       appliedValues:
-        $ref: '#/definitions/v1beta1.Values'
+        $ref: '#/definitions/v1.Values'
         type: object
       createdAt:
         type: string
@@ -492,11 +492,11 @@ definitions:
       isTestSuccess:
         type: boolean
       queue:
-        $ref: '#/definitions/v1beta1.Queue'
+        $ref: '#/definitions/v1.Queue'
         type: object
       stableComponents:
         items:
-          $ref: '#/definitions/v1beta1.StableComponent'
+          $ref: '#/definitions/v1.StableComponent'
         type: array
     type: object
   v1beta1.QueueHistoryStatus:
@@ -542,7 +542,7 @@ definitions:
           +patchMergeKey=type
           +patchStrategy=merge
         items:
-          $ref: '#/definitions/v1beta1.QueueCondition'
+          $ref: '#/definitions/v1.QueueCondition'
         type: array
       createdAt:
         description: CreatedAt represents time when the component has been added to
@@ -554,7 +554,7 @@ definitions:
       imageMissingList:
         description: ImageMissingList defines image missing list
         items:
-          $ref: '#/definitions/v1beta1.Image'
+          $ref: '#/definitions/v1.Image'
         type: array
       kubeZipLog:
         description: KubeZipLog defines log of k8s resources during deployment in
@@ -583,7 +583,7 @@ definitions:
         description: State represents current status of this queue
         type: string
       testRunners:
-        $ref: '#/definitions/v1beta1.TestRunner'
+        $ref: '#/definitions/v1.TestRunner'
         description: TestRunner defines the test runner
         type: object
       updatedAt:
@@ -600,15 +600,15 @@ definitions:
   v1beta1.Rest:
     properties:
       activePromotion:
-        $ref: '#/definitions/v1beta1.RestObject'
+        $ref: '#/definitions/v1.RestObject'
         description: +optional
         type: object
       componentUpgrade:
-        $ref: '#/definitions/v1beta1.RestObject'
+        $ref: '#/definitions/v1.RestObject'
         description: +optional
         type: object
       imageMissing:
-        $ref: '#/definitions/v1beta1.RestObject'
+        $ref: '#/definitions/v1.RestObject'
         description: +optional
         type: object
     type: object
@@ -616,21 +616,21 @@ definitions:
     properties:
       endpoints:
         items:
-          $ref: '#/definitions/v1beta1.Endpoint'
+          $ref: '#/definitions/v1.Endpoint'
         type: array
     type: object
   v1beta1.Shell:
     properties:
       activePromotion:
-        $ref: '#/definitions/v1beta1.CommandAndArgs'
+        $ref: '#/definitions/v1.CommandAndArgs'
         description: +optional
         type: object
       componentUpgrade:
-        $ref: '#/definitions/v1beta1.CommandAndArgs'
+        $ref: '#/definitions/v1.CommandAndArgs'
         description: +optional
         type: object
       imageMissing:
-        $ref: '#/definitions/v1beta1.CommandAndArgs'
+        $ref: '#/definitions/v1.CommandAndArgs'
         description: +optional
         type: object
     type: object
@@ -641,17 +641,17 @@ definitions:
           type: string
         type: array
       componentUpgrade:
-        $ref: '#/definitions/v1beta1.ConfigComponentUpgrade'
+        $ref: '#/definitions/v1.ConfigComponentUpgrade'
         description: +optional
         type: object
     type: object
   v1beta1.StableComponent:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.StableComponentSpec'
+        $ref: '#/definitions/v1.StableComponentSpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.StableComponentStatus'
+        $ref: '#/definitions/v1.StableComponentStatus'
         type: object
     type: object
   v1beta1.StableComponentSpec:
@@ -726,7 +726,7 @@ definitions:
   v1beta1.TeamSpec:
     properties:
       credential:
-        $ref: '#/definitions/v1beta1.Credential'
+        $ref: '#/definitions/v1.Credential'
         description: |-
           Credential
           +optional
@@ -749,7 +749,7 @@ definitions:
           +optional
         type: string
       stagingCtrl:
-        $ref: '#/definitions/v1beta1.StagingCtrl'
+        $ref: '#/definitions/v1.StagingCtrl'
         description: |-
           StagingCtrl represents configuration about the staging controller.
           For easier for developing, debugging and testing purposes
@@ -771,7 +771,7 @@ definitions:
           +patchMergeKey=type
           +patchStrategy=merge
         items:
-          $ref: '#/definitions/v1beta1.TeamCondition'
+          $ref: '#/definitions/v1.TeamCondition'
         type: array
       desiredComponentImageCreatedTime:
         description: |-
@@ -780,7 +780,7 @@ definitions:
           +optional
         type: object
       namespace:
-        $ref: '#/definitions/v1beta1.TeamNamespace'
+        $ref: '#/definitions/v1.TeamNamespace'
         description: +optional
         type: object
       stableComponents:
@@ -801,7 +801,7 @@ definitions:
   v1beta1.TestRunner:
     properties:
       teamcity:
-        $ref: '#/definitions/v1beta1.Teamcity'
+        $ref: '#/definitions/v1.Teamcity'
         type: object
     type: object
   v1beta1.UsernamePasswordCredential:
@@ -828,17 +828,17 @@ definitions:
       running:
         description: +Optional
         items:
-          $ref: '#/definitions/v1beta1.ActivePromotion'
+          $ref: '#/definitions/v1.ActivePromotion'
         type: array
     type: object
   webhook.activePromotionHistories:
     items:
       properties:
         spec:
-          $ref: '#/definitions/v1beta1.ActivePromotionHistorySpec'
+          $ref: '#/definitions/v1.ActivePromotionHistorySpec'
           type: object
         status:
-          $ref: '#/definitions/v1beta1.ActivePromotionHistoryStatus'
+          $ref: '#/definitions/v1.ActivePromotionHistoryStatus'
           type: object
       type: object
     type: array
@@ -863,7 +863,7 @@ definitions:
   webhook.teamActivePromotion:
     properties:
       current:
-        $ref: '#/definitions/v1beta1.ActivePromotion'
+        $ref: '#/definitions/v1.ActivePromotion'
         description: +Optional
         type: object
       historyNames:
@@ -879,15 +879,15 @@ definitions:
     additionalProperties:
       properties:
         chart:
-          $ref: '#/definitions/v1beta1.ComponentChart'
+          $ref: '#/definitions/v1.ComponentChart'
           type: object
         dependencies:
           description: +optional
           items:
-            $ref: '#/definitions/v1beta1.Component'
+            $ref: '#/definitions/v1.Component'
           type: array
         image:
-          $ref: '#/definitions/v1beta1.ComponentImage'
+          $ref: '#/definitions/v1.ComponentImage'
           type: object
         name:
           type: string
@@ -898,7 +898,7 @@ definitions:
           description: +optional
           type: string
         values:
-          $ref: '#/definitions/v1beta1.ComponentValues'
+          $ref: '#/definitions/v1.ComponentValues'
           description: +optional
           type: object
       type: object
@@ -930,13 +930,13 @@ definitions:
         description: +optional
         type: string
       spec:
-        $ref: '#/definitions/v1beta1.TeamSpec'
+        $ref: '#/definitions/v1.TeamSpec'
         type: object
       staging:
         description: +optional
         type: string
       status:
-        $ref: '#/definitions/v1beta1.TeamStatus'
+        $ref: '#/definitions/v1.TeamStatus'
         type: object
       teamName:
         type: string
@@ -944,7 +944,7 @@ definitions:
   webhook.teamQueueJSON:
     properties:
       current:
-        $ref: '#/definitions/v1beta1.Queue'
+        $ref: '#/definitions/v1.Queue'
         description: +Optional
         type: object
       historyNames:
@@ -957,7 +957,7 @@ definitions:
       queues:
         description: +Optional
         items:
-          $ref: '#/definitions/v1beta1.Queue'
+          $ref: '#/definitions/v1.Queue'
         type: array
     type: object
   webhook.teamsJSON:
@@ -1308,7 +1308,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/v1beta1.QueueHistory'
+            $ref: '#/definitions/v1.QueueHistory'
         "404":
           description: Queue history not found
           schema:
@@ -1338,7 +1338,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/v1beta1.QueueHistory'
+            $ref: '#/definitions/v1.QueueHistory'
         "404":
           description: Queue history not found
           schema:

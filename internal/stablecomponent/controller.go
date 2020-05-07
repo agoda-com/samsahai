@@ -10,7 +10,7 @@ import (
 	k8scontroller "sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -52,11 +52,11 @@ func New(
 func (c *controller) setupWithManager(mgr cr.Manager) error {
 	return cr.NewControllerManagedBy(mgr).
 		WithOptions(k8scontroller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}).
-		For(&s2hv1beta1.StableComponent{}).
+		For(&s2hv1.StableComponent{}).
 		Complete(c)
 }
 
-func (c *controller) updateStable(stableComp *s2hv1beta1.StableComponent) error {
+func (c *controller) updateStable(stableComp *s2hv1.StableComponent) error {
 	if err := c.client.Update(context.Background(), stableComp); err != nil {
 		logger.Error(err, "cannot update stable component", "name", stableComp.Name, "namespace", stableComp.Namespace)
 		return errors.Wrap(err, "cannot update stable component")
@@ -65,7 +65,7 @@ func (c *controller) updateStable(stableComp *s2hv1beta1.StableComponent) error 
 	return nil
 }
 
-func (c *controller) updateTeam(team *s2hv1beta1.Team) error {
+func (c *controller) updateTeam(team *s2hv1.Team) error {
 	if err := c.client.Update(context.Background(), team); err != nil {
 		return errors.Wrap(err, "cannot update team")
 	}
@@ -73,11 +73,11 @@ func (c *controller) updateTeam(team *s2hv1beta1.Team) error {
 	return nil
 }
 
-func (c *controller) getTeamStaging(stableComp *s2hv1beta1.StableComponent) (*s2hv1beta1.Team, error) {
-	var team *s2hv1beta1.Team
+func (c *controller) getTeamStaging(stableComp *s2hv1.StableComponent) (*s2hv1.Team, error) {
+	var team *s2hv1.Team
 	labels := stableComp.GetLabels()
 	if teamName, ok := labels[internal.GetTeamLabelKey()]; ok && teamName != "" {
-		team = &s2hv1beta1.Team{}
+		team = &s2hv1.Team{}
 		err := c.s2hCtrl.GetTeam(teamName, team)
 		if err != nil {
 			// ignore if team not found
@@ -115,7 +115,7 @@ func (c *controller) getTeamStaging(stableComp *s2hv1beta1.StableComponent) (*s2
 	return nil, nil
 }
 
-func (c *controller) addFinalizer(stableComp *s2hv1beta1.StableComponent) error {
+func (c *controller) addFinalizer(stableComp *s2hv1.StableComponent) error {
 	// The object is not being deleted, so if it does not have our finalizer,
 	// then lets add the finalizer and update the object.
 	if !stringutils.ContainsString(stableComp.ObjectMeta.Finalizers, stableFinalizerName) {
@@ -128,7 +128,7 @@ func (c *controller) addFinalizer(stableComp *s2hv1beta1.StableComponent) error 
 	return nil
 }
 
-func (c *controller) deleteFinalizer(stableComp *s2hv1beta1.StableComponent, team *s2hv1beta1.Team) error {
+func (c *controller) deleteFinalizer(stableComp *s2hv1.StableComponent, team *s2hv1.Team) error {
 	if stringutils.ContainsString(stableComp.ObjectMeta.Finalizers, stableFinalizerName) {
 		if team.Status.SetStableComponents(stableComp, true) {
 			if err := c.updateTeam(team); err != nil && !k8serrors.IsNotFound(err) {
@@ -150,7 +150,7 @@ func (c *controller) deleteFinalizer(stableComp *s2hv1beta1.StableComponent, tea
 
 func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	ctx := context.Background()
-	stableComp := &s2hv1beta1.StableComponent{}
+	stableComp := &s2hv1.StableComponent{}
 	if err := c.client.Get(ctx, req.NamespacedName, stableComp); err != nil {
 		if k8serrors.IsNotFound(err) {
 			// Object not found, return. Created objects are automatically garbage collected.
@@ -210,7 +210,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	return cr.Result{}, nil
 }
 
-func (c *controller) detectSpecChanged(stableComp *s2hv1beta1.StableComponent, teamComp *s2hv1beta1.Team) bool {
+func (c *controller) detectSpecChanged(stableComp *s2hv1.StableComponent, teamComp *s2hv1.Team) bool {
 	if stableComp != nil {
 		teamStableComp := teamComp.Status.GetStableComponent(stableComp.Name)
 		if teamStableComp.Spec.Name != "" {

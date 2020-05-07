@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
@@ -36,7 +36,7 @@ type updateTeamDesiredComponent struct {
 	TeamName        string
 	ComponentName   string
 	ComponentSource string
-	ComponentImage  s2hv1beta1.ComponentImage
+	ComponentImage  s2hv1.ComponentImage
 }
 
 func (c *controller) Start(stop <-chan struct{}) {
@@ -117,7 +117,7 @@ func (c *controller) checkComponentChanged(component changedComponent) error {
 
 	for _, teamComp := range teamList.Items {
 		teamName := teamComp.Name
-		team := &s2hv1beta1.Team{}
+		team := &s2hv1.Team{}
 		if err := c.getTeam(teamName, team); err != nil {
 			logger.Error(err, "cannot get team", "team", teamName)
 			return err
@@ -166,7 +166,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	checker := c.checkers[updateInfo.ComponentSource]
 	checkPattern := updateInfo.ComponentImage.Pattern
 
-	team := &s2hv1beta1.Team{}
+	team := &s2hv1.Team{}
 	if err := c.getTeam(updateInfo.TeamName, team); err != nil {
 		logger.Error(err, "cannot get team", "team", updateInfo.TeamName)
 		return err
@@ -188,8 +188,8 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	ctx := context.Background()
 	now := metav1.Now()
 	desiredImage := stringutils.ConcatImageString(compRepository, version)
-	desiredImageTime := s2hv1beta1.DesiredImageTime{
-		Image: &s2hv1beta1.Image{
+	desiredImageTime := s2hv1.DesiredImageTime{
+		Image: &s2hv1.Image{
 			Repository: compRepository,
 			Tag:        version,
 		},
@@ -208,25 +208,25 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 		return nil
 	}
 
-	desiredComp := &s2hv1beta1.DesiredComponent{}
+	desiredComp := &s2hv1.DesiredComponent{}
 	err = c.client.Get(ctx, types.NamespacedName{Name: compName, Namespace: compNs}, desiredComp)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			// Create new DesiredComponent
 			desiredLabels := internal.GetDefaultLabels(team.Name)
 			desiredLabels["app"] = compName
-			desiredComp = &s2hv1beta1.DesiredComponent{
+			desiredComp = &s2hv1.DesiredComponent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      compName,
 					Namespace: compNs,
 					Labels:    desiredLabels,
 				},
-				Spec: s2hv1beta1.DesiredComponentSpec{
+				Spec: s2hv1.DesiredComponentSpec{
 					Version:    version,
 					Name:       compName,
 					Repository: compRepository,
 				},
-				Status: s2hv1beta1.DesiredComponentStatus{
+				Status: s2hv1.DesiredComponentStatus{
 					CreatedAt: &now,
 					UpdatedAt: &now,
 				},
@@ -278,10 +278,10 @@ func (c *controller) QueueLen() int {
 
 type desiredTime struct {
 	image            string
-	desiredImageTime s2hv1beta1.DesiredImageTime
+	desiredImageTime s2hv1.DesiredImageTime
 }
 
-func deleteDesiredMappingOutOfRange(team *s2hv1beta1.Team, maxDesiredMapping int) {
+func deleteDesiredMappingOutOfRange(team *s2hv1.Team, maxDesiredMapping int) {
 	desiredMap := team.Status.DesiredComponentImageCreatedTime
 	for compName, m := range desiredMap {
 		desiredList := convertDesiredMapToDesiredTimeList(m)
@@ -299,7 +299,7 @@ func deleteDesiredMappingOutOfRange(team *s2hv1beta1.Team, maxDesiredMapping int
 	}
 }
 
-func isImageInActive(team *s2hv1beta1.Team, compName, desiredImage string) bool {
+func isImageInActive(team *s2hv1.Team, compName, desiredImage string) bool {
 	activeComponents := team.Status.ActiveComponents
 	if activeComp, ok := activeComponents[compName]; ok {
 		if activeComp.Spec.Name != "" {
@@ -320,7 +320,7 @@ func sortDesiredList(desiredList []desiredTime) {
 	})
 }
 
-func convertDesiredMapToDesiredTimeList(desiredMap map[string]s2hv1beta1.DesiredImageTime) []desiredTime {
+func convertDesiredMapToDesiredTimeList(desiredMap map[string]s2hv1.DesiredImageTime) []desiredTime {
 	out := make([]desiredTime, 0)
 	for k, v := range desiredMap {
 		out = append(out, desiredTime{image: k, desiredImageTime: v})

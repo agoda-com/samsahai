@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 )
@@ -12,13 +12,13 @@ import (
 var logger = s2hlog.S2HLog.WithName("Outdated-util")
 
 type Outdated struct {
-	cfg                   *s2hv1beta1.ConfigSpec
-	desiredCompsImageTime map[string]map[string]s2hv1beta1.DesiredImageTime
-	stableComps           []s2hv1beta1.StableComponent
+	cfg                   *s2hv1.ConfigSpec
+	desiredCompsImageTime map[string]map[string]s2hv1.DesiredImageTime
+	stableComps           []s2hv1.StableComponent
 	nowTime               time.Time
 }
 
-func New(cfg *s2hv1beta1.ConfigSpec, desiredComps map[string]map[string]s2hv1beta1.DesiredImageTime, stableComps []s2hv1beta1.StableComponent) *Outdated {
+func New(cfg *s2hv1.ConfigSpec, desiredComps map[string]map[string]s2hv1.DesiredImageTime, stableComps []s2hv1.StableComponent) *Outdated {
 	r := &Outdated{
 		cfg:                   cfg,
 		desiredCompsImageTime: desiredComps,
@@ -29,9 +29,9 @@ func New(cfg *s2hv1beta1.ConfigSpec, desiredComps map[string]map[string]s2hv1bet
 	return r
 }
 
-func (o Outdated) SetOutdatedDuration(atpCompStatus *s2hv1beta1.ActivePromotionStatus) {
+func (o Outdated) SetOutdatedDuration(atpCompStatus *s2hv1.ActivePromotionStatus) {
 	if atpCompStatus.OutdatedComponents == nil {
-		atpCompStatus.OutdatedComponents = make(map[string]s2hv1beta1.OutdatedComponent)
+		atpCompStatus.OutdatedComponents = make(map[string]s2hv1.OutdatedComponent)
 	}
 
 	for _, stableComp := range o.stableComps {
@@ -44,7 +44,7 @@ func (o Outdated) SetOutdatedDuration(atpCompStatus *s2hv1beta1.ActivePromotionS
 			continue
 		}
 
-		descCreatedTime := s2hv1beta1.SortByCreatedTimeDESC(desiredCompImageCreatedTime)
+		descCreatedTime := s2hv1.SortByCreatedTimeDESC(desiredCompImageCreatedTime)
 		latestDesiredImage := descCreatedTime[0].Image
 		latestDesiredImageTime := descCreatedTime[0].ImageTime
 		if strings.EqualFold(latestDesiredImage, stableImage) {
@@ -124,15 +124,15 @@ func (o Outdated) getWeekendDuration(atpStableDesiredTime time.Time) time.Durati
 }
 
 func getOutdatedComponent(
-	stableComp s2hv1beta1.StableComponentSpec,
-	latestVersion s2hv1beta1.DesiredImageTime,
-	outdatedDuration time.Duration) s2hv1beta1.OutdatedComponent {
-	return s2hv1beta1.OutdatedComponent{
-		CurrentImage: &s2hv1beta1.Image{
+	stableComp s2hv1.StableComponentSpec,
+	latestVersion s2hv1.DesiredImageTime,
+	outdatedDuration time.Duration) s2hv1.OutdatedComponent {
+	return s2hv1.OutdatedComponent{
+		CurrentImage: &s2hv1.Image{
 			Repository: stableComp.Repository,
 			Tag:        stableComp.Version,
 		},
-		DesiredImage: &s2hv1beta1.Image{
+		DesiredImage: &s2hv1.Image{
 			Repository: latestVersion.Repository,
 			Tag:        latestVersion.Tag,
 		},

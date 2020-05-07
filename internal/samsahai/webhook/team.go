@@ -8,7 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	"github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 )
 
@@ -41,11 +41,11 @@ func (h *handler) getTeams(w http.ResponseWriter, r *http.Request, params httpro
 }
 
 type teamJSON struct {
-	v1beta1.TeamNamespace `json:"namespace"`
-	TeamName              string             `json:"teamName"`
-	TeamConnections       teamEnvConnections `json:"connections"`
-	TeamStatus            v1beta1.TeamStatus `json:"status"`
-	TeamSpec              v1beta1.TeamSpec   `json:"spec"`
+	v1.TeamNamespace `json:"namespace"`
+	TeamName         string             `json:"teamName"`
+	TeamConnections  teamEnvConnections `json:"connections"`
+	TeamStatus       v1.TeamStatus      `json:"status"`
+	TeamSpec         v1.TeamSpec        `json:"spec"`
 	//TeamQueue             teamQueueJSON          `json:"queue"`
 }
 
@@ -54,10 +54,10 @@ type teamQueueJSON struct {
 	NoOfQueue int `json:"noOfQueue"`
 
 	// +Optional
-	Current *v1beta1.Queue `json:"current"`
+	Current *v1.Queue `json:"current"`
 
 	// +Optional
-	Queues []v1beta1.Queue `json:"queues"`
+	Queues []v1.Queue `json:"queues"`
 
 	Histories []string `json:"historyNames"`
 }
@@ -124,11 +124,11 @@ func (h *handler) getTeam(w http.ResponseWriter, r *http.Request, params httprou
 		TeamStatus:      team.Status,
 		TeamSpec:        team.Spec,
 	}
-	data.TeamSpec.Credential = v1beta1.Credential{}
+	data.TeamSpec.Credential = v1.Credential{}
 	h.JSON(w, http.StatusOK, &data)
 }
 
-type teamComponentsJSON map[string]*v1beta1.Component
+type teamComponentsJSON map[string]*v1.Component
 
 // getTeamComponent godoc
 // @Summary Get Team Component
@@ -190,7 +190,7 @@ func (h *handler) getTeamQueue(w http.ResponseWriter, r *http.Request, params ht
 		}
 	}
 	for i, queue := range queues.Items {
-		if queue.Status.State != v1beta1.Waiting {
+		if queue.Status.State != v1.Waiting {
 			data.Current = &queues.Items[i]
 		}
 	}
@@ -204,7 +204,7 @@ func (h *handler) getTeamQueue(w http.ResponseWriter, r *http.Request, params ht
 // @Tags GET
 // @Param team path string true "Team name"
 // @Param queue path string true "Queue history name"
-// @Success 200 {object} v1beta1.QueueHistory
+// @Success 200 {object} v1.QueueHistory
 // @Failure 404 {object} errResp "Team not found"
 // @Failure 404 {object} errResp "Queue history not found"
 // @Failure 500 {object} errResp
@@ -247,7 +247,7 @@ func (h *handler) getTeamQueueHistoryLog(w http.ResponseWriter, r *http.Request,
 // @Tags GET
 // @Param team path string true "Team name"
 // @Param queue path string true "Queue history name"
-// @Success 200 {object} v1beta1.QueueHistory
+// @Success 200 {object} v1.QueueHistory
 // @Failure 404 {object} errResp "Team not found"
 // @Failure 404 {object} errResp "Queue history not found"
 // @Failure 500 {object} errResp
@@ -284,7 +284,7 @@ func (h *handler) getTeamQueueHistory(w http.ResponseWriter, r *http.Request, pa
 // @Param team path string true "Team name"
 // @Param component path string true "Component name"
 // @Param accept header string true "Accept" enums(application/json, application/x-yaml)
-// @Success 200 {string} v1beta1.ComponentValues
+// @Success 200 {string} v1.ComponentValues
 // @Failure 404 {object} errResp "Team not found"
 // @Failure 404 {object} errResp "Component not found"
 // @Failure 500 {object} errResp
@@ -333,7 +333,7 @@ func (h *handler) getTeamComponentStableValues(w http.ResponseWriter, r *http.Re
 // @Tags GET
 // @Param team path string true "Team name"
 // @Param accept header string true "Accept" enums(application/json, application/x-yaml)
-// @Success 200 {string} v1beta1.ConfigSpec
+// @Success 200 {string} v1.ConfigSpec
 // @Failure 404 {object} errResp "Team not found"
 // @Failure 500 {object} errResp
 // @Router /teams/{team}/config [get]
@@ -361,10 +361,10 @@ func (h *handler) getTeamConfig(w http.ResponseWriter, r *http.Request, params h
 	}
 }
 
-func (h *handler) loadTeam(w http.ResponseWriter, params httprouter.Params) (*v1beta1.Team, error) {
+func (h *handler) loadTeam(w http.ResponseWriter, params httprouter.Params) (*v1.Team, error) {
 	teamName := params.ByName("team")
 
-	team := &v1beta1.Team{}
+	team := &v1.Team{}
 	err := h.samsahai.GetTeam(teamName, team)
 	if err != nil {
 		if errors.IsNotFound(err) {

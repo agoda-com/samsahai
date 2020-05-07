@@ -3,23 +3,23 @@ repo: github.com/agoda-com/samsahai
 resources:
 - group: env
   kind: Queue
-  version: v1beta1
+  version: v1
 - group: env
   kind: Team
-  version: v1beta1
+  version: v1
 - group: env
   kind: ActivePromotion
-  version: v1beta1
+  version: v1
 - group: env
   kind: ActivePromotionHistory
-  version: v1beta1
+  version: v1
 - group: env
   kind: QueueHistory
-  version: v1beta1
+  version: v1
 - group: env
   kind: StableComponent
-  version: v1beta1
+  version: v1
 - group: env
   kind: DesiredComponent
-  version: v1beta1
+  version: v1
 version: "2"

@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/reporter/shell"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
@@ -25,8 +25,8 @@ var _ = Describe("shell command reporter", func() {
 
 	Describe("success path", func() {
 		It("should correctly execute component upgrade", func() {
-			testCmdObj := &s2hv1beta1.CommandAndArgs{}
-			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
+			testCmdObj := &s2hv1.CommandAndArgs{}
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1.CommandAndArgs) ([]byte, error) {
 				testCmdObj = cmdObj
 				return []byte{}, nil
 			}
@@ -43,8 +43,8 @@ var _ = Describe("shell command reporter", func() {
 		})
 
 		It("should correctly execute active promotion", func() {
-			testCmdObj := &s2hv1beta1.CommandAndArgs{}
-			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
+			testCmdObj := &s2hv1.CommandAndArgs{}
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1.CommandAndArgs) ([]byte, error) {
 				testCmdObj = cmdObj
 				return []byte{}, nil
 			}
@@ -52,8 +52,8 @@ var _ = Describe("shell command reporter", func() {
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
 			configCtrl := newMockConfigCtrl("")
 
-			status := &s2hv1beta1.ActivePromotionStatus{
-				Result: s2hv1beta1.ActivePromotionSuccess,
+			status := &s2hv1.ActivePromotionStatus{
+				Result: s2hv1.ActivePromotionSuccess,
 			}
 			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "", "")
 
@@ -65,8 +65,8 @@ var _ = Describe("shell command reporter", func() {
 		})
 
 		It("should correctly execute image missing", func() {
-			testCmdObj := &s2hv1beta1.CommandAndArgs{}
-			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
+			testCmdObj := &s2hv1.CommandAndArgs{}
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1.CommandAndArgs) ([]byte, error) {
 				testCmdObj = cmdObj
 				return []byte{}, nil
 			}
@@ -83,8 +83,8 @@ var _ = Describe("shell command reporter", func() {
 		})
 
 		It("should correctly execute command with environment variables", func() {
-			testCmdObj := &s2hv1beta1.CommandAndArgs{}
-			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
+			testCmdObj := &s2hv1.CommandAndArgs{}
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1.CommandAndArgs) ([]byte, error) {
 				testCmdObj = cmdObj
 				return []byte{}, nil
 			}
@@ -113,7 +113,7 @@ var _ = Describe("shell command reporter", func() {
 
 		It("should not execute command if not define shell reporter configuration", func() {
 			calls := 0
-			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1.CommandAndArgs) ([]byte, error) {
 				calls++
 				return []byte{}, nil
 			}
@@ -144,16 +144,16 @@ func newMockConfigCtrl(configType string) internal.ConfigController {
 	return &mockConfigCtrl{configType: configType}
 }
 
-func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 	switch c.configType {
 	case "empty":
-		return &s2hv1beta1.Config{}, nil
+		return &s2hv1.Config{}, nil
 	case "env":
-		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					Shell: &s2hv1beta1.Shell{
-						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+		return &s2hv1.Config{
+			Spec: s2hv1.ConfigSpec{
+				Reporter: &s2hv1.ConfigReporter{
+					Shell: &s2hv1.Shell{
+						ComponentUpgrade: &s2hv1.CommandAndArgs{
 							Command: []string{"echo {{ .Envs.TEST_ENV }}"},
 						},
 					},
@@ -161,11 +161,11 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 			},
 		}, nil
 	case "failure":
-		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					Shell: &s2hv1beta1.Shell{
-						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+		return &s2hv1.Config{
+			Spec: s2hv1.ConfigSpec{
+				Reporter: &s2hv1.ConfigReporter{
+					Shell: &s2hv1.Shell{
+						ComponentUpgrade: &s2hv1.CommandAndArgs{
 							Command: []string{"/bin/sleep", "5"},
 						},
 					},
@@ -173,18 +173,18 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 			},
 		}, nil
 	default:
-		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					Shell: &s2hv1beta1.Shell{
-						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+		return &s2hv1.Config{
+			Spec: s2hv1.ConfigSpec{
+				Reporter: &s2hv1.ConfigReporter{
+					Shell: &s2hv1.Shell{
+						ComponentUpgrade: &s2hv1.CommandAndArgs{
 							Command: []string{"/bin/sh", "-c"},
 							Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
 						},
-						ActivePromotion: &s2hv1beta1.CommandAndArgs{
+						ActivePromotion: &s2hv1.CommandAndArgs{
 							Command: []string{"echo active promotion status {{ .Result }}"},
 						},
-						ImageMissing: &s2hv1beta1.CommandAndArgs{
+						ImageMissing: &s2hv1.CommandAndArgs{
 							Command: []string{"/bin/sh", "-c"},
 							Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }}"},
 						},
@@ -195,15 +195,15 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 	}
 }
 
-func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
-	return map[string]*s2hv1beta1.Component{}, nil
+func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1.Component, error) {
+	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
-	return map[string]*s2hv1beta1.Component{}, nil
+func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1.Component, error) {
+	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+func (c *mockConfigCtrl) Update(config *s2hv1.Config) error {
 	return nil
 }
 

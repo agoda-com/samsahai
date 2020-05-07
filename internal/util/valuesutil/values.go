@@ -5,21 +5,21 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	"github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/util"
 )
 
 // GetStableComponentsMap returns map of StableComponents in the namespace
-func GetStableComponentsMap(c client.Client, namespace string) (stableMap map[string]v1beta1.StableComponent, err error) {
+func GetStableComponentsMap(c client.Client, namespace string) (stableMap map[string]v1.StableComponent, err error) {
 	// get stable
-	stableList := &v1beta1.StableComponentList{}
+	stableList := &v1.StableComponentList{}
 	err = c.List(context.Background(), stableList, &client.ListOptions{Namespace: namespace})
 	if err != nil {
 		return
 	}
 
 	// create StableComponentMap
-	stableMap = map[string]v1beta1.StableComponent{}
+	stableMap = map[string]v1.StableComponent{}
 
 	for _, stable := range stableList.Items {
 		stable := stable
@@ -31,10 +31,10 @@ func GetStableComponentsMap(c client.Client, namespace string) (stableMap map[st
 
 // GenStableComponentValues returns Values of the component combine with stable version of itself and its dependencies
 func GenStableComponentValues(
-	comp *v1beta1.Component,
-	stableMap map[string]v1beta1.StableComponent,
+	comp *v1.Component,
+	stableMap map[string]v1.StableComponent,
 	baseValues map[string]interface{},
-) v1beta1.ComponentValues {
+) v1.ComponentValues {
 	var values map[string]interface{}
 	if len(baseValues) > 0 {
 		values = util.CopyMap(baseValues)
@@ -60,7 +60,7 @@ func GenStableComponentValues(
 	return values
 }
 
-func genCompValueFromStableComponent(stableComp *v1beta1.StableComponent) map[string]interface{} {
+func genCompValueFromStableComponent(stableComp *v1.StableComponent) map[string]interface{} {
 	return map[string]interface{}{
 		"image": map[string]interface{}{
 			"repository": stableComp.Spec.Repository,
