@@ -157,7 +157,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 			Pattern:    "5\\.2.*debian-9.*",
 		},
 		Source: &compSource,
-		Dependencies: []*s2hv1.Component{
+		Dependencies: []*s2hv1.Dependency{
 			{
 				Name: "mariadb",
 				Image: s2hv1.ComponentImage{

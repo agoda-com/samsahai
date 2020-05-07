@@ -14,7 +14,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/queue"
 )
 
-var _ = Describe("queue controller [e2e]", func() {
+var _ = Describe("[e2e] Queue controller", func() {
 	var controller internal.QueueController
 	var namespace string
 	var client rclient.Client

@@ -39,13 +39,14 @@ var _ = Describe("set outdated duration when input objects are empty", func() {
 	})
 
 	It("should return empty outdated component when desired version time list is nil", func() {
+		var comp1, repoComp1, v110 = "comp1", "repo/comp1", "1.1.0"
 		atpRpt := &s2hv1.ActivePromotionStatus{}
-		stableComps := []s2hv1.StableComponent{
-			{
+		stableComps := map[string]s2hv1.StableComponent{
+			comp1: {
 				Spec: s2hv1.StableComponentSpec{
-					Name:       "comp1",
-					Repository: "image-1",
-					Version:    "1.1.0",
+					Name:       comp1,
+					Repository: repoComp1,
+					Version:    v110,
 				},
 			},
 		}
@@ -68,8 +69,8 @@ var _ = Describe("set outdated duration when input objects are empty", func() {
 				},
 			},
 		}
-		stableComps := []s2hv1.StableComponent{
-			{
+		stableComps := map[string]s2hv1.StableComponent{
+			comp1: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
@@ -108,15 +109,15 @@ var _ = Describe("set outdated duration when active stable version is eq to late
 				},
 			},
 		}
-		stableComps := []s2hv1.StableComponent{
-			{
+		stableComps := map[string]s2hv1.StableComponent{
+			comp1: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v110,
 				},
 			},
-			{
+			comp2: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp2,
 					Repository: repoComp2,
@@ -160,8 +161,8 @@ var _ = Describe("set outdated duration when active stable version is eq to late
 				},
 			},
 		}
-		stableComps := []s2hv1.StableComponent{
-			{
+		stableComps := map[string]s2hv1.StableComponent{
+			comp1: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
@@ -215,15 +216,15 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 				},
 			},
 		}
-		stableComps := []s2hv1.StableComponent{
-			{
+		stableComps := map[string]s2hv1.StableComponent{
+			comp1: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v110,
 				},
 			},
-			{
+			comp2: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp2,
 					Repository: repoComp2,
@@ -275,8 +276,8 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 				},
 			},
 		}
-		stableComps := []s2hv1.StableComponent{
-			{
+		stableComps := map[string]s2hv1.StableComponent{
+			comp1: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
@@ -319,8 +320,8 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 				},
 			},
 		}
-		stableComps := []s2hv1.StableComponent{
-			{
+		stableComps := map[string]s2hv1.StableComponent{
+			comp1: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
@@ -359,8 +360,8 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 				},
 			},
 		}
-		stableComps := []s2hv1.StableComponent{
-			{
+		stableComps := map[string]s2hv1.StableComponent{
+			comp1: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
@@ -394,8 +395,8 @@ var _ = Describe("set outdated duration when active stable version is not eq to 
 				},
 			},
 		}
-		stableComps := []s2hv1.StableComponent{
-			{
+		stableComps := map[string]s2hv1.StableComponent{
+			comp1: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
@@ -443,8 +444,8 @@ var _ = Describe("set outdated duration when exceed duration configuration is 24
 				},
 			},
 		}
-		stableComps := []s2hv1.StableComponent{
-			{
+		stableComps := map[string]s2hv1.StableComponent{
+			comp1: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
@@ -491,15 +492,15 @@ var _ = Describe("set outdated duration when exceed duration configuration is 24
 				},
 			},
 		}
-		stableComps := []s2hv1.StableComponent{
-			{
+		stableComps := map[string]s2hv1.StableComponent{
+			comp1: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp1,
 					Repository: repoComp1,
 					Version:    v110,
 				},
 			},
-			{
+			comp2: {
 				Spec: s2hv1.StableComponentSpec{
 					Name:       comp2,
 					Repository: repoComp2,
@@ -534,7 +535,7 @@ var _ = Describe("calculate outdated duration without weekend duration", func() 
 		},
 	}
 	desiredComps := make(map[string]map[string]s2hv1.DesiredImageTime)
-	var stableComps []s2hv1.StableComponent
+	var stableComps map[string]s2hv1.StableComponent
 
 	It("should return outdated duration correctly when atp stable desired is on working day", func() {
 		nowMockTime := time.Date(2019, 10, 7, 9, 0, 0, 0, time.UTC)
@@ -577,11 +578,13 @@ var _ = Describe("calculate outdated duration without weekend duration", func() 
 	})
 })
 
-func newMock(cfg *s2hv1.ConfigSpec, desiredComps map[string]map[string]s2hv1.DesiredImageTime, stableComps []s2hv1.StableComponent, nowMockTime time.Time) *Outdated {
+func newMock(cfg *s2hv1.ConfigSpec,
+	desiredComps map[string]map[string]s2hv1.DesiredImageTime,
+	lastActiveComps map[string]s2hv1.StableComponent, nowMockTime time.Time) *Outdated {
 	o := &Outdated{
 		cfg:                   cfg,
 		desiredCompsImageTime: desiredComps,
-		stableComps:           stableComps,
+		currentActiveComps:    lastActiveComps,
 		nowTime:               nowMockTime,
 	}
 
