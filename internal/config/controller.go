@@ -16,6 +16,7 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	conf "github.com/agoda-com/samsahai/internal/util/config"
 	"github.com/agoda-com/samsahai/internal/util/http"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
 )
@@ -98,12 +99,8 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1.Compone
 		if len(comp.Dependencies) > 0 {
 			// add to comps
 			for _, dep := range comp.Dependencies {
-				comps = append(comps, &s2hv1.Component{
-					Parent: comp.Name,
-					Name:   dep.Name,
-					Image:  dep.Image,
-					Source: dep.Source,
-				})
+				c := conf.New(dep, comp)
+				comps = append(comps, c)
 			}
 		}
 

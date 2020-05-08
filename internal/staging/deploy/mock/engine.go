@@ -3,7 +3,7 @@ package mock
 import (
 	"fmt"
 
-	"github.com/agoda-com/samsahai/api/v1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 )
@@ -14,7 +14,7 @@ const (
 	EngineName = "mock"
 )
 
-type CreateCallbackFn func(refName string, comp *v1.Component, parentComp *v1.Component, values map[string]interface{})
+type CreateCallbackFn func(refName string, comp *s2hv1.Component, parentComp *s2hv1.Component, values map[string]interface{})
 type DeleteCallbackFn func(refName string)
 
 type engine struct {
@@ -37,8 +37,8 @@ func NewWithCallback(creFn CreateCallbackFn, delFn DeleteCallbackFn) internal.De
 
 func (e *engine) Create(
 	refName string,
-	comp *v1.Component,
-	parentComp *v1.Component,
+	comp *s2hv1.Component,
+	parentComp *s2hv1.Component,
 	values map[string]interface{},
 ) error {
 	if e.createFn != nil {
@@ -66,7 +66,7 @@ func (e *engine) GetValues() (map[string][]byte, error) {
 	return nil, nil
 }
 
-func (e *engine) IsReady(queue *v1.Queue) (bool, error) {
+func (e *engine) IsReady(queue *s2hv1.Queue) (bool, error) {
 	logger.Debug(fmt.Sprintf("env with resource key '%s' is ready", queue.Status.ReleaseName))
 	return true, nil
 }

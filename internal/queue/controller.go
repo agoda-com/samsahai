@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/agoda-com/samsahai/api/v1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 )
@@ -26,24 +26,24 @@ type controller struct {
 
 var _ internal.QueueController = &controller{}
 
-func NewUpgradeQueue(teamName, namespace, name, repository, version string) *v1.Queue {
+func NewUpgradeQueue(teamName, namespace, name, repository, version string) *s2hv1.Queue {
 	qLabels := internal.GetDefaultLabels(teamName)
 	qLabels["app"] = name
 	qLabels["component"] = name
-	return &v1.Queue{
+	return &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			Labels:    qLabels,
 		},
-		Spec: v1.QueueSpec{
+		Spec: s2hv1.QueueSpec{
 			Name:       name,
 			TeamName:   teamName,
 			Repository: repository,
 			Version:    version,
-			Type:       v1.QueueTypeUpgrade,
+			Type:       s2hv1.QueueTypeUpgrade,
 		},
-		Status: v1.QueueStatus{},
+		Status: s2hv1.QueueStatus{},
 	}
 }
 
@@ -56,11 +56,11 @@ func New(ns string, runtimeClient client.Client) internal.QueueController {
 	return c
 }
 
-func (c *controller) Add(q *v1.Queue) error {
+func (c *controller) Add(q *s2hv1.Queue) error {
 	return c.add(context.TODO(), q, false)
 }
 
-func (c *controller) AddTop(q *v1.Queue) error {
+func (c *controller) AddTop(q *s2hv1.Queue) error {
 	return c.add(context.TODO(), q, true)
 }
 
@@ -73,7 +73,7 @@ func (c *controller) Size() int {
 	return len(list.Items)
 }
 
-func (c *controller) First() (*v1.Queue, error) {
+func (c *controller) First() (*s2hv1.Queue, error) {
 	list, err := c.list(nil)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
@@ -97,16 +97,16 @@ func (c *controller) First() (*v1.Queue, error) {
 	return nil, nil
 }
 
-func (c *controller) Remove(q *v1.Queue) error {
+func (c *controller) Remove(q *s2hv1.Queue) error {
 	return c.client.Delete(context.TODO(), q)
 }
 
 func (c *controller) RemoveAllQueues() error {
 
-	return c.client.DeleteAllOf(context.TODO(), &v1.Queue{}, client.InNamespace(c.namespace))
+	return c.client.DeleteAllOf(context.TODO(), &s2hv1.Queue{}, client.InNamespace(c.namespace))
 }
 
-func (c *controller) add(ctx context.Context, queue *v1.Queue, atTop bool) error {
+func (c *controller) add(ctx context.Context, queue *s2hv1.Queue, atTop bool) error {
 	queueList, err := c.list(nil)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
@@ -119,7 +119,7 @@ func (c *controller) add(ctx context.Context, queue *v1.Queue, atTop bool) error
 		return nil
 	}
 
-	pQueue := &v1.Queue{}
+	pQueue := &s2hv1.Queue{}
 	isAlreadyInQueue := false
 	for i, q := range queueList.Items {
 		if q.IsSame(queue) {
@@ -160,7 +160,7 @@ func (c *controller) add(ctx context.Context, queue *v1.Queue, atTop bool) error
 			queue.Spec.NoOfOrder = queueList.LastQueueOrder()
 		}
 
-		queue.Status.State = v1.Waiting
+		queue.Status.State = s2hv1.Waiting
 		queue.Status.CreatedAt = &now
 		queue.Status.UpdatedAt = &now
 
@@ -172,8 +172,8 @@ func (c *controller) add(ctx context.Context, queue *v1.Queue, atTop bool) error
 	return nil
 }
 
-func (c *controller) isMatchWithStableComponent(ctx context.Context, q *v1.Queue) (isMatch bool, err error) {
-	stableComp := &v1.StableComponent{}
+func (c *controller) isMatchWithStableComponent(ctx context.Context, q *s2hv1.Queue) (isMatch bool, err error) {
+	stableComp := &s2hv1.StableComponent{}
 	err = c.client.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: q.GetName()}, stableComp)
 	if err != nil && k8serrors.IsNotFound(err) {
 		return false, nil
@@ -188,9 +188,9 @@ func (c *controller) isMatchWithStableComponent(ctx context.Context, q *v1.Queue
 }
 
 // removeSimilar removes similar queue (same `name` from queue) from QueueList
-func (c *controller) removeSimilar(queue *v1.Queue, list *v1.QueueList) []v1.Queue {
-	var items []v1.Queue
-	var removing []v1.Queue
+func (c *controller) removeSimilar(queue *s2hv1.Queue, list *s2hv1.QueueList) []s2hv1.Queue {
+	var items []s2hv1.Queue
+	var removing []s2hv1.Queue
 	var hasSameQueue = false
 
 	for _, q := range list.Items {
@@ -208,8 +208,8 @@ func (c *controller) removeSimilar(queue *v1.Queue, list *v1.QueueList) []v1.Que
 	return removing
 }
 
-func (c *controller) list(opts *client.ListOptions) (list *v1.QueueList, err error) {
-	list = &v1.QueueList{}
+func (c *controller) list(opts *client.ListOptions) (list *s2hv1.QueueList, err error) {
+	list = &s2hv1.QueueList{}
 	if opts == nil {
 		opts = &client.ListOptions{Namespace: c.namespace}
 	}
@@ -219,7 +219,7 @@ func (c *controller) list(opts *client.ListOptions) (list *v1.QueueList, err err
 	return list, nil
 }
 
-func (c *controller) SetLastOrder(q *v1.Queue) error {
+func (c *controller) SetLastOrder(q *s2hv1.Queue) error {
 	queueList, err := c.list(nil)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
@@ -232,7 +232,7 @@ func (c *controller) SetLastOrder(q *v1.Queue) error {
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) SetReverifyQueueAtFirst(q *v1.Queue) error {
+func (c *controller) SetReverifyQueueAtFirst(q *s2hv1.Queue) error {
 	list, err := c.list(nil)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
@@ -240,17 +240,17 @@ func (c *controller) SetReverifyQueueAtFirst(q *v1.Queue) error {
 	}
 
 	now := metav1.Now()
-	q.Status = v1.QueueStatus{
+	q.Status = s2hv1.QueueStatus{
 		CreatedAt:     &now,
 		NoOfProcessed: q.Status.NoOfProcessed,
-		State:         v1.Waiting,
+		State:         s2hv1.Waiting,
 	}
-	q.Spec.Type = v1.QueueTypeReverify
+	q.Spec.Type = s2hv1.QueueTypeReverify
 	q.Spec.NoOfOrder = list.TopQueueOrder()
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) SetRetryQueue(q *v1.Queue, noOfRetry int, nextAt time.Time) error {
+func (c *controller) SetRetryQueue(q *s2hv1.Queue, noOfRetry int, nextAt time.Time) error {
 	list, err := c.list(nil)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
@@ -258,19 +258,19 @@ func (c *controller) SetRetryQueue(q *v1.Queue, noOfRetry int, nextAt time.Time)
 	}
 
 	now := metav1.Now()
-	q.Status = v1.QueueStatus{
+	q.Status = s2hv1.QueueStatus{
 		CreatedAt:     &now,
 		NoOfProcessed: q.Status.NoOfProcessed,
-		State:         v1.Waiting,
+		State:         s2hv1.Waiting,
 	}
 	q.Spec.NextProcessAt = &metav1.Time{Time: nextAt}
 	q.Spec.NoOfRetry = noOfRetry
-	q.Spec.Type = v1.QueueTypeUpgrade
+	q.Spec.Type = s2hv1.QueueTypeUpgrade
 	q.Spec.NoOfOrder = list.LastQueueOrder()
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) updateQueueList(ql *v1.QueueList) error {
+func (c *controller) updateQueueList(ql *s2hv1.QueueList) error {
 	for i := range ql.Items {
 		if err := c.client.Update(context.TODO(), &ql.Items[i]); err != nil {
 			logger.Error(err, "cannot update queue list", "queue", ql.Items[i].Name)
@@ -282,7 +282,7 @@ func (c *controller) updateQueueList(ql *v1.QueueList) error {
 }
 
 // resetQueueOrderWithCurrentQueue resets order of all queues to start with 1 respectively
-func (c *controller) resetQueueOrderWithCurrentQueue(ql *v1.QueueList, currentQueue *v1.Queue) {
+func (c *controller) resetQueueOrderWithCurrentQueue(ql *s2hv1.QueueList, currentQueue *s2hv1.Queue) {
 	ql.Sort()
 	count := 2
 	for i := range ql.Items {
@@ -296,14 +296,14 @@ func (c *controller) resetQueueOrderWithCurrentQueue(ql *v1.QueueList, currentQu
 }
 
 // EnsurePreActiveComponents ensures that components with were deployed with `pre-active` config and tested
-func EnsurePreActiveComponents(c client.Client, teamName, namespace string) (q *v1.Queue, err error) {
-	q = &v1.Queue{
+func EnsurePreActiveComponents(c client.Client, teamName, namespace string) (q *s2hv1.Queue, err error) {
+	q = &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      string(v1.EnvPreActive),
+			Name:      string(s2hv1.EnvPreActive),
 			Namespace: namespace,
 		},
-		Spec: v1.QueueSpec{
-			Type:     v1.QueueTypePreActive,
+		Spec: s2hv1.QueueSpec{
+			Type:     s2hv1.QueueTypePreActive,
 			TeamName: teamName,
 		},
 	}
@@ -313,14 +313,14 @@ func EnsurePreActiveComponents(c client.Client, teamName, namespace string) (q *
 }
 
 // EnsurePromoteToActiveComponents ensures that components were deployed with `active` config
-func EnsurePromoteToActiveComponents(c client.Client, teamName, namespace string) (q *v1.Queue, err error) {
-	q = &v1.Queue{
+func EnsurePromoteToActiveComponents(c client.Client, teamName, namespace string) (q *s2hv1.Queue, err error) {
+	q = &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      string(v1.EnvActive),
+			Name:      string(s2hv1.EnvActive),
 			Namespace: namespace,
 		},
-		Spec: v1.QueueSpec{
-			Type:     v1.QueueTypePromoteToActive,
+		Spec: s2hv1.QueueSpec{
+			Type:     s2hv1.QueueTypePromoteToActive,
 			TeamName: teamName,
 		},
 	}
@@ -329,14 +329,14 @@ func EnsurePromoteToActiveComponents(c client.Client, teamName, namespace string
 }
 
 // EnsureDemoteFromActiveComponents ensures that components were deployed without `active` config
-func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace string) (q *v1.Queue, err error) {
-	q = &v1.Queue{
+func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace string) (q *s2hv1.Queue, err error) {
+	q = &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      string(v1.EnvDeActive),
+			Name:      string(s2hv1.EnvDeActive),
 			Namespace: namespace,
 		},
-		Spec: v1.QueueSpec{
-			Type:     v1.QueueTypeDemoteFromActive,
+		Spec: s2hv1.QueueSpec{
+			Type:     s2hv1.QueueTypeDemoteFromActive,
 			TeamName: teamName,
 		},
 	}
@@ -345,20 +345,20 @@ func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace strin
 }
 
 func DeletePreActiveQueue(c client.Client, ns string) error {
-	return deleteQueue(c, ns, string(v1.EnvPreActive))
+	return deleteQueue(c, ns, string(s2hv1.EnvPreActive))
 }
 
 func DeletePromoteToActiveQueue(c client.Client, ns string) error {
-	return deleteQueue(c, ns, string(v1.EnvActive))
+	return deleteQueue(c, ns, string(s2hv1.EnvActive))
 }
 
 func DeleteDemoteFromActiveQueue(c client.Client, ns string) error {
-	return deleteQueue(c, ns, string(v1.EnvDeActive))
+	return deleteQueue(c, ns, string(s2hv1.EnvDeActive))
 }
 
 // deleteQueue removes Queue in target namespace by name
 func deleteQueue(c client.Client, ns, name string) error {
-	q := &v1.Queue{
+	q := &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
@@ -372,8 +372,8 @@ func deleteQueue(c client.Client, ns, name string) error {
 	return errors.Wrap(err, "cannot delete queue")
 }
 
-func ensureQueue(ctx context.Context, c client.Client, q *v1.Queue) (err error) {
-	fetched := &v1.Queue{}
+func ensureQueue(ctx context.Context, c client.Client, q *s2hv1.Queue) (err error) {
+	fetched := &s2hv1.Queue{}
 	err = c.Get(ctx, types.NamespacedName{Namespace: q.Namespace, Name: q.Name}, fetched)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {

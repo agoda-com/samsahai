@@ -10,7 +10,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/agoda-com/samsahai/api/v1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 )
 
@@ -46,8 +46,8 @@ func (e *engine) GetName() string {
 
 func (e *engine) Create(
 	refName string,
-	_ *v1.Component,
-	parentComp *v1.Component,
+	_ *s2hv1.Component,
+	parentComp *s2hv1.Component,
 	values map[string]interface{},
 ) error {
 	hr := fluxv1beta1.HelmRelease{
@@ -136,7 +136,7 @@ func (e *engine) GetValues() (map[string][]byte, error) {
 	return valuesYaml, nil
 }
 
-func (e *engine) IsReady(queue *v1.Queue) (bool, error) {
+func (e *engine) IsReady(queue *s2hv1.Queue) (bool, error) {
 	// check helm release exist
 	hr, err := e.hrClient.Get(queue.Status.ReleaseName, metav1.GetOptions{})
 	if err != nil {

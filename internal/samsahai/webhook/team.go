@@ -8,7 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/agoda-com/samsahai/api/v1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 )
 
@@ -41,11 +41,11 @@ func (h *handler) getTeams(w http.ResponseWriter, r *http.Request, params httpro
 }
 
 type teamJSON struct {
-	v1.TeamNamespace `json:"namespace"`
-	TeamName         string             `json:"teamName"`
-	TeamConnections  teamEnvConnections `json:"connections"`
-	TeamStatus       v1.TeamStatus      `json:"status"`
-	TeamSpec         v1.TeamSpec        `json:"spec"`
+	s2hv1.TeamNamespace `json:"namespace"`
+	TeamName            string             `json:"teamName"`
+	TeamConnections     teamEnvConnections `json:"connections"`
+	TeamStatus          s2hv1.TeamStatus   `json:"status"`
+	TeamSpec            s2hv1.TeamSpec     `json:"spec"`
 	//TeamQueue             teamQueueJSON          `json:"queue"`
 }
 
@@ -54,10 +54,10 @@ type teamQueueJSON struct {
 	NoOfQueue int `json:"noOfQueue"`
 
 	// +Optional
-	Current *v1.Queue `json:"current"`
+	Current *s2hv1.Queue `json:"current"`
 
 	// +Optional
-	Queues []v1.Queue `json:"queues"`
+	Queues []s2hv1.Queue `json:"queues"`
 
 	Histories []string `json:"historyNames"`
 }
@@ -124,11 +124,11 @@ func (h *handler) getTeam(w http.ResponseWriter, r *http.Request, params httprou
 		TeamStatus:      team.Status,
 		TeamSpec:        team.Spec,
 	}
-	data.TeamSpec.Credential = v1.Credential{}
+	data.TeamSpec.Credential = s2hv1.Credential{}
 	h.JSON(w, http.StatusOK, &data)
 }
 
-type teamComponentsJSON map[string]*v1.Component
+type teamComponentsJSON map[string]*s2hv1.Component
 
 // getTeamComponent godoc
 // @Summary Get Team Component
@@ -190,7 +190,7 @@ func (h *handler) getTeamQueue(w http.ResponseWriter, r *http.Request, params ht
 		}
 	}
 	for i, queue := range queues.Items {
-		if queue.Status.State != v1.Waiting {
+		if queue.Status.State != s2hv1.Waiting {
 			data.Current = &queues.Items[i]
 		}
 	}
@@ -361,10 +361,10 @@ func (h *handler) getTeamConfig(w http.ResponseWriter, r *http.Request, params h
 	}
 }
 
-func (h *handler) loadTeam(w http.ResponseWriter, params httprouter.Params) (*v1.Team, error) {
+func (h *handler) loadTeam(w http.ResponseWriter, params httprouter.Params) (*s2hv1.Team, error) {
 	teamName := params.ByName("team")
 
-	team := &v1.Team{}
+	team := &s2hv1.Team{}
 	err := h.samsahai.GetTeam(teamName, team)
 	if err != nil {
 		if errors.IsNotFound(err) {

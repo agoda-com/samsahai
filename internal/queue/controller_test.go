@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/agoda-com/samsahai/api/v1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
 
@@ -23,23 +23,23 @@ var _ = Describe("Queue Controller", func() {
 		c := controller{}
 		name := "alpine"
 
-		queue := &v1.Queue{
-			Spec:   v1.QueueSpec{Name: name, Repository: name, Version: "3.9.4"},
-			Status: v1.QueueStatus{},
+		queue := &s2hv1.Queue{
+			Spec:   s2hv1.QueueSpec{Name: name, Repository: name, Version: "3.9.4"},
+			Status: s2hv1.QueueStatus{},
 		}
-		queueList := &v1.QueueList{
-			Items: []v1.Queue{
+		queueList := &s2hv1.QueueList{
+			Items: []s2hv1.Queue{
 				{
-					Spec:   v1.QueueSpec{Name: name, Repository: name, Version: "3.9.0"},
-					Status: v1.QueueStatus{},
+					Spec:   s2hv1.QueueSpec{Name: name, Repository: name, Version: "3.9.0"},
+					Status: s2hv1.QueueStatus{},
 				},
 				{
-					Spec:   v1.QueueSpec{Name: name, Repository: name, Version: "3.9.1"},
-					Status: v1.QueueStatus{},
+					Spec:   s2hv1.QueueSpec{Name: name, Repository: name, Version: "3.9.1"},
+					Status: s2hv1.QueueStatus{},
 				},
 				{
-					Spec:   v1.QueueSpec{Name: "ubuntu", Repository: "ubuntu", Version: "18.04"},
-					Status: v1.QueueStatus{},
+					Spec:   s2hv1.QueueSpec{Name: "ubuntu", Repository: "ubuntu", Version: "18.04"},
+					Status: s2hv1.QueueStatus{},
 				},
 			},
 		}
@@ -56,23 +56,23 @@ var _ = Describe("Queue Controller", func() {
 
 			c := controller{}
 
-			queue := &v1.Queue{
+			queue := &s2hv1.Queue{
 				ObjectMeta: metav1.ObjectMeta{Name: "comp1"},
-				Spec:       v1.QueueSpec{NoOfOrder: 4},
+				Spec:       s2hv1.QueueSpec{NoOfOrder: 4},
 			}
-			queueList := &v1.QueueList{
-				Items: []v1.Queue{
+			queueList := &s2hv1.QueueList{
+				Items: []s2hv1.Queue{
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "comp1"},
-						Spec:       v1.QueueSpec{NoOfOrder: 4},
+						Spec:       s2hv1.QueueSpec{NoOfOrder: 4},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "comp2"},
-						Spec:       v1.QueueSpec{NoOfOrder: -1},
+						Spec:       s2hv1.QueueSpec{NoOfOrder: -1},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "comp3"},
-						Spec:       v1.QueueSpec{NoOfOrder: 10},
+						Spec:       s2hv1.QueueSpec{NoOfOrder: 10},
 					},
 				},
 			}
@@ -81,21 +81,21 @@ var _ = Describe("Queue Controller", func() {
 
 			g.Expect(len(queueList.Items)).To(Equal(3))
 			g.Expect(queueList.Items).To(ContainElement(
-				v1.Queue{
+				s2hv1.Queue{
 					ObjectMeta: metav1.ObjectMeta{Name: "comp1"},
-					Spec:       v1.QueueSpec{NoOfOrder: 1},
+					Spec:       s2hv1.QueueSpec{NoOfOrder: 1},
 				},
 			))
 			g.Expect(queueList.Items).To(ContainElement(
-				v1.Queue{
+				s2hv1.Queue{
 					ObjectMeta: metav1.ObjectMeta{Name: "comp2"},
-					Spec:       v1.QueueSpec{NoOfOrder: 2},
+					Spec:       s2hv1.QueueSpec{NoOfOrder: 2},
 				},
 			))
 			g.Expect(queueList.Items).To(ContainElement(
-				v1.Queue{
+				s2hv1.Queue{
 					ObjectMeta: metav1.ObjectMeta{Name: "comp3"},
-					Spec:       v1.QueueSpec{NoOfOrder: 3},
+					Spec:       s2hv1.QueueSpec{NoOfOrder: 3},
 				},
 			))
 		})

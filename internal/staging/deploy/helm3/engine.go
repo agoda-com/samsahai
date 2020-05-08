@@ -20,7 +20,7 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 
-	"github.com/agoda-com/samsahai/api/v1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -85,8 +85,8 @@ func (e *engine) IsMocked() bool {
 
 func (e *engine) Create(
 	refName string,
-	_ *v1.Component,
-	parentComp *v1.Component,
+	_ *s2hv1.Component,
+	parentComp *s2hv1.Component,
 	values map[string]interface{},
 ) error {
 	if err := e.helmInit(); err != nil {
@@ -198,7 +198,7 @@ func (e *engine) helmUninstall(refName string, disableHooks bool) error {
 	return nil
 }
 
-func (e *engine) IsReady(queue *v1.Queue) (bool, error) {
+func (e *engine) IsReady(queue *s2hv1.Queue) (bool, error) {
 	refName := queue.Status.ReleaseName
 
 	client := action.NewStatus(e.actionSettings)
