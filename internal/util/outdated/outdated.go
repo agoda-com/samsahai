@@ -14,15 +14,18 @@ var logger = s2hlog.S2HLog.WithName("Outdated-util")
 type Outdated struct {
 	cfg                   *s2hv1beta1.ConfigSpec
 	desiredCompsImageTime map[string]map[string]s2hv1beta1.DesiredImageTime
-	stableComps           []s2hv1beta1.StableComponent
+	currentActiveComps    map[string]s2hv1beta1.StableComponent
 	nowTime               time.Time
 }
 
-func New(cfg *s2hv1beta1.ConfigSpec, desiredComps map[string]map[string]s2hv1beta1.DesiredImageTime, stableComps []s2hv1beta1.StableComponent) *Outdated {
+func New(cfg *s2hv1beta1.ConfigSpec,
+	desiredComps map[string]map[string]s2hv1beta1.DesiredImageTime,
+	currentActiveComps map[string]s2hv1beta1.StableComponent,
+) *Outdated {
 	r := &Outdated{
 		cfg:                   cfg,
 		desiredCompsImageTime: desiredComps,
-		stableComps:           stableComps,
+		currentActiveComps:    currentActiveComps,
 		nowTime:               time.Now(),
 	}
 
@@ -34,8 +37,8 @@ func (o Outdated) SetOutdatedDuration(atpCompStatus *s2hv1beta1.ActivePromotionS
 		atpCompStatus.OutdatedComponents = make(map[string]s2hv1beta1.OutdatedComponent)
 	}
 
-	for _, stableComp := range o.stableComps {
-		stableCompSpec := stableComp.Spec
+	for _, activeComp := range o.currentActiveComps {
+		stableCompSpec := activeComp.Spec
 		stableName := stableCompSpec.Name
 		stableImage := stringutils.ConcatImageString(stableCompSpec.Repository, stableCompSpec.Version)
 		desiredCompImageCreatedTime := o.desiredCompsImageTime[stableName]
@@ -67,7 +70,7 @@ func (o Outdated) SetOutdatedDuration(atpCompStatus *s2hv1beta1.ActivePromotionS
 				outdatedDuration = 0
 			}
 
-			outdatedComp := getOutdatedComponent(stableComp.Spec, latestDesiredImageTime, outdatedDuration)
+			outdatedComp := getOutdatedComponent(activeComp.Spec, latestDesiredImageTime, outdatedDuration)
 			atpCompStatus.OutdatedComponents[stableName] = outdatedComp
 		}
 	}
