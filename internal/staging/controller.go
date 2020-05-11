@@ -487,7 +487,7 @@ func WaitForComponentsCleaned(
 
 		if len(services.Items) > 0 {
 			if forceClean {
-				return false, forceCleanupService(log, c, namespace, selectors)
+				return false, forceCleanupService(log, c, services)
 			}
 
 			return false, nil
@@ -579,22 +579,19 @@ func forceCleanupPod(log s2hlog.Logger, c client.Client, namespace string, selec
 		"force cleaning up pods, namespace: %s, selectors: %+v", namespace, selectors)
 }
 
-func forceCleanupService(log s2hlog.Logger, c client.Client, namespace string, selectors map[string]string) error {
+func forceCleanupService(log s2hlog.Logger, c client.Client, services *corev1.ServiceList) error {
 	ctx := context.Background()
-	var err error
 
 	log.Warn("force delete service")
-	if err = c.DeleteAllOf(ctx,
-		&corev1.Service{},
-		client.InNamespace(namespace),
-		client.MatchingLabels(selectors),
-		client.PropagationPolicy(metav1.DeletePropagationBackground),
-	); err != nil {
-		log.Error(err, "delete service error")
+	for _, service := range services.Items {
+		svc := service
+		if err := c.Delete(ctx, &svc); err != nil {
+			log.Error(err, fmt.Sprintf("delete service %s error", svc.Name))
+		}
 	}
 
 	return errors.Wrapf(s2herrors.ErrForceDeletingComponents,
-		"force cleaning up services, namespace: %s, selectors: %+v", namespace, selectors)
+		"force cleaning up services")
 }
 
 func generateQueueHistoryName(queueName string) string {

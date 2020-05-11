@@ -14,7 +14,6 @@ import (
 var logger = s2hlog.Log
 
 func MustParseYAMLtoRuntimeObject(data []byte) (obj runtime.Object, kind *schema.GroupVersionKind) {
-	//logger :=
 	codecFactory := serializer.NewCodecFactory(scheme.Scheme)
 	decode := codecFactory.UniversalDeserializer().Decode
 	obj, kind, err := decode(data, nil, nil)

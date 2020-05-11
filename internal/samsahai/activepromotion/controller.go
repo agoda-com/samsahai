@@ -206,8 +206,10 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, atpComp *s
 			}
 
 			if atpComp.Status.State == s2hv1beta1.ActivePromotionDestroyingPreviousActive {
-				destroyedTime := metav1.Now()
-				atpComp.Status.SetDestroyedTime(destroyedTime)
+				if atpComp.Status.DestroyedTime.IsZero() {
+					destroyedTime := metav1.Now()
+					atpComp.Status.SetDestroyedTime(destroyedTime)
+				}
 				return
 			}
 
