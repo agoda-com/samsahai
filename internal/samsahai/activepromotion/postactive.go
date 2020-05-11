@@ -112,7 +112,7 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1.Act
 	if len(currentActiveComps) == 0 {
 		currentActiveComps = teamComp.Status.ActiveComponents
 	}
-	desiredCompsImageCreatedTime := teamComp.Status.DesiredComponentImageCreatedTime
+	desiredCompsImageCreatedTime := teamComp.Status.DesiredComponents
 	o := outdated.New(&config.Spec, desiredCompsImageCreatedTime, currentActiveComps)
 	atpStatus := &atpComp.Status
 	o.SetOutdatedDuration(atpStatus)

@@ -49,7 +49,7 @@ const (
 	verifyTime30s          = 30 * time.Second
 	verifyTime60s          = 60 * time.Second
 	verifyNSCreatedTimeout = verifyTime15s
-	promoteTimeOut         = 220 * time.Second
+	promoteTimeOut         = 250 * time.Second
 )
 
 var (
@@ -107,23 +107,29 @@ var (
 		},
 		Status: s2hv1.TeamStatus{
 			Namespace: s2hv1.TeamNamespace{},
-			DesiredComponentImageCreatedTime: map[string]map[string]s2hv1.DesiredImageTime{
+			DesiredComponents: map[string]s2hv1.ImageCreatedTime{
 				mariaDBCompName: {
-					stringutils.ConcatImageString("bitnami/mariadb", "10.3.18-debian-9-r32"): s2hv1.DesiredImageTime{
-						Image:       &s2hv1.Image{Repository: "bitnami/mariadb", Tag: "10.3.18-debian-9-r32"},
-						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
+					ImageCreatedTime: map[string]s2hv1.DesiredImageTime{
+						stringutils.ConcatImageString("bitnami/mariadb", "10.3.18-debian-9-r32"): s2hv1.DesiredImageTime{
+							Image:       &s2hv1.Image{Repository: "bitnami/mariadb", Tag: "10.3.18-debian-9-r32"},
+							CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
+						},
 					},
 				},
 				redisCompName: {
-					stringutils.ConcatImageString("bitnami/redis", "5.0.5-debian-9-r160"): s2hv1.DesiredImageTime{
-						Image:       &s2hv1.Image{Repository: "bitnami/redis", Tag: "5.0.5-debian-9-r160"},
-						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
+					ImageCreatedTime: map[string]s2hv1.DesiredImageTime{
+						stringutils.ConcatImageString("bitnami/redis", "5.0.5-debian-9-r160"): s2hv1.DesiredImageTime{
+							Image:       &s2hv1.Image{Repository: "bitnami/redis", Tag: "5.0.5-debian-9-r160"},
+							CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
+						},
 					},
 				},
 				wordpressCompName: {
-					stringutils.ConcatImageString("bitnami/wordpress", "5.2.4-debian-9-r18"): s2hv1.DesiredImageTime{
-						Image:       &s2hv1.Image{Repository: "bitnami/wordpress", Tag: "5.2.4-debian-9-r18"},
-						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
+					ImageCreatedTime: map[string]s2hv1.DesiredImageTime{
+						stringutils.ConcatImageString("bitnami/wordpress", "5.2.4-debian-9-r18"): s2hv1.DesiredImageTime{
+							Image:       &s2hv1.Image{Repository: "bitnami/wordpress", Tag: "5.2.4-debian-9-r18"},
+							CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
+						},
 					},
 				},
 			},
@@ -449,7 +455,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Deleting all Teams")
 		err = client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 			teamList := s2hv1.TeamList{}
 			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = client.List(ctx, &teamList, listOpt)
@@ -704,7 +710,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).To(BeNil())
 		Expect(len(stableComps.Items)).To(Equal(1))
 
-		By("previous active namespace should be deleted")
+		By("Previous active namespace should be deleted")
 		err = wait.PollImmediate(verifyTime1s, promoteTimeOut, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			err = client.Get(ctx, types.NamespacedName{Name: atvNamespace}, &namespace)
@@ -792,7 +798,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				Expect(data).NotTo(BeNil())
 			}
 		}
-	}, 230)
+	}, 280)
 
 	It("should successfully promote an active environment even demote timeout", func(done Done) {
 		defer close(done)
@@ -1383,7 +1389,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Get Team")
 		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &team)).NotTo(HaveOccurred())
 
-		By("Verifying DesiredComponentImageCreatedTime has been updated")
+		By("Verifying DesiredComponents has been updated")
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			teamComp := s2hv1.Team{}
 			if err := client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
@@ -1391,13 +1397,13 @@ var _ = Describe("[e2e] Main controller", func() {
 			}
 
 			image := stringutils.ConcatImageString(componentRepository, "image-missing")
-			if _, ok = teamComp.Status.DesiredComponentImageCreatedTime[redisCompName][image]; !ok {
+			if _, ok = teamComp.Status.DesiredComponents[redisCompName].ImageCreatedTime[image]; !ok {
 				return false, nil
 			}
 
 			return true, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Update DesiredComponentImageCreatedTime error")
+		Expect(err).NotTo(HaveOccurred(), "Update DesiredComponents error")
 
 		By("Verifying DesiredComponent has not been created")
 		foundCh := make(chan bool)
@@ -1541,11 +1547,11 @@ var _ = Describe("[e2e] Main controller", func() {
 				return false, nil
 			}
 
-			if _, ok := teamComp.Status.DesiredComponentImageCreatedTime[redisCompName]; !ok {
+			if _, ok := teamComp.Status.DesiredComponents[redisCompName]; !ok {
 				return false, nil
 			}
 
-			if _, ok := teamComp.Status.DesiredComponentImageCreatedTime[wordpressCompName]; ok {
+			if _, ok := teamComp.Status.DesiredComponents[wordpressCompName]; ok {
 				return false, nil
 			}
 
@@ -1985,7 +1991,7 @@ var _ = Describe("[e2e] Main controller promote on team creation", func() {
 				Expect(err).To(HaveOccurred())
 			}
 		}
-	}, 250)
+	}, 280)
 
 	It("should not set active namespace on new team creation when failed active promotion", func(done Done) {
 		defer close(done)

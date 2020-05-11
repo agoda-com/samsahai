@@ -1589,7 +1589,7 @@ var doc = `{
                     }
                 },
                 "desiredComponentImageCreatedTime": {
-                    "description": "DesiredComponentImageCreatedTime represents mapping of desired component image and created time\nmap[componentName][repository:tag] = image and createdTime\n+optional",
+                    "description": "DesiredComponents represents mapping of desired component image and created time\nmap[componentName][repository:tag] = image and createdTime\n+optional",
                     "type": "object"
                 },
                 "namespace": {

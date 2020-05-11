@@ -320,7 +320,7 @@ func (c *controller) detectRemovedTeamDesiredComponents(comps map[string]*s2hv1.
 		return err
 	}
 
-	teamDesiredComps := teamComp.Status.DesiredComponentImageCreatedTime
+	teamDesiredComps := teamComp.Status.DesiredComponents
 	for td := range teamDesiredComps {
 		if _, ok := comps[td]; !ok {
 			logger.Debug("desired component has been removed from team",

@@ -282,9 +282,9 @@ type desiredTime struct {
 }
 
 func deleteDesiredMappingOutOfRange(team *s2hv1.Team, maxDesiredMapping int) {
-	desiredMap := team.Status.DesiredComponentImageCreatedTime
+	desiredMap := team.Status.DesiredComponents
 	for compName, m := range desiredMap {
-		desiredList := convertDesiredMapToDesiredTimeList(m)
+		desiredList := convertDesiredMapToDesiredTimeList(m.ImageCreatedTime)
 		if len(desiredList) > maxDesiredMapping {
 			sortDesiredList(desiredList)
 			for i := len(desiredList) - 1; i > maxDesiredMapping-1; i-- {
@@ -293,7 +293,7 @@ func deleteDesiredMappingOutOfRange(team *s2hv1.Team, maxDesiredMapping int) {
 					break
 				}
 
-				delete(desiredMap[compName], desiredImage)
+				delete(desiredMap[compName].ImageCreatedTime, desiredImage)
 			}
 		}
 	}

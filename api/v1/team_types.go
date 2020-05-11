@@ -102,10 +102,9 @@ type TeamStatus struct {
 	// +patchStrategy=merge
 	Conditions []TeamCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 
-	// DesiredComponentImageCreatedTime represents mapping of desired component image and created time
-	// map[componentName][repository:tag] = image and createdTime
+	// DesiredComponents represents mapping of desired component image and created time
 	// +optional
-	DesiredComponentImageCreatedTime map[string]map[string]DesiredImageTime `json:"desiredComponentImageCreatedTime,omitempty"`
+	DesiredComponents map[string]ImageCreatedTime `json:"desiredComponents,omitempty"`
 }
 
 func (ts *TeamStatus) GetStableComponent(stableCompName string) StableComponent {
@@ -173,32 +172,38 @@ func (ts *TeamStatus) SetActiveComponents(comps map[string]StableComponent) {
 
 // UpdateDesiredComponentImageCreatedTime updates desired component version and created time mapping
 func (ts *TeamStatus) UpdateDesiredComponentImageCreatedTime(compName, image string, desiredImageTime DesiredImageTime) {
-	if ts.DesiredComponentImageCreatedTime == nil {
-		ts.DesiredComponentImageCreatedTime = make(map[string]map[string]DesiredImageTime)
+	if ts.DesiredComponents == nil {
+		ts.DesiredComponents = make(map[string]ImageCreatedTime)
 	}
 
-	if _, ok := ts.DesiredComponentImageCreatedTime[compName]; !ok {
-		ts.DesiredComponentImageCreatedTime[compName] = map[string]DesiredImageTime{
-			image: desiredImageTime,
+	if _, ok := ts.DesiredComponents[compName]; !ok {
+		ts.DesiredComponents[compName] = ImageCreatedTime{
+			ImageCreatedTime: map[string]DesiredImageTime{
+				image: desiredImageTime,
+			},
 		}
 		return
 	}
 
-	descCreatedTime := SortByCreatedTimeDESC(ts.DesiredComponentImageCreatedTime[compName])
+	descCreatedTime := SortByCreatedTimeDESC(ts.DesiredComponents[compName].ImageCreatedTime)
 	if strings.EqualFold(descCreatedTime[0].Image, image) {
 		return
 	}
 
-	ts.DesiredComponentImageCreatedTime[compName][image] = desiredImageTime
+	ts.DesiredComponents[compName].ImageCreatedTime[image] = desiredImageTime
 }
 
 // RemoveDesiredComponentImageCreatedTime removes desired component from team
 func (ts *TeamStatus) RemoveDesiredComponentImageCreatedTime(compName string) {
-	if ts.DesiredComponentImageCreatedTime == nil {
+	if ts.DesiredComponents == nil {
 		return
 	}
 
-	delete(ts.DesiredComponentImageCreatedTime, compName)
+	delete(ts.DesiredComponents, compName)
+}
+
+type ImageCreatedTime struct {
+	ImageCreatedTime map[string]DesiredImageTime `json:"imageCreatedTime"`
 }
 
 type DesiredImageTime struct {
