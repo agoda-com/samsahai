@@ -583,7 +583,8 @@ func forceCleanupService(log s2hlog.Logger, c client.Client, services *corev1.Se
 	ctx := context.Background()
 
 	log.Warn("force delete service")
-	for _, svc := range services.Items {
+	for _, service := range services.Items {
+		svc := service
 		if err := c.Delete(ctx, &svc); err != nil {
 			log.Error(err, fmt.Sprintf("delete service %s error", svc.Name))
 		}
