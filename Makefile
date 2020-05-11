@@ -175,8 +175,7 @@ prepare-env-e2e:
 	$(HELM) template -n "samsahai-system" --set "fullnameOverride=samsahai" $(PWD)/config/chart/samsahai -s templates/clusterrole-rbac.yaml | $(KUBECTL) apply -n samsahai-system -f - ; \
 	\
 	echo $(PWD); \
-	$(KUBECTL) apply -f $(PWD)/config/crds; \
-	$(KUBECTL) apply -f $(PWD)/config/manifests/flux.weave.works_crd.yaml;
+	$(KUBECTL) apply -f $(PWD)/config/crds;
 
 	echo done!
 
