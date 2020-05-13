@@ -99,7 +99,7 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1.Compone
 		if len(comp.Dependencies) > 0 {
 			// add to comps
 			for _, dep := range comp.Dependencies {
-				c := conf.New(dep, comp)
+				c := conf.Convert(dep, comp)
 				comps = append(comps, c)
 			}
 		}

@@ -2,7 +2,7 @@ package config
 
 import s2hv1 "github.com/agoda-com/samsahai/api/v1"
 
-func New(dependency *s2hv1.Dependency,
+func Convert(dependency *s2hv1.Dependency,
 	parent *s2hv1.Component,
 ) *s2hv1.Component {
 	if dependency == nil {

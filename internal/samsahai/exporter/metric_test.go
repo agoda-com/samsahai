@@ -262,7 +262,7 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1.Com
 	comps := map[string]*s2hv1.Component{
 		"redis":     config.Spec.Components[0],
 		"wordpress": config.Spec.Components[1],
-		"mariadb":   conf.New(config.Spec.Components[1].Dependencies[0], nil),
+		"mariadb":   conf.Convert(config.Spec.Components[1].Dependencies[0], nil),
 	}
 
 	comps["mariadb"].Parent = "wordpress"
