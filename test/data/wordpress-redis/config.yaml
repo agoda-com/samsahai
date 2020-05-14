@@ -16,31 +16,28 @@ spec:
     active:
       redis:
         - https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/active/redis.yaml
-
   staging:
     maxRetry: 3
     deployment:
       timeout: 5m
-      engine: flux-helm
+      engine: helm3
       testRunner:
         timeout: 240s
         pollingTime: 5s
         testMock:
           result: true
-
   activePromotion:
     timeout: 10m
     maxHistories: 5
     tearDownDuration: 10s
     deployment:
       timeout: 5m
-      engine: flux-helm
+      engine: helm3
       testRunner:
         timeout: 240s
         pollingTime: 5s
         testMock:
           result: true
-
   components:
     - name: redis
       chart:

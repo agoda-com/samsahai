@@ -13,9 +13,7 @@ import (
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
-	"github.com/agoda-com/samsahai/internal/k8s/helmrelease"
 	"github.com/agoda-com/samsahai/internal/staging"
-	"github.com/agoda-com/samsahai/internal/staging/deploy/fluxhelm"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 )
@@ -232,8 +230,6 @@ func (c *controller) getDeployEngine(teamName, ns string, configCtrl internal.Co
 	var engine internal.DeployEngine
 
 	switch e {
-	case fluxhelm.EngineName:
-		engine = fluxhelm.New(configCtrl, helmrelease.New(ns, c.client))
 	case helm3.EngineName:
 		engine = helm3.New(ns, false)
 	default:

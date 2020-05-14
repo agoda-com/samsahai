@@ -246,16 +246,6 @@ func GetRole(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
 				},
 				Verbs: []string{"*"},
 			},
-			// flux - helm-operator
-			{
-				APIGroups: []string{
-					"flux.weave.works",
-				},
-				Resources: []string{
-					"helmreleases",
-				},
-				Verbs: []string{"*"},
-			},
 			// deploy
 			{
 				APIGroups: []string{

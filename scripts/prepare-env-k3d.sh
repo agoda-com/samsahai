@@ -112,16 +112,6 @@ $helm init --service-account tiller
 
 CONFIGDIR=$BASEDIR/../config
 
-# install helm-operator
-CURRENT_DIR=$(pwd)
-cd $CONFIGDIR/manifests/flux-helm-operator/example
-rm -f ./identity*
-ssh-keygen -q -N "" -f ./identity
-$kustomize build . | $kubectl apply -f -
-rm -f ./identity*
-rm -f out.yaml
-cd $CURRENT_DIR
-
 # install crds
 $kubectl apply -f $CONFIGDIR/crds
 

@@ -29,7 +29,6 @@ import (
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
-	"github.com/agoda-com/samsahai/internal/k8s/helmrelease"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/internal/samsahai"
@@ -52,7 +51,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 		cfgCtrl     internal.ConfigController
 		client      rclient.Client
 		restCfg     *rest.Config
-		hrClient    internal.HelmReleaseClient
 		wgStop      *sync.WaitGroup
 		chStop      chan struct{}
 		mgr         manager.Manager
@@ -238,9 +236,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 		cfgCtrl = configctrl.New(mgr)
 		Expect(cfgCtrl).ToNot(BeNil())
 
-		hrClient = helmrelease.New(namespace, client)
-		Expect(hrClient).NotTo(BeNil())
-
 		wgStop = &sync.WaitGroup{}
 		wgStop.Add(1)
 		go func() {
@@ -316,10 +311,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 		err = client.List(context.Background(), sl, &rclient.ListOptions{Namespace: namespace})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sl.Items).To(BeEmpty())
-
-		By("Deleting all HelmReleases")
-		err = hrClient.DeleteCollection(nil, metav1.ListOptions{})
-		Expect(err).NotTo(HaveOccurred())
 
 		By("Deleting all helm3 releases")
 		err = helm3.DeleteAllReleases(namespace, true)

@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 
-	fluxv1beta1 "github.com/fluxcd/flux/integrations/apis/flux.weave.works/v1beta1"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
@@ -52,9 +51,6 @@ var _ = BeforeSuite(func(done Done) {
 
 	err = s2hv1beta1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred(), "should register scheme `samsahai` successfully")
-
-	err = fluxv1beta1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred(), "should register scheme `flux` successfully")
 
 	Expect(os.Getenv("POD_NAMESPACE")).NotTo(BeEmpty(), "POD_NAMESPACE should be provided")
 
