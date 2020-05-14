@@ -21,9 +21,9 @@ import (
 type envType string
 
 const (
-	activeEnvirontment         envType = "Active"
-	preActiveEnvirontment      envType = "preActive"
-	previousActiveEnvirontment envType = "previousActive"
+	activeEnvironment         envType = "active"
+	preActiveEnvironment      envType = "preActive"
+	previousActiveEnvironment envType = "previousActive"
 )
 
 func (c *controller) destroyPreviousActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
@@ -59,7 +59,7 @@ func (c *controller) destroyPreviousActiveEnvironmentAt(ctx context.Context, tea
 		return s2herrors.ErrEnsureNamespaceDestroyed
 	}
 
-	if err := c.ensureDestroyEnvironment(ctx, previousActiveEnvirontment, teamName, prevNs, destroyedTime); err != nil {
+	if err := c.ensureDestroyEnvironment(ctx, previousActiveEnvironment, teamName, prevNs, destroyedTime); err != nil {
 		return err
 	}
 
@@ -71,7 +71,7 @@ func (c *controller) destroyPreActiveEnvironment(ctx context.Context, atpComp *s
 	teamName := atpComp.Name
 
 	startedCleaningTime := atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondActivePromoted)
-	if err := c.ensureDestroyEnvironment(ctx, preActiveEnvirontment, teamName, targetNs, startedCleaningTime); err != nil {
+	if err := c.ensureDestroyEnvironment(ctx, preActiveEnvironment, teamName, targetNs, startedCleaningTime); err != nil {
 		return err
 	}
 
@@ -89,7 +89,7 @@ func (c *controller) destroyPreActiveEnvironment(ctx context.Context, atpComp *s
 func (c *controller) destroyActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion, startedCleanupTime *metav1.Time) error {
 	teamName := atpComp.Name
 	prevNs := atpComp.Status.PreviousActiveNamespace
-	if err := c.ensureDestroyEnvironment(ctx, activeEnvirontment, teamName, prevNs, startedCleanupTime); err != nil {
+	if err := c.ensureDestroyEnvironment(ctx, activeEnvironment, teamName, prevNs, startedCleanupTime); err != nil {
 		return err
 	}
 
@@ -105,7 +105,7 @@ func (c *controller) ensureDestroyEnvironment(ctx context.Context, envType envTy
 	}
 
 	switch envType {
-	case activeEnvirontment:
+	case activeEnvironment:
 		if err := c.s2hCtrl.DestroyActiveEnvironment(teamName, ns); err != nil {
 			if !s2herrors.IsNamespaceStillExists(err) {
 				return errors.Wrapf(err, "cannot destroy active environment, namespace %s", ns)
@@ -113,7 +113,7 @@ func (c *controller) ensureDestroyEnvironment(ctx context.Context, envType envTy
 			return s2herrors.ErrEnsureNamespaceDestroyed
 		}
 
-	case preActiveEnvirontment:
+	case preActiveEnvironment:
 		if err := c.s2hCtrl.DestroyPreActiveEnvironment(teamName, ns); err != nil {
 			if !s2herrors.IsNamespaceStillExists(err) {
 				return errors.Wrapf(err, "cannot destroy pre-active environment, namespace %s", ns)
@@ -121,7 +121,7 @@ func (c *controller) ensureDestroyEnvironment(ctx context.Context, envType envTy
 			return s2herrors.ErrEnsureNamespaceDestroyed
 		}
 
-	case previousActiveEnvirontment:
+	case previousActiveEnvironment:
 		if err := c.s2hCtrl.DestroyPreviousActiveEnvironment(teamName, ns); err != nil {
 			if !s2herrors.IsNamespaceStillExists(err) {
 				return errors.Wrapf(err, "cannot destroy previous active environment, namespace %s", ns)
