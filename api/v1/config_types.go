@@ -32,6 +32,7 @@ type Component struct {
 	Chart  ComponentChart `json:"chart"`
 	Image  ComponentImage `json:"image,omitempty"`
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Values ComponentValues `json:"values,omitempty"`
 	// +optional
 	Source *UpdatingSource `json:"source,omitempty"`
@@ -48,6 +49,7 @@ type Dependency struct {
 	Chart ComponentChart `json:"chart"`
 	Image ComponentImage `json:"image,omitempty"`
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Values ComponentValues `json:"values,omitempty"`
 	// +optional
 	Source *UpdatingSource `json:"source,omitempty"`
@@ -317,7 +319,6 @@ type ConfigStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
-
 // Config is the Schema for the configs API
 type Config struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -329,7 +330,6 @@ type Config struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
-
 // ConfigList contains a list of Config
 type ConfigList struct {
 	metav1.TypeMeta `json:",inline"`

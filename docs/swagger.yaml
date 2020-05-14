@@ -1,156 +1,5 @@
 definitions:
-  v1beta1.ActivePromotion:
-    properties:
-      spec:
-        $ref: '#/definitions/v1.ActivePromotionSpec'
-        type: object
-      status:
-        $ref: '#/definitions/v1.ActivePromotionStatus'
-        type: object
-    type: object
-  v1beta1.ActivePromotionCondition:
-    properties:
-      lastTransitionTime:
-        description: +optional
-        type: string
-      message:
-        description: +optional
-        type: string
-      reason:
-        description: +optional
-        type: string
-      status:
-        type: string
-      type:
-        type: string
-    type: object
-  v1beta1.ActivePromotionHistory:
-    properties:
-      spec:
-        $ref: '#/definitions/v1.ActivePromotionHistorySpec'
-        type: object
-      status:
-        $ref: '#/definitions/v1.ActivePromotionHistoryStatus'
-        type: object
-    type: object
-  v1beta1.ActivePromotionHistorySpec:
-    properties:
-      activePromotion:
-        $ref: '#/definitions/v1.ActivePromotion'
-        type: object
-      createdAt:
-        description: 'TODO: store values file of all components'
-        type: string
-      isSuccess:
-        type: boolean
-      teamName:
-        type: string
-    type: object
-  v1beta1.ActivePromotionHistoryStatus:
-    type: object
-  v1beta1.ActivePromotionSpec:
-    properties:
-      tearDownDuration:
-        description: |-
-          TearDownDuration represents duration before tear down the previous active namespace
-          +optional
-        type: string
-    type: object
-  v1beta1.ActivePromotionStatus:
-    properties:
-      activeComponents:
-        description: |-
-          ActiveComponents represents a list of promoted active components
-          +optional
-        type: object
-      activePromotionHistoryName:
-        description: |-
-          ActivePromotionHistoryName represents created ActivePromotionHistoryName name
-          +optional
-        type: string
-      conditions:
-        description: |-
-          Conditions contains observations of the resource's state e.g.,
-          Queue deployed, being tested
-          +optional
-          +patchMergeKey=type
-          +patchStrategy=merge
-        items:
-          $ref: '#/definitions/v1.ActivePromotionCondition'
-        type: array
-      demotionStatus:
-        description: |-
-          DemotionStatus represents a status of the active demotion
-          +optional
-        type: string
-      destroyedTime:
-        description: |-
-          DestroyedTime represents time at which the previous active namespace will be destroyed
-          +optional
-        type: string
-      hasOutdatedComponent:
-        description: |-
-          HasOutdatedComponent defines whether current active promotion has outdated component or not
-          +optional
-        type: boolean
-      isTimeout:
-        description: |-
-          IsTimeout defines whether the active promotion has been timeout or not
-          +optional
-        type: boolean
-      message:
-        description: |-
-          Message defines details about why the active promotion is in this condition
-          +optional
-        type: string
-      outdatedComponents:
-        description: |-
-          OutdatedComponents represents map of outdated components
-          +optional
-        type: object
-      preActiveQueue:
-        $ref: '#/definitions/v1.QueueStatus'
-        description: |-
-          PreActiveQueue represents a pre-active queue status
-          +optional
-        type: object
-      previousActiveNamespace:
-        description: |-
-          PreviousActiveNamespace represents an active namespace before promoting
-          +optional
-        type: string
-      result:
-        description: |-
-          Result represents a result of the active promotion
-          +optional
-        type: string
-      rollbackStatus:
-        description: |-
-          RollbackStatus represents a status of the rollback process
-          +optional
-        type: string
-      startedAt:
-        description: |-
-          StartedAt represents time at which the active promotion started
-          +optional
-        type: string
-      state:
-        description: |-
-          ActivePromotionState represents a current state of the active promotion
-          +optional
-        type: string
-      targetNamespace:
-        description: |-
-          TargetNamespace represents a pre-active namespace
-          +optional
-        type: string
-      updatedAt:
-        description: |-
-          UpdatedAt represents time at which the active promotion finished
-          +optional
-        type: string
-    type: object
-  v1beta1.CommandAndArgs:
+  v1.CommandAndArgs:
     properties:
       args:
         description: +optional
@@ -162,7 +11,7 @@ definitions:
           type: string
         type: array
     type: object
-  v1beta1.Component:
+  v1.Component:
     properties:
       chart:
         $ref: '#/definitions/v1.ComponentChart'
@@ -170,7 +19,7 @@ definitions:
       dependencies:
         description: +optional
         items:
-          $ref: '#/definitions/v1.Component'
+          $ref: '#/definitions/v1.Dependency'
         type: array
       image:
         $ref: '#/definitions/v1.ComponentImage'
@@ -185,10 +34,12 @@ definitions:
         type: string
       values:
         $ref: '#/definitions/v1.ComponentValues'
-        description: +optional
+        description: |-
+          +optional
+          +kubebuilder:pruning:PreserveUnknownFields
         type: object
     type: object
-  v1beta1.ComponentChart:
+  v1.ComponentChart:
     properties:
       name:
         type: string
@@ -198,7 +49,7 @@ definitions:
         description: +optional
         type: string
     type: object
-  v1beta1.ComponentImage:
+  v1.ComponentImage:
     properties:
       pattern:
         description: +optional
@@ -209,11 +60,11 @@ definitions:
         description: +optional
         type: string
     type: object
-  v1beta1.ComponentValues:
+  v1.ComponentValues:
     additionalProperties:
       type: object
     type: object
-  v1beta1.ConfigActivePromotion:
+  v1.ConfigActivePromotion:
     properties:
       demotionTimeout:
         description: |-
@@ -251,7 +102,7 @@ definitions:
           +optional
         type: string
     type: object
-  v1beta1.ConfigComponentUpgrade:
+  v1.ConfigComponentUpgrade:
     properties:
       criteria:
         description: +optional
@@ -260,7 +111,7 @@ definitions:
         description: +optional
         type: string
     type: object
-  v1beta1.ConfigDeploy:
+  v1.ConfigDeploy:
     properties:
       componentCleanupTimeout:
         description: |-
@@ -288,7 +139,7 @@ definitions:
           +optional
         type: string
     type: object
-  v1beta1.ConfigReporter:
+  v1.ConfigReporter:
     properties:
       cmd:
         $ref: '#/definitions/v1.Shell'
@@ -315,7 +166,7 @@ definitions:
         description: +optional
         type: object
     type: object
-  v1beta1.ConfigSpec:
+  v1.ConfigSpec:
     properties:
       activePromotion:
         $ref: '#/definitions/v1.ConfigActivePromotion'
@@ -345,7 +196,7 @@ definitions:
         description: Staging represents configuration about staging
         type: object
     type: object
-  v1beta1.ConfigStaging:
+  v1.ConfigStaging:
     properties:
       deployment:
         $ref: '#/definitions/v1.ConfigDeploy'
@@ -362,19 +213,19 @@ definitions:
           +optional
         type: integer
     type: object
-  v1beta1.ConfigTeamcity:
+  v1.ConfigTeamcity:
     properties:
       branch:
         type: string
       buildTypeID:
         type: string
     type: object
-  v1beta1.ConfigTestMock:
+  v1.ConfigTestMock:
     properties:
       result:
         type: boolean
     type: object
-  v1beta1.ConfigTestRunner:
+  v1.ConfigTestRunner:
     properties:
       pollingTime:
         description: +optional
@@ -391,31 +242,43 @@ definitions:
         description: +optional
         type: string
     type: object
-  v1beta1.Credential:
+  v1.Dependency:
     properties:
-      secretName:
-        description: SecretName
+      chart:
+        $ref: '#/definitions/v1.ComponentChart'
+        description: +optional
+        type: object
+      image:
+        $ref: '#/definitions/v1.ComponentImage'
+        type: object
+      name:
         type: string
-      teamcity:
-        $ref: '#/definitions/v1.UsernamePasswordCredential'
+      parent:
+        description: +optional
+        type: string
+      source:
+        description: +optional
+        type: string
+      values:
+        $ref: '#/definitions/v1.ComponentValues'
         description: |-
-          Teamcity
           +optional
+          +kubebuilder:pruning:PreserveUnknownFields
         type: object
     type: object
-  v1beta1.Endpoint:
+  v1.Endpoint:
     properties:
       url:
         type: string
     type: object
-  v1beta1.Image:
+  v1.Image:
     properties:
       repository:
         type: string
       tag:
         type: string
     type: object
-  v1beta1.MSTeams:
+  v1.MSTeams:
     properties:
       componentUpgrade:
         $ref: '#/definitions/v1.ConfigComponentUpgrade'
@@ -426,7 +289,7 @@ definitions:
           $ref: '#/definitions/v1.MSTeamsGroup'
         type: array
     type: object
-  v1beta1.MSTeamsGroup:
+  v1.MSTeamsGroup:
     properties:
       channelNameOrIDs:
         items:
@@ -435,7 +298,7 @@ definitions:
       groupNameOrID:
         type: string
     type: object
-  v1beta1.OutdatedNotification:
+  v1.OutdatedNotification:
     properties:
       exceedDuration:
         description: +optional
@@ -444,7 +307,7 @@ definitions:
         description: +optional
         type: boolean
     type: object
-  v1beta1.Queue:
+  v1.Queue:
     properties:
       spec:
         $ref: '#/definitions/v1.QueueSpec'
@@ -453,7 +316,7 @@ definitions:
         $ref: '#/definitions/v1.QueueStatus'
         type: object
     type: object
-  v1beta1.QueueCondition:
+  v1.QueueCondition:
     properties:
       lastTransitionTime:
         description: +optional
@@ -469,7 +332,7 @@ definitions:
       type:
         type: string
     type: object
-  v1beta1.QueueHistory:
+  v1.QueueHistory:
     properties:
       spec:
         $ref: '#/definitions/v1.QueueHistorySpec'
@@ -478,7 +341,7 @@ definitions:
         $ref: '#/definitions/v1.QueueHistoryStatus'
         type: object
     type: object
-  v1beta1.QueueHistorySpec:
+  v1.QueueHistorySpec:
     properties:
       appliedValues:
         $ref: '#/definitions/v1.Values'
@@ -499,9 +362,9 @@ definitions:
           $ref: '#/definitions/v1.StableComponent'
         type: array
     type: object
-  v1beta1.QueueHistoryStatus:
+  v1.QueueHistoryStatus:
     type: object
-  v1beta1.QueueSpec:
+  v1.QueueSpec:
     properties:
       name:
         description: Name represents Component name
@@ -532,7 +395,7 @@ definitions:
         description: Version represents Docker image tag version
         type: string
     type: object
-  v1beta1.QueueStatus:
+  v1.QueueStatus:
     properties:
       conditions:
         description: |-
@@ -590,14 +453,14 @@ definitions:
         description: UpdatedAt represents time when the component was processed
         type: string
     type: object
-  v1beta1.ReportOption:
+  v1.ReportOption:
     properties:
       key:
         type: string
       value:
         type: string
     type: object
-  v1beta1.Rest:
+  v1.Rest:
     properties:
       activePromotion:
         $ref: '#/definitions/v1.RestObject'
@@ -612,14 +475,14 @@ definitions:
         description: +optional
         type: object
     type: object
-  v1beta1.RestObject:
+  v1.RestObject:
     properties:
       endpoints:
         items:
           $ref: '#/definitions/v1.Endpoint'
         type: array
     type: object
-  v1beta1.Shell:
+  v1.Shell:
     properties:
       activePromotion:
         $ref: '#/definitions/v1.CommandAndArgs'
@@ -634,7 +497,7 @@ definitions:
         description: +optional
         type: object
     type: object
-  v1beta1.Slack:
+  v1.Slack:
     properties:
       channels:
         items:
@@ -645,7 +508,7 @@ definitions:
         description: +optional
         type: object
     type: object
-  v1beta1.StableComponent:
+  v1.StableComponent:
     properties:
       spec:
         $ref: '#/definitions/v1.StableComponentSpec'
@@ -654,7 +517,7 @@ definitions:
         $ref: '#/definitions/v1.StableComponentStatus'
         type: object
     type: object
-  v1beta1.StableComponentSpec:
+  v1.StableComponentSpec:
     properties:
       name:
         description: Name represents Component name
@@ -671,125 +534,14 @@ definitions:
         description: Version represents Docker image tag version
         type: string
     type: object
-  v1beta1.StableComponentStatus:
+  v1.StableComponentStatus:
     properties:
       createdAt:
         type: string
       updatedAt:
         type: string
     type: object
-  v1beta1.StagingCtrl:
-    properties:
-      endpoint:
-        description: Endpoint represents the staging endpoint endpoint.
-        type: string
-      image:
-        description: Image represents image for run staging controller.
-        type: string
-      isDeploy:
-        description: IsDeploy represents flag to deploy staging controller or not.
-        type: boolean
-      resources:
-        type: string
-    type: object
-  v1beta1.TeamCondition:
-    properties:
-      lastTransitionTime:
-        description: +optional
-        type: string
-      message:
-        description: +optional
-        type: string
-      reason:
-        description: +optional
-        type: string
-      status:
-        type: string
-      type:
-        type: string
-    type: object
-  v1beta1.TeamNamespace:
-    properties:
-      active:
-        description: +optional
-        type: string
-      preActive:
-        description: +optional
-        type: string
-      previousActive:
-        description: +optional
-        type: string
-      staging:
-        description: +optional
-        type: string
-    type: object
-  v1beta1.TeamSpec:
-    properties:
-      credential:
-        $ref: '#/definitions/v1.Credential'
-        description: |-
-          Credential
-          +optional
-        type: object
-      desc:
-        description: |-
-          Description represents description for this team
-          +optional
-        type: string
-      owners:
-        description: |-
-          Owners represents contact point of this team
-          +optional
-        items:
-          type: string
-        type: array
-      resources:
-        description: |-
-          Resources represents how many resources per namespace for the team
-          +optional
-        type: string
-      stagingCtrl:
-        $ref: '#/definitions/v1.StagingCtrl'
-        description: |-
-          StagingCtrl represents configuration about the staging controller.
-          For easier for developing, debugging and testing purposes
-          +optional
-        type: object
-    type: object
-  v1beta1.TeamStatus:
-    properties:
-      activeComponents:
-        description: |-
-          ActiveComponents represents a list of stable components in active namespace
-          +optional
-        type: object
-      conditions:
-        description: |-
-          Conditions contains observations of the resource's state e.g.,
-          Team namespace is created, destroyed
-          +optional
-          +patchMergeKey=type
-          +patchStrategy=merge
-        items:
-          $ref: '#/definitions/v1.TeamCondition'
-        type: array
-      desiredComponentImageCreatedTime:
-        description: |-
-          DesiredComponentImageCreatedTime represents mapping of desired component image and created time
-          map[componentName][repository:tag] = image and createdTime
-          +optional
-        type: object
-      namespace:
-        $ref: '#/definitions/v1.TeamNamespace'
-        description: +optional
-        type: object
-      stableComponents:
-        description: |-
-          StableComponentList represents a list of stable components
-          +optional
-        type: object
-    type: object
-  v1beta1.Teamcity:
+  v1.Teamcity:
     properties:
       buildID:
         type: string
@@ -798,20 +550,13 @@ definitions:
       buildURL:
         type: string
     type: object
-  v1beta1.TestRunner:
+  v1.TestRunner:
     properties:
       teamcity:
         $ref: '#/definitions/v1.Teamcity'
         type: object
     type: object
-  v1beta1.UsernamePasswordCredential:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    type: object
-  v1beta1.Values:
+  v1.Values:
     additionalProperties:
       type: object
     type: object
@@ -827,20 +572,10 @@ definitions:
         type: array
       running:
         description: +Optional
-        items:
-          $ref: '#/definitions/v1.ActivePromotion'
-        type: array
+        type: string
     type: object
   webhook.activePromotionHistories:
-    items:
-      properties:
-        spec:
-          $ref: '#/definitions/v1.ActivePromotionHistorySpec'
-          type: object
-        status:
-          $ref: '#/definitions/v1.ActivePromotionHistoryStatus'
-          type: object
-      type: object
+    items: {}
     type: array
   webhook.errResp:
     properties:
@@ -863,9 +598,8 @@ definitions:
   webhook.teamActivePromotion:
     properties:
       current:
-        $ref: '#/definitions/v1.ActivePromotion'
         description: +Optional
-        type: object
+        type: string
       historyNames:
         description: +Optional
         example:
@@ -876,32 +610,7 @@ definitions:
         type: array
     type: object
   webhook.teamComponentsJSON:
-    additionalProperties:
-      properties:
-        chart:
-          $ref: '#/definitions/v1.ComponentChart'
-          type: object
-        dependencies:
-          description: +optional
-          items:
-            $ref: '#/definitions/v1.Component'
-          type: array
-        image:
-          $ref: '#/definitions/v1.ComponentImage'
-          type: object
-        name:
-          type: string
-        parent:
-          description: +optional
-          type: string
-        source:
-          description: +optional
-          type: string
-        values:
-          $ref: '#/definitions/v1.ComponentValues'
-          description: +optional
-          type: object
-      type: object
+    additionalProperties: {}
     type: object
   webhook.teamEnvConnections:
     properties:
@@ -917,36 +626,21 @@ definitions:
     type: object
   webhook.teamJSON:
     properties:
-      active:
-        description: +optional
-        type: string
       connections:
         $ref: '#/definitions/webhook.teamEnvConnections'
         type: object
-      preActive:
-        description: +optional
-        type: string
-      previousActive:
-        description: +optional
-        type: string
       spec:
-        $ref: '#/definitions/v1.TeamSpec'
-        type: object
-      staging:
-        description: +optional
         type: string
       status:
-        $ref: '#/definitions/v1.TeamStatus'
-        type: object
+        type: string
       teamName:
         type: string
     type: object
   webhook.teamQueueJSON:
     properties:
       current:
-        $ref: '#/definitions/v1.Queue'
         description: +Optional
-        type: object
+        type: string
       historyNames:
         items:
           type: string
@@ -956,9 +650,7 @@ definitions:
         type: integer
       queues:
         description: +Optional
-        items:
-          $ref: '#/definitions/v1.Queue'
-        type: array
+        type: string
     type: object
   webhook.teamsJSON:
     properties:

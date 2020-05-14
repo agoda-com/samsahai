@@ -501,7 +501,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/v1beta1.QueueHistory"
+                            "$ref": "#/definitions/v1.QueueHistory"
                         }
                     },
                     "404": {
@@ -546,7 +546,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/v1beta1.QueueHistory"
+                            "$ref": "#/definitions/v1.QueueHistory"
                         }
                     },
                     "404": {
@@ -627,164 +627,7 @@
         }
     },
     "definitions": {
-        "v1beta1.ActivePromotion": {
-            "type": "object",
-            "properties": {
-                "spec": {
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotionSpec"
-                },
-                "status": {
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotionStatus"
-                }
-            }
-        },
-        "v1beta1.ActivePromotionCondition": {
-            "type": "object",
-            "properties": {
-                "lastTransitionTime": {
-                    "description": "+optional",
-                    "type": "string"
-                },
-                "message": {
-                    "description": "+optional",
-                    "type": "string"
-                },
-                "reason": {
-                    "description": "+optional",
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "v1beta1.ActivePromotionHistory": {
-            "type": "object",
-            "properties": {
-                "spec": {
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotionHistorySpec"
-                },
-                "status": {
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotionHistoryStatus"
-                }
-            }
-        },
-        "v1beta1.ActivePromotionHistorySpec": {
-            "type": "object",
-            "properties": {
-                "activePromotion": {
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotion"
-                },
-                "createdAt": {
-                    "description": "TODO: store values file of all components",
-                    "type": "string"
-                },
-                "isSuccess": {
-                    "type": "boolean"
-                },
-                "teamName": {
-                    "type": "string"
-                }
-            }
-        },
-        "v1beta1.ActivePromotionHistoryStatus": {
-            "type": "object"
-        },
-        "v1beta1.ActivePromotionSpec": {
-            "type": "object",
-            "properties": {
-                "tearDownDuration": {
-                    "description": "TearDownDuration represents duration before tear down the previous active namespace\n+optional",
-                    "type": "string"
-                }
-            }
-        },
-        "v1beta1.ActivePromotionStatus": {
-            "type": "object",
-            "properties": {
-                "activeComponents": {
-                    "description": "ActiveComponents represents a list of promoted active components\n+optional",
-                    "type": "object"
-                },
-                "activePromotionHistoryName": {
-                    "description": "ActivePromotionHistoryName represents created ActivePromotionHistoryName name\n+optional",
-                    "type": "string"
-                },
-                "conditions": {
-                    "description": "Conditions contains observations of the resource's state e.g.,\nQueue deployed, being tested\n+optional\n+patchMergeKey=type\n+patchStrategy=merge",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1beta1.ActivePromotionCondition"
-                    }
-                },
-                "demotionStatus": {
-                    "description": "DemotionStatus represents a status of the active demotion\n+optional",
-                    "type": "string"
-                },
-                "destroyedTime": {
-                    "description": "DestroyedTime represents time at which the previous active namespace will be destroyed\n+optional",
-                    "type": "string"
-                },
-                "hasOutdatedComponent": {
-                    "description": "HasOutdatedComponent defines whether current active promotion has outdated component or not\n+optional",
-                    "type": "boolean"
-                },
-                "isTimeout": {
-                    "description": "IsTimeout defines whether the active promotion has been timeout or not\n+optional",
-                    "type": "boolean"
-                },
-                "message": {
-                    "description": "Message defines details about why the active promotion is in this condition\n+optional",
-                    "type": "string"
-                },
-                "outdatedComponents": {
-                    "description": "OutdatedComponents represents map of outdated components\n+optional",
-                    "type": "object"
-                },
-                "preActiveQueue": {
-                    "description": "PreActiveQueue represents a pre-active queue status\n+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueStatus"
-                },
-                "previousActiveNamespace": {
-                    "description": "PreviousActiveNamespace represents an active namespace before promoting\n+optional",
-                    "type": "string"
-                },
-                "result": {
-                    "description": "Result represents a result of the active promotion\n+optional",
-                    "type": "string"
-                },
-                "rollbackStatus": {
-                    "description": "RollbackStatus represents a status of the rollback process\n+optional",
-                    "type": "string"
-                },
-                "startedAt": {
-                    "description": "StartedAt represents time at which the active promotion started\n+optional",
-                    "type": "string"
-                },
-                "state": {
-                    "description": "ActivePromotionState represents a current state of the active promotion\n+optional",
-                    "type": "string"
-                },
-                "targetNamespace": {
-                    "description": "TargetNamespace represents a pre-active namespace\n+optional",
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "description": "UpdatedAt represents time at which the active promotion finished\n+optional",
-                    "type": "string"
-                }
-            }
-        },
-        "v1beta1.CommandAndArgs": {
+        "v1.CommandAndArgs": {
             "type": "object",
             "properties": {
                 "args": {
@@ -802,23 +645,23 @@
                 }
             }
         },
-        "v1beta1.Component": {
+        "v1.Component": {
             "type": "object",
             "properties": {
                 "chart": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ComponentChart"
+                    "$ref": "#/definitions/v1.ComponentChart"
                 },
                 "dependencies": {
                     "description": "+optional",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.Component"
+                        "$ref": "#/definitions/v1.Dependency"
                     }
                 },
                 "image": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ComponentImage"
+                    "$ref": "#/definitions/v1.ComponentImage"
                 },
                 "name": {
                     "type": "string"
@@ -832,13 +675,13 @@
                     "type": "string"
                 },
                 "values": {
-                    "description": "+optional",
+                    "description": "+optional\n+kubebuilder:pruning:PreserveUnknownFields",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ComponentValues"
+                    "$ref": "#/definitions/v1.ComponentValues"
                 }
             }
         },
-        "v1beta1.ComponentChart": {
+        "v1.ComponentChart": {
             "type": "object",
             "properties": {
                 "name": {
@@ -853,7 +696,7 @@
                 }
             }
         },
-        "v1beta1.ComponentImage": {
+        "v1.ComponentImage": {
             "type": "object",
             "properties": {
                 "pattern": {
@@ -869,13 +712,13 @@
                 }
             }
         },
-        "v1beta1.ComponentValues": {
+        "v1.ComponentValues": {
             "type": "object",
             "additionalProperties": {
                 "type": "object"
             }
         },
-        "v1beta1.ConfigActivePromotion": {
+        "v1.ConfigActivePromotion": {
             "type": "object",
             "properties": {
                 "demotionTimeout": {
@@ -885,7 +728,7 @@
                 "deployment": {
                     "description": "Deployment represents configuration about deploy",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigDeploy"
+                    "$ref": "#/definitions/v1.ConfigDeploy"
                 },
                 "maxHistories": {
                     "description": "MaxHistories defines maximum length of ActivePromotionHistory stored per team\n+optional",
@@ -894,7 +737,7 @@
                 "outdatedNotification": {
                     "description": "OutdatedNotification defines a configuration of outdated notification\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.OutdatedNotification"
+                    "$ref": "#/definitions/v1.OutdatedNotification"
                 },
                 "rollbackTimeout": {
                     "description": "RollbackTimeout defines maximum duration for rolling back active promotion\n+optional",
@@ -910,7 +753,7 @@
                 }
             }
         },
-        "v1beta1.ConfigComponentUpgrade": {
+        "v1.ConfigComponentUpgrade": {
             "type": "object",
             "properties": {
                 "criteria": {
@@ -923,7 +766,7 @@
                 }
             }
         },
-        "v1beta1.ConfigDeploy": {
+        "v1.ConfigDeploy": {
             "type": "object",
             "properties": {
                 "componentCleanupTimeout": {
@@ -937,7 +780,7 @@
                 "testRunner": {
                     "description": "TestRunner represents configuration about test\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigTestRunner"
+                    "$ref": "#/definitions/v1.ConfigTestRunner"
                 },
                 "timeout": {
                     "description": "Timeout defines maximum duration for deploying environment\n+optional",
@@ -945,24 +788,24 @@
                 }
             }
         },
-        "v1beta1.ConfigReporter": {
+        "v1.ConfigReporter": {
             "type": "object",
             "properties": {
                 "cmd": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Shell"
+                    "$ref": "#/definitions/v1.Shell"
                 },
                 "msTeams": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.MSTeams"
+                    "$ref": "#/definitions/v1.MSTeams"
                 },
                 "optionals": {
                     "description": "+optional",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.ReportOption"
+                        "$ref": "#/definitions/v1.ReportOption"
                     }
                 },
                 "reportMock": {
@@ -972,28 +815,28 @@
                 "rest": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Rest"
+                    "$ref": "#/definitions/v1.Rest"
                 },
                 "slack": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Slack"
+                    "$ref": "#/definitions/v1.Slack"
                 }
             }
         },
-        "v1beta1.ConfigSpec": {
+        "v1.ConfigSpec": {
             "type": "object",
             "properties": {
                 "activePromotion": {
                     "description": "ActivePromotion represents configuration about active promotion\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigActivePromotion"
+                    "$ref": "#/definitions/v1.ConfigActivePromotion"
                 },
                 "components": {
                     "description": "Components represents all components that are managed",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.Component"
+                        "$ref": "#/definitions/v1.Component"
                     }
                 },
                 "envs": {
@@ -1003,22 +846,22 @@
                 "report": {
                     "description": "Reporter represents configuration about reporter\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigReporter"
+                    "$ref": "#/definitions/v1.ConfigReporter"
                 },
                 "staging": {
                     "description": "Staging represents configuration about staging",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigStaging"
+                    "$ref": "#/definitions/v1.ConfigStaging"
                 }
             }
         },
-        "v1beta1.ConfigStaging": {
+        "v1.ConfigStaging": {
             "type": "object",
             "properties": {
                 "deployment": {
                     "description": "Deployment represents configuration about deploy",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigDeploy"
+                    "$ref": "#/definitions/v1.ConfigDeploy"
                 },
                 "maxHistoryDays": {
                     "description": "MaxHistoryDays defines maximum days of QueueHistory stored\n+optional",
@@ -1030,7 +873,7 @@
                 }
             }
         },
-        "v1beta1.ConfigTeamcity": {
+        "v1.ConfigTeamcity": {
             "type": "object",
             "properties": {
                 "branch": {
@@ -1041,7 +884,7 @@
                 }
             }
         },
-        "v1beta1.ConfigTestMock": {
+        "v1.ConfigTestMock": {
             "type": "object",
             "properties": {
                 "result": {
@@ -1049,7 +892,7 @@
                 }
             }
         },
-        "v1beta1.ConfigTestRunner": {
+        "v1.ConfigTestRunner": {
             "type": "object",
             "properties": {
                 "pollingTime": {
@@ -1059,12 +902,12 @@
                 "teamcity": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigTeamcity"
+                    "$ref": "#/definitions/v1.ConfigTeamcity"
                 },
                 "testMock": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigTestMock"
+                    "$ref": "#/definitions/v1.ConfigTestMock"
                 },
                 "timeout": {
                     "description": "+optional",
@@ -1072,21 +915,37 @@
                 }
             }
         },
-        "v1beta1.Credential": {
+        "v1.Dependency": {
             "type": "object",
             "properties": {
-                "secretName": {
-                    "description": "SecretName",
+                "chart": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ComponentChart"
+                },
+                "image": {
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ComponentImage"
+                },
+                "name": {
                     "type": "string"
                 },
-                "teamcity": {
-                    "description": "Teamcity\n+optional",
+                "parent": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "source": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "values": {
+                    "description": "+optional\n+kubebuilder:pruning:PreserveUnknownFields",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.UsernamePasswordCredential"
+                    "$ref": "#/definitions/v1.ComponentValues"
                 }
             }
         },
-        "v1beta1.Endpoint": {
+        "v1.Endpoint": {
             "type": "object",
             "properties": {
                 "url": {
@@ -1094,7 +953,7 @@
                 }
             }
         },
-        "v1beta1.Image": {
+        "v1.Image": {
             "type": "object",
             "properties": {
                 "repository": {
@@ -1105,23 +964,23 @@
                 }
             }
         },
-        "v1beta1.MSTeams": {
+        "v1.MSTeams": {
             "type": "object",
             "properties": {
                 "componentUpgrade": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigComponentUpgrade"
+                    "$ref": "#/definitions/v1.ConfigComponentUpgrade"
                 },
                 "groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.MSTeamsGroup"
+                        "$ref": "#/definitions/v1.MSTeamsGroup"
                     }
                 }
             }
         },
-        "v1beta1.MSTeamsGroup": {
+        "v1.MSTeamsGroup": {
             "type": "object",
             "properties": {
                 "channelNameOrIDs": {
@@ -1135,7 +994,7 @@
                 }
             }
         },
-        "v1beta1.OutdatedNotification": {
+        "v1.OutdatedNotification": {
             "type": "object",
             "properties": {
                 "exceedDuration": {
@@ -1148,20 +1007,20 @@
                 }
             }
         },
-        "v1beta1.Queue": {
+        "v1.Queue": {
             "type": "object",
             "properties": {
                 "spec": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueSpec"
+                    "$ref": "#/definitions/v1.QueueSpec"
                 },
                 "status": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueStatus"
+                    "$ref": "#/definitions/v1.QueueStatus"
                 }
             }
         },
-        "v1beta1.QueueCondition": {
+        "v1.QueueCondition": {
             "type": "object",
             "properties": {
                 "lastTransitionTime": {
@@ -1184,25 +1043,25 @@
                 }
             }
         },
-        "v1beta1.QueueHistory": {
+        "v1.QueueHistory": {
             "type": "object",
             "properties": {
                 "spec": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueHistorySpec"
+                    "$ref": "#/definitions/v1.QueueHistorySpec"
                 },
                 "status": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueHistoryStatus"
+                    "$ref": "#/definitions/v1.QueueHistoryStatus"
                 }
             }
         },
-        "v1beta1.QueueHistorySpec": {
+        "v1.QueueHistorySpec": {
             "type": "object",
             "properties": {
                 "appliedValues": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Values"
+                    "$ref": "#/definitions/v1.Values"
                 },
                 "createdAt": {
                     "type": "string"
@@ -1218,20 +1077,20 @@
                 },
                 "queue": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Queue"
+                    "$ref": "#/definitions/v1.Queue"
                 },
                 "stableComponents": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.StableComponent"
+                        "$ref": "#/definitions/v1.StableComponent"
                     }
                 }
             }
         },
-        "v1beta1.QueueHistoryStatus": {
+        "v1.QueueHistoryStatus": {
             "type": "object"
         },
-        "v1beta1.QueueSpec": {
+        "v1.QueueSpec": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1268,14 +1127,14 @@
                 }
             }
         },
-        "v1beta1.QueueStatus": {
+        "v1.QueueStatus": {
             "type": "object",
             "properties": {
                 "conditions": {
                     "description": "Conditions contains observations of the resource's state e.g.,\nQueue deployed, being tested\n+optional\n+patchMergeKey=type\n+patchStrategy=merge",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.QueueCondition"
+                        "$ref": "#/definitions/v1.QueueCondition"
                     }
                 },
                 "createdAt": {
@@ -1290,7 +1149,7 @@
                     "description": "ImageMissingList defines image missing list",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.Image"
+                        "$ref": "#/definitions/v1.Image"
                     }
                 },
                 "kubeZipLog": {
@@ -1328,7 +1187,7 @@
                 "testRunners": {
                     "description": "TestRunner defines the test runner",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.TestRunner"
+                    "$ref": "#/definitions/v1.TestRunner"
                 },
                 "updatedAt": {
                     "description": "UpdatedAt represents time when the component was processed",
@@ -1336,7 +1195,7 @@
                 }
             }
         },
-        "v1beta1.ReportOption": {
+        "v1.ReportOption": {
             "type": "object",
             "properties": {
                 "key": {
@@ -1347,58 +1206,58 @@
                 }
             }
         },
-        "v1beta1.Rest": {
+        "v1.Rest": {
             "type": "object",
             "properties": {
                 "activePromotion": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
+                    "$ref": "#/definitions/v1.RestObject"
                 },
                 "componentUpgrade": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
+                    "$ref": "#/definitions/v1.RestObject"
                 },
                 "imageMissing": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
+                    "$ref": "#/definitions/v1.RestObject"
                 }
             }
         },
-        "v1beta1.RestObject": {
+        "v1.RestObject": {
             "type": "object",
             "properties": {
                 "endpoints": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.Endpoint"
+                        "$ref": "#/definitions/v1.Endpoint"
                     }
                 }
             }
         },
-        "v1beta1.Shell": {
+        "v1.Shell": {
             "type": "object",
             "properties": {
                 "activePromotion": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.CommandAndArgs"
+                    "$ref": "#/definitions/v1.CommandAndArgs"
                 },
                 "componentUpgrade": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.CommandAndArgs"
+                    "$ref": "#/definitions/v1.CommandAndArgs"
                 },
                 "imageMissing": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.CommandAndArgs"
+                    "$ref": "#/definitions/v1.CommandAndArgs"
                 }
             }
         },
-        "v1beta1.Slack": {
+        "v1.Slack": {
             "type": "object",
             "properties": {
                 "channels": {
@@ -1410,24 +1269,24 @@
                 "componentUpgrade": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigComponentUpgrade"
+                    "$ref": "#/definitions/v1.ConfigComponentUpgrade"
                 }
             }
         },
-        "v1beta1.StableComponent": {
+        "v1.StableComponent": {
             "type": "object",
             "properties": {
                 "spec": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.StableComponentSpec"
+                    "$ref": "#/definitions/v1.StableComponentSpec"
                 },
                 "status": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.StableComponentStatus"
+                    "$ref": "#/definitions/v1.StableComponentStatus"
                 }
             }
         },
-        "v1beta1.StableComponentSpec": {
+        "v1.StableComponentSpec": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1448,7 +1307,7 @@
                 }
             }
         },
-        "v1beta1.StableComponentStatus": {
+        "v1.StableComponentStatus": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -1459,130 +1318,7 @@
                 }
             }
         },
-        "v1beta1.StagingCtrl": {
-            "type": "object",
-            "properties": {
-                "endpoint": {
-                    "description": "Endpoint represents the staging endpoint endpoint.",
-                    "type": "string"
-                },
-                "image": {
-                    "description": "Image represents image for run staging controller.",
-                    "type": "string"
-                },
-                "isDeploy": {
-                    "description": "IsDeploy represents flag to deploy staging controller or not.",
-                    "type": "boolean"
-                },
-                "resources": {
-                    "type": "string"
-                }
-            }
-        },
-        "v1beta1.TeamCondition": {
-            "type": "object",
-            "properties": {
-                "lastTransitionTime": {
-                    "description": "+optional",
-                    "type": "string"
-                },
-                "message": {
-                    "description": "+optional",
-                    "type": "string"
-                },
-                "reason": {
-                    "description": "+optional",
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "v1beta1.TeamNamespace": {
-            "type": "object",
-            "properties": {
-                "active": {
-                    "description": "+optional",
-                    "type": "string"
-                },
-                "preActive": {
-                    "description": "+optional",
-                    "type": "string"
-                },
-                "previousActive": {
-                    "description": "+optional",
-                    "type": "string"
-                },
-                "staging": {
-                    "description": "+optional",
-                    "type": "string"
-                }
-            }
-        },
-        "v1beta1.TeamSpec": {
-            "type": "object",
-            "properties": {
-                "credential": {
-                    "description": "Credential\n+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.Credential"
-                },
-                "desc": {
-                    "description": "Description represents description for this team\n+optional",
-                    "type": "string"
-                },
-                "owners": {
-                    "description": "Owners represents contact point of this team\n+optional",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "resources": {
-                    "description": "Resources represents how many resources per namespace for the team\n+optional",
-                    "type": "string"
-                },
-                "stagingCtrl": {
-                    "description": "StagingCtrl represents configuration about the staging controller.\nFor easier for developing, debugging and testing purposes\n+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.StagingCtrl"
-                }
-            }
-        },
-        "v1beta1.TeamStatus": {
-            "type": "object",
-            "properties": {
-                "activeComponents": {
-                    "description": "ActiveComponents represents a list of stable components in active namespace\n+optional",
-                    "type": "object"
-                },
-                "conditions": {
-                    "description": "Conditions contains observations of the resource's state e.g.,\nTeam namespace is created, destroyed\n+optional\n+patchMergeKey=type\n+patchStrategy=merge",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1beta1.TeamCondition"
-                    }
-                },
-                "desiredComponentImageCreatedTime": {
-                    "description": "DesiredComponentImageCreatedTime represents mapping of desired component image and created time\nmap[componentName][repository:tag] = image and createdTime\n+optional",
-                    "type": "object"
-                },
-                "namespace": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.TeamNamespace"
-                },
-                "stableComponents": {
-                    "description": "StableComponentList represents a list of stable components\n+optional",
-                    "type": "object"
-                }
-            }
-        },
-        "v1beta1.Teamcity": {
+        "v1.Teamcity": {
             "type": "object",
             "properties": {
                 "buildID": {
@@ -1596,27 +1332,16 @@
                 }
             }
         },
-        "v1beta1.TestRunner": {
+        "v1.TestRunner": {
             "type": "object",
             "properties": {
                 "teamcity": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Teamcity"
+                    "$ref": "#/definitions/v1.Teamcity"
                 }
             }
         },
-        "v1beta1.UsernamePasswordCredential": {
-            "type": "object",
-            "properties": {
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "v1beta1.Values": {
+        "v1.Values": {
             "type": "object",
             "additionalProperties": {
                 "type": "object"
@@ -1638,28 +1363,13 @@
                 },
                 "running": {
                     "description": "+Optional",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1beta1.ActivePromotion"
-                    }
+                    "type": "string"
                 }
             }
         },
         "webhook.activePromotionHistories": {
             "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "spec": {
-                        "type": "object",
-                        "$ref": "#/definitions/v1beta1.ActivePromotionHistorySpec"
-                    },
-                    "status": {
-                        "type": "object",
-                        "$ref": "#/definitions/v1beta1.ActivePromotionHistoryStatus"
-                    }
-                }
-            }
+            "items": {}
         },
         "webhook.errResp": {
             "type": "object",
@@ -1694,8 +1404,7 @@
             "properties": {
                 "current": {
                     "description": "+Optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotion"
+                    "type": "string"
                 },
                 "historyNames": {
                     "description": "+Optional",
@@ -1712,42 +1421,7 @@
         },
         "webhook.teamComponentsJSON": {
             "type": "object",
-            "additionalProperties": {
-                "type": "object",
-                "properties": {
-                    "chart": {
-                        "type": "object",
-                        "$ref": "#/definitions/v1beta1.ComponentChart"
-                    },
-                    "dependencies": {
-                        "description": "+optional",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/v1beta1.Component"
-                        }
-                    },
-                    "image": {
-                        "type": "object",
-                        "$ref": "#/definitions/v1beta1.ComponentImage"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "parent": {
-                        "description": "+optional",
-                        "type": "string"
-                    },
-                    "source": {
-                        "description": "+optional",
-                        "type": "string"
-                    },
-                    "values": {
-                        "description": "+optional",
-                        "type": "object",
-                        "$ref": "#/definitions/v1beta1.ComponentValues"
-                    }
-                }
-            }
+            "additionalProperties": {}
         },
         "webhook.teamEnvConnections": {
             "type": "object",
@@ -1769,33 +1443,15 @@
         "webhook.teamJSON": {
             "type": "object",
             "properties": {
-                "active": {
-                    "description": "+optional",
-                    "type": "string"
-                },
                 "connections": {
                     "type": "object",
                     "$ref": "#/definitions/webhook.teamEnvConnections"
                 },
-                "preActive": {
-                    "description": "+optional",
-                    "type": "string"
-                },
-                "previousActive": {
-                    "description": "+optional",
-                    "type": "string"
-                },
                 "spec": {
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.TeamSpec"
-                },
-                "staging": {
-                    "description": "+optional",
                     "type": "string"
                 },
                 "status": {
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.TeamStatus"
+                    "type": "string"
                 },
                 "teamName": {
                     "type": "string"
@@ -1807,8 +1463,7 @@
             "properties": {
                 "current": {
                     "description": "+Optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.Queue"
+                    "type": "string"
                 },
                 "historyNames": {
                     "type": "array",
@@ -1822,10 +1477,7 @@
                 },
                 "queues": {
                     "description": "+Optional",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1beta1.Queue"
-                    }
+                    "type": "string"
                 }
             }
         },
