@@ -70,7 +70,8 @@ func TestUnit(t *testing.T) {
 var _ = Describe("HelmRelease Rest Client", func() {
 	g := NewWithT(GinkgoT())
 
-	It("Should successfully Create/Get/Update/List/Delete/DeleteCollection", func() {
+	// TODO: Remove this case once remove flux-helm
+	XIt("Should successfully Create/Get/Update/List/Delete/DeleteCollection", func() {
 		// Test Create
 		//fetched := &Team{}
 		var err error

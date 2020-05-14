@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 	var cfg *rest.Config
 
 	t := &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "..", "config", "crds")},
+		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "..", "test", "data", "crds")},
 	}
 
 	err = s2hv1.SchemeBuilder.AddToScheme(scheme.Scheme)

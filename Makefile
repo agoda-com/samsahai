@@ -486,6 +486,7 @@ CONTROLLER_GEN=go run $$GOPATH/pkg/mod/github.com/phantomnat/controller-tools@v0
 manifests: controller-gen
 	go get sigs.k8s.io/controller-tools
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." crd:crdVersions=v1 output:crd:artifacts:config=config/crds output:none
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." crd:crdVersions=v1beta1 output:crd:artifacts:config=test/data/crds output:none
 
 # Generate code
 generate: controller-gen

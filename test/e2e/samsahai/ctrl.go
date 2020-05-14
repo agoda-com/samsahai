@@ -455,7 +455,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Deleting all Teams")
 		err = client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
 			teamList := s2hv1.TeamList{}
 			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = client.List(ctx, &teamList, listOpt)
@@ -540,7 +540,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		close(chStop)
 		samsahaiServer.Close()
 		wgStop.Wait()
-	}, 60)
+	}, 100)
 
 	It("should successfully promote an active environment", func(done Done) {
 		defer close(done)
@@ -1786,7 +1786,7 @@ var _ = Describe("[e2e] Main controller promote on team creation", func() {
 		By("Deleting all Teams")
 		err = client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
 			teamList := s2hv1.TeamList{}
 			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = client.List(ctx, &teamList, listOpt)
@@ -1850,7 +1850,7 @@ var _ = Describe("[e2e] Main controller promote on team creation", func() {
 		close(chStop)
 		samsahaiServer.Close()
 		wgStop.Wait()
-	}, 60)
+	}, 100)
 
 	It("should successfully set new active namespace on new team creation", func(done Done) {
 		defer close(done)

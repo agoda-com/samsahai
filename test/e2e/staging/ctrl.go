@@ -316,10 +316,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sl.Items).To(BeEmpty())
 
-		By("Deleting all HelmReleases")
-		err = hrClient.DeleteCollection(nil, metav1.ListOptions{})
-		Expect(err).NotTo(HaveOccurred())
-
 		By("Deleting all helm3 releases")
 		err = helm3.DeleteAllReleases(namespace, true)
 		Expect(err).NotTo(HaveOccurred())

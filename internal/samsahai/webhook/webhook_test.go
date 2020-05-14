@@ -40,7 +40,7 @@ var c client.Client
 func TestMain(m *testing.M) {
 	var err error
 	t := &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "crds")},
+		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "test", "data", "crds")},
 	}
 
 	err = s2hv1.SchemeBuilder.AddToScheme(scheme.Scheme)
@@ -49,8 +49,7 @@ func TestMain(m *testing.M) {
 	}
 
 	if cfg, err = t.Start(); err != nil {
-		logger.Error(err, "start testenv error")
-		os.Exit(1)
+		log.Fatalf("%v start testenv error", err)
 	}
 
 	if c, err = client.New(cfg, client.Options{Scheme: scheme.Scheme}); err != nil {
