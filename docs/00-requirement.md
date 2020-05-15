@@ -2,7 +2,6 @@
 
 - Kubernetes cluster
 - Helm
-- Helm Operator (fluxcd)
 
 
 ```yaml
