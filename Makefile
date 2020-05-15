@@ -61,10 +61,8 @@ SWAG					= $(INSTALL_DIR)swag
 PASS_PROXY 	?=
 ifdef PASS_PROXY
 K3S_DOCKER_ARGS			?= -e http_proxy=$(http_proxy) -e https_proxy=$(https_proxy) -e no_proxy=$(no_proxy)
-HELM_OPERATOR_MANIFESTS	?= manifests/flux-helm-operator/proxy
 else
 K3S_DOCKER_ARGS			?=
-HELM_OPERATOR_MANIFESTS	?= manifests/flux-helm-operator/example
 endif
 
 .PHONY: init
@@ -95,7 +93,6 @@ golangci-lint-check-version:
 		echo "golangci-lint version mismatch"; \
 		exit 1; \
 	fi
-
 
 #
 # Testing

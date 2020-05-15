@@ -99,7 +99,7 @@ type ConfigDeploy struct {
 	//
 	// mock - for test only, always return success
 	//
-	// flux-helm - create HelmRelease for Helm Operator from Flux
+	// helm3 - deploy chart with helm3
 	// +optional
 	Engine *string `json:"engine,omitempty"`
 

@@ -9,6 +9,16 @@ import (
 	"sync"
 	"time"
 
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
+	"github.com/agoda-com/samsahai/internal"
+	configctrl "github.com/agoda-com/samsahai/internal/config"
+	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	"github.com/agoda-com/samsahai/internal/queue"
+	"github.com/agoda-com/samsahai/internal/samsahai"
+	"github.com/agoda-com/samsahai/internal/staging"
+	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
+	httputil "github.com/agoda-com/samsahai/internal/util/http"
+	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
@@ -24,18 +34,6 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	s2hv1 "github.com/agoda-com/samsahai/api/v1"
-	"github.com/agoda-com/samsahai/internal"
-	configctrl "github.com/agoda-com/samsahai/internal/config"
-	"github.com/agoda-com/samsahai/internal/k8s/helmrelease"
-	s2hlog "github.com/agoda-com/samsahai/internal/log"
-	"github.com/agoda-com/samsahai/internal/queue"
-	"github.com/agoda-com/samsahai/internal/samsahai"
-	"github.com/agoda-com/samsahai/internal/staging"
-	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
-	httputil "github.com/agoda-com/samsahai/internal/util/http"
-	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 var _ = Describe("[e2e] Staging controller", func() {
@@ -51,7 +49,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 		cfgCtrl     internal.ConfigController
 		client      rclient.Client
 		restCfg     *rest.Config
-		hrClient    internal.HelmReleaseClient
 		wgStop      *sync.WaitGroup
 		chStop      chan struct{}
 		mgr         manager.Manager
@@ -71,6 +68,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 			Repository: "bitnami/wordpress",
 		},
 	}
+
 	stableMariaDB := s2hv1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mariadb",
@@ -114,7 +112,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 	}
 
 	namespace = os.Getenv("POD_NAMESPACE")
-
 	testLabels := map[string]string{
 		"created-for": "s2h-testing",
 	}
@@ -237,9 +234,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 		cfgCtrl = configctrl.New(mgr)
 		Expect(cfgCtrl).ToNot(BeNil())
 
-		hrClient = helmrelease.New(namespace, client)
-		Expect(hrClient).NotTo(BeNil())
-
 		wgStop = &sync.WaitGroup{}
 		wgStop.Add(1)
 		go func() {
@@ -251,7 +245,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	AfterEach(func(done Done) {
 		defer close(done)
-
 		ctx := context.Background()
 
 		By("Deleting nginx deployment")
@@ -326,10 +319,10 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	It("should successfully start and stop", func(done Done) {
 		defer close(done)
+		ctx := context.Background()
 
 		By("Creating Config")
 		config := mockConfig
-		ctx := context.Background()
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Verifying config has been created")
@@ -372,6 +365,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 			if err != nil {
 				return false, nil
 			}
+
 			if queue.Status.IsConditionTrue(s2hv1.QueueDeployStarted) {
 				ok = true
 				return
@@ -483,13 +477,13 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	It("should create error log in case of deploy failed", func(done Done) {
 		defer close(done)
+		ctx := context.Background()
 
 		By("Creating Config")
 		config := mockConfig
 		config.Spec.Staging.MaxRetry = 0
 		config.Spec.Staging.Deployment.Timeout = metav1.Duration{Duration: 10 * time.Second}
 		config.Spec.Components[0].Values["master"].(map[string]interface{})["command"] = "exit 1"
-		ctx := context.Background()
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")

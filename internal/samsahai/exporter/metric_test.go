@@ -175,7 +175,7 @@ func newMockConfigCtrl() internal.ConfigController {
 }
 
 func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
-	engine := "flux-helm"
+	engine := "helm3"
 	deployConfig := s2hv1.ConfigDeploy{
 		Timeout: metav1.Duration{Duration: 5 * time.Minute},
 		Engine:  &engine,
