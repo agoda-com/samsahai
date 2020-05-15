@@ -24,7 +24,6 @@ import (
 	"os"
 	"strings"
 
-	fluxv1beta1 "github.com/fluxcd/flux/integrations/apis/flux.weave.works/v1beta1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,7 +67,6 @@ func init() {
 
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = s2hv1beta1.AddToScheme(scheme)
-	_ = fluxv1beta1.SchemeBuilder.AddToScheme(scheme)
 
 	cmd.PersistentFlags().Bool(s2h.VKDebug, false, "More debugging log.")
 

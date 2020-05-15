@@ -19,12 +19,6 @@ rules:
     verbs:
       - "*"
   - apiGroups:
-      - flux.weave.works
-    resources:
-      - helmreleases
-    verbs:
-      - "*"
-  - apiGroups:
       - ""
     resources:
       - bindings

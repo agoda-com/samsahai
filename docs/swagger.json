@@ -931,7 +931,7 @@
                     "type": "string"
                 },
                 "engine": {
-                    "description": "Engine defines method of deploying\n\nmock - for test only, always return success\n\nflux-helm - create HelmRelease for Helm Operator from Flux\n+optional",
+                    "description": "Engine defines method of deploying\n\nmock - for test only, always return success\n\nhelm3 - deploy chart with helm3\n+optional",
                     "type": "string"
                 },
                 "testRunner": {

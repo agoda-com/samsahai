@@ -5,7 +5,6 @@ go 1.13
 require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/docker/distribution v2.7.1+incompatible
-	github.com/fluxcd/flux v1.17.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-chi/chi v4.0.2+incompatible // indirect
 	github.com/go-logr/logr v0.1.0
@@ -44,7 +43,6 @@ require (
 	k8s.io/apiextensions-apiserver v0.17.0 // indirect
 	k8s.io/apimachinery v0.17.0
 	k8s.io/client-go v11.0.0+incompatible
-	k8s.io/helm v2.16.1+incompatible
 	k8s.io/utils v0.0.0-20200108110541-e2fb8e668047 // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
 )

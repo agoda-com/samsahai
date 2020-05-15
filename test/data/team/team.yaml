@@ -3,7 +3,7 @@ kind: Team
 metadata:
   name: example
 spec:
-  description: Example team
+  desc: Example team
   owners:
     - example@samsahai.io
   stagingCtrl:

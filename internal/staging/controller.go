@@ -22,9 +22,7 @@ import (
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
-	"github.com/agoda-com/samsahai/internal/k8s/helmrelease"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
-	"github.com/agoda-com/samsahai/internal/staging/deploy/fluxhelm"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
@@ -47,7 +45,6 @@ type controller struct {
 	queueCtrl  internal.QueueController
 	configCtrl internal.ConfigController
 	client     client.Client
-	helmClient internal.HelmReleaseClient
 	scheme     *apiruntime.Scheme
 
 	internalStop    <-chan struct{}
@@ -97,7 +94,6 @@ func NewController(
 		queueCtrl:               queueCtrl,
 		configCtrl:              configCtrl,
 		client:                  mgr.GetClient(),
-		helmClient:              helmrelease.New(namespace, mgr.GetClient()),
 		scheme:                  mgr.GetScheme(),
 		internalStop:            stopper,
 		internalStopper:         stopper,
@@ -215,7 +211,6 @@ func (c *controller) loadDeployEngines() {
 	// init test runner
 	engines := []internal.DeployEngine{
 		mock.New(),
-		fluxhelm.New(c.configCtrl, c.helmClient),
 		helm3.New(c.namespace, true),
 	}
 

@@ -89,7 +89,7 @@ func (c *controller) destroyPreActiveEnvironmentForRollback(ctx context.Context,
 	teamName := atpComp.Name
 	targetNs := c.getTargetNamespace(atpComp)
 	startedCleaningTime := atpComp.Status.GetConditionLatestTime(s2hv1beta1.ActivePromotionCondRollbackStarted)
-	if err := c.ensureDestroyEnvironment(ctx, preActiveEnvirontment, teamName, targetNs, startedCleaningTime); err != nil {
+	if err := c.ensureDestroyEnvironment(ctx, preActiveEnvironment, teamName, targetNs, startedCleaningTime); err != nil {
 		return err
 	}
 
