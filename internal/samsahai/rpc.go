@@ -30,6 +30,7 @@ func (c *controller) authenticateRPC(ctx context.Context) error {
 	return nil
 }
 
+// TODO: pohfy, TeamWithCurrentComponents
 func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWithCurrentComponent) (*rpc.ImageList, error) {
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err

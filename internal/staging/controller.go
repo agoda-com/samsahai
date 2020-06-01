@@ -159,6 +159,7 @@ func (c *controller) process() bool {
 		}
 	}
 
+	// TODO: pohfy, pick queues with same bundle
 	queue := c.getCurrentQueue()
 
 	switch queue.Spec.Type {

@@ -20,6 +20,7 @@ import (
 
 const maxDesiredMappingPerComp = 10
 
+// TODO: pohfy, add bundle here
 type changedComponent struct {
 	Name       string
 	Repository string
@@ -37,6 +38,8 @@ type updateTeamDesiredComponent struct {
 	ComponentName   string
 	ComponentSource string
 	ComponentImage  s2hv1beta1.ComponentImage
+	// TODO: pohfy, add bundle here
+	ComponentBundle string
 }
 
 func (c *controller) Start(stop <-chan struct{}) {
@@ -142,18 +145,22 @@ func (c *controller) checkComponentChanged(component changedComponent) error {
 
 			logger.Debug("component has been notified", "team", teamName, "component", comp.Name)
 
+			// TODO: pohfy, add component bundle here
 			// add to queue for processing
+			bundleName := getBundleName(comp.Name, teamName, configCtrl)
 			c.queue.Add(updateTeamDesiredComponent{
 				TeamName:        teamName,
 				ComponentName:   comp.Name,
 				ComponentSource: string(*comp.Source),
 				ComponentImage:  comp.Image,
+				ComponentBundle: bundleName,
 			})
 		}
 	}
 	return nil
 }
 
+// TODO: pohfy, this place call desired component
 // updateTeamDesiredComponent gets new version from checker and checks with DesiredComponent of team.
 //
 // updateInfo will always has valid checker (from checkComponentChanged)
@@ -175,6 +182,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	compNs := team.Status.Namespace.Staging
 	compName := updateInfo.ComponentName
 	compRepository := updateInfo.ComponentImage.Repository
+	compBundle := updateInfo.ComponentBundle
 
 	// TODO: do caching for better performance
 	version, vErr := checker.GetVersion(compRepository, compName, checkPattern)
@@ -225,6 +233,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 					Version:    version,
 					Name:       compName,
 					Repository: compRepository,
+					Bundle:     compBundle,
 				},
 				Status: s2hv1beta1.DesiredComponentStatus{
 					CreatedAt: &now,
@@ -244,14 +253,17 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 		return err
 	}
 
+	// TODO: pohfy, added bundle
 	// DesiredComponent found, check the version
-	if desiredComp.Spec.Version == version && desiredComp.Spec.Repository == compRepository {
+	if desiredComp.Spec.Version == version && desiredComp.Spec.Repository == compRepository &&
+		desiredComp.Spec.Bundle == compBundle {
 		return nil
 	}
 
 	// Update when version or repository changed
 	desiredComp.Spec.Version = version
 	desiredComp.Spec.Repository = compRepository
+	desiredComp.Spec.Bundle = compBundle
 	desiredComp.Status.UpdatedAt = &now
 
 	if err = c.client.Update(ctx, desiredComp); err != nil {
@@ -279,6 +291,19 @@ func (c *controller) QueueLen() int {
 type desiredTime struct {
 	image            string
 	desiredImageTime s2hv1beta1.DesiredImageTime
+}
+
+func getBundleName(compName, teamName string, configCtrl internal.ConfigController) string {
+	bundles, _ := configCtrl.GetBundles(teamName)
+	for bundleName, comps := range bundles {
+		for _, comp := range comps {
+			if comp == compName {
+				return bundleName
+			}
+		}
+	}
+
+	return ""
 }
 
 func deleteDesiredMappingOutOfRange(team *s2hv1beta1.Team, maxDesiredMapping int) {

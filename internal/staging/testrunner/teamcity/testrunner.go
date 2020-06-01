@@ -176,7 +176,7 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 		}
 
 		out := &TriggerResponse{}
-		if err := xml.Unmarshal([]byte(resp), out); err != nil {
+		if err := xml.Unmarshal(resp, out); err != nil {
 			logger.Error(err, "cannot unmarshal xml response data")
 			errCh <- err
 			return

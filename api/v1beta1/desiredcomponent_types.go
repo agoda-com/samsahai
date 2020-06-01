@@ -25,6 +25,8 @@ type DesiredComponentSpec struct {
 	Name       string `json:"name"`
 	Version    string `json:"version"`
 	Repository string `json:"repository"`
+	// +optional
+	Bundle string `json:"bundle,omitempty"`
 }
 
 // DesiredComponentStatus defines the observed state of DesiredComponent
@@ -44,6 +46,7 @@ type DesiredComponent struct {
 	Status DesiredComponentStatus `json:"status,omitempty"`
 }
 
+// TODO: pohfy, unused?
 func (c *DesiredComponent) IsSame(d *DesiredComponent) bool {
 	return c.Spec.Name == d.Spec.Name &&
 		c.Spec.Repository == d.Spec.Repository &&

@@ -111,17 +111,26 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	logger.Debug(fmt.Sprintf("add %s (%s:%s) to queue", comp.Spec.Name, comp.Spec.Repository, comp.Spec.Version))
-	q := queue.NewUpgradeQueue(c.teamName, req.Namespace, comp.Spec.Name, comp.Spec.Repository, comp.Spec.Version)
-	err = c.queueCtrl.Add(q)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
 
 	headers := make(http.Header)
 	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
 	ctx, err = twirp.WithHTTPRequestHeaders(ctx, headers)
 	if err != nil {
 		logger.Error(err, "cannot set request header")
+	}
+
+	// TODO: pohfy, get bundle config
+	comps := []*s2hv1beta1.QueueComponent{
+		{
+			Name:       comp.Spec.Name,
+			Repository: comp.Spec.Repository,
+			Version:    comp.Spec.Version,
+		},
+	}
+	q := queue.NewUpgradeQueue(c.teamName, req.Namespace, comp.Spec.Name, comp.Spec.Bundle, comps)
+	err = c.queueCtrl.Add(q)
+	if err != nil {
+		return reconcile.Result{}, err
 	}
 
 	rpcComp := &samsahairpc.ComponentUpgrade{

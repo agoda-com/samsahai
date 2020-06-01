@@ -80,11 +80,20 @@ const (
 	Finished QueueState = "finished"
 )
 
+// TODO: pohfy, name is bundle name
 // QueueSpec defines the desired state of Queue
 type QueueSpec struct {
-	// Name represents Component name
+	// Name represents a Component name or bundle name if exist
 	Name string `json:"name"`
 
+	// Bundle represents a bundle name of component
+	// +optional
+	Bundle string `json:"bundle,omitempty"`
+
+	// Components represents a list of components which are deployed
+	Components QueueComponents `json:"components"`
+
+	// TODO: pohfy, remove here
 	// Repository represents Docker image repository
 	Repository string `json:"repository"`
 
@@ -112,6 +121,19 @@ type QueueSpec struct {
 type Image struct {
 	Repository string `json:"repository"`
 	Tag        string `json:"tag"`
+}
+
+type QueueComponents []*QueueComponent
+
+type QueueComponent struct {
+	// Name represents Component name
+	Name string `json:"name"`
+
+	// Repository represents Docker image repository
+	Repository string `json:"repository"`
+
+	// Version represents Docker image tag version
+	Version string `json:"version"`
 }
 
 type QueueCondition struct {
@@ -269,10 +291,32 @@ type Queue struct {
 	Status QueueStatus `json:"status,omitempty"`
 }
 
+// TODO: pohfy, updated
 func (q *Queue) IsSame(d *Queue) bool {
-	return q.Spec.Name == d.Spec.Name &&
-		q.Spec.Repository == d.Spec.Repository &&
-		q.Spec.Version == d.Spec.Version
+	if q.Spec.Name != d.Spec.Name {
+		return false
+	}
+
+	if len(q.Spec.Components) != len(d.Spec.Components) {
+		return false
+	}
+
+	// expect component already sorted
+	for i := range d.Spec.Components {
+		if q.Spec.Components[i].Name != d.Spec.Components[i].Name ||
+			q.Spec.Components[i].Repository != d.Spec.Components[i].Repository ||
+			q.Spec.Components[i].Version != d.Spec.Components[i].Version {
+			return false
+		}
+	}
+	//return q.Spec.Name == d.Spec.Name &&
+	//	q.Spec.Repository == d.Spec.Repository &&
+	//	q.Spec.Version == d.Spec.Version
+	return true
+}
+
+func (q *Queue) IsInExistBundle(d *Queue) bool {
+	return q.Spec.Bundle != "" && q.Spec.Bundle == d.Spec.Bundle
 }
 
 func (q *Queue) SetState(state QueueState) {
@@ -298,6 +342,17 @@ func (q *Queue) IsActivePromotionQueue() bool {
 		q.Spec.Type == QueueTypePromoteToActive ||
 		q.Spec.Type == QueueTypeDemoteFromActive
 }
+
+//func (q *Queue) UpdateComponentIfNotExist(d *Queue) string {
+//	q.Spec.Components.Sort()
+//	d.Spec.Components.Sort()
+//
+//	for _, dcomp := range d.Spec.Components {
+//		for _, qcomp := range q.Spec.Components {
+//			if qcomp.Name !=
+//		}
+//	}
+//}
 
 // GetEnvType returns environment type for connection based on Queue.Spec.Type
 func (q *Queue) GetEnvType() string {
@@ -337,7 +392,7 @@ func (ql *QueueList) TopQueueOrder() int {
 	if len(ql.Items) == 0 {
 		return 1
 	}
-	sort.Sort(ByNoOfOrder(ql.Items))
+	sort.Sort(QueueByNoOfOrder(ql.Items))
 	return ql.Items[0].Spec.NoOfOrder - 1
 }
 
@@ -346,7 +401,7 @@ func (ql *QueueList) LastQueueOrder() int {
 	if len(ql.Items) == 0 {
 		return 1
 	}
-	sort.Sort(ByNoOfOrder(ql.Items))
+	sort.Sort(QueueByNoOfOrder(ql.Items))
 	return ql.Items[len(ql.Items)-1].Spec.NoOfOrder + 1
 }
 
@@ -378,15 +433,15 @@ func (ql *QueueList) First() *Queue {
 	return &ql.Items[0]
 }
 
-// Sort sorts items
+// Sort sorts queue items
 func (ql *QueueList) Sort() {
-	sort.Sort(ByNoOfOrder(ql.Items))
+	sort.Sort(QueueByNoOfOrder(ql.Items))
 }
 
-type ByNoOfOrder []Queue
+type QueueByNoOfOrder []Queue
 
-func (q ByNoOfOrder) Len() int { return len(q) }
-func (q ByNoOfOrder) Less(i, j int) bool {
+func (q QueueByNoOfOrder) Len() int { return len(q) }
+func (q QueueByNoOfOrder) Less(i, j int) bool {
 	now := metav1.Now()
 
 	if q[i].Spec.NoOfOrder == q[j].Spec.NoOfOrder {
@@ -417,7 +472,21 @@ func (q ByNoOfOrder) Less(i, j int) bool {
 	return q[i].Spec.NoOfOrder < q[j].Spec.NoOfOrder
 }
 
-func (q ByNoOfOrder) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
+func (q QueueByNoOfOrder) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
+
+// Sort sorts component items
+func (qc QueueComponents) Sort() {
+	sort.Sort(ComponentByName(qc))
+}
+
+type ComponentByName []*QueueComponent
+
+func (q ComponentByName) Len() int { return len(q) }
+func (q ComponentByName) Less(i, j int) bool {
+	return q[i].Name < q[j].Name
+}
+
+func (q ComponentByName) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
 
 func init() {
 	SchemeBuilder.Register(&Queue{}, &QueueList{})
