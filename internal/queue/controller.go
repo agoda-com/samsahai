@@ -41,7 +41,7 @@ func NewUpgradeQueue(teamName, namespace, name, bundle string, comps []*s2hv1bet
 			TeamName:   teamName,
 			Bundle:     bundle,
 			Components: comps,
-			Type: s2hv1beta1.QueueTypeUpgrade,
+			Type:       s2hv1beta1.QueueTypeUpgrade,
 		},
 		Status: s2hv1beta1.QueueStatus{},
 	}
@@ -125,16 +125,15 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 	isAlreadyInQueue := false
 	isAlreadyInBundle := false
 	for i, q := range queueList.Items {
-		if q.IsInExistBundle(queue) {
-			isAlreadyInBundle = true
-			bundleQueue = &queueList.Items[i]
-			break
-		}
-
-		// TODO: pohfy, need to be updated
 		if q.IsSame(queue) {
 			isAlreadyInQueue = true
 			pQueue = &queueList.Items[i]
+			break
+		}
+
+		if q.IsInExistBundle(queue) {
+			isAlreadyInBundle = true
+			bundleQueue = &queueList.Items[i]
 			break
 		}
 	}
@@ -207,18 +206,24 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 	return nil
 }
 
+// queue always contains 1 component
 func (c *controller) isMatchWithStableComponent(ctx context.Context, q *s2hv1beta1.Queue) (isMatch bool, err error) {
+	if len(q.Spec.Components) == 0 {
+		isMatch = true
+		return
+	}
+
+	qcomp := q.Spec.Components[0]
 	stableComp := &s2hv1beta1.StableComponent{}
-	err = c.client.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: q.GetName()}, stableComp)
+	err = c.client.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: qcomp.Name}, stableComp)
 	if err != nil && k8serrors.IsNotFound(err) {
 		return false, nil
 	} else if err != nil {
 		return
 	}
 
-	// TODO: pohfy, update here
-	isMatch = stableComp.Spec.Repository == q.Spec.Repository &&
-		stableComp.Spec.Version == q.Spec.Version
+	isMatch = stableComp.Spec.Repository == qcomp.Repository &&
+		stableComp.Spec.Version == qcomp.Version
 
 	return
 }

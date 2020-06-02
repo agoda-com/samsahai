@@ -35,7 +35,7 @@ message ComponentUpgrade {
     UpgradeStatus status = 1;
     string name = 2;
     string teamName = 3;
-    Image image = 4;
+    repeated Component components = 4;
     IssueType issueType = 5;
     string queueHistoryName = 6;
     repeated Image imageMissingList = 7;
@@ -44,6 +44,11 @@ message ComponentUpgrade {
     int32 runs = 10;
     bool isReverify = 11;
     ReverificationStatus reverificationStatus = 12;
+}
+
+message Component {
+    string name = 1;
+    Image image = 2;
 }
 
 message Image {

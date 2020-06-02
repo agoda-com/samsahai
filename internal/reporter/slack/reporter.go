@@ -198,20 +198,23 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 	message := `
 *Component Upgrade:*{{ if eq .Status 1 }} Success {{ else }} Failure {{ end }}
 {{- if eq .Status 0 }}
->*Issue type:* {{ .IssueTypeStr }}
+*Issue type:* {{ .IssueTypeStr }}
 {{- end }}
->*Run:*{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}
->*Component:* {{ .Name }}
->*Version:* {{ .Image.Tag }}
->*Repository:* {{ .Image.Repository }}
->*Owner:* {{ .TeamName }}
->*Namespace:* {{ .Namespace }}
+*Run:*{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}
+*Components* 
+{{- range .Components }}
+>- *Name:* {{ .Name }}
+>   *Version:* {{ .Image.Tag }}
+>   *Repository:* {{ .Image.Repository }}
+{{- end }}
+*Owner:* {{ .TeamName }}
+*Namespace:* {{ .Namespace }}
 {{- if eq .Status 0 }}
   {{- if .TestRunner.Teamcity.BuildURL }}
->*Teamcity URL:* <{{ .TestRunner.Teamcity.BuildURL }}|Click here>
+*Teamcity URL:* <{{ .TestRunner.Teamcity.BuildURL }}|Click here>
   {{- end }}
->*Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log|Download here>
->*Deployment History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}|Click here>
+*Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log|Download here>
+*Deployment History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}|Click here>
 {{- end}}
 `
 	return strings.TrimSpace(template.TextRender("SlackComponentUpgradeFailure", message, comp))
@@ -223,19 +226,19 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 {{- if ne .Result "Success" }}
 {{- range .Conditions }}
   {{- if eq .Type "` + string(s2hv1beta1.ActivePromotionCondActivePromoted) + `" }}
->*Reason:* {{ .Message }}
+*Reason:* {{ .Message }}
   {{- end }}
 {{- end }}
 {{- end }}
->*Current Active Namespace:* {{ .CurrentActiveNamespace }}
->*Owner:* {{ .TeamName }}
+*Current Active Namespace:* {{ .CurrentActiveNamespace }}
+*Owner:* {{ .TeamName }}
 {{- if and .PreActiveQueue.TestRunner (and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL) }}
->*Teamcity URL:* <{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}|Click here>
+*Teamcity URL:* <{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}|Click here>
 {{- end }}
 {{- if eq .Result "Failure" }}
->*Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log|Download here>
+*Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log|Download here>
 {{- end }}
->*Active Promotion History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}|Click here>
+*Active Promotion History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}|Click here>
 `
 
 	return strings.TrimSpace(template.TextRender("SlackActivePromotionStatus", message, comp))

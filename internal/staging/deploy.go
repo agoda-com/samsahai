@@ -19,7 +19,6 @@ import (
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
 )
 
-// TODO: pohfy, update here
 // deployEnvironment deploy components into namespace
 func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 	deployTimeout := metav1.Duration{Duration: 1800 * time.Second}
@@ -57,12 +56,14 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 			return err
 		}
 
+		newComps := make([]*s2hv1beta1.QueueComponent, 0)
 		for _, qcomp := range queue.Spec.Components {
 			comp, ok := comps[qcomp.Name]
 			if !ok {
 				continue
 			}
 
+			newComps = append(newComps, qcomp)
 			queueComps[qcomp.Name] = comp
 			queueParentComps[qcomp.Name] = comp
 
@@ -71,12 +72,19 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 				queueParentComps[comp.Parent] = comps[comp.Parent]
 			}
 		}
+
+		// update queue if there are skipped components
+		if len(newComps) != len(queue.Spec.Components) {
+			queue.Spec.Components = newComps
+			if err := c.updateQueue(queue); err != nil {
+				return err
+			}
+		}
 	}
 
 	// Deploy
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueDeployStarted) {
 
-		// TODO: pohfy, fix here
 		err := c.deployComponents(deployEngine, queue, queueComps, queueParentComps)
 		if err != nil {
 			return err
