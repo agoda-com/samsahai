@@ -66,11 +66,6 @@ func (e *engine) GetValues() (map[string][]byte, error) {
 	return nil, nil
 }
 
-func (e *engine) IsReady(queue *v1beta1.Queue) (bool, error) {
-	logger.Debug(fmt.Sprintf("env with resource key '%s' is ready", queue.Status.ReleaseName))
-	return true, nil
-}
-
 func (e *engine) GetName() string {
 	return EngineName
 }

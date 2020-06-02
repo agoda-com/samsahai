@@ -20,7 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TODO: pohfy, updated
 // StableComponentSpec defines the desired state of StableComponent
 type StableComponentSpec struct {
 	// Name represents Component name
@@ -31,9 +30,6 @@ type StableComponentSpec struct {
 
 	// Version represents Docker image tag version
 	Version string `json:"version"`
-
-	// +optional
-	Bundle string `json:"bundle,omitempty"`
 
 	// UpdatedBy represents a person who updated the StableComponent
 	// +optional

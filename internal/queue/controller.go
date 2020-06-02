@@ -41,10 +41,6 @@ func NewUpgradeQueue(teamName, namespace, name, bundle string, comps []*s2hv1bet
 			TeamName:   teamName,
 			Bundle:     bundle,
 			Components: comps,
-			// TODO: pohfy, start remove here
-			//Repository: repository,
-			//Version:    version,
-			// TODO: pohfy, end remove here
 			Type: s2hv1beta1.QueueTypeUpgrade,
 		},
 		Status: s2hv1beta1.QueueStatus{},
@@ -220,6 +216,7 @@ func (c *controller) isMatchWithStableComponent(ctx context.Context, q *s2hv1bet
 		return
 	}
 
+	// TODO: pohfy, update here
 	isMatch = stableComp.Spec.Repository == q.Spec.Repository &&
 		stableComp.Spec.Version == q.Spec.Version
 

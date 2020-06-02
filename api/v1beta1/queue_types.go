@@ -213,9 +213,6 @@ type QueueStatus struct {
 	// NoOfProcessed represents how many time that this queue had been processed
 	NoOfProcessed int `json:"noOfProcessed,omitempty"`
 
-	// ReleaseName defines name of helmrelease
-	ReleaseName string `json:"releaseName"`
-
 	// Conditions contains observations of the resource's state e.g.,
 	// Queue deployed, being tested
 	// +optional
@@ -291,7 +288,6 @@ type Queue struct {
 	Status QueueStatus `json:"status,omitempty"`
 }
 
-// TODO: pohfy, updated
 func (q *Queue) IsSame(d *Queue) bool {
 	if q.Spec.Name != d.Spec.Name {
 		return false
@@ -309,9 +305,7 @@ func (q *Queue) IsSame(d *Queue) bool {
 			return false
 		}
 	}
-	//return q.Spec.Name == d.Spec.Name &&
-	//	q.Spec.Repository == d.Spec.Repository &&
-	//	q.Spec.Version == d.Spec.Version
+
 	return true
 }
 
