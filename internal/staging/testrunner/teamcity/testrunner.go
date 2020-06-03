@@ -121,6 +121,10 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 	go func() {
 		apiURL := fmt.Sprintf("%s/%s/buildQueue", t.baseURL, baseAPIPath)
 		teamName := currentQueue.Spec.TeamName
+		compVersion := "multiple-components"
+		if len(currentQueue.Spec.Components) == 1 {
+			compVersion = currentQueue.Spec.Components[0].Version
+		}
 		reqJSON := &triggerBuildReq{
 			BranchName: testConfig.Teamcity.Branch,
 			BuildType: buildTypeJSON{
@@ -146,9 +150,9 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 					{Name: ParamCompName, Value: currentQueue.Name},
 					{Name: EnvParamCompName, Value: currentQueue.Name},
 					{Name: ParamReverseCompName, Value: currentQueue.Name},
-					{Name: ParamCompVersion, Value: currentQueue.Spec.Version},
-					{Name: EnvParamCompVersion, Value: currentQueue.Spec.Version},
-					{Name: ParamReverseCompVersion, Value: currentQueue.Spec.Version},
+					{Name: ParamCompVersion, Value: compVersion},
+					{Name: EnvParamCompVersion, Value: compVersion},
+					{Name: ParamReverseCompVersion, Value: compVersion},
 					{Name: ParamQueueType, Value: currentQueue.GetQueueType()},
 					{Name: EnvParamQueueType, Value: currentQueue.GetQueueType()},
 					{Name: ParamReverseQueueType, Value: currentQueue.GetQueueType()},

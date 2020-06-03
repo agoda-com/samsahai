@@ -92,15 +92,6 @@ type QueueSpec struct {
 	// Components represents a list of components which are deployed
 	Components QueueComponents `json:"components"`
 
-	// TODO: pohfy, remove here
-	// Repository represents Docker image repository
-	// +optional
-	Repository string `json:"repository,omitempty"`
-
-	// Version represents Docker image tag version
-	// +optional
-	Version string `json:"version,omitempty"`
-
 	// Type represents how we will process this queue
 	Type QueueType `json:"type"`
 
