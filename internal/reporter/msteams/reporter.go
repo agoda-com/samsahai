@@ -202,7 +202,7 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 	message := `
 <b>Component Upgrade:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure{{ end }}</span>
 {{- if eq .Status 0 }}
-<b>Issue type:</b> {{ .IssueTypeStr }}
+<br/><b>Issue type:</b> {{ .IssueTypeStr }}
 {{- end }}
 <br/><b>Run:</b>{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}
 <br/><b>Components</b>

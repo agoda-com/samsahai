@@ -62,6 +62,5 @@ message ImageList {
 
 message TeamWithCurrentComponent {
     string teamName = 1;
-    string compName = 2;
-    Image image = 3;
+    repeated Component components = 2;
 }

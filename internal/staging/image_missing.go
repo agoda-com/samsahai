@@ -13,7 +13,6 @@ import (
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-// TODO: pohfy, detects multiple queues
 func (c *controller) detectImageMissing(queue *s2hv1beta1.Queue) error {
 	var err error
 	headers := make(http.Header)
@@ -24,12 +23,21 @@ func (c *controller) detectImageMissing(queue *s2hv1beta1.Queue) error {
 		return errors.Wrap(err, "cannot set request header")
 	}
 
+	rpcComps := make([]*rpc.Component, 0)
+	for _, qcomp := range queue.Spec.Components {
+		rpcComps = append(rpcComps, &rpc.Component{
+			Name: qcomp.Name,
+			Image: &rpc.Image{
+				Repository: qcomp.Repository,
+				Tag:        qcomp.Version,
+			},
+		})
+	}
+
 	var imgList *rpc.ImageList
-	// TODO: pohfy, TeamWithCurrentComponents should contain multiple components
 	comp := &rpc.TeamWithCurrentComponent{
-		TeamName: c.teamName,
-		CompName: queue.Name,
-		Image:    &rpc.Image{Repository: queue.Spec.Repository, Tag: queue.Spec.Version},
+		TeamName:   c.teamName,
+		Components: rpcComps,
 	}
 	if c.s2hClient != nil {
 		imgList, err = c.s2hClient.GetMissingVersion(ctx, comp)
@@ -39,7 +47,6 @@ func (c *controller) detectImageMissing(queue *s2hv1beta1.Queue) error {
 	}
 
 	if imgList != nil && imgList.Images != nil && len(imgList.Images) > 0 {
-		// TODO: pohfy, updateImageMissingWithQueueState receives multiple queues
 		if err := c.updateImageMissingWithQueueState(queue, imgList); err != nil {
 			return err
 		}

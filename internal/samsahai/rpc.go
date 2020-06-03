@@ -30,7 +30,6 @@ func (c *controller) authenticateRPC(ctx context.Context) error {
 	return nil
 }
 
-// TODO: pohfy, TeamWithCurrentComponents
 func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWithCurrentComponent) (*rpc.ImageList, error) {
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
@@ -60,6 +59,7 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 		return nil, errors.Wrapf(err, "cannot get components of team %s", teamComp.Name)
 	}
 
+	// get image missing of stable components
 	for _, stable := range stableList.Items {
 		source, ok := c.getImageSource(comps, stable.Name)
 		if !ok {
@@ -67,17 +67,26 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 		}
 
 		// ignore current component
-		if teamInfo.CompName == stable.Name {
+		isFound := false
+		for _, qcomp := range teamInfo.Components {
+			if qcomp.Name == stable.Name {
+				isFound = true
+				break
+			}
+		}
+		if isFound {
 			continue
 		}
 
 		c.detectAndAddImageMissing(*source, stable.Spec.Repository, stable.Name, stable.Spec.Version, imgList)
 	}
 
-	// add image missing for current component
-	source, ok := c.getImageSource(comps, teamInfo.CompName)
-	if ok {
-		c.detectAndAddImageMissing(*source, teamInfo.Image.Repository, teamInfo.CompName, teamInfo.Image.Tag, imgList)
+	// get image missing of current components
+	for _, qcomp := range teamInfo.Components {
+		source, ok := c.getImageSource(comps, qcomp.Name)
+		if ok {
+			c.detectAndAddImageMissing(*source, qcomp.Image.Repository, qcomp.Name, qcomp.Image.Tag, imgList)
+		}
 	}
 
 	return imgList, nil
