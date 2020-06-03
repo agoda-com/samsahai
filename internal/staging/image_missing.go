@@ -24,12 +24,12 @@ func (c *controller) detectImageMissing(queue *s2hv1beta1.Queue) error {
 	}
 
 	rpcComps := make([]*rpc.Component, 0)
-	for _, qcomp := range queue.Spec.Components {
+	for _, qComp := range queue.Spec.Components {
 		rpcComps = append(rpcComps, &rpc.Component{
-			Name: qcomp.Name,
+			Name: qComp.Name,
 			Image: &rpc.Image{
-				Repository: qcomp.Repository,
-				Tag:        qcomp.Version,
+				Repository: qComp.Repository,
+				Tag:        qComp.Version,
 			},
 		})
 	}

@@ -57,18 +57,18 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 		}
 
 		newComps := make([]*s2hv1beta1.QueueComponent, 0)
-		for _, qcomp := range queue.Spec.Components {
-			comp, ok := comps[qcomp.Name]
+		for _, qComp := range queue.Spec.Components {
+			comp, ok := comps[qComp.Name]
 			if !ok {
 				continue
 			}
 
-			newComps = append(newComps, qcomp)
-			queueComps[qcomp.Name] = comp
-			queueParentComps[qcomp.Name] = comp
+			newComps = append(newComps, qComp)
+			queueComps[qComp.Name] = comp
+			queueParentComps[qComp.Name] = comp
 
 			if comp.Parent != "" {
-				delete(queueParentComps, qcomp.Name)
+				delete(queueParentComps, qComp.Name)
 				queueParentComps[comp.Parent] = comps[comp.Parent]
 			}
 		}
@@ -197,13 +197,13 @@ func (c *controller) getStableComponentsMap() (stableMap map[string]s2hv1beta1.S
 	return
 }
 
-func genCompValueFromQueue(compName string, qcomps []*s2hv1beta1.QueueComponent) map[string]interface{} {
-	for _, qcomp := range qcomps {
-		if qcomp.Name == compName {
+func genCompValueFromQueue(compName string, qComps []*s2hv1beta1.QueueComponent) map[string]interface{} {
+	for _, qComp := range qComps {
+		if qComp.Name == compName {
 			return map[string]interface{}{
 				"image": map[string]interface{}{
-					"repository": qcomp.Repository,
-					"tag":        qcomp.Version,
+					"repository": qComp.Repository,
+					"tag":        qComp.Version,
 				},
 			}
 		}

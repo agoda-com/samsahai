@@ -68,8 +68,8 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 
 		// ignore current component
 		isFound := false
-		for _, qcomp := range teamInfo.Components {
-			if qcomp.Name == stable.Name {
+		for _, qComp := range teamInfo.Components {
+			if qComp.Name == stable.Name {
 				isFound = true
 				break
 			}
@@ -82,10 +82,10 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 	}
 
 	// get image missing of current components
-	for _, qcomp := range teamInfo.Components {
-		source, ok := c.getImageSource(comps, qcomp.Name)
+	for _, qComp := range teamInfo.Components {
+		source, ok := c.getImageSource(comps, qComp.Name)
 		if ok {
-			c.detectAndAddImageMissing(*source, qcomp.Image.Repository, qcomp.Name, qcomp.Image.Tag, imgList)
+			c.detectAndAddImageMissing(*source, qComp.Image.Repository, qComp.Name, qComp.Image.Tag, imgList)
 		}
 	}
 

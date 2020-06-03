@@ -23,6 +23,7 @@ const maxDesiredMappingPerComp = 10
 type changedComponent struct {
 	Name       string
 	Repository string
+	TeamName   string
 }
 
 type updateHealth struct {
@@ -37,6 +38,7 @@ type updateTeamDesiredComponent struct {
 	ComponentName   string
 	ComponentSource string
 	ComponentImage  s2hv1beta1.ComponentImage
+	ComponentBundle string
 }
 
 func (c *controller) Start(stop <-chan struct{}) {
@@ -60,10 +62,11 @@ func (c *controller) Start(stop <-chan struct{}) {
 	logger.Info("stopping internal process")
 }
 
-func (c *controller) NotifyComponentChanged(compName, repository string) {
+func (c *controller) NotifyComponentChanged(compName, repository, teamName string) {
 	c.queue.Add(changedComponent{
 		Repository: repository,
 		Name:       compName,
+		TeamName:   teamName,
 	})
 }
 
@@ -105,57 +108,75 @@ func (c *controller) process() bool {
 	return true
 }
 
-// TODO: pohfy, check bundle changed
 // checkComponentChanged checks matched components from every teams and add to queue for checking new version.
 //
 // Component should match both name and repository
 func (c *controller) checkComponentChanged(component changedComponent) error {
-	configCtrl := c.GetConfigController()
-	teamList, err := c.GetTeams()
-	if err != nil {
-		return err
-	}
-
-	for _, teamComp := range teamList.Items {
-		teamName := teamComp.Name
-		team := &s2hv1beta1.Team{}
-		if err := c.getTeam(teamName, team); err != nil {
-			logger.Error(err, "cannot get team", "team", teamName)
+	if component.TeamName != "" {
+		if err := c.checkTeamComponentChanged(component.Name, component.Repository, component.TeamName); err != nil {
+			logger.Error(err, "cannot check component changed", "team", component.TeamName)
+			return err
+		}
+	} else {
+		teamList, err := c.GetTeams()
+		if err != nil {
 			return err
 		}
 
-		comps, _ := configCtrl.GetComponents(teamName)
-		for _, comp := range comps {
-			if component.Name != comp.Name || comp.Source == nil {
-				// ignored mismatch or missing source
+		for _, teamComp := range teamList.Items {
+			teamName := teamComp.Name
+			if err := c.checkTeamComponentChanged(component.Name, component.Repository, teamName); err != nil {
+				logger.Error(err, "cannot check component changed", "team", teamName)
 				continue
 			}
-
-			if _, ok := c.checkers[string(*comp.Source)]; !ok {
-				// ignore non-existing source
-				continue
-			}
-
-			if component.Repository != "" && component.Repository != comp.Image.Repository {
-				// ignore mismatch repository
-				continue
-			}
-
-			logger.Debug("component has been notified", "team", teamName, "component", comp.Name)
-
-			// add to queue for processing
-			c.queue.Add(updateTeamDesiredComponent{
-				TeamName:        teamName,
-				ComponentName:   comp.Name,
-				ComponentSource: string(*comp.Source),
-				ComponentImage:  comp.Image,
-			})
 		}
 	}
+
 	return nil
 }
 
-// TODO: pohfy, this place call desired component
+// TODO: pohfy, check bundle changed
+func (c *controller) checkTeamComponentChanged(compName, repository, teamName string) error {
+	configCtrl := c.GetConfigController()
+	team := &s2hv1beta1.Team{}
+	if err := c.getTeam(teamName, team); err != nil {
+		logger.Error(err, "cannot get team", "team", teamName)
+		return err
+	}
+
+	comps, _ := configCtrl.GetComponents(teamName)
+	for _, comp := range comps {
+		if compName != comp.Name || comp.Source == nil {
+			// ignored mismatch or missing source
+			continue
+		}
+
+		if _, ok := c.checkers[string(*comp.Source)]; !ok {
+			// ignore non-existing source
+			continue
+		}
+
+		if repository != "" && repository != comp.Image.Repository {
+			// ignore mismatch repository
+			continue
+		}
+
+		logger.Debug("component has been notified", "team", teamName, "component", comp.Name)
+
+		// add to queue for processing
+		bundleName := c.getBundleName(comp.Name, teamName)
+		c.queue.Add(updateTeamDesiredComponent{
+			TeamName:        teamName,
+			ComponentName:   comp.Name,
+			ComponentSource: string(*comp.Source),
+			ComponentImage:  comp.Image,
+			ComponentBundle: bundleName,
+		})
+	}
+
+	return nil
+}
+
 // updateTeamDesiredComponent gets new version from checker and checks with DesiredComponent of team.
 //
 // updateInfo will always has valid checker (from checkComponentChanged)
@@ -177,6 +198,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	compNs := team.Status.Namespace.Staging
 	compName := updateInfo.ComponentName
 	compRepository := updateInfo.ComponentImage.Repository
+	compBundle := updateInfo.ComponentBundle
 
 	// TODO: do caching for better performance
 	version, vErr := checker.GetVersion(compRepository, compName, checkPattern)
@@ -227,6 +249,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 					Version:    version,
 					Name:       compName,
 					Repository: compRepository,
+					Bundle:     compBundle,
 				},
 				Status: s2hv1beta1.DesiredComponentStatus{
 					CreatedAt: &now,
@@ -247,13 +270,22 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	}
 
 	// DesiredComponent found, check the version
-	if desiredComp.Spec.Version == version && desiredComp.Spec.Repository == compRepository {
+	sameComp := desiredComp.IsSame(&s2hv1beta1.DesiredComponent{
+		Spec: s2hv1beta1.DesiredComponentSpec{
+			Name:       compName,
+			Version:    version,
+			Repository: compRepository,
+			Bundle:     compBundle,
+		},
+	})
+	if sameComp {
 		return nil
 	}
 
 	// Update when version or repository changed
 	desiredComp.Spec.Version = version
 	desiredComp.Spec.Repository = compRepository
+	desiredComp.Spec.Bundle = compBundle
 	desiredComp.Status.UpdatedAt = &now
 
 	if err = c.client.Update(ctx, desiredComp); err != nil {

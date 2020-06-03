@@ -94,10 +94,12 @@ type QueueSpec struct {
 
 	// TODO: pohfy, remove here
 	// Repository represents Docker image repository
-	Repository string `json:"repository"`
+	// +optional
+	Repository string `json:"repository,omitempty"`
 
 	// Version represents Docker image tag version
-	Version string `json:"version"`
+	// +optional
+	Version string `json:"version,omitempty"`
 
 	// Type represents how we will process this queue
 	Type QueueType `json:"type"`
@@ -308,10 +310,6 @@ func (q *Queue) IsSame(d *Queue) bool {
 	return true
 }
 
-func (q *Queue) IsInExistBundle(d *Queue) bool {
-	return q.Spec.Bundle != "" && q.Spec.Bundle == d.Spec.Bundle
-}
-
 func (q *Queue) SetState(state QueueState) {
 	now := metav1.Now()
 	q.Status.UpdatedAt = &now
@@ -335,17 +333,6 @@ func (q *Queue) IsActivePromotionQueue() bool {
 		q.Spec.Type == QueueTypePromoteToActive ||
 		q.Spec.Type == QueueTypeDemoteFromActive
 }
-
-//func (q *Queue) UpdateComponentIfNotExist(d *Queue) string {
-//	q.Spec.Components.Sort()
-//	d.Spec.Components.Sort()
-//
-//	for _, dcomp := range d.Spec.Components {
-//		for _, qcomp := range q.Spec.Components {
-//			if qcomp.Name !=
-//		}
-//	}
-//}
 
 // GetEnvType returns environment type for connection based on Queue.Spec.Type
 func (q *Queue) GetEnvType() string {

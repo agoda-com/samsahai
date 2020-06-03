@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -27,17 +28,22 @@ type controller struct {
 var _ internal.QueueController = &controller{}
 
 func NewUpgradeQueue(teamName, namespace, name, bundle string, comps []*s2hv1beta1.QueueComponent) *s2hv1beta1.Queue {
+	queueName := name
+	if bundle != "" {
+		queueName = bundle
+	}
+
 	qLabels := internal.GetDefaultLabels(teamName)
 	qLabels["app"] = name
 	qLabels["component"] = name
 	return &s2hv1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      queueName,
 			Namespace: namespace,
 			Labels:    qLabels,
 		},
 		Spec: s2hv1beta1.QueueSpec{
-			Name:       name,
+			Name:       queueName,
 			TeamName:   teamName,
 			Bundle:     bundle,
 			Components: comps,
@@ -102,7 +108,6 @@ func (c *controller) Remove(q *s2hv1beta1.Queue) error {
 }
 
 func (c *controller) RemoveAllQueues() error {
-
 	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.Queue{}, client.InNamespace(c.namespace))
 }
 
@@ -119,7 +124,7 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 		return nil
 	}
 
-	bundleQueue := &s2hv1beta1.Queue{}
+	//bundleQueue := &s2hv1beta1.Queue{}
 	pQueue := &s2hv1beta1.Queue{}
 	isAlreadyInQueue := false
 	isAlreadyInBundle := false
@@ -129,22 +134,40 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 			pQueue = &queueList.Items[i]
 			break
 		}
-
-		if q.IsInExistBundle(queue) {
-			isAlreadyInBundle = true
-			bundleQueue = &queueList.Items[i]
-			break
-		}
 	}
 
 	// remove duplicate component
-	removingList := c.removeSimilar(queue, queueList)
+	removingList := c.removeSimilarExceptBundle(queue, queueList)
 	for i := range removingList {
 		if err := c.client.Delete(ctx, &removingList[i]); err != nil {
 			return err
 		}
 	}
 
+	if !isAlreadyInQueue {
+		pQueue, err = c.updateExistingBundleQueue(ctx, queue, queueList)
+		if err != nil {
+			return err
+		}
+		if pQueue != nil {
+			isAlreadyInQueue = true
+			isAlreadyInBundle = true
+		} else {
+			if err = c.addNewBundleQueue(ctx, queue, queueList); err != nil {
+				return err
+			}
+		}
+
+		if err := c.removeInvalidComponentInBundle(ctx, queue, queueList); err != nil {
+			return err
+		}
+	}
+
+	// queue list have been changed
+	if queueList, err = c.list(nil); err != nil {
+		logger.Error(err, "cannot list queue")
+		return err
+	}
 	queueList.Sort()
 
 	now := metav1.Now()
@@ -156,48 +179,31 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 			pQueue.Spec.NoOfOrder = queueList.TopQueueOrder()
 		}
 
+		if isAlreadyInBundle {
+			// reset NoOfRetry/NextProcessAt if there is new component join the bundle
+			pQueue.Spec.NoOfRetry = 0
+			pQueue.Spec.NextProcessAt = nil
+			pQueue.Status.State = s2hv1beta1.Waiting
+			queue.Status.UpdatedAt = &now
+		}
+
+		pQueue.Spec.Components.Sort()
 		if err = c.client.Update(ctx, pQueue); err != nil {
 			return err
 		}
 	} else {
-		isNewQueue := true
-		if isAlreadyInBundle {
-			queue, isNewQueue = c.generateBundleQueue(queue, bundleQueue)
-			// reset NoOfRetry/NextProcessAt if there is new component join the bundle
-			queue.Spec.NoOfRetry = 0
-			queue.Spec.NextProcessAt = nil
-		}
-
 		// queue not exist
 		if atTop {
 			queue.Spec.NoOfOrder = queueList.TopQueueOrder()
-		} else {
-			if isAlreadyInBundle {
-				queue.Spec.NoOfOrder = bundleQueue.Spec.NoOfOrder
-			} else {
-				queue.Spec.NoOfOrder = queueList.LastQueueOrder()
-			}
 		}
 
+		queue.Spec.NoOfOrder = queueList.LastQueueOrder()
 		queue.Status.State = s2hv1beta1.Waiting
 		queue.Status.CreatedAt = &now
 		queue.Status.UpdatedAt = &now
 
-		if isNewQueue {
-			if err = c.client.Create(ctx, queue); err != nil {
-				return err
-			}
-
-			// delete old queue if creating a new bundle queue
-			if isAlreadyInBundle {
-				if err = c.client.Delete(ctx, bundleQueue); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-
-		if err = c.client.Update(ctx, queue); err != nil {
+		queue.Spec.Components.Sort()
+		if err = c.client.Create(ctx, queue); err != nil {
 			return err
 		}
 	}
@@ -212,54 +218,130 @@ func (c *controller) isMatchWithStableComponent(ctx context.Context, q *s2hv1bet
 		return
 	}
 
-	qcomp := q.Spec.Components[0]
+	qComp := q.Spec.Components[0]
 	stableComp := &s2hv1beta1.StableComponent{}
-	err = c.client.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: qcomp.Name}, stableComp)
+	err = c.client.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: qComp.Name}, stableComp)
 	if err != nil && k8serrors.IsNotFound(err) {
 		return false, nil
 	} else if err != nil {
 		return
 	}
 
-	isMatch = stableComp.Spec.Repository == qcomp.Repository &&
-		stableComp.Spec.Version == qcomp.Version
+	isMatch = stableComp.Spec.Repository == qComp.Repository &&
+		stableComp.Spec.Version == qComp.Version
 
 	return
 }
 
-func (c *controller) generateBundleQueue(targetQ *s2hv1beta1.Queue, existBundleQ *s2hv1beta1.Queue) (*s2hv1beta1.Queue, bool) {
-	isNewBundle := false
-	newBundleQueue := existBundleQ
-	if existBundleQ.Name != existBundleQ.Spec.Bundle { // e.g. redis != db
-		// create new bundle queue
-		newBundleQueue = NewUpgradeQueue(existBundleQ.Spec.TeamName, existBundleQ.Namespace, existBundleQ.Spec.Bundle,
-			existBundleQ.Spec.Bundle, existBundleQ.Spec.Components)
-		isNewBundle = true
+// addNewBundleQueue updates queue object and updates/removes existing queue
+func (c *controller) addNewBundleQueue(ctx context.Context, queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) error {
+	if len(queue.Spec.Components) == 0 {
+		return fmt.Errorf("components should not be empty, queueName: %s", queue.Name)
 	}
 
-	// append components if bundle exists
-	for _, tcomp := range targetQ.Spec.Components {
-		isFound := false
-		for j, ecomp := range existBundleQ.Spec.Components {
-			if ecomp.Name == tcomp.Name {
-				isFound = true
-				newBundleQueue.Spec.Components[j].Repository = tcomp.Repository
-				newBundleQueue.Spec.Components[j].Version = tcomp.Version
+	var found bool
+	for _, existingQ := range list.Items {
+		//newComps := make([]*s2hv1beta1.QueueComponent, 0)
+		for _, existingQComp := range existingQ.Spec.Components {
+			// existing queue is component queue or different queue bundle name
+			if existingQ.Spec.Name != queue.Spec.Name &&
+				existingQ.Spec.Bundle != queue.Spec.Bundle &&
+				existingQComp.Name == queue.Spec.Components[0].Name {
+
+				queue = NewUpgradeQueue(queue.Spec.TeamName, queue.Namespace, queue.Spec.Name,
+					queue.Spec.Bundle, queue.Spec.Components)
+
+				found = true
 				break
 			}
 		}
-		if !isFound {
-			newBundleQueue.Spec.Components = append(newBundleQueue.Spec.Components, tcomp)
+
+		if found {
+			break
 		}
 	}
 
-	newBundleQueue.Spec.Components.Sort()
-
-	return newBundleQueue, isNewBundle
+	return nil
 }
 
-// removeSimilar removes similar queue (same `name` from queue) from QueueList
-func (c *controller) removeSimilar(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) []s2hv1beta1.Queue {
+// updateExistingBundleQueue returns updated bundle queue
+func (c *controller) updateExistingBundleQueue(ctx context.Context, queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) (*s2hv1beta1.Queue, error) {
+	if len(queue.Spec.Components) == 0 {
+		return nil, fmt.Errorf("components should not be empty, queueName: %s", queue.Name)
+	}
+
+	if queue.Spec.Bundle == "" {
+		return nil, nil
+	}
+
+	var updatedBundleQueue *s2hv1beta1.Queue
+	for _, existingQ := range list.Items {
+		// update component of bundle
+		if existingQ.Spec.Bundle == queue.Spec.Bundle {
+			var found bool
+			updatedBundleQueue = &existingQ
+			for i, existingQComp := range existingQ.Spec.Components {
+				if existingQComp.Name == queue.Spec.Components[0].Name {
+					updatedBundleQueue.Spec.Components[i].Repository = queue.Spec.Components[0].Repository
+					updatedBundleQueue.Spec.Components[i].Version = queue.Spec.Components[0].Version
+					found = true
+					break
+				}
+			}
+
+			// add a new component to bundle
+			if !found {
+				updatedBundleQueue.Spec.Components = append(updatedBundleQueue.Spec.Components, queue.Spec.Components...)
+			}
+
+			break
+		}
+	}
+
+	return updatedBundleQueue, nil
+}
+
+// removeInvalidComponentInBundle removes component which not exist in bundle
+func (c *controller) removeInvalidComponentInBundle(ctx context.Context, queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) error {
+	if len(queue.Spec.Components) == 0 {
+		return fmt.Errorf("components should not be empty, queueName: %s", queue.Name)
+	}
+
+	for _, existingQ := range list.Items {
+		newComps := make([]*s2hv1beta1.QueueComponent, 0)
+		for _, existingQComp := range existingQ.Spec.Components {
+			if existingQ.Spec.Bundle != queue.Spec.Bundle &&
+				existingQComp.Name == queue.Spec.Components[0].Name {
+				continue
+			}
+			newComps = append(newComps, existingQComp)
+		}
+
+		if len(newComps) == 0 {
+			if err := c.client.Delete(ctx, &existingQ); err != nil {
+				return err
+			}
+			break
+		}
+
+		if len(newComps) != len(existingQ.Spec.Components) {
+			existingQ.Spec.Components = newComps
+			if err := c.client.Update(ctx, &existingQ); err != nil {
+				return err
+			}
+			break
+		}
+	}
+
+	return nil
+}
+
+// removeSimilarExceptBundle removes similar queue (same `name` from queue) which is not bundle queue from QueueList
+func (c *controller) removeSimilarExceptBundle(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) []s2hv1beta1.Queue {
+	if queue.Spec.Bundle != "" {
+		return []s2hv1beta1.Queue{}
+	}
+
 	var items []s2hv1beta1.Queue
 	var removing []s2hv1beta1.Queue
 	var hasSameQueue = false

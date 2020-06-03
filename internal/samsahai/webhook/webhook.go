@@ -33,7 +33,7 @@ var pluginWebhookFunc = func(h *handler, plugin internal.Plugin) func(w http.Res
 				"reqData", string(data),
 				"component", jsonData.Component,
 				"output", compName)
-			h.samsahai.NotifyComponentChanged(compName, "")
+			h.samsahai.NotifyComponentChanged(compName, "", "")
 		}
 
 		w.WriteHeader(http.StatusNoContent)

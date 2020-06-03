@@ -44,7 +44,7 @@ var _ = Describe("Queue Controller", func() {
 			},
 		}
 
-		removing := c.removeSimilar(queue, queueList)
+		removing := c.removeSimilarExceptBundle(queue, queueList)
 
 		g.Expect(len(queueList.Items)).To(Equal(1))
 		g.Expect(len(removing)).To(Equal(2))

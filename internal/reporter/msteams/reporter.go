@@ -205,6 +205,7 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 <br/><b>Issue type:</b> {{ .IssueTypeStr }}
 {{- end }}
 <br/><b>Run:</b>{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}
+<br/><b>Queue:</b> {{ .Name }}
 <br/><b>Components</b>
 {{- range .Components }}
 <li><b>- Name:</b> {{ .Name }}</li>

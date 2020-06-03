@@ -191,26 +191,26 @@ func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace
 func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 	const updatedBy = "samsahai"
 
-	for _, qcomp := range queue.Spec.Components {
+	for _, qComp := range queue.Spec.Components {
 		stableComp := &s2hv1beta1.StableComponent{}
 		err = c.client.Get(
 			context.TODO(),
-			types.NamespacedName{Namespace: queue.GetNamespace(), Name: qcomp.Name},
+			types.NamespacedName{Namespace: queue.GetNamespace(), Name: qComp.Name},
 			stableComp)
 		if err != nil && k8serrors.IsNotFound(err) {
 			now := metav1.Now()
 			stableLabels := internal.GetDefaultLabels(c.teamName)
-			stableLabels["app"] = qcomp.Name
+			stableLabels["app"] = qComp.Name
 			stableComp := &s2hv1beta1.StableComponent{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      qcomp.Name,
+					Name:      qComp.Name,
 					Namespace: queue.Namespace,
 					Labels:    stableLabels,
 				},
 				Spec: s2hv1beta1.StableComponentSpec{
-					Name:       qcomp.Name,
-					Version:    qcomp.Version,
-					Repository: qcomp.Repository,
+					Name:       qComp.Name,
+					Version:    qComp.Version,
+					Repository: qComp.Repository,
 					UpdatedBy:  updatedBy,
 				},
 				Status: s2hv1beta1.StableComponentStatus{
@@ -220,30 +220,30 @@ func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 			}
 			err = c.client.Create(context.TODO(), stableComp)
 			if err != nil {
-				logger.Error(err, fmt.Sprintf("cannot create StableComponent: %s/%s", queue.GetNamespace(), qcomp.Name))
+				logger.Error(err, fmt.Sprintf("cannot create StableComponent: %s/%s", queue.GetNamespace(), qComp.Name))
 				return
 			}
 
 			return nil
 
 		} else if err != nil {
-			logger.Error(err, fmt.Sprintf("cannot get StableComponent: %s/%s", queue.GetNamespace(), qcomp.Name))
+			logger.Error(err, fmt.Sprintf("cannot get StableComponent: %s/%s", queue.GetNamespace(), qComp.Name))
 			return err
 		}
 
-		if stableComp.Spec.Version == qcomp.Version &&
-			stableComp.Spec.Repository == qcomp.Repository {
+		if stableComp.Spec.Version == qComp.Version &&
+			stableComp.Spec.Repository == qComp.Repository {
 			// no change
 			return nil
 		}
 
-		stableComp.Spec.Repository = qcomp.Repository
-		stableComp.Spec.Version = qcomp.Version
+		stableComp.Spec.Repository = qComp.Repository
+		stableComp.Spec.Version = qComp.Version
 		stableComp.Spec.UpdatedBy = updatedBy
 
 		err = c.client.Update(context.TODO(), stableComp)
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("cannot update StableComponent: %s/%s", queue.GetNamespace(), qcomp.Name))
+			logger.Error(err, fmt.Sprintf("cannot update StableComponent: %s/%s", queue.GetNamespace(), qComp.Name))
 			return
 		}
 	}
@@ -394,12 +394,12 @@ func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_Upgr
 	}
 
 	rpcComps := make([]*rpc.Component, 0)
-	for _, qcomp := range queue.Spec.Components {
+	for _, qComp := range queue.Spec.Components {
 		rpcComps = append(rpcComps, &rpc.Component{
-			Name: qcomp.Name,
+			Name: qComp.Name,
 			Image: &rpc.Image{
-				Repository: qcomp.Repository,
-				Tag:        qcomp.Version,
+				Repository: qComp.Repository,
+				Tag:        qComp.Version,
 			},
 		})
 	}

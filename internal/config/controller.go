@@ -272,7 +272,7 @@ func (c *controller) ensureComponentChanged(teamName, namespace string) error {
 		return err
 	}
 
-	if err := c.detectRemovedQueues(comps, namespace); err != nil {
+	if err := c.detectRemovedQueues(comps, teamName, namespace); err != nil {
 		return err
 	}
 
@@ -292,7 +292,7 @@ func (c *controller) notifyComponentChanged(teamName, namespace string, comps ma
 
 	logger.Debug("start notifying components", "team", teamName, "namespace", namespace)
 	for _, comp := range comps {
-		c.s2hCtrl.NotifyComponentChanged(comp.Name, comp.Image.Repository)
+		c.s2hCtrl.NotifyComponentChanged(comp.Name, comp.Image.Repository, teamName)
 	}
 }
 
@@ -351,25 +351,39 @@ func (c *controller) detectRemovedTeamDesiredComponents(comps map[string]*s2hv1b
 	return nil
 }
 
-func (c *controller) detectRemovedQueues(comps map[string]*s2hv1beta1.Component, namespace string) error {
+// TODO: should remove queue from desiredcomponent controller
+func (c *controller) detectRemovedQueues(comps map[string]*s2hv1beta1.Component, teamName, namespace string) error {
 	ctx := context.Background()
-	qComps := &s2hv1beta1.QueueList{}
-	if err := c.client.List(ctx, qComps, &client.ListOptions{Namespace: namespace}); err != nil {
+	queueList := &s2hv1beta1.QueueList{}
+	if err := c.client.List(ctx, queueList, &client.ListOptions{Namespace: namespace}); err != nil {
 		logger.Error(err, "cannot list queues", "namespace", namespace)
 		return err
 	}
 
-	for i := len(qComps.Items) - 1; i >= 0; i-- {
-		q := qComps.Items[i]
-		if _, ok := comps[q.Name]; !ok {
+	for i := len(queueList.Items) - 1; i >= 0; i-- {
+		q := queueList.Items[i]
+		newComps := make([]*s2hv1beta1.QueueComponent, 0)
+		for _, qComp := range q.Spec.Components {
+			if _, ok := comps[qComp.Name]; ok {
+				newComps = append(newComps, qComp)
+			}
+		}
+
+		if len(newComps) == 0 {
 			if err := c.client.Delete(ctx, &q); err != nil {
 				logger.Error(err, "cannot remove queue",
 					"namespace", namespace, "component", q.Name)
 				return err
 			}
+		} else if len(newComps) != len(q.Spec.Components) {
+			q.Spec.Components = newComps
 
-			logger.Debug("queue has been removed",
-				"namespace", namespace, "component", q.Name)
+			// reset NoOfRetry/NextProcessAt if there are removed components
+			q.Spec.NoOfRetry = 0
+			q.Spec.NextProcessAt = nil
+			if err := c.client.Update(ctx, &q); err != nil {
+				return err
+			}
 		}
 	}
 
