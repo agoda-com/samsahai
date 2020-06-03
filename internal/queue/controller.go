@@ -106,7 +106,6 @@ func (c *controller) RemoveAllQueues() error {
 	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.Queue{}, client.InNamespace(c.namespace))
 }
 
-// TODO: pohfy, check bundle and add to group instead
 func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop bool) error {
 	queueList, err := c.list(nil)
 	if err != nil {

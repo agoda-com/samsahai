@@ -80,7 +80,6 @@ const (
 	Finished QueueState = "finished"
 )
 
-// TODO: pohfy, name is bundle name
 // QueueSpec defines the desired state of Queue
 type QueueSpec struct {
 	// Name represents a Component name or bundle name if exist

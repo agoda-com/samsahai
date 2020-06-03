@@ -404,7 +404,6 @@ func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_Upgr
 		})
 	}
 
-	// TODO: pohfy, update report here
 	comp := &rpc.ComponentUpgrade{
 		Status:               status,
 		Name:                 queue.Spec.Name,

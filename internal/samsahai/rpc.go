@@ -232,3 +232,26 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 
 	return &rpc.Empty{}, nil
 }
+
+func (c *controller) GetBundleName(ctx context.Context, teamWithCompName *rpc.TeamWithComponentName) (*rpc.BundleName, error) {
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	bundleName := c.getBundleName(teamWithCompName.ComponentName, teamWithCompName.TeamName)
+
+	return &rpc.BundleName{Name: bundleName}, nil
+}
+
+func (c *controller) getBundleName(compName, teamName string) string {
+	bundles, _ := c.GetConfigController().GetBundles(teamName)
+	for bundleName, comps := range bundles {
+		for _, comp := range comps {
+			if comp == compName {
+				return bundleName
+			}
+		}
+	}
+
+	return ""
+}

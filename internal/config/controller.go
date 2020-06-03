@@ -135,20 +135,15 @@ func (c *controller) GetParentComponents(configName string) (map[string]*s2hv1be
 	return filteredComps, nil
 }
 
-// TODO: pohfy, fix mock
-// GetParentComponents returns components that doesn't have parent (nil Parent)
+// GetBundles returns all component bundles
 func (c *controller) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
-	//config, err := c.Get(configName)
-	//if err != nil {
-	//	logger.Error(err, "cannot get Config", "name", configName)
-	//	return s2hv1beta1.ConfigBundles{}, err
-	//}
+	config, err := c.Get(configName)
+	if err != nil {
+		logger.Error(err, "cannot get Config", "name", configName)
+		return s2hv1beta1.ConfigBundles{}, err
+	}
 
-	//config.Spec.
-
-	return s2hv1beta1.ConfigBundles{
-		"db": []string{"mariadb", "redis"},
-	}, nil
+	return config.Spec.Bundles, nil
 }
 
 // Update updates Config CRD

@@ -25,8 +25,6 @@ type DesiredComponentSpec struct {
 	Name       string `json:"name"`
 	Version    string `json:"version"`
 	Repository string `json:"repository"`
-	// +optional
-	Bundle string `json:"bundle,omitempty"`
 }
 
 // DesiredComponentStatus defines the observed state of DesiredComponent

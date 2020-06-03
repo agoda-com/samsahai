@@ -119,7 +119,14 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		logger.Error(err, "cannot set request header")
 	}
 
-	// TODO: pohfy, get bundle config
+	bundle, err := c.s2hClient.GetBundleName(ctx, &samsahairpc.TeamWithComponentName{
+		TeamName:      c.teamName,
+		ComponentName: comp.Spec.Name,
+	})
+	if err != nil {
+		logger.Error(err, "cannot get bundle name", "team", c.teamName, "component", comp.Spec.Name)
+	}
+
 	comps := []*s2hv1beta1.QueueComponent{
 		{
 			Name:       comp.Spec.Name,
@@ -127,7 +134,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			Version:    comp.Spec.Version,
 		},
 	}
-	q := queue.NewUpgradeQueue(c.teamName, req.Namespace, comp.Spec.Name, comp.Spec.Bundle, comps)
+	q := queue.NewUpgradeQueue(c.teamName, req.Namespace, comp.Spec.Name, bundle.Name, comps)
 	err = c.queueCtrl.Add(q)
 	if err != nil {
 		return reconcile.Result{}, err

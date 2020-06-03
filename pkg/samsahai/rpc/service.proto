@@ -7,12 +7,18 @@ service RPC {
     rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
     rpc GetMissingVersion (TeamWithCurrentComponent) returns (ImageList);
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
+    rpc GetBundleName (TeamWithComponentName) returns (BundleName);
 }
 
 message Empty {
 }
 
-message Team {
+message TeamWithComponentName {
+    string teamName = 1;
+    string componentName = 2;
+}
+
+message BundleName {
     string name = 1;
 }
 
