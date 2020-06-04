@@ -16,7 +16,7 @@ func TestCopyMap(t *testing.T) {
 var _ = Describe("Copy Map", func() {
 	g := NewWithT(GinkgoT())
 
-	It("Should successfully copy map of string of interface{}", func() {
+	It("should successfully copy map of string of interface{}", func() {
 		m1 := map[string]interface{}{
 			"a": "bbb",
 			"b": map[string]interface{}{

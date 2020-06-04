@@ -90,7 +90,8 @@ type QueueSpec struct {
 	Bundle string `json:"bundle,omitempty"`
 
 	// Components represents a list of components which are deployed
-	Components QueueComponents `json:"components"`
+	// +optional
+	Components QueueComponents `json:"components,omitempty"`
 
 	// Type represents how we will process this queue
 	Type QueueType `json:"type"`
@@ -280,25 +281,20 @@ type Queue struct {
 	Status QueueStatus `json:"status,omitempty"`
 }
 
-func (q *Queue) IsSame(d *Queue) bool {
-	if q.Spec.Name != d.Spec.Name {
+func (q *Queue) IsSameComponent(dName string, dComp *QueueComponent) bool {
+	if dName != q.Spec.Name {
 		return false
 	}
 
-	if len(q.Spec.Components) != len(d.Spec.Components) {
-		return false
-	}
-
-	// expect component already sorted
-	for i := range d.Spec.Components {
-		if q.Spec.Components[i].Name != d.Spec.Components[i].Name ||
-			q.Spec.Components[i].Repository != d.Spec.Components[i].Repository ||
-			q.Spec.Components[i].Version != d.Spec.Components[i].Version {
-			return false
+	for _, qComp := range q.Spec.Components {
+		if qComp.Name == dComp.Name &&
+			qComp.Repository == dComp.Repository &&
+			qComp.Version == dComp.Version {
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
 func (q *Queue) SetState(state QueueState) {

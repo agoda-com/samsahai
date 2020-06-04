@@ -117,11 +117,11 @@ var _ = Describe("", func() {
 		_ = crClient.Delete(ctx, team)
 	}, timeoutSec)
 
-	It("Should return checker name", func() {
+	It("should return checker name", func() {
 		Expect(check.GetName()).To(Equal(CheckerName))
 	})
 
-	It("Should successfully get version", func() {
+	It("should successfully get version", func() {
 		version, err := check.GetVersion("", "mariadb", "")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(version).To(Equal("12.0.0-r0"))
@@ -135,17 +135,17 @@ var _ = Describe("", func() {
 	})
 
 	Describe("Bad path", func() {
-		It("Should error when repository not matched", func() {
+		It("should error when repository not matched", func() {
 			_, err := check.GetVersion("mariadb", "mariadb", "")
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("Should error when team not matched", func() {
+		It("should error when team not matched", func() {
 			_, err := check.GetVersion("", "mariadb", "should-not-exist")
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("Should error when pattern is invalid", func() {
+		It("should error when pattern is invalid", func() {
 			_, err := check.GetVersion("", "mariadb", "((")
 			Expect(err).To(HaveOccurred())
 		})

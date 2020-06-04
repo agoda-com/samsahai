@@ -57,7 +57,7 @@ var _ = Describe("Config Controller", func() {
 		},
 	}
 
-	It("Should get env values by the env type correctly", func() {
+	It("should get env values by the env type correctly", func() {
 		g := NewWithT(GinkgoT())
 
 		config := mockConfig
@@ -75,7 +75,7 @@ var _ = Describe("Config Controller", func() {
 		}))
 	})
 
-	It("Should get env values by the env type and component name correctly", func() {
+	It("should get env values by the env type and component name correctly", func() {
 		g := NewWithT(GinkgoT())
 
 		config := mockConfig

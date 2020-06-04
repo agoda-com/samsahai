@@ -16,42 +16,163 @@ func TestQueue(t *testing.T) {
 }
 
 var _ = Describe("Queue Controller", func() {
-	It("Should remove similar Queue", func() {
+	Describe("Remove/Update similar Queue", func() {
+		It("should remove similar component Queue", func() {
 
-		g := NewWithT(GinkgoT())
+			g := NewWithT(GinkgoT())
 
-		c := controller{}
-		name := "alpine"
+			c := controller{}
+			name := "alpine"
 
-		queue := &v1beta1.Queue{
-			Spec:   v1beta1.QueueSpec{Name: name, Repository: name, Version: "3.9.4"},
-			Status: v1beta1.QueueStatus{},
-		}
-		queueList := &v1beta1.QueueList{
-			Items: []v1beta1.Queue{
-				{
-					Spec:   v1beta1.QueueSpec{Name: name, Repository: name, Version: "3.9.0"},
-					Status: v1beta1.QueueStatus{},
+			queue := &v1beta1.Queue{
+				Spec: v1beta1.QueueSpec{Name: name, Bundle: name,
+					Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
 				},
-				{
-					Spec:   v1beta1.QueueSpec{Name: name, Repository: name, Version: "3.9.1"},
-					Status: v1beta1.QueueStatus{},
+				Status: v1beta1.QueueStatus{},
+			}
+			queueList := &v1beta1.QueueList{
+				Items: []v1beta1.Queue{
+					{
+						Spec: v1beta1.QueueSpec{Name: name,
+							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.0"}},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
+					{
+						Spec: v1beta1.QueueSpec{Name: name,
+							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.1"}},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
+					{
+						Spec: v1beta1.QueueSpec{Name: "group", Bundle: "group",
+							Components: v1beta1.QueueComponents{
+								{Name: name, Repository: name, Version: "3.9.1"},
+								{Name: "ubuntu", Repository: "ubuntu", Version: "18.04"},
+							},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
+					{
+						Spec: v1beta1.QueueSpec{Name: "ubuntu",
+							Components: v1beta1.QueueComponents{{Name: "ubuntu", Repository: "ubuntu", Version: "18.04"}},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
 				},
-				{
-					Spec:   v1beta1.QueueSpec{Name: "ubuntu", Repository: "ubuntu", Version: "18.04"},
-					Status: v1beta1.QueueStatus{},
+			}
+
+			removing, updating := c.removeAndUpdateSimilarQueue(queue, queueList)
+
+			g.Expect(len(queueList.Items)).To(Equal(2))
+			g.Expect(len(removing)).To(Equal(2))
+			g.Expect(len(updating)).To(Equal(1))
+			g.Expect(len(updating[0].Spec.Components)).To(Equal(1))
+		})
+
+		It("should skip same component version", func() {
+
+			g := NewWithT(GinkgoT())
+
+			c := controller{}
+			name := "alpine"
+
+			queue := &v1beta1.Queue{
+				Spec: v1beta1.QueueSpec{Name: name,
+					Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
 				},
-			},
-		}
+				Status: v1beta1.QueueStatus{},
+			}
+			queueList := &v1beta1.QueueList{
+				Items: []v1beta1.Queue{
+					{
+						Spec: v1beta1.QueueSpec{Name: name,
+							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
+				},
+			}
 
-		removing := c.removeSimilarExceptBundle(queue, queueList)
+			removing, updating := c.removeAndUpdateSimilarQueue(queue, queueList)
 
-		g.Expect(len(queueList.Items)).To(Equal(1))
-		g.Expect(len(removing)).To(Equal(2))
+			g.Expect(len(queueList.Items)).To(Equal(1))
+			g.Expect(len(removing)).To(Equal(0))
+			g.Expect(len(updating)).To(Equal(0))
+		})
+	})
+
+	Describe("Add component into existing bundle Queue", func() {
+		It("should add component into existing bundle Queue", func() {
+
+			g := NewWithT(GinkgoT())
+
+			c := controller{}
+			name := "alpine"
+
+			queue := &v1beta1.Queue{
+				Spec: v1beta1.QueueSpec{Name: "group", Bundle: "group",
+					Components: v1beta1.QueueComponents{{Name: "ubuntu", Repository: name, Version: "3.9.4"}},
+				},
+				Status: v1beta1.QueueStatus{},
+			}
+			queueList := &v1beta1.QueueList{
+				Items: []v1beta1.Queue{
+					{
+						Spec: v1beta1.QueueSpec{Name: name,
+							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.0"}},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
+					{
+						Spec: v1beta1.QueueSpec{Name: name, Bundle: "group",
+							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.1"}},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
+				},
+			}
+
+			updating := c.addExistingBundleQueue(queue, queueList)
+
+			g.Expect(len(queueList.Items)).To(Equal(2))
+			g.Expect(len(updating)).To(Equal(1))
+			g.Expect(len(updating[0].Spec.Components)).To(Equal(2))
+		})
+
+		It("should skip same component version", func() {
+
+			g := NewWithT(GinkgoT())
+
+			c := controller{}
+			name := "alpine"
+
+			queue := &v1beta1.Queue{
+				Spec: v1beta1.QueueSpec{Name: name,
+					Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
+				},
+				Status: v1beta1.QueueStatus{},
+			}
+			queueList := &v1beta1.QueueList{
+				Items: []v1beta1.Queue{
+					{
+						Spec: v1beta1.QueueSpec{Name: name,
+							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
+				},
+			}
+
+			updating := c.addExistingBundleQueue(queue, queueList)
+
+			g.Expect(len(queueList.Items)).To(Equal(1))
+			g.Expect(len(updating)).To(Equal(0))
+		})
 	})
 
 	Describe("Reset Queue order", func() {
-		It("Should reset order of all Queues correctly", func() {
+		It("should reset order of all Queues correctly", func() {
 			g := NewWithT(GinkgoT())
 
 			c := controller{}

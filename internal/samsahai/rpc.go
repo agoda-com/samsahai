@@ -219,12 +219,11 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 		return nil, err
 	}
 
-	compName := comp.GetName()
-	if compName != "" {
+	queueName := comp.GetName()
+	if queueName != "" {
 		queue := &s2hv1beta1.Queue{}
-		if err := c.client.Get(context.TODO(), types.NamespacedName{
-			Namespace: comp.GetNamespace(),
-			Name:      compName}, queue); err != nil {
+		err := c.client.Get(context.TODO(), types.NamespacedName{Namespace: comp.GetNamespace(), Name: queueName}, queue)
+		if err != nil {
 			logger.Error(err, "cannot get the queue")
 		}
 		exporter.SetQueueMetric(queue)

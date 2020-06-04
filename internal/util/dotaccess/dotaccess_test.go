@@ -17,7 +17,7 @@ func TestUnit(t *testing.T) {
 var _ = Describe("Dot Access", func() {
 	g := NewWithT(GinkgoT())
 
-	It("Should successfully access map[string]interface{} by dot", func() {
+	It("should successfully access map[string]interface{} by dot", func() {
 		o := map[string]interface{}{
 			"t": map[string]interface{}{
 				"1": 1,

@@ -57,7 +57,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		first, err := controller.First()
 		Expect(err).To(BeNil())
-		Expect(first.IsSame(q)).To(BeTrue())
+		Expect(first.IsSameComponent(q)).To(BeTrue())
 
 		err = controller.Remove(first)
 		Expect(err).To(BeNil())
@@ -92,7 +92,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		first, err = controller.First()
 		Expect(err).To(BeNil())
-		Expect(first.IsSame(alpine390)).To(BeTrue())
+		Expect(first.IsSameComponent(alpine390)).To(BeTrue())
 
 		By("Adding alpine 3.9.1")
 
@@ -100,7 +100,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(err).To(BeNil())
 		first, err = controller.First()
 		Expect(err).To(BeNil())
-		Expect(first.IsSame(ubuntu)).To(BeTrue(), "ubuntu should be on top of queue")
+		Expect(first.IsSameComponent(ubuntu)).To(BeTrue(), "ubuntu should be on top of queue")
 		size = controller.Size()
 		Expect(size).To(Equal(3), "size of queue should remain 3")
 
@@ -110,7 +110,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(err).To(BeNil())
 		first, err = controller.First()
 		Expect(err).To(BeNil())
-		Expect(first.IsSame(alpine392)).To(BeTrue(), "alpine 3.9.2 should be on top of queue")
+		Expect(first.IsSameComponent(alpine392)).To(BeTrue(), "alpine 3.9.2 should be on top of queue")
 		size = controller.Size()
 		Expect(size).To(Equal(3), "size of queue should remain 3")
 
@@ -120,7 +120,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(err).To(BeNil())
 		first, err = controller.First()
 		Expect(err).To(BeNil())
-		Expect(first.IsSame(ubuntu)).To(BeTrue(), "ubuntu should be on top of queue")
+		Expect(first.IsSameComponent(ubuntu)).To(BeTrue(), "ubuntu should be on top of queue")
 
 		By("Removing all queues")
 

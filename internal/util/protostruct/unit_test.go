@@ -57,7 +57,7 @@ var (
 	}
 )
 var _ = Describe("Protobuf Struct to map", func() {
-	It("Should successfully Encode/Decode", func() {
+	It("should successfully Encode/Decode", func() {
 		g := NewWithT(GinkgoT())
 
 		var pbstsruct *pb.Struct = nil

@@ -135,7 +135,6 @@ func (c *controller) checkComponentChanged(component changedComponent) error {
 	return nil
 }
 
-// TODO: pohfy, check bundle changed
 func (c *controller) checkTeamComponentChanged(compName, repository, teamName string) error {
 	configCtrl := c.GetConfigController()
 	team := &s2hv1beta1.Team{}

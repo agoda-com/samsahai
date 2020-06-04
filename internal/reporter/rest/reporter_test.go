@@ -94,11 +94,21 @@ var _ = Describe("send rest message", func() {
 		})
 
 		It("should correctly send component upgrade", func() {
-			img := &rpc.Image{Repository: "image-1", Tag: "1.1.0"}
+			img1 := &rpc.Image{Repository: "image-1", Tag: "1.1.0"}
+			img2 := &rpc.Image{Repository: "image-2", Tag: "1.1.2"}
 			rpcComp := &rpc.ComponentUpgrade{
-				Name:       "comp1",
-				Status:     rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
-				Image:      img,
+				Name:   "group",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "comp1",
+						Image: img1,
+					},
+					{
+						Name:  "comp2",
+						Image: img2,
+					},
+				},
 				TeamName:   "owner",
 				IssueType:  rpc.ComponentUpgrade_IssueType_IMAGE_MISSING,
 				Namespace:  "owner-staging",
@@ -125,14 +135,22 @@ var _ = Describe("send rest message", func() {
 					"testBuildTypeID should be matched")
 				g.Expect(gjson.GetBytes(body, "testRunner.teamcity.buildURL").String()).To(BeEmpty(),
 					"teamcityURL should be empty")
-				g.Expect(gjson.GetBytes(body, "image.repository").String()).To(Equal(img.Repository),
-					"imageRepository should be matched")
-				g.Expect(gjson.GetBytes(body, "image.tag").String()).To(Equal(img.Tag),
-					"imageTag should be matched")
 				g.Expect(gjson.GetBytes(body, "namespace").String()).To(Equal(rpcComp.Namespace),
 					"namespace should be matched")
 				g.Expect(gjson.GetBytes(body, "isReverify").String()).To(Equal("true"),
 					"isReverify should be matched")
+
+				components := gjson.GetBytes(body, "components").Array()
+				g.Expect(len(components)).To(Equal(2))
+				g.Expect(gjson.GetBytes([]byte(components[0].String()), "image.repository").String()).To(Equal(img1.Repository),
+					"imageRepository should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[0].String()), "image.tag").String()).To(Equal(img1.Tag),
+					"imageTag should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[1].String()), "image.repository").String()).To(Equal(img2.Repository),
+					"imageRepository should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[1].String()), "image.tag").String()).To(Equal(img2.Tag),
+					"imageTag should be matched")
+
 			})
 
 			defer server.Close()
@@ -252,6 +270,10 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 
 func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
 	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
+	return s2hv1beta1.ConfigBundles{}, nil
 }
 
 func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
