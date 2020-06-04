@@ -82,6 +82,13 @@ var _ = Describe("[e2e] Config controller", func() {
 		Expect(err).To(BeNil())
 		Expect(len(parentComps)).To(Equal(2))
 
+		By("Get bundles")
+		bundles, err := controller.GetBundles(teamName)
+		Expect(err).To(BeNil())
+		dbs, ok := bundles["db"]
+		Expect(ok).To(BeTrue())
+		Expect(len(dbs)).To(Equal(2))
+
 		By("Delete Config")
 		err = controller.Delete(teamName)
 

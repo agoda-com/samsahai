@@ -129,12 +129,11 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 		return nil
 	}
 
-	//bundleQueue := &s2hv1beta1.Queue{}
 	pQueue := &s2hv1beta1.Queue{}
 	isAlreadyInQueue := false
 	isAlreadyInBundle := false
 	for i, q := range queueList.Items {
-		if q.IsSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
+		if q.ContainSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
 			isAlreadyInQueue = true
 			pQueue = &queueList.Items[i]
 			break
@@ -157,6 +156,7 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 		if err := c.client.Update(ctx, &updatingList[i]); err != nil {
 			return err
 		}
+		queueList.Items[i] = updatingList[i]
 	}
 
 	updatingList = c.addExistingBundleQueue(queue, queueList)
@@ -169,6 +169,7 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 		if err := c.client.Update(ctx, &updatingList[i]); err != nil {
 			return err
 		}
+		queueList.Items[i] = updatingList[i]
 	}
 
 	queueList.Sort()
@@ -177,7 +178,7 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 	if isAlreadyInQueue {
 		var isQueueOnTop bool
 		if len(queueList.Items[0].Spec.Components) > 0 {
-			isQueueOnTop = pQueue.IsSameComponent(queueList.Items[0].Spec.Name, queueList.Items[0].Spec.Components[0])
+			isQueueOnTop = pQueue.ContainSameComponent(queueList.Items[0].Spec.Name, queueList.Items[0].Spec.Components[0])
 		}
 
 		// move queue to the top
@@ -193,9 +194,10 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 		// queue not exist
 		if atTop {
 			queue.Spec.NoOfOrder = queueList.TopQueueOrder()
+		} else {
+			queue.Spec.NoOfOrder = queueList.LastQueueOrder()
 		}
 
-		queue.Spec.NoOfOrder = queueList.LastQueueOrder()
 		queue.Status.State = s2hv1beta1.Waiting
 		queue.Status.CreatedAt = &now
 		queue.Status.UpdatedAt = &now
@@ -239,11 +241,11 @@ func (c *controller) addExistingBundleQueue(queue *s2hv1beta1.Queue, list *s2hv1
 
 	var items []s2hv1beta1.Queue
 	var updating []s2hv1beta1.Queue
-	var hasSameQueue = false
+	var containComp = false
 	for _, q := range list.Items {
-		if !hasSameQueue && q.IsSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
+		if !containComp && q.ContainSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
 			// only add one `queue` to items
-			hasSameQueue = true
+			containComp = true
 			// update component of bundle
 		} else if q.Spec.Bundle == queue.Spec.Bundle {
 			var found bool
@@ -276,14 +278,12 @@ func (c *controller) removeAndUpdateSimilarQueue(queue *s2hv1beta1.Queue, list *
 	removing []s2hv1beta1.Queue, updating []s2hv1beta1.Queue) {
 
 	var items []s2hv1beta1.Queue
-	var hasSameQueue = false
+	var containComp = false
 
 	for _, q := range list.Items {
-		// if existing queue is bundle queue, these queues will not be the same since
-		// `queue` always contains 1 component
-		if !hasSameQueue && q.IsSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
+		if !containComp && q.ContainSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
 			// only add one `queue` to items
-			hasSameQueue = true
+			containComp = true
 		} else {
 			newComps := make([]*s2hv1beta1.QueueComponent, 0)
 			for _, qComp := range q.Spec.Components {

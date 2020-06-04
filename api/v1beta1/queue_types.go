@@ -281,7 +281,7 @@ type Queue struct {
 	Status QueueStatus `json:"status,omitempty"`
 }
 
-func (q *Queue) IsSameComponent(dName string, dComp *QueueComponent) bool {
+func (q *Queue) ContainSameComponent(dName string, dComp *QueueComponent) bool {
 	if dName != q.Spec.Name {
 		return false
 	}

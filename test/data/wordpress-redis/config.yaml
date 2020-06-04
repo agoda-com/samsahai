@@ -38,6 +38,10 @@ spec:
         pollingTime: 5s
         testMock:
           result: true
+  bundles:
+    db:
+      - redis
+      - mariadb
   components:
     - name: redis
       chart:

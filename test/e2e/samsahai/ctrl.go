@@ -1830,11 +1830,19 @@ var (
 		Items: []s2hv1beta1.Queue{
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: redisCompName, Namespace: stgNamespace},
-				Spec:       s2hv1beta1.QueueSpec{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.7-debian-9-r56"},
+				Spec: s2hv1beta1.QueueSpec{Name: redisCompName,
+					Components: s2hv1beta1.QueueComponents{
+						{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"},
+					},
+				},
 			},
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: wordpressCompName, Namespace: stgNamespace},
-				Spec:       s2hv1beta1.QueueSpec{Name: wordpressCompName, Repository: "bitnami/wordpress", Version: "5.2.4-debian-9-r18"},
+				Spec: s2hv1beta1.QueueSpec{Name: wordpressCompName,
+					Components: s2hv1beta1.QueueComponents{
+						{Name: wordpressCompName, Repository: "bitnami/wordpress", Version: "5.2.4-debian-9-r18"},
+					},
+				},
 			},
 		},
 	}

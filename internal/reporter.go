@@ -45,14 +45,14 @@ type ComponentUpgradeReporter struct {
 	Credential   s2hv1beta1.Credential `json:"credential,omitempty"`
 	Envs         map[string]string
 
-	rpc.ComponentUpgrade
+	*rpc.ComponentUpgrade
 	SamsahaiConfig
 }
 
 // NewComponentUpgradeReporter creates component upgrade reporter from rpc object
 func NewComponentUpgradeReporter(comp *rpc.ComponentUpgrade, s2hConfig SamsahaiConfig, opts ...ComponentUpgradeOption) *ComponentUpgradeReporter {
 	c := &ComponentUpgradeReporter{
-		ComponentUpgrade: *comp,
+		ComponentUpgrade: comp,
 		SamsahaiConfig:   s2hConfig,
 		IssueTypeStr:     convertIssueType(comp.IssueType),
 		StatusStr:        convertStatusType(comp.Status),

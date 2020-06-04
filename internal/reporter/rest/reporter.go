@@ -32,17 +32,17 @@ type ReporterJSON struct {
 
 type componentUpgradeRest struct {
 	ReporterJSON
-	internal.ComponentUpgradeReporter
+	*internal.ComponentUpgradeReporter
 }
 
 type activePromotionRest struct {
 	ReporterJSON
-	internal.ActivePromotionReporter
+	*internal.ActivePromotionReporter
 }
 
 type imageMissingRest struct {
 	ReporterJSON
-	rpc.Image
+	*rpc.Image
 }
 
 // NewReporterJSON creates new reporter json
@@ -103,7 +103,7 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	}
 
 	for _, ep := range config.Spec.Reporter.Rest.ComponentUpgrade.Endpoints {
-		restObj := &componentUpgradeRest{NewReporterJSON(), *comp}
+		restObj := &componentUpgradeRest{NewReporterJSON(), comp}
 		body, err := json.Marshal(restObj)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", body))
@@ -132,7 +132,7 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 	}
 
 	for _, ep := range config.Spec.Reporter.Rest.ActivePromotion.Endpoints {
-		restObj := &activePromotionRest{NewReporterJSON(), *atpRpt}
+		restObj := &activePromotionRest{NewReporterJSON(), atpRpt}
 		body, err := json.Marshal(restObj)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", body))
@@ -161,7 +161,7 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 	}
 
 	for _, ep := range config.Spec.Reporter.Rest.ImageMissing.Endpoints {
-		restObj := &imageMissingRest{NewReporterJSON(), *img}
+		restObj := &imageMissingRest{NewReporterJSON(), img}
 		body, err := json.Marshal(restObj)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", body))

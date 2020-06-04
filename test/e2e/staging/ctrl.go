@@ -354,8 +354,9 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(client.Create(context.TODO(), &swp)).To(BeNil())
 
 		By("Creating Queue")
-		newQueue := queue.NewUpgradeQueue(teamName, namespace,
-			"redis", "bitnami/redis", "5.0.5-debian-9-r160")
+		newQueue := queue.NewUpgradeQueue(teamName, namespace, "redis", "",
+			s2hv1beta1.QueueComponents{{Name: "ubuntu", Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
+		)
 		Expect(queueCtrl.Add(newQueue)).To(BeNil())
 
 		By("Deploying")
@@ -504,7 +505,9 @@ var _ = Describe("[e2e] Staging controller", func() {
 			"", "", "", internal.StagingConfig{})
 		go stagingCtrl.Start(chStop)
 
-		redis := queue.NewUpgradeQueue(teamName, namespace, "redis", "bitnami/redis", "5.0.5-debian-9-r160")
+		redis := queue.NewUpgradeQueue(teamName, namespace, "redis", "",
+			s2hv1beta1.QueueComponents{{Name: "ubuntu", Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
+		)
 		Expect(client.Create(context.TODO(), redis)).To(BeNil())
 
 		qhl := &s2hv1beta1.QueueHistoryList{}
