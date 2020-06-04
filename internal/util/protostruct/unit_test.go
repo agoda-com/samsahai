@@ -21,11 +21,11 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )

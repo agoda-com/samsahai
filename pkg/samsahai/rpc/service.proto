@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package samsahai.io.samsahai;
-option go_package = "rpc";
+option go_package = "pkg/samsahai/rpc";
 
 service RPC {
     rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
