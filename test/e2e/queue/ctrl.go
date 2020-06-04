@@ -142,7 +142,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(size).To(Equal(0))
 	}, 3)
 
-	It("should successfully update component to existing bundle", func(done Done) {
+	It("should successfully add component to existing bundle", func(done Done) {
 		defer close(done)
 
 		var err error

@@ -176,10 +176,7 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 
 	now := metav1.Now()
 	if isAlreadyInQueue {
-		var isQueueOnTop bool
-		if len(queueList.Items[0].Spec.Components) > 0 {
-			isQueueOnTop = pQueue.ContainSameComponent(queueList.Items[0].Spec.Name, queueList.Items[0].Spec.Components[0])
-		}
+		isQueueOnTop := queueList.Items[0].ContainSameComponent(pQueue.Spec.Name, pQueue.Spec.Components[0])
 
 		// move queue to the top
 		if atTop && !isQueueOnTop {

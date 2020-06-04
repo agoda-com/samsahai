@@ -224,7 +224,7 @@ func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 				return
 			}
 
-			return nil
+			continue
 
 		} else if err != nil {
 			logger.Error(err, fmt.Sprintf("cannot get StableComponent: %s/%s", queue.GetNamespace(), qComp.Name))
@@ -234,7 +234,7 @@ func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 		if stableComp.Spec.Version == qComp.Version &&
 			stableComp.Spec.Repository == qComp.Repository {
 			// no change
-			return nil
+			continue
 		}
 
 		stableComp.Spec.Repository = qComp.Repository

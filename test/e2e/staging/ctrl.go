@@ -58,24 +58,28 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	logger := s2hlog.Log.WithName(fmt.Sprintf("%s-test", internal.StagingCtrlName))
 
+	redisCompName := "redis"
+	mariaDBCompName := "mariadb"
+	wordpressCompName := "wordpress"
+
 	stableWordPress := s2hv1beta1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "wordpress",
+			Name:      wordpressCompName,
 			Namespace: namespace,
 		},
 		Spec: s2hv1beta1.StableComponentSpec{
-			Name:       "wordpress",
+			Name:       wordpressCompName,
 			Version:    "5.2.2-debian-9-r2",
 			Repository: "bitnami/wordpress",
 		},
 	}
 	stableMariaDB := s2hv1beta1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "mariadb",
+			Name:      mariaDBCompName,
 			Namespace: namespace,
 		},
 		Spec: s2hv1beta1.StableComponentSpec{
-			Name:       "mariadb",
+			Name:       mariaDBCompName,
 			Version:    "10.3.16-debian-9-r9",
 			Repository: "bitnami/mariadb",
 		},
@@ -147,11 +151,11 @@ var _ = Describe("[e2e] Staging controller", func() {
 		},
 	}
 	compSource := s2hv1beta1.UpdatingSource("public-registry")
-	redisConfigComp := s2hv1beta1.Component{
-		Name: "redis",
+	configCompRedis := s2hv1beta1.Component{
+		Name: redisCompName,
 		Chart: s2hv1beta1.ComponentChart{
 			Repository: "https://kubernetes-charts.storage.googleapis.com",
-			Name:       "redis",
+			Name:       redisCompName,
 		},
 		Image: s2hv1beta1.ComponentImage{
 			Repository: "bitnami/redis",
@@ -175,6 +179,49 @@ var _ = Describe("[e2e] Staging controller", func() {
 		},
 	}
 
+	configCompWordpress := s2hv1beta1.Component{
+		Name: wordpressCompName,
+		Chart: s2hv1beta1.ComponentChart{
+			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Name:       wordpressCompName,
+		},
+		Image: s2hv1beta1.ComponentImage{
+			Repository: "bitnami/wordpress",
+			Pattern:    "5\\.2.*debian-9.*",
+		},
+		Source: &compSource,
+		Dependencies: []*s2hv1beta1.Component{
+			{
+				Name: mariaDBCompName,
+				Image: s2hv1beta1.ComponentImage{
+					Repository: "bitnami/mariadb",
+					Pattern:    "10\\.3.*debian-9.*",
+				},
+			},
+		},
+		Values: s2hv1beta1.ComponentValues{
+			"resources": nil,
+			"service": map[string]interface{}{
+				"type": "NodePort",
+			},
+			"persistence": map[string]interface{}{
+				"enabled": false,
+			},
+			"mariadb": map[string]interface{}{
+				"enabled": true,
+				"replication": map[string]interface{}{
+					"enabled": false,
+				},
+				"master": map[string]interface{}{
+					"persistence": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			},
+		},
+	}
+
+	bundleName := "db"
 	mockConfig := s2hv1beta1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
@@ -182,14 +229,17 @@ var _ = Describe("[e2e] Staging controller", func() {
 		},
 		Spec: s2hv1beta1.ConfigSpec{
 			Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
+				"base": map[string][]string{
+					wordpressCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/base/wordpress.yaml"},
+				},
 				"staging": map[string][]string{
-					"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
+					redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
 				},
 				"pre-active": map[string][]string{
-					"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml"},
+					redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml"},
 				},
 				"active": map[string][]string{
-					"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
+					redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
 				},
 			},
 			Staging: &s2hv1beta1.ConfigStaging{
@@ -203,7 +253,10 @@ var _ = Describe("[e2e] Staging controller", func() {
 			Reporter: &s2hv1beta1.ConfigReporter{
 				ReportMock: true,
 			},
-			Components: []*s2hv1beta1.Component{&redisConfigComp},
+			Bundles: s2hv1beta1.ConfigBundles{
+				bundleName: []string{redisCompName, mariaDBCompName},
+			},
+			Components: []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
 		},
 	}
 
@@ -353,19 +406,25 @@ var _ = Describe("[e2e] Staging controller", func() {
 		swp := stableWordPress
 		Expect(client.Create(context.TODO(), &swp)).To(BeNil())
 
-		By("Creating Queue")
-		newQueue := queue.NewUpgradeQueue(teamName, namespace, "redis", "",
-			s2hv1beta1.QueueComponents{{Name: "ubuntu", Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
+		By("Creating 2 Queue")
+		redisQueue := queue.NewUpgradeQueue(teamName, namespace, bundleName, bundleName,
+			s2hv1beta1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
 		)
-		Expect(queueCtrl.Add(newQueue)).To(BeNil())
+		mariaDBQueue := queue.NewUpgradeQueue(teamName, namespace, bundleName, bundleName,
+			s2hv1beta1.QueueComponents{{Name: mariaDBCompName, Repository: "bitnami/mariadb", Version: "10.3.18-debian-9-r32"}},
+		)
+		Expect(queueCtrl.Add(redisQueue)).To(BeNil())
+		Expect(queueCtrl.Add(mariaDBQueue)).To(BeNil())
 
 		By("Deploying")
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			queue := &s2hv1beta1.Queue{}
-			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: newQueue.Name}, queue)
+			// bundle queue
+			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: redisQueue.Name}, queue)
 			if err != nil {
 				return false, nil
 			}
+
 			if queue.Status.IsConditionTrue(s2hv1beta1.QueueDeployStarted) {
 				ok = true
 				return
@@ -381,16 +440,31 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Testing error")
 
 		By("Collecting")
-		err = wait.PollImmediate(2*time.Second, 30*time.Second, func() (ok bool, err error) {
-			stableComp := &s2hv1beta1.StableComponent{}
-			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: newQueue.Name}, stableComp)
+		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
+			redisStableComp := &s2hv1beta1.StableComponent{}
+			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: redisCompName},
+				redisStableComp)
 			if err != nil {
 				return false, nil
 			}
+
+			mariaDBStableComp := &s2hv1beta1.StableComponent{}
+			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: mariaDBCompName},
+				mariaDBStableComp)
+			if err != nil {
+				return false, nil
+			}
+
 			ok = true
 			return
 		})
 		Expect(err).NotTo(HaveOccurred(), "Collecting error")
+
+		By("Updating Config to deploy only one component")
+		config = s2hv1beta1.Config{}
+		err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: teamName}, &config)
+		config.Spec.Components = []*s2hv1beta1.Component{&configCompRedis}
+		Expect(client.Update(context.TODO(), &config)).To(BeNil())
 
 		By("Ensure Pre Active Components")
 		redisServiceName := fmt.Sprintf("%s-redis-master", namespace)
@@ -505,13 +579,13 @@ var _ = Describe("[e2e] Staging controller", func() {
 			"", "", "", internal.StagingConfig{})
 		go stagingCtrl.Start(chStop)
 
-		redis := queue.NewUpgradeQueue(teamName, namespace, "redis", "",
-			s2hv1beta1.QueueComponents{{Name: "ubuntu", Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
+		redis := queue.NewUpgradeQueue(teamName, namespace, redisCompName, "",
+			s2hv1beta1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
 		)
 		Expect(client.Create(context.TODO(), redis)).To(BeNil())
 
 		qhl := &s2hv1beta1.QueueHistoryList{}
-		err = wait.PollImmediate(1*time.Second, 60*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(1*time.Second, 120*time.Second, func() (ok bool, err error) {
 			err = client.List(context.TODO(), qhl, &rclient.ListOptions{})
 			if err != nil || len(qhl.Items) < 1 {
 				return false, nil
@@ -525,7 +599,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
 			q := &s2hv1beta1.Queue{}
-			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: "redis"}, q)
+			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: redisCompName}, q)
 			if err != nil || q.Status.State != s2hv1beta1.Waiting || q.Spec.Type != s2hv1beta1.QueueTypeUpgrade {
 				return false, nil
 			}
