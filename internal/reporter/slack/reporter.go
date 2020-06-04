@@ -183,13 +183,13 @@ func convertImageListToRPCImageList(images []s2hv1beta1.Image) []*rpc.Image {
 }
 
 // SendImageMissing implements the reporter SendImageMissing function
-func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, images *rpc.Image) error {
+func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, image *rpc.Image) error {
 	slackConfig, err := r.getSlackConfig(teamName, configCtrl)
 	if err != nil {
 		return nil
 	}
 
-	message := r.makeImageMissingListReport([]*rpc.Image{images})
+	message := r.makeImageMissingListReport([]*rpc.Image{image})
 
 	return r.post(slackConfig, message, internal.ImageMissingType)
 }

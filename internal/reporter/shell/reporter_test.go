@@ -121,7 +121,7 @@ var _ = Describe("shell command reporter", func() {
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
 			configCtrl := newMockConfigCtrl("empty")
 
-			err := r.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{})
+			err := r.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 

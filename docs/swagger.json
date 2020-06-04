@@ -910,6 +910,13 @@
                 }
             }
         },
+        "v1beta1.ConfigBundles": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "array",
+                "items": {}
+            }
+        },
         "v1beta1.ConfigComponentUpgrade": {
             "type": "object",
             "properties": {
@@ -988,6 +995,11 @@
                     "description": "ActivePromotion represents configuration about active promotion\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.ConfigActivePromotion"
+                },
+                "bundles": {
+                    "description": "Bundles represents a group of component for each bundle\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigBundles"
                 },
                 "components": {
                     "description": "Components represents all components that are managed",
@@ -1161,6 +1173,43 @@
                 }
             }
         },
+        "v1beta1.QueueComponent": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "Name represents Component name",
+                    "type": "string"
+                },
+                "repository": {
+                    "description": "Repository represents Docker image repository",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "Version represents Docker image tag version",
+                    "type": "string"
+                }
+            }
+        },
+        "v1beta1.QueueComponents": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "Name represents Component name",
+                        "type": "string"
+                    },
+                    "repository": {
+                        "description": "Repository represents Docker image repository",
+                        "type": "string"
+                    },
+                    "version": {
+                        "description": "Version represents Docker image tag version",
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "v1beta1.QueueCondition": {
             "type": "object",
             "properties": {
@@ -1234,8 +1283,17 @@
         "v1beta1.QueueSpec": {
             "type": "object",
             "properties": {
+                "bundle": {
+                    "description": "Bundle represents a bundle name of component\n+optional",
+                    "type": "string"
+                },
+                "components": {
+                    "description": "Components represents a list of components which are deployed\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.QueueComponents"
+                },
                 "name": {
-                    "description": "Name represents Component name",
+                    "description": "Name represents a Component name or bundle name if exist",
                     "type": "string"
                 },
                 "nextProcessAt": {
@@ -1250,20 +1308,12 @@
                     "description": "NoOfRetry defines how many times this component has been tested\n+optional",
                     "type": "integer"
                 },
-                "repository": {
-                    "description": "Repository represents Docker image repository",
-                    "type": "string"
-                },
                 "teamName": {
                     "description": "TeamName represents team owner of the queue",
                     "type": "string"
                 },
                 "type": {
                     "description": "Type represents how we will process this queue",
-                    "type": "string"
-                },
-                "version": {
-                    "description": "Version represents Docker image tag version",
                     "type": "string"
                 }
             }
@@ -1307,10 +1357,6 @@
                 },
                 "queueHistoryName": {
                     "description": "QueueHistoryName defines name of history of this queue",
-                    "type": "string"
-                },
-                "releaseName": {
-                    "description": "ReleaseName defines name of helmrelease",
                     "type": "string"
                 },
                 "startDeployTime": {

@@ -195,7 +195,7 @@ var _ = Describe("send rest message", func() {
 			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
 			configCtrl := newMockConfigCtrl("")
 
-			err := client.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{})
+			err := client.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
 			g.Expect(err).NotTo(BeNil(), "component upgrade request should thrown an error")
 
 			err = client.SendActivePromotionStatus(configCtrl, &internal.ActivePromotionReporter{})
@@ -221,7 +221,7 @@ var _ = Describe("send rest message", func() {
 			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
 			configCtrl := newMockConfigCtrl("empty")
 
-			err := client.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{})
+			err := client.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 

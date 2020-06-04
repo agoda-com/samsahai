@@ -251,6 +251,11 @@ definitions:
           +optional
         type: string
     type: object
+  v1beta1.ConfigBundles:
+    additionalProperties:
+      items: {}
+      type: array
+    type: object
   v1beta1.ConfigComponentUpgrade:
     properties:
       criteria:
@@ -321,6 +326,12 @@ definitions:
         $ref: '#/definitions/v1beta1.ConfigActivePromotion'
         description: |-
           ActivePromotion represents configuration about active promotion
+          +optional
+        type: object
+      bundles:
+        $ref: '#/definitions/v1beta1.ConfigBundles'
+        description: |-
+          Bundles represents a group of component for each bundle
           +optional
         type: object
       components:
@@ -453,6 +464,32 @@ definitions:
         $ref: '#/definitions/v1beta1.QueueStatus'
         type: object
     type: object
+  v1beta1.QueueComponent:
+    properties:
+      name:
+        description: Name represents Component name
+        type: string
+      repository:
+        description: Repository represents Docker image repository
+        type: string
+      version:
+        description: Version represents Docker image tag version
+        type: string
+    type: object
+  v1beta1.QueueComponents:
+    items:
+      properties:
+        name:
+          description: Name represents Component name
+          type: string
+        repository:
+          description: Repository represents Docker image repository
+          type: string
+        version:
+          description: Version represents Docker image tag version
+          type: string
+      type: object
+    type: array
   v1beta1.QueueCondition:
     properties:
       lastTransitionTime:
@@ -503,8 +540,19 @@ definitions:
     type: object
   v1beta1.QueueSpec:
     properties:
+      bundle:
+        description: |-
+          Bundle represents a bundle name of component
+          +optional
+        type: string
+      components:
+        $ref: '#/definitions/v1beta1.QueueComponents'
+        description: |-
+          Components represents a list of components which are deployed
+          +optional
+        type: object
       name:
-        description: Name represents Component name
+        description: Name represents a Component name or bundle name if exist
         type: string
       nextProcessAt:
         description: NextProcessAt represents time to wait for process this queue
@@ -519,17 +567,11 @@ definitions:
           NoOfRetry defines how many times this component has been tested
           +optional
         type: integer
-      repository:
-        description: Repository represents Docker image repository
-        type: string
       teamName:
         description: TeamName represents team owner of the queue
         type: string
       type:
         description: Type represents how we will process this queue
-        type: string
-      version:
-        description: Version represents Docker image tag version
         type: string
     type: object
   v1beta1.QueueStatus:
@@ -569,9 +611,6 @@ definitions:
         type: integer
       queueHistoryName:
         description: QueueHistoryName defines name of history of this queue
-        type: string
-      releaseName:
-        description: ReleaseName defines name of helmrelease
         type: string
       startDeployTime:
         description: StartDeployTime represents the time when this queue start deploying

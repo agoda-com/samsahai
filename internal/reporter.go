@@ -137,7 +137,7 @@ type Reporter interface {
 	SendActivePromotionStatus(configCtrl ConfigController, atpRpt *ActivePromotionReporter) error
 
 	// SendImageMissing sends image missing
-	SendImageMissing(teamName string, configCtrl ConfigController, images *rpc.Image) error
+	SendImageMissing(teamName string, configCtrl ConfigController, image *rpc.Image) error
 }
 
 func convertIssueType(issueType rpc.ComponentUpgrade_IssueType) IssueType {

@@ -110,7 +110,7 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 }
 
 // SendImageMissing implements the reporter SendImageMissing function
-func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, images *rpc.Image) error {
+func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, image *rpc.Image) error {
 	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return err
@@ -123,7 +123,7 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 	}
 
 	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.ImageMissing.Command,
-		config.Spec.Reporter.Shell.ImageMissing.Args, images)
+		config.Spec.Reporter.Shell.ImageMissing.Args, image)
 	if err := r.execute(cmdObj, internal.ImageMissingType); err != nil {
 		return err
 	}
