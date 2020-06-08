@@ -59,6 +59,7 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 		return nil, errors.Wrapf(err, "cannot get components of team %s", teamComp.Name)
 	}
 
+	// get image missing of stable components
 	for _, stable := range stableList.Items {
 		source, ok := c.getImageSource(comps, stable.Name)
 		if !ok {
@@ -66,17 +67,26 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 		}
 
 		// ignore current component
-		if teamInfo.CompName == stable.Name {
+		isFound := false
+		for _, qComp := range teamInfo.Components {
+			if qComp.Name == stable.Name {
+				isFound = true
+				break
+			}
+		}
+		if isFound {
 			continue
 		}
 
 		c.detectAndAddImageMissing(*source, stable.Spec.Repository, stable.Name, stable.Spec.Version, imgList)
 	}
 
-	// add image missing for current component
-	source, ok := c.getImageSource(comps, teamInfo.CompName)
-	if ok {
-		c.detectAndAddImageMissing(*source, teamInfo.Image.Repository, teamInfo.CompName, teamInfo.Image.Tag, imgList)
+	// get image missing of current components
+	for _, qComp := range teamInfo.Components {
+		source, ok := c.getImageSource(comps, qComp.Name)
+		if ok {
+			c.detectAndAddImageMissing(*source, qComp.Image.Repository, qComp.Name, qComp.Image.Tag, imgList)
+		}
 	}
 
 	return imgList, nil
@@ -209,16 +219,38 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 		return nil, err
 	}
 
-	compName := comp.GetName()
-	if compName != "" {
+	queueName := comp.GetName()
+	if queueName != "" {
 		queue := &s2hv1beta1.Queue{}
-		if err := c.client.Get(context.TODO(), types.NamespacedName{
-			Namespace: comp.GetNamespace(),
-			Name:      compName}, queue); err != nil {
+		err := c.client.Get(context.TODO(), types.NamespacedName{Namespace: comp.GetNamespace(), Name: queueName}, queue)
+		if err != nil {
 			logger.Error(err, "cannot get the queue")
 		}
 		exporter.SetQueueMetric(queue)
 	}
 
 	return &rpc.Empty{}, nil
+}
+
+func (c *controller) GetBundleName(ctx context.Context, teamWithCompName *rpc.TeamWithComponentName) (*rpc.BundleName, error) {
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	bundleName := c.getBundleName(teamWithCompName.ComponentName, teamWithCompName.TeamName)
+
+	return &rpc.BundleName{Name: bundleName}, nil
+}
+
+func (c *controller) getBundleName(compName, teamName string) string {
+	bundles, _ := c.GetConfigController().GetBundles(teamName)
+	for bundleName, comps := range bundles {
+		for _, comp := range comps {
+			if comp == compName {
+				return bundleName
+			}
+		}
+	}
+
+	return ""
 }

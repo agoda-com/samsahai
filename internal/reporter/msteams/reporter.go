@@ -187,13 +187,13 @@ func convertImageListToRPCImageList(images []s2hv1beta1.Image) []*rpc.Image {
 }
 
 // SendImageMissing implements the reporter SendImageMissing function
-func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, images *rpc.Image) error {
+func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, image *rpc.Image) error {
 	msTeamsConfig, err := r.getMSTeamsConfig(teamName, configCtrl)
 	if err != nil {
 		return nil
 	}
 
-	message := r.makeImageMissingListReport([]*rpc.Image{images})
+	message := r.makeImageMissingListReport([]*rpc.Image{image})
 
 	return r.post(msTeamsConfig, message, internal.ImageMissingType)
 }
@@ -202,20 +202,24 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 	message := `
 <b>Component Upgrade:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure{{ end }}</span>
 {{- if eq .Status 0 }}
-<li><b>Issue type:</b> {{ .IssueTypeStr }}</li>
+<br/><b>Issue type:</b> {{ .IssueTypeStr }}
 {{- end }}
-<li><b>Run:</b>{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}</li>
-<li><b>Component:</b> {{ .Name }}</li>
-<li><b>Version:</b> {{ .Image.Tag }}</li>
-<li><b>Repository:</b> {{ .Image.Repository }}</li>
-<li><b>Owner:</b> {{ .TeamName }}</li>
-<li><b>Namespace:</b> {{ .Namespace }}</li>
+<br/><b>Run:</b>{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}
+<br/><b>Queue:</b> {{ .Name }}
+<br/><b>Components</b>
+{{- range .Components }}
+<li><b>- Name:</b> {{ .Name }}</li>
+<li><b>&nbsp;&nbsp;Version:</b> {{ .Image.Tag }}</li>
+<li><b>&nbsp;&nbsp;Repository:</b> {{ .Image.Repository }}</li>
+{{- end }}
+<br/><b>Owner:</b> {{ .TeamName }}
+<br/><b>Namespace:</b> {{ .Namespace }}
 {{- if eq .Status 0 }}
  {{- if .TestRunner.Teamcity.BuildURL }}
-<li><b>Teamcity URL:</b> <a href="{{ .TestRunner.Teamcity.BuildURL }}">Click here</a></li>
+<br/><b>Teamcity URL:</b> <a href="{{ .TestRunner.Teamcity.BuildURL }}">Click here</a>
  {{- end }}
-<li><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log">Download here</a></li>
-<li><b>Deployment History:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}">Click here</a></li>
+<br/><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log">Download here</a>
+<br/><b>Deployment History:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}">Click here</a>
 {{- end}}
 `
 	return strings.TrimSpace(template.TextRender("MSTeamsComponentUpgradeFailure", message, comp))
@@ -231,15 +235,15 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
  {{- end }}
 {{- end }}
 {{- end }}
-<li><b>Current Active Namespace:</b> {{ .CurrentActiveNamespace }}</li>
-<li><b>Owner:</b> {{ .TeamName }}</li>
+<br/><b>Current Active Namespace:</b> {{ .CurrentActiveNamespace }}
+<br/><b>Owner:</b> {{ .TeamName }}
 {{- if and .PreActiveQueue.TestRunner (and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL) }}
-<li><b>Teamcity URL:</b> <a href="{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}">Click here</a></li>
+<br/><b>Teamcity URL:</b> <a href="{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}">Click here</a>
 {{- end }}
 {{- if eq .Result "Failure" }}
-<li><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log">Download here</a></li>
+<br/><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log">Download here</a>
 {{- end }}
-<li><b>Active Promotion History:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}">Click here</a></li>
+<br/><b>Active Promotion History:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}">Click here</a>
 `
 
 	return strings.TrimSpace(template.TextRender("MSTeamsActivePromotionStatus", message, comp))

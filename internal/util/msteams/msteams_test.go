@@ -31,7 +31,7 @@ var _ = Describe("Microsoft Teams", func() {
 		pass         = "pass"
 	)
 
-	It("Should successfully get access token from Microsoft Graph API", func(done Done) {
+	It("should successfully get access token from Microsoft Graph API", func(done Done) {
 		defer close(done)
 		server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
@@ -57,7 +57,7 @@ var _ = Describe("Microsoft Teams", func() {
 		g.Expect(accessToken).To(Equal("token-123456"))
 	})
 
-	It("Should successfully post message with Microsoft Graph API", func(done Done) {
+	It("should successfully post message with Microsoft Graph API", func(done Done) {
 		defer close(done)
 		server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
@@ -109,7 +109,7 @@ var _ = Describe("Microsoft Teams", func() {
 	})
 
 	Describe("GetGroupID", func() {
-		It("Should successfully get group id from given group id", func(done Done) {
+		It("should successfully get group id from given group id", func(done Done) {
 			defer close(done)
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				defer GinkgoRecover()
@@ -127,7 +127,7 @@ var _ = Describe("Microsoft Teams", func() {
 			g.Expect(groupID).To(Equal("52f44e9b-5cf2-4b77-a6d3-b81e49b7a45c"))
 		})
 
-		It("Should successfully get group id from given group name", func(done Done) {
+		It("should successfully get group id from given group name", func(done Done) {
 			defer close(done)
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				defer GinkgoRecover()
@@ -184,7 +184,7 @@ var _ = Describe("Microsoft Teams", func() {
 			g.Expect(groupID).To(Equal("52f44e9b-5cf2-4b77-a6d3-b81e49xxxxxx"))
 		})
 
-		It("Should not get group id due to not found", func(done Done) {
+		It("should not get group id due to not found", func(done Done) {
 			defer close(done)
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				defer GinkgoRecover()
@@ -242,7 +242,7 @@ var _ = Describe("Microsoft Teams", func() {
 	})
 
 	Describe("GetChannelID", func() {
-		It("Should successfully get channel id from given channel id", func(done Done) {
+		It("should successfully get channel id from given channel id", func(done Done) {
 			defer close(done)
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				defer GinkgoRecover()
@@ -271,7 +271,7 @@ var _ = Describe("Microsoft Teams", func() {
 			g.Expect(channelD).To(Equal("channelID"))
 		})
 
-		It("Should successfully get channel id from given channel name", func(done Done) {
+		It("should successfully get channel id from given channel name", func(done Done) {
 			defer close(done)
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				defer GinkgoRecover()

@@ -65,7 +65,7 @@ var _ = Describe("Public Registry Checker", func() {
 			Expect(err).NotTo(BeNil())
 		})
 
-		It("Should correctly ensure version", func(done Done) {
+		It("should correctly ensure version", func(done Done) {
 			defer close(done)
 
 			err := checker.EnsureVersion("phantomnat/curl", "curl", "3.9.1")

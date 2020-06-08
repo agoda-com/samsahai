@@ -82,14 +82,16 @@ const (
 
 // QueueSpec defines the desired state of Queue
 type QueueSpec struct {
-	// Name represents Component name
+	// Name represents a Component name or bundle name if exist
 	Name string `json:"name"`
 
-	// Repository represents Docker image repository
-	Repository string `json:"repository"`
+	// Bundle represents a bundle name of component
+	// +optional
+	Bundle string `json:"bundle,omitempty"`
 
-	// Version represents Docker image tag version
-	Version string `json:"version"`
+	// Components represents a list of components which are deployed
+	// +optional
+	Components QueueComponents `json:"components,omitempty"`
 
 	// Type represents how we will process this queue
 	Type QueueType `json:"type"`
@@ -112,6 +114,19 @@ type QueueSpec struct {
 type Image struct {
 	Repository string `json:"repository"`
 	Tag        string `json:"tag"`
+}
+
+type QueueComponents []*QueueComponent
+
+type QueueComponent struct {
+	// Name represents Component name
+	Name string `json:"name"`
+
+	// Repository represents Docker image repository
+	Repository string `json:"repository"`
+
+	// Version represents Docker image tag version
+	Version string `json:"version"`
 }
 
 type QueueCondition struct {
@@ -191,9 +206,6 @@ type QueueStatus struct {
 	// NoOfProcessed represents how many time that this queue had been processed
 	NoOfProcessed int `json:"noOfProcessed,omitempty"`
 
-	// ReleaseName defines name of helmrelease
-	ReleaseName string `json:"releaseName"`
-
 	// Conditions contains observations of the resource's state e.g.,
 	// Queue deployed, being tested
 	// +optional
@@ -269,10 +281,20 @@ type Queue struct {
 	Status QueueStatus `json:"status,omitempty"`
 }
 
-func (q *Queue) IsSame(d *Queue) bool {
-	return q.Spec.Name == d.Spec.Name &&
-		q.Spec.Repository == d.Spec.Repository &&
-		q.Spec.Version == d.Spec.Version
+func (q *Queue) ContainSameComponent(dName string, dComp *QueueComponent) bool {
+	if dName != q.Spec.Name {
+		return false
+	}
+
+	for _, qComp := range q.Spec.Components {
+		if qComp.Name == dComp.Name &&
+			qComp.Repository == dComp.Repository &&
+			qComp.Version == dComp.Version {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (q *Queue) SetState(state QueueState) {
@@ -337,7 +359,7 @@ func (ql *QueueList) TopQueueOrder() int {
 	if len(ql.Items) == 0 {
 		return 1
 	}
-	sort.Sort(ByNoOfOrder(ql.Items))
+	sort.Sort(QueueByNoOfOrder(ql.Items))
 	return ql.Items[0].Spec.NoOfOrder - 1
 }
 
@@ -346,7 +368,7 @@ func (ql *QueueList) LastQueueOrder() int {
 	if len(ql.Items) == 0 {
 		return 1
 	}
-	sort.Sort(ByNoOfOrder(ql.Items))
+	sort.Sort(QueueByNoOfOrder(ql.Items))
 	return ql.Items[len(ql.Items)-1].Spec.NoOfOrder + 1
 }
 
@@ -378,15 +400,15 @@ func (ql *QueueList) First() *Queue {
 	return &ql.Items[0]
 }
 
-// Sort sorts items
+// Sort sorts queue items
 func (ql *QueueList) Sort() {
-	sort.Sort(ByNoOfOrder(ql.Items))
+	sort.Sort(QueueByNoOfOrder(ql.Items))
 }
 
-type ByNoOfOrder []Queue
+type QueueByNoOfOrder []Queue
 
-func (q ByNoOfOrder) Len() int { return len(q) }
-func (q ByNoOfOrder) Less(i, j int) bool {
+func (q QueueByNoOfOrder) Len() int { return len(q) }
+func (q QueueByNoOfOrder) Less(i, j int) bool {
 	now := metav1.Now()
 
 	if q[i].Spec.NoOfOrder == q[j].Spec.NoOfOrder {
@@ -417,7 +439,21 @@ func (q ByNoOfOrder) Less(i, j int) bool {
 	return q[i].Spec.NoOfOrder < q[j].Spec.NoOfOrder
 }
 
-func (q ByNoOfOrder) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
+func (q QueueByNoOfOrder) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
+
+// Sort sorts component items
+func (qc QueueComponents) Sort() {
+	sort.Sort(ComponentByName(qc))
+}
+
+type ComponentByName []*QueueComponent
+
+func (q ComponentByName) Len() int { return len(q) }
+func (q ComponentByName) Less(i, j int) bool {
+	return q[i].Name < q[j].Name
+}
+
+func (q ComponentByName) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
 
 func init() {
 	SchemeBuilder.Register(&Queue{}, &QueueList{})

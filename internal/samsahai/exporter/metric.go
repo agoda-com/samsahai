@@ -42,7 +42,7 @@ var HealthStatusMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 var QueueMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "samsahai_queue",
 	Help: "Show components in queue",
-}, []string{"teamName", "component", "version", "state", "order", "no_of_processed"})
+}, []string{"teamName", "queueName", "component", "version", "state", "order", "no_of_processed"})
 
 var ActivePromotionMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "samsahai_active_promotion",
@@ -83,13 +83,16 @@ func SetQueueMetric(queue *s2hv1beta1.Queue) {
 		queueState = queueStateFinished
 	}
 
-	QueueMetric.WithLabelValues(
-		queue.Spec.TeamName,
-		queue.Name,
-		queue.Spec.Version,
-		string(queueState),
-		strconv.Itoa(queue.Spec.NoOfOrder),
-		strconv.Itoa(queue.Status.NoOfProcessed)).Set(float64(time.Now().Unix()))
+	for _, qComp := range queue.Spec.Components {
+		QueueMetric.WithLabelValues(
+			queue.Spec.TeamName,
+			queue.Name,
+			qComp.Name,
+			qComp.Version,
+			string(queueState),
+			strconv.Itoa(queue.Spec.NoOfOrder),
+			strconv.Itoa(queue.Status.NoOfProcessed)).Set(float64(time.Now().Unix()))
+	}
 }
 
 func SetActivePromotionMetric(atpComp *s2hv1beta1.ActivePromotion) {

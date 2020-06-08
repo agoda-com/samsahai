@@ -91,12 +91,21 @@ var _ = Describe("Samsahai Exporter", func() {
 		}
 		queue := &s2hv1beta1.Queue{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "qName1",
+				Name:      "group",
 				Namespace: namespace,
 			},
 			Spec: s2hv1beta1.QueueSpec{
-				TeamName:  "testQTeamName1",
-				Version:   "10.9.8.7",
+				TeamName: "testQTeamName1",
+				Components: s2hv1beta1.QueueComponents{
+					{
+						Name:    "qName1",
+						Version: "10.9.8.7",
+					},
+					{
+						Name:    "qName2",
+						Version: "10.9.8.7.2",
+					},
+				},
 				NoOfOrder: 0,
 			},
 			Status: s2hv1beta1.QueueStatus{
@@ -133,24 +142,26 @@ var _ = Describe("Samsahai Exporter", func() {
 		wgStop.Wait()
 	}, timeout)
 
-	It("Should show team name correctly ", func() {
+	It("should show team name correctly ", func() {
 		_, data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
 		expectedData := strings.Contains(string(data), `samsahai_team{teamName="testQTeamName1"} 1`)
 		g.Expect(expectedData).To(BeTrue())
 	}, timeout)
 
-	It("Should show queue metric correctly  ", func(done Done) {
+	It("should show queue metric correctly  ", func(done Done) {
 		defer close(done)
 		_, data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
-		expectedData := strings.Contains(string(data), `samsahai_queue{component="qName1",no_of_processed="1",order="0",state="waiting",teamName="testQTeamName1",version="10.9.8.7"} 1`)
+		expectedData := strings.Contains(string(data), `samsahai_queue{component="qName1",no_of_processed="1",order="0",queueName="group",state="waiting",teamName="testQTeamName1",version="10.9.8.7"} 1`)
+		g.Expect(expectedData).To(BeTrue())
+		expectedData = strings.Contains(string(data), `samsahai_queue{component="qName2",no_of_processed="1",order="0",queueName="group",state="waiting",teamName="testQTeamName1",version="10.9.8.7.2"} 1`)
 		g.Expect(expectedData).To(BeTrue())
 		expectedData = strings.Contains(string(data), `samsahai_queue{component="",`)
 		g.Expect(expectedData).To(BeFalse())
 	}, timeout)
 
-	It("Should show active promotion correctly", func(done Done) {
+	It("should show active promotion correctly", func(done Done) {
 		defer close(done)
 		_, data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
@@ -158,7 +169,7 @@ var _ = Describe("Samsahai Exporter", func() {
 		g.Expect(expectedData).To(BeTrue())
 	}, timeout)
 
-	It("Should show health metric correctly", func(done Done) {
+	It("should show health metric correctly", func(done Done) {
 		defer close(done)
 		_, data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
@@ -271,6 +282,10 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 
 func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
 	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
+	return s2hv1beta1.ConfigBundles{}, nil
 }
 
 func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {

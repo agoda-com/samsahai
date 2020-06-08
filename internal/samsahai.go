@@ -156,7 +156,7 @@ type SamsahaiController interface {
 	SetActiveNamespace(teamComp *s2hv1beta1.Team, namespace string) error
 
 	// NotifyComponentChanged adds Component to queue for checking new version
-	NotifyComponentChanged(name, repository string)
+	NotifyComponentChanged(name, repository, teamName string)
 
 	// NotifyActivePromotion sends active promotion status report
 	NotifyActivePromotion(atpRpt *ActivePromotionReporter)

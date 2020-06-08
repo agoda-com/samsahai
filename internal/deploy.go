@@ -20,9 +20,6 @@ type DeployEngine interface {
 	// ForceDelete deletes environment when timeout
 	ForceDelete(refName string) error
 
-	// IsReady checks the environment is ready to use or not
-	IsReady(queue *v1beta1.Queue) (bool, error)
-
 	// GetLabelSelector returns map of label for select the components that created by the engine
 	GetLabelSelectors(refName string) map[string]string
 

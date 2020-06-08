@@ -1,18 +1,24 @@
 syntax = "proto3";
 
 package samsahai.io.samsahai;
-option go_package = "rpc";
+option go_package = "pkg/samsahai/rpc";
 
 service RPC {
     rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
     rpc GetMissingVersion (TeamWithCurrentComponent) returns (ImageList);
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
+    rpc GetBundleName (TeamWithComponentName) returns (BundleName);
 }
 
 message Empty {
 }
 
-message Team {
+message TeamWithComponentName {
+    string teamName = 1;
+    string componentName = 2;
+}
+
+message BundleName {
     string name = 1;
 }
 
@@ -35,7 +41,7 @@ message ComponentUpgrade {
     UpgradeStatus status = 1;
     string name = 2;
     string teamName = 3;
-    Image image = 4;
+    repeated Component components = 4;
     IssueType issueType = 5;
     string queueHistoryName = 6;
     repeated Image imageMissingList = 7;
@@ -44,6 +50,11 @@ message ComponentUpgrade {
     int32 runs = 10;
     bool isReverify = 11;
     ReverificationStatus reverificationStatus = 12;
+}
+
+message Component {
+    string name = 1;
+    Image image = 2;
 }
 
 message Image {
@@ -57,6 +68,5 @@ message ImageList {
 
 message TeamWithCurrentComponent {
     string teamName = 1;
-    string compName = 2;
-    Image image = 3;
+    repeated Component components = 2;
 }

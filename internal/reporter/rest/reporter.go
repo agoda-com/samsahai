@@ -42,7 +42,7 @@ type activePromotionRest struct {
 
 type imageMissingRest struct {
 	ReporterJSON
-	rpc.Image
+	*rpc.Image
 }
 
 // NewReporterJSON creates new reporter json
@@ -161,7 +161,7 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 	}
 
 	for _, ep := range config.Spec.Reporter.Rest.ImageMissing.Endpoints {
-		restObj := &imageMissingRest{NewReporterJSON(), *img}
+		restObj := &imageMissingRest{NewReporterJSON(), img}
 		body, err := json.Marshal(restObj)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", body))

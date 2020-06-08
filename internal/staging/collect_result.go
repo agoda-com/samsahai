@@ -191,59 +191,61 @@ func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace
 func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 	const updatedBy = "samsahai"
 
-	stableComp := &s2hv1beta1.StableComponent{}
-	err = c.client.Get(
-		context.TODO(),
-		types.NamespacedName{Namespace: queue.GetNamespace(), Name: queue.GetName()},
-		stableComp)
-	if err != nil && k8serrors.IsNotFound(err) {
-		now := metav1.Now()
-		stableLabels := internal.GetDefaultLabels(c.teamName)
-		stableLabels["app"] = queue.Name
-		stableComp := &s2hv1beta1.StableComponent{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      queue.Name,
-				Namespace: queue.Namespace,
-				Labels:    stableLabels,
-			},
-			Spec: s2hv1beta1.StableComponentSpec{
-				Name:       queue.Spec.Name,
-				Version:    queue.Spec.Version,
-				Repository: queue.Spec.Repository,
-				UpdatedBy:  updatedBy,
-			},
-			Status: s2hv1beta1.StableComponentStatus{
-				CreatedAt: &now,
-				UpdatedAt: &now,
-			},
+	for _, qComp := range queue.Spec.Components {
+		stableComp := &s2hv1beta1.StableComponent{}
+		err = c.client.Get(
+			context.TODO(),
+			types.NamespacedName{Namespace: queue.GetNamespace(), Name: qComp.Name},
+			stableComp)
+		if err != nil && k8serrors.IsNotFound(err) {
+			now := metav1.Now()
+			stableLabels := internal.GetDefaultLabels(c.teamName)
+			stableLabels["app"] = qComp.Name
+			stableComp := &s2hv1beta1.StableComponent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      qComp.Name,
+					Namespace: queue.Namespace,
+					Labels:    stableLabels,
+				},
+				Spec: s2hv1beta1.StableComponentSpec{
+					Name:       qComp.Name,
+					Version:    qComp.Version,
+					Repository: qComp.Repository,
+					UpdatedBy:  updatedBy,
+				},
+				Status: s2hv1beta1.StableComponentStatus{
+					CreatedAt: &now,
+					UpdatedAt: &now,
+				},
+			}
+			err = c.client.Create(context.TODO(), stableComp)
+			if err != nil {
+				logger.Error(err, fmt.Sprintf("cannot create StableComponent: %s/%s", queue.GetNamespace(), qComp.Name))
+				return
+			}
+
+			continue
+
+		} else if err != nil {
+			logger.Error(err, fmt.Sprintf("cannot get StableComponent: %s/%s", queue.GetNamespace(), qComp.Name))
+			return err
 		}
-		err = c.client.Create(context.TODO(), stableComp)
+
+		if stableComp.Spec.Version == qComp.Version &&
+			stableComp.Spec.Repository == qComp.Repository {
+			// no change
+			continue
+		}
+
+		stableComp.Spec.Repository = qComp.Repository
+		stableComp.Spec.Version = qComp.Version
+		stableComp.Spec.UpdatedBy = updatedBy
+
+		err = c.client.Update(context.TODO(), stableComp)
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("cannot create StableComponent: %s/%s", queue.GetNamespace(), queue.GetName()))
+			logger.Error(err, fmt.Sprintf("cannot update StableComponent: %s/%s", queue.GetNamespace(), qComp.Name))
 			return
 		}
-
-		return nil
-
-	} else if err != nil {
-		logger.Error(err, fmt.Sprintf("cannot get StableComponent: %s/%s", queue.GetNamespace(), queue.GetName()))
-		return err
-	}
-
-	if stableComp.Spec.Version == queue.Spec.Version &&
-		stableComp.Spec.Repository == queue.Spec.Repository {
-		// no change
-		return nil
-	}
-
-	stableComp.Spec.Repository = queue.Spec.Repository
-	stableComp.Spec.Version = queue.Spec.Version
-	stableComp.Spec.UpdatedBy = updatedBy
-
-	err = c.client.Update(context.TODO(), stableComp)
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("cannot update StableComponent: %s/%s", queue.GetNamespace(), queue.GetName()))
-		return
 	}
 
 	return nil
@@ -391,11 +393,22 @@ func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_Upgr
 		outImgList = append(outImgList, &rpc.Image{Repository: img.Repository, Tag: img.Tag})
 	}
 
+	rpcComps := make([]*rpc.Component, 0)
+	for _, qComp := range queue.Spec.Components {
+		rpcComps = append(rpcComps, &rpc.Component{
+			Name: qComp.Name,
+			Image: &rpc.Image{
+				Repository: qComp.Repository,
+				Tag:        qComp.Version,
+			},
+		})
+	}
+
 	comp := &rpc.ComponentUpgrade{
 		Status:               status,
 		Name:                 queue.Spec.Name,
 		TeamName:             c.teamName,
-		Image:                &rpc.Image{Repository: queue.Spec.Repository, Tag: queue.Spec.Version},
+		Components:           rpcComps,
 		IssueType:            c.getIssueType(outImgList, queue),
 		QueueHistoryName:     queue.Status.QueueHistoryName,
 		Namespace:            queue.Namespace,

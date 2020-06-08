@@ -198,18 +198,6 @@ func (e *engine) helmUninstall(refName string, disableHooks bool) error {
 	return nil
 }
 
-func (e *engine) IsReady(queue *v1beta1.Queue) (bool, error) {
-	refName := queue.Status.ReleaseName
-
-	client := action.NewStatus(e.actionSettings)
-	rel, err := client.Run(refName)
-	if err != nil {
-		return false, errors.Wrap(err, "cannot get status of helm release")
-	}
-
-	return rel.Info.Status == release.StatusDeployed, nil
-}
-
 func (e *engine) helmInit() error {
 	if atomic.LoadUint32(&e.initDone) == 1 {
 		return nil

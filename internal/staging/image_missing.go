@@ -23,11 +23,21 @@ func (c *controller) detectImageMissing(queue *s2hv1beta1.Queue) error {
 		return errors.Wrap(err, "cannot set request header")
 	}
 
+	rpcComps := make([]*rpc.Component, 0)
+	for _, qComp := range queue.Spec.Components {
+		rpcComps = append(rpcComps, &rpc.Component{
+			Name: qComp.Name,
+			Image: &rpc.Image{
+				Repository: qComp.Repository,
+				Tag:        qComp.Version,
+			},
+		})
+	}
+
 	var imgList *rpc.ImageList
 	comp := &rpc.TeamWithCurrentComponent{
-		TeamName: c.teamName,
-		CompName: queue.Name,
-		Image:    &rpc.Image{Repository: queue.Spec.Repository, Tag: queue.Spec.Version},
+		TeamName:   c.teamName,
+		Components: rpcComps,
 	}
 	if c.s2hClient != nil {
 		imgList, err = c.s2hClient.GetMissingVersion(ctx, comp)

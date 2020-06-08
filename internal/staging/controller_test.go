@@ -31,7 +31,7 @@ var _ = Describe("Apply Env Based Config", func() {
 		g.Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("Should successfully apply configuration based on queue type", func() {
+	It("should successfully apply configuration based on queue type", func() {
 		config, err := configCtrl.Get("mock")
 		g.Expect(err).NotTo(HaveOccurred())
 
@@ -80,7 +80,7 @@ var _ = Describe("Apply Env Based Config", func() {
 		}
 	})
 
-	It("Should correctly combine base values and config", func() {
+	It("should correctly combine base values and config", func() {
 		config, err := configCtrl.Get("mock")
 		g.Expect(err).NotTo(HaveOccurred())
 
@@ -226,6 +226,10 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	}
 
 	return comps, nil
+}
+
+func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
+	return s2hv1beta1.ConfigBundles{}, nil
 }
 
 func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {

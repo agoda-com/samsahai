@@ -21,11 +21,11 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	pb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
@@ -57,7 +57,7 @@ var (
 	}
 )
 var _ = Describe("Protobuf Struct to map", func() {
-	It("Should successfully Encode/Decode", func() {
+	It("should successfully Encode/Decode", func() {
 		g := NewWithT(GinkgoT())
 
 		var pbstsruct *pb.Struct = nil

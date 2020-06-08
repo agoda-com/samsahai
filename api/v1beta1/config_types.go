@@ -56,6 +56,10 @@ type ComponentChart struct {
 	Version string `json:"version,omitempty"`
 }
 
+// ConfigBundles represents a group of component for each bundle
+// to verify a group of components of a same bundle together in staging environment
+type ConfigBundles map[string][]string
+
 // ConfigStaging represents configuration about staging
 type ConfigStaging struct {
 	// Deployment represents configuration about deploy
@@ -279,6 +283,10 @@ type ChartValuesURLs map[string][]string
 type ConfigSpec struct {
 	// Components represents all components that are managed
 	Components []*Component `json:"components"`
+
+	// Bundles represents a group of component for each bundle
+	// +optional
+	Bundles ConfigBundles `json:"bundles,omitempty"`
 
 	// Staging represents configuration about staging
 	Staging *ConfigStaging `json:"staging"`

@@ -121,7 +121,7 @@ var _ = Describe("shell command reporter", func() {
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
 			configCtrl := newMockConfigCtrl("empty")
 
-			err := r.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{})
+			err := r.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
@@ -201,6 +201,10 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 
 func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
 	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
+	return s2hv1beta1.ConfigBundles{}, nil
 }
 
 func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {

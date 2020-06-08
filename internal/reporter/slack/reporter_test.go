@@ -30,9 +30,14 @@ var _ = Describe("send slack message", func() {
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
-				Name:             "comp1",
-				Status:           rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
-				Image:            &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
+				Name:   "comp1",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "comp1",
+						Image: &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
+					},
+				},
 				TeamName:         "owner",
 				IssueType:        rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED,
 				Namespace:        "owner-staging",
@@ -106,9 +111,14 @@ var _ = Describe("send slack message", func() {
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
-				Name:      "comp1",
-				Status:    rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
-				Image:     &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
+				Name:   "comp1",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "comp1",
+						Image: &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
+					},
+				},
 				TeamName:  "owner",
 				IssueType: rpc.ComponentUpgrade_IssueType_IMAGE_MISSING,
 				Namespace: "owner-staging",
@@ -130,6 +140,39 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Image Missing List"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("- image-2:1.1.0"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("- image-3:1.2.0"))
+		})
+
+		It("should send component upgrade failure of multiple components", func() {
+			configCtrl := newMockConfigCtrl("", s2hv1beta1.IntervalEveryTime, "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			rpcComp := &rpc.ComponentUpgrade{
+				Name:   "group",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "comp1",
+						Image: &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
+					},
+					{
+						Name:  "comp2",
+						Image: &rpc.Image{Repository: "image-2", Tag: "1.1.2"},
+					},
+				},
+			}
+			mockSlackCli := &mockSlack{}
+			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
+			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
+			err := r.SendComponentUpgrade(configCtrl, comp)
+			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
+			// Should contain information
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("comp1"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("1.1.0"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("image-1"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("comp2"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("1.1.2"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("image-2"))
 		})
 	})
 
@@ -423,6 +466,10 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 
 func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
 	return map[string]*s2hv1beta1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
+	return s2hv1beta1.ConfigBundles{}, nil
 }
 
 func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {

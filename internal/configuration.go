@@ -14,6 +14,9 @@ type ConfigController interface {
 	// GetParentComponents returns components that doesn't have parent (nil Parent)
 	GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error)
 
+	// GetBundles returns a group of components for each bundle
+	GetBundles(configName string) (s2hv1beta1.ConfigBundles, error)
+
 	// Update updates Config CRD
 	Update(config *s2hv1beta1.Config) error
 

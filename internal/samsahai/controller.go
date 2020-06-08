@@ -958,7 +958,7 @@ func (c *controller) notifyComponentChanged(teamName string) error {
 	}
 
 	for comp := range comps {
-		c.NotifyComponentChanged(comp, "")
+		c.NotifyComponentChanged(comp, "", teamName)
 	}
 
 	return nil
