@@ -75,11 +75,12 @@ var _ = Describe("shell command reporter", func() {
 			configCtrl := newMockConfigCtrl("")
 
 			img := &rpc.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
-			err := r.SendImageMissing("mock", configCtrl, img)
+			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{}, "owner", "comp1")
+			err := r.SendImageMissing(configCtrl, imageMissingRpt)
 			g.Expect(err).NotTo(HaveOccurred())
 
 			g.Expect(testCmdObj.Command).To(Equal([]string{"/bin/sh", "-c"}))
-			g.Expect(testCmdObj.Args).To(Equal([]string{"echo image missing docker.io/hello-a:2018.01.01"}))
+			g.Expect(testCmdObj.Args).To(Equal([]string{"echo image missing docker.io/hello-a:2018.01.01 of comp1"}))
 		})
 
 		It("should correctly execute command with environment variables", func() {
@@ -129,7 +130,7 @@ var _ = Describe("shell command reporter", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
-			err = r.SendImageMissing("mock", configCtrl, &rpc.Image{})
+			err = r.SendImageMissing(configCtrl, &internal.ImageMissingReporter{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 		})
@@ -186,7 +187,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 						},
 						ImageMissing: &s2hv1beta1.CommandAndArgs{
 							Command: []string{"/bin/sh", "-c"},
-							Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }}"},
+							Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }} of {{ .ComponentName }}"},
 						},
 					},
 				},

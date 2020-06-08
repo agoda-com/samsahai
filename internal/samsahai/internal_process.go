@@ -227,7 +227,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	}
 
 	if vErr != nil && (errors.IsImageNotFound(vErr) || errors.IsErrRequestTimeout(vErr)) {
-		c.sendImageMissingReport(updateInfo.TeamName, compRepository, version)
+		c.sendImageMissingReport(updateInfo.TeamName, updateInfo.ComponentName, compRepository, version)
 		return nil
 	}
 
@@ -295,11 +295,12 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	return nil
 }
 
-func (c *controller) sendImageMissingReport(teamName, repo, version string) {
+func (c *controller) sendImageMissingReport(teamName, compName, repo, version string) {
 	configCtrl := c.GetConfigController()
 	for _, reporter := range c.reporters {
 		img := &rpc.Image{Repository: repo, Tag: version}
-		if err := reporter.SendImageMissing(teamName, configCtrl, img); err != nil {
+		imageMissingRpt := internal.NewImageMissingReporter(img, c.configs, teamName, compName)
+		if err := reporter.SendImageMissing(configCtrl, imageMissingRpt); err != nil {
 			logger.Error(err, "cannot send image missing list report", "team", teamName)
 		}
 	}

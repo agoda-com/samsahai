@@ -388,7 +388,10 @@ var _ = Describe("send ms teams message", func() {
 			mockMSTeamsCli := &mockMSTeams{}
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
-			err := r.SendImageMissing("mock", configCtrl, &rpc.Image{Repository: "registry/comp-1", Tag: "1.0.0"})
+
+			img := &rpc.Image{Repository: "registry/comp-1", Tag: "1.0.0"}
+			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{}, "owner", "comp1")
+			err := r.SendImageMissing(configCtrl, imageMissingRpt)
 			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
 			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
 			g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(3))

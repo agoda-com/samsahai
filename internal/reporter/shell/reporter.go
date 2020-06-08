@@ -10,7 +10,6 @@ import (
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/cmd"
-	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 var logger = s2hlog.Log.WithName(ReporterName)
@@ -110,8 +109,8 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 }
 
 // SendImageMissing implements the reporter SendImageMissing function
-func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, image *rpc.Image) error {
-	config, err := configCtrl.Get(teamName)
+func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageMissingRpt *internal.ImageMissingReporter) error {
+	config, err := configCtrl.Get(imageMissingRpt.TeamName)
 	if err != nil {
 		return err
 	}
@@ -123,7 +122,7 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 	}
 
 	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.ImageMissing.Command,
-		config.Spec.Reporter.Shell.ImageMissing.Args, image)
+		config.Spec.Reporter.Shell.ImageMissing.Args, imageMissingRpt)
 	if err := r.execute(cmdObj, internal.ImageMissingType); err != nil {
 		return err
 	}

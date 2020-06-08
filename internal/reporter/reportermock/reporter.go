@@ -2,7 +2,6 @@ package reportermock
 
 import (
 	"github.com/agoda-com/samsahai/internal"
-	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 const (
@@ -37,6 +36,6 @@ func (r *reporterMock) SendActivePromotionStatus(configCtrl internal.ConfigContr
 }
 
 // SendImageMissing implements the reporter SendImageMissingList function
-func (r *reporterMock) SendImageMissing(teamName string, configCtrl internal.ConfigController, image *rpc.Image) error {
+func (r *reporterMock) SendImageMissing(configCtrl internal.ConfigController, imageMissingRpt *internal.ImageMissingReporter) error {
 	return nil
 }
