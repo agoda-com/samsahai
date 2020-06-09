@@ -187,13 +187,13 @@ func convertImageListToRPCImageList(images []s2hv1beta1.Image) []*rpc.Image {
 }
 
 // SendImageMissing implements the reporter SendImageMissing function
-func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, image *rpc.Image) error {
-	msTeamsConfig, err := r.getMSTeamsConfig(teamName, configCtrl)
+func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageMissingRpt *internal.ImageMissingReporter) error {
+	msTeamsConfig, err := r.getMSTeamsConfig(imageMissingRpt.TeamName, configCtrl)
 	if err != nil {
 		return nil
 	}
 
-	message := r.makeImageMissingListReport([]*rpc.Image{image})
+	message := r.makeImageMissingListReport([]*rpc.Image{imageMissingRpt.Image})
 
 	return r.post(msTeamsConfig, message, internal.ImageMissingType)
 }

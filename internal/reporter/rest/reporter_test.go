@@ -180,7 +180,8 @@ var _ = Describe("send rest message", func() {
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
-			err := client.SendImageMissing("mock", configCtrl, img)
+			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{}, "owner", "comp1")
+			err := client.SendImageMissing(configCtrl, imageMissingRpt)
 			g.Expect(err).To(BeNil(), "request should not thrown any error")
 		})
 	})
@@ -201,7 +202,7 @@ var _ = Describe("send rest message", func() {
 			err = client.SendActivePromotionStatus(configCtrl, &internal.ActivePromotionReporter{})
 			g.Expect(err).NotTo(BeNil(), "active promotion request should thrown an error")
 
-			err = client.SendImageMissing("mock", configCtrl, &rpc.Image{})
+			err = client.SendImageMissing(configCtrl, &internal.ImageMissingReporter{})
 			g.Expect(err).NotTo(BeNil(), "image missing request should thrown an error")
 		})
 
@@ -229,7 +230,7 @@ var _ = Describe("send rest message", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
-			err = client.SendImageMissing("mock", configCtrl, &rpc.Image{})
+			err = client.SendImageMissing(configCtrl, &internal.ImageMissingReporter{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 		})

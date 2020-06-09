@@ -148,8 +148,8 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 }
 
 // SendImageMissing implements the reporter SendImageMissing function
-func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, img *rpc.Image) error {
-	config, err := configCtrl.Get(teamName)
+func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageMissingRpt *internal.ImageMissingReporter) error {
+	config, err := configCtrl.Get(imageMissingRpt.TeamName)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigC
 	}
 
 	for _, ep := range config.Spec.Reporter.Rest.ImageMissing.Endpoints {
-		restObj := &imageMissingRest{NewReporterJSON(), img}
+		restObj := &imageMissingRest{NewReporterJSON(), imageMissingRpt.Image}
 		body, err := json.Marshal(restObj)
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", body))

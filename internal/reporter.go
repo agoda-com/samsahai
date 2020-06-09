@@ -125,6 +125,29 @@ func NewActivePromotionReporter(status *s2hv1beta1.ActivePromotionStatus, s2hCon
 	return c
 }
 
+// ImageMissingReporter manages image missing report
+type ImageMissingReporter struct {
+	TeamName      string `json:"teamName,omitempty"`
+	ComponentName string `json:"componentName,omitempty"`
+	Envs          map[string]string
+
+	*rpc.Image
+	SamsahaiConfig
+}
+
+// NewImageMissingReporter creates image missing reporter object
+func NewImageMissingReporter(image *rpc.Image, s2hConfig SamsahaiConfig, teamName, compName string) *ImageMissingReporter {
+	c := &ImageMissingReporter{
+		SamsahaiConfig: s2hConfig,
+		TeamName:       teamName,
+		ComponentName:  compName,
+		Image:          image,
+		Envs:           listEnv(),
+	}
+
+	return c
+}
+
 // Reporter is the interface of reporter
 type Reporter interface {
 	// GetName returns type of reporter
@@ -137,7 +160,7 @@ type Reporter interface {
 	SendActivePromotionStatus(configCtrl ConfigController, atpRpt *ActivePromotionReporter) error
 
 	// SendImageMissing sends image missing
-	SendImageMissing(teamName string, configCtrl ConfigController, image *rpc.Image) error
+	SendImageMissing(configCtrl ConfigController, imageMissingRpt *ImageMissingReporter) error
 }
 
 func convertIssueType(issueType rpc.ComponentUpgrade_IssueType) IssueType {
