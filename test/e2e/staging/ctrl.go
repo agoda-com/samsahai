@@ -468,9 +468,10 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Ensure Pre Active Components")
 		redisServiceName := fmt.Sprintf("%s-redis-master", namespace)
+		skipTest := true
 
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
-			queue, err := queue.EnsurePreActiveComponents(client, teamName, namespace)
+			queue, err := queue.EnsurePreActiveComponents(client, teamName, namespace, skipTest)
 			if err != nil {
 				logger.Error(err, "cannot ensure pre-active components")
 				return false, nil
@@ -497,7 +498,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Ensure Pre Active error")
 
-		q, err := queue.EnsurePreActiveComponents(client, teamName, namespace)
+		q, err := queue.EnsurePreActiveComponents(client, teamName, namespace, skipTest)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(q.IsDeploySuccess()).To(BeTrue())
 		Expect(q.IsTestSuccess()).To(BeTrue())

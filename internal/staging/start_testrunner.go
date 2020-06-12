@@ -69,8 +69,18 @@ func (c *controller) checkTestTimeout(queue *s2hv1beta1.Queue, testingTimeout me
 
 // checkTestConfig checks test configuration and return testRunner
 func (c *controller) checkTestConfig(queue *s2hv1beta1.Queue) (skipTest bool, testRunner internal.StagingTestRunner, err error) {
-	testConfig := c.getTestConfiguration(queue)
+	if queue.Spec.SkipTestRunner {
+		if err = c.updateTestQueueCondition(
+			queue,
+			v1.ConditionTrue,
+			"skip running test"); err != nil {
+			return
+		}
 
+		return true, nil, nil
+	}
+
+	testConfig := c.getTestConfiguration(queue)
 	if testConfig == nil {
 		if err = c.updateTestQueueCondition(
 			queue,

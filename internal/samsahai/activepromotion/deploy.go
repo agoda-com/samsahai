@@ -12,7 +12,7 @@ import (
 func (c *controller) deployComponentsToTargetNamespace(atpComp *s2hv1beta1.ActivePromotion) error {
 	teamName := atpComp.Name
 	targetNs := c.getTargetNamespace(atpComp)
-	q, err := c.ensurePreActiveComponentsDeployed(teamName, targetNs)
+	q, err := c.ensurePreActiveComponentsDeployed(teamName, targetNs, atpComp.Spec.SkipTestRunner)
 	if err != nil {
 		return err
 	}
@@ -35,8 +35,8 @@ func (c *controller) deployComponentsToTargetNamespace(atpComp *s2hv1beta1.Activ
 	return nil
 }
 
-func (c *controller) ensurePreActiveComponentsDeployed(teamName, targetNs string) (*s2hv1beta1.Queue, error) {
-	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs)
+func (c *controller) ensurePreActiveComponentsDeployed(teamName, targetNs string, skipTest bool) (*s2hv1beta1.Queue, error) {
+	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs, skipTest)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot ensure pre-active components, namespace %s", targetNs)
 	}
@@ -56,7 +56,7 @@ func (c *controller) ensurePreActiveComponentsDeployed(teamName, targetNs string
 func (c *controller) testPreActiveEnvironment(atpComp *s2hv1beta1.ActivePromotion) error {
 	teamName := atpComp.Name
 	targetNs := c.getTargetNamespace(atpComp)
-	q, err := c.ensurePreActiveComponentsTested(teamName, targetNs)
+	q, err := c.ensurePreActiveComponentsTested(teamName, targetNs, atpComp.Spec.SkipTestRunner)
 	if err != nil {
 		return err
 	}
@@ -79,8 +79,8 @@ func (c *controller) testPreActiveEnvironment(atpComp *s2hv1beta1.ActivePromotio
 	return nil
 }
 
-func (c *controller) ensurePreActiveComponentsTested(teamName, targetNs string) (*s2hv1beta1.Queue, error) {
-	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs)
+func (c *controller) ensurePreActiveComponentsTested(teamName, targetNs string, skipTest bool) (*s2hv1beta1.Queue, error) {
+	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs, skipTest)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot ensure pre-active components, namespace %s", targetNs)
 	}

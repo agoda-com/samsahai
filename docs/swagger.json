@@ -701,6 +701,10 @@
         "v1beta1.ActivePromotionSpec": {
             "type": "object",
             "properties": {
+                "skipTestRunner": {
+                    "description": "SkipTestRunner represents a flag for skipping running pre-active test\n+optional",
+                    "type": "boolean"
+                },
                 "tearDownDuration": {
                     "description": "TearDownDuration represents duration before tear down the previous active namespace\n+optional",
                     "type": "string"
@@ -1307,6 +1311,10 @@
                 "noOfRetry": {
                     "description": "NoOfRetry defines how many times this component has been tested\n+optional",
                     "type": "integer"
+                },
+                "skipTestRunner": {
+                    "description": "SkipTestRunner represents a flag for skipping running test\n+optional",
+                    "type": "boolean"
                 },
                 "teamName": {
                     "description": "TeamName represents team owner of the queue",

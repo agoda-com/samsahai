@@ -13,14 +13,14 @@ import (
 func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
 	teamName := atpComp.Name
 	targetNs := c.getTargetNamespace(atpComp)
-	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs)
+	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs, atpComp.Spec.SkipTestRunner)
 	if err != nil {
 		return errors.Wrapf(err, "cannot ensure pre-active components, namespace %s", targetNs)
 	}
 
 	if !atpComp.IsActivePromotionCanceled() && !atpComp.Status.IsTimeout {
 		// to save pre-active queue after pre-active queue finished
-		q, err = c.ensurePreActiveComponentsTested(teamName, targetNs)
+		q, err = c.ensurePreActiveComponentsTested(teamName, targetNs, atpComp.Spec.SkipTestRunner)
 		if err != nil {
 			return errors.Wrapf(err, "cannot ensure pre-active components finished, namespace %s", targetNs)
 		}

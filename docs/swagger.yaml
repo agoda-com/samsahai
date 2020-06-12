@@ -50,6 +50,11 @@ definitions:
     type: object
   v1beta1.ActivePromotionSpec:
     properties:
+      skipTestRunner:
+        description: |-
+          SkipTestRunner represents a flag for skipping running pre-active test
+          +optional
+        type: boolean
       tearDownDuration:
         description: |-
           TearDownDuration represents duration before tear down the previous active namespace
@@ -567,6 +572,11 @@ definitions:
           NoOfRetry defines how many times this component has been tested
           +optional
         type: integer
+      skipTestRunner:
+        description: |-
+          SkipTestRunner represents a flag for skipping running test
+          +optional
+        type: boolean
       teamName:
         description: TeamName represents team owner of the queue
         type: string

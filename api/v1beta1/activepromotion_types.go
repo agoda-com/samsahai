@@ -118,6 +118,10 @@ type ActivePromotionSpec struct {
 	// TearDownDuration represents duration before tear down the previous active namespace
 	// +optional
 	TearDownDuration *metav1.Duration `json:"tearDownDuration,omitempty"`
+
+	// SkipTestRunner represents a flag for skipping running pre-active test
+	// +optional
+	SkipTestRunner bool `json:"skipTestRunner,omitempty"`
 }
 
 func (s *ActivePromotionSpec) SetTearDownDuration(d metav1.Duration) {
