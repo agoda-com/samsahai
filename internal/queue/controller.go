@@ -396,15 +396,16 @@ func (c *controller) resetQueueOrderWithCurrentQueue(ql *s2hv1beta1.QueueList, c
 }
 
 // EnsurePreActiveComponents ensures that components with were deployed with `pre-active` config and tested
-func EnsurePreActiveComponents(c client.Client, teamName, namespace string) (q *s2hv1beta1.Queue, err error) {
+func EnsurePreActiveComponents(c client.Client, teamName, namespace string, skipTest bool) (q *s2hv1beta1.Queue, err error) {
 	q = &s2hv1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      string(s2hv1beta1.EnvPreActive),
 			Namespace: namespace,
 		},
 		Spec: s2hv1beta1.QueueSpec{
-			Type:     s2hv1beta1.QueueTypePreActive,
-			TeamName: teamName,
+			Type:           s2hv1beta1.QueueTypePreActive,
+			TeamName:       teamName,
+			SkipTestRunner: skipTest,
 		},
 	}
 

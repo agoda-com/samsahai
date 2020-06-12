@@ -109,6 +109,10 @@ type QueueSpec struct {
 
 	// TeamName represents team owner of the queue
 	TeamName string `json:"teamName"`
+
+	// SkipTestRunner represents a flag for skipping running test
+	// +optional
+	SkipTestRunner bool `json:"skipTestRunner,omitempty"`
 }
 
 type Image struct {
