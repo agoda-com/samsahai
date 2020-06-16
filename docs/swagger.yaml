@@ -350,6 +350,14 @@ definitions:
           ordering by less priority to high priority
           +optional
         type: object
+      priorityQueues:
+        description: |-
+          PriorityQueues represents a list of queue components which needs to be prioritized
+          the first one is highest priority and the last one is lowest priority
+          +optional
+        items:
+          type: string
+        type: array
       report:
         $ref: '#/definitions/v1beta1.ConfigReporter'
         description: |-

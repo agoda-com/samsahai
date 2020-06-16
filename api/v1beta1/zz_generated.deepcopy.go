@@ -660,6 +660,11 @@ func (in *ConfigSpec) DeepCopyInto(out *ConfigSpec) {
 			(*out)[key] = outVal
 		}
 	}
+	if in.PriorityQueues != nil {
+		in, out := &in.PriorityQueues, &out.PriorityQueues
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Staging != nil {
 		in, out := &in.Staging, &out.Staging
 		*out = new(ConfigStaging)
