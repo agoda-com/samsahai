@@ -34,8 +34,8 @@ func NewUpgradeQueue(teamName, namespace, name, bundle string, comps []*s2hv1bet
 	}
 
 	qLabels := internal.GetDefaultLabels(teamName)
-	qLabels["app"] = name
-	qLabels["component"] = name
+	qLabels["app"] = queueName
+	qLabels["component"] = queueName
 	return &s2hv1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      queueName,
