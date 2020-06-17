@@ -62,12 +62,12 @@ func New(ns string, runtimeClient client.Client) internal.QueueController {
 	return c
 }
 
-func (c *controller) Add(q *s2hv1beta1.Queue) error {
-	return c.add(context.TODO(), q, false)
+func (c *controller) Add(q *s2hv1beta1.Queue, priorityQueues []string) error {
+	return c.add(context.TODO(), q, false, priorityQueues)
 }
 
 func (c *controller) AddTop(q *s2hv1beta1.Queue) error {
-	return c.add(context.TODO(), q, true)
+	return c.add(context.TODO(), q, true, nil)
 }
 
 func (c *controller) Size() int {
@@ -111,8 +111,9 @@ func (c *controller) RemoveAllQueues() error {
 	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.Queue{}, client.InNamespace(c.namespace))
 }
 
-// `queue` always contains 1 component
-func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop bool) error {
+// incoming s`queue` always contains 1 component
+// will add component into queue ordering by priority
+func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop bool, priorityQueues []string) error {
 	if len(queue.Spec.Components) == 0 {
 		return fmt.Errorf("components should not be empty, queueName: %s", queue.Name)
 	}
@@ -148,28 +149,32 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 		}
 	}
 	for i := range updatingList {
-		updatingList[i].Spec.Components.Sort()
-		updatingList[i].Spec.NoOfRetry = 0
-		updatingList[i].Spec.NextProcessAt = nil
-		updatingList[i].Status.State = s2hv1beta1.Waiting
-		updatingList[i].Spec.Components.Sort()
-		if err := c.client.Update(ctx, &updatingList[i]); err != nil {
-			return err
+		if updatingList[i].Name != "" {
+			updatingList[i].Spec.Components.Sort()
+			updatingList[i].Spec.NoOfRetry = 0
+			updatingList[i].Spec.NextProcessAt = nil
+			updatingList[i].Status.State = s2hv1beta1.Waiting
+			updatingList[i].Spec.Components.Sort()
+			if err := c.client.Update(ctx, &updatingList[i]); err != nil {
+				return err
+			}
+			queueList.Items[i] = updatingList[i]
 		}
-		queueList.Items[i] = updatingList[i]
 	}
 
 	updatingList = c.addExistingBundleQueue(queue, queueList)
 	for i := range updatingList {
-		isAlreadyInBundle = true
-		updatingList[i].Spec.NoOfRetry = 0
-		updatingList[i].Spec.NextProcessAt = nil
-		updatingList[i].Status.State = s2hv1beta1.Waiting
-		updatingList[i].Spec.Components.Sort()
-		if err := c.client.Update(ctx, &updatingList[i]); err != nil {
-			return err
+		if updatingList[i].Name != "" {
+			isAlreadyInBundle = true
+			updatingList[i].Spec.NoOfRetry = 0
+			updatingList[i].Spec.NextProcessAt = nil
+			updatingList[i].Status.State = s2hv1beta1.Waiting
+			updatingList[i].Spec.Components.Sort()
+			if err := c.client.Update(ctx, &updatingList[i]); err != nil {
+				return err
+			}
+			queueList.Items[i] = updatingList[i]
 		}
-		queueList.Items[i] = updatingList[i]
 	}
 
 	queueList.Sort()
@@ -187,21 +192,28 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 		if err = c.client.Update(ctx, pQueue); err != nil {
 			return err
 		}
-	} else if !isAlreadyInBundle {
-		// queue not exist
-		if atTop {
-			queue.Spec.NoOfOrder = queueList.TopQueueOrder()
-		} else {
-			queue.Spec.NoOfOrder = queueList.LastQueueOrder()
+	} else {
+		updatingList = c.setQueueOrderFollowingPriorityQueues(queue, queueList, priorityQueues)
+		for i := range updatingList {
+			if err := c.client.Update(ctx, &updatingList[i]); err != nil {
+				return err
+			}
 		}
 
-		queue.Status.State = s2hv1beta1.Waiting
-		queue.Status.CreatedAt = &now
-		queue.Status.UpdatedAt = &now
+		if !isAlreadyInBundle {
+			// queue not exist
+			if atTop {
+				queue.Spec.NoOfOrder = queueList.TopQueueOrder()
+			}
 
-		queue.Spec.Components.Sort()
-		if err = c.client.Create(ctx, queue); err != nil {
-			return err
+			queue.Status.State = s2hv1beta1.Waiting
+			queue.Status.CreatedAt = &now
+			queue.Status.UpdatedAt = &now
+
+			queue.Spec.Components.Sort()
+			if err = c.client.Create(ctx, queue); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -230,26 +242,105 @@ func (c *controller) isMatchWithStableComponent(ctx context.Context, q *s2hv1bet
 	return
 }
 
+// expect sorted queue list
+func (c *controller) setQueueOrderFollowingPriorityQueues(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList, priorityQueues []string) []s2hv1beta1.Queue {
+	targetNo := c.getPriorityNo(queue, priorityQueues)
+	if targetNo == -1 || len(list.Items) == 0 {
+		queue.Spec.NoOfOrder = list.LastQueueOrder()
+		return []s2hv1beta1.Queue{}
+	}
+
+	existingQueueNo := c.getExistingQueueNumberInList(queue, list)
+
+	var items []s2hv1beta1.Queue
+	var updating []s2hv1beta1.Queue
+	var found, foundTop bool
+	expectedNo := list.LastQueueOrder()
+	for i, q := range list.Items {
+		priorityNo := c.getPriorityNo(&q, priorityQueues)
+		isLowerPriority := priorityNo == -1 || priorityNo > targetNo
+		if !found && isLowerPriority {
+			if i-1 < 0 {
+				expectedNo = list.TopQueueOrder()
+				foundTop = true
+			} else {
+				expectedNo = list.Items[i-1].Spec.NoOfOrder + 1
+			}
+
+			found = true
+
+		}
+
+		if found && existingQueueNo != i {
+			if !foundTop {
+				q.Spec.NoOfOrder = q.Spec.NoOfOrder + 1
+			}
+			updating = append(updating, q)
+		}
+
+		items = append(items, q)
+	}
+
+	if existingQueueNo != -1 && items != nil {
+		items[existingQueueNo].Spec.NoOfOrder = expectedNo
+		updating = append(updating, items[existingQueueNo])
+	} else {
+		queue.Spec.NoOfOrder = expectedNo
+	}
+
+	list.Items = items
+	return updating
+}
+
+func (c *controller) getPriorityNo(queue *s2hv1beta1.Queue, priorityQueues []string) int {
+	for i, priorComp := range priorityQueues {
+		if queue.Spec.Name == priorComp {
+			return i
+		}
+
+		for _, comp := range queue.Spec.Components {
+			if comp.Name == priorComp {
+				return i
+			}
+		}
+	}
+
+	return -1
+}
+
+func (c *controller) getExistingQueueNumberInList(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) int {
+	for i, q := range list.Items {
+		for _, qComp := range q.Spec.Components {
+			// queue already existed
+			if qComp.Name == queue.Spec.Components[0].Name {
+				return i
+			}
+		}
+	}
+
+	return -1
+}
+
 // addExistingBundleQueue returns updated bundle queue list
 func (c *controller) addExistingBundleQueue(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) []s2hv1beta1.Queue {
 	if queue.Spec.Bundle == "" {
 		return []s2hv1beta1.Queue{}
 	}
 
+	updating := make([]s2hv1beta1.Queue, len(list.Items))
 	var items []s2hv1beta1.Queue
-	var updating []s2hv1beta1.Queue
 	var containComp = false
-	for _, q := range list.Items {
+	for i, q := range list.Items {
 		if !containComp && q.ContainSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
 			// only add one `queue` to items
 			containComp = true
 			// update component of bundle
 		} else if q.Spec.Bundle == queue.Spec.Bundle {
 			var found bool
-			for i, qComp := range q.Spec.Components {
+			for j, qComp := range q.Spec.Components {
 				if qComp.Name == queue.Spec.Components[0].Name {
-					q.Spec.Components[i].Repository = queue.Spec.Components[0].Repository
-					q.Spec.Components[i].Version = queue.Spec.Components[0].Version
+					q.Spec.Components[j].Repository = queue.Spec.Components[0].Repository
+					q.Spec.Components[j].Version = queue.Spec.Components[0].Version
 					found = true
 					break
 				}
@@ -260,7 +351,7 @@ func (c *controller) addExistingBundleQueue(queue *s2hv1beta1.Queue, list *s2hv1
 				q.Spec.Components = append(q.Spec.Components, queue.Spec.Components[0])
 			}
 
-			updating = append(updating, q)
+			updating[i] = q
 		}
 
 		items = append(items, q)
@@ -274,10 +365,11 @@ func (c *controller) addExistingBundleQueue(queue *s2hv1beta1.Queue, list *s2hv1
 func (c *controller) removeAndUpdateSimilarQueue(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) (
 	removing []s2hv1beta1.Queue, updating []s2hv1beta1.Queue) {
 
+	updating = make([]s2hv1beta1.Queue, len(list.Items))
 	var items []s2hv1beta1.Queue
 	var containComp = false
 
-	for _, q := range list.Items {
+	for i, q := range list.Items {
 		if !containComp && q.ContainSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
 			// only add one `queue` to items
 			containComp = true
@@ -297,7 +389,7 @@ func (c *controller) removeAndUpdateSimilarQueue(queue *s2hv1beta1.Queue, list *
 
 			if len(newComps) != len(q.Spec.Components) {
 				q.Spec.Components = newComps
-				updating = append(updating, q)
+				updating[i] = q
 			}
 		}
 

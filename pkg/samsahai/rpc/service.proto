@@ -8,6 +8,7 @@ service RPC {
     rpc GetMissingVersion (TeamWithCurrentComponent) returns (ImageList);
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
     rpc GetBundleName (TeamWithComponentName) returns (BundleName);
+    rpc GetPriorityQueues (TeamName) returns (PriorityQueues);
 }
 
 message Empty {
@@ -20,6 +21,14 @@ message TeamWithComponentName {
 
 message BundleName {
     string name = 1;
+}
+
+message TeamName {
+    string name = 1;
+}
+
+message PriorityQueues {
+    repeated string queues = 1;
 }
 
 message ComponentUpgrade {

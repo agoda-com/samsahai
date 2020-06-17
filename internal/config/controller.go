@@ -146,6 +146,17 @@ func (c *controller) GetBundles(configName string) (s2hv1beta1.ConfigBundles, er
 	return config.Spec.Bundles, nil
 }
 
+// GetPriorityQueues returns a list of priority queues which defined in Config
+func (c *controller) GetPriorityQueues(configName string) ([]string, error) {
+	config, err := c.Get(configName)
+	if err != nil {
+		logger.Error(err, "cannot get Config", "name", configName)
+		return []string{}, err
+	}
+
+	return config.Spec.PriorityQueues, nil
+}
+
 // Update updates Config CRD
 func (c *controller) Update(config *s2hv1beta1.Config) error {
 	if err := c.client.Update(context.TODO(), config); err != nil {
