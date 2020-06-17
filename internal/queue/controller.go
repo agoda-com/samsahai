@@ -257,7 +257,7 @@ func (c *controller) setQueueOrderFollowingPriorityQueues(queue *s2hv1beta1.Queu
 	var found, foundTop bool
 	expectedNo := list.LastQueueOrder()
 	for i, q := range list.Items {
-		priorityNo := c.getPriorityNo(&q, priorityQueues)
+		priorityNo := c.getPriorityNo(&list.Items[i], priorityQueues)
 		isLowerPriority := priorityNo == -1 || priorityNo > targetNo
 		if !found && isLowerPriority {
 			if i-1 < 0 {

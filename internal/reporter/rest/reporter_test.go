@@ -277,6 +277,10 @@ func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles
 	return s2hv1beta1.ConfigBundles{}, nil
 }
 
+func (c *mockConfigCtrl) GetPriorityQueues(configName string) ([]string, error) {
+	return nil, nil
+}
+
 func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
 	return nil
 }

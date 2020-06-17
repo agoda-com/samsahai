@@ -66,8 +66,10 @@ var _ = Describe("Queue Controller", func() {
 
 			g.Expect(len(queueList.Items)).To(Equal(2))
 			g.Expect(len(removing)).To(Equal(2))
-			g.Expect(len(updating)).To(Equal(1))
-			g.Expect(len(updating[0].Spec.Components)).To(Equal(1))
+
+			newUpdating := getNonEmptyQueue(updating)
+			g.Expect(len(newUpdating)).To(Equal(1))
+			g.Expect(len(newUpdating[0].Spec.Components)).To(Equal(1))
 		})
 
 		It("should skip same component version", func() {
@@ -98,7 +100,9 @@ var _ = Describe("Queue Controller", func() {
 
 			g.Expect(len(queueList.Items)).To(Equal(1))
 			g.Expect(len(removing)).To(Equal(0))
-			g.Expect(len(updating)).To(Equal(0))
+
+			newUpdating := getNonEmptyQueue(updating)
+			g.Expect(len(newUpdating)).To(Equal(0))
 		})
 	})
 
@@ -108,25 +112,26 @@ var _ = Describe("Queue Controller", func() {
 			g := NewWithT(GinkgoT())
 
 			c := controller{}
-			name := "alpine"
+			alpine := "alpine"
+			ubuntu := "ubuntu"
 
 			queue := &v1beta1.Queue{
 				Spec: v1beta1.QueueSpec{Name: "group", Bundle: "group",
-					Components: v1beta1.QueueComponents{{Name: "ubuntu", Repository: name, Version: "3.9.4"}},
+					Components: v1beta1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
 				},
 				Status: v1beta1.QueueStatus{},
 			}
 			queueList := &v1beta1.QueueList{
 				Items: []v1beta1.Queue{
 					{
-						Spec: v1beta1.QueueSpec{Name: name,
-							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.0"}},
+						Spec: v1beta1.QueueSpec{Name: alpine,
+							Components: v1beta1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
 						},
 						Status: v1beta1.QueueStatus{},
 					},
 					{
-						Spec: v1beta1.QueueSpec{Name: name, Bundle: "group",
-							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.1"}},
+						Spec: v1beta1.QueueSpec{Name: alpine, Bundle: "group",
+							Components: v1beta1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.1"}},
 						},
 						Status: v1beta1.QueueStatus{},
 					},
@@ -136,8 +141,10 @@ var _ = Describe("Queue Controller", func() {
 			updating := c.addExistingBundleQueue(queue, queueList)
 
 			g.Expect(len(queueList.Items)).To(Equal(2))
-			g.Expect(len(updating)).To(Equal(1))
-			g.Expect(len(updating[0].Spec.Components)).To(Equal(2))
+
+			newUpdating := getNonEmptyQueue(updating)
+			g.Expect(len(newUpdating)).To(Equal(1))
+			g.Expect(len(newUpdating[0].Spec.Components)).To(Equal(2))
 		})
 
 		It("should skip same component version", func() {
@@ -167,8 +174,148 @@ var _ = Describe("Queue Controller", func() {
 			updating := c.addExistingBundleQueue(queue, queueList)
 
 			g.Expect(len(queueList.Items)).To(Equal(1))
-			g.Expect(len(updating)).To(Equal(0))
+
+			newUpdating := getNonEmptyQueue(updating)
+			g.Expect(len(newUpdating)).To(Equal(0))
 		})
+	})
+
+	Describe("Set queue order following priority queues", func() {
+		It("should set order of the highest component queue following priority queues", func() {
+
+			g := NewWithT(GinkgoT())
+
+			c := controller{}
+			alpine := "alpine"
+			ubuntu := "ubuntu"
+
+			priorityQueues := []string{"ubuntu", "alpine"}
+
+			queue := &v1beta1.Queue{
+				Spec: v1beta1.QueueSpec{Name: ubuntu,
+					Components: v1beta1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
+				},
+				Status: v1beta1.QueueStatus{},
+			}
+			queueList := &v1beta1.QueueList{
+				Items: []v1beta1.Queue{
+					{
+						Spec: v1beta1.QueueSpec{
+							Name:       alpine,
+							NoOfOrder:  1,
+							Components: v1beta1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
+				},
+			}
+
+			updating := c.setQueueOrderFollowingPriorityQueues(queue, queueList, priorityQueues)
+
+			g.Expect(len(queueList.Items)).To(Equal(1))
+			g.Expect(queue.Spec.NoOfOrder).To(Equal(0))
+
+			newUpdating := getNonEmptyQueue(updating)
+			g.Expect(len(newUpdating)).To(Equal(1))
+			g.Expect(newUpdating[0].Spec.Name).To(Equal(alpine))
+			g.Expect(newUpdating[0].Spec.NoOfOrder).To(Equal(1))
+
+		})
+
+		It("should set order of lower component queue following priority queues", func() {
+
+			g := NewWithT(GinkgoT())
+
+			c := controller{}
+			alpine := "alpine"
+			ubuntu := "ubuntu"
+
+			priorityQueues := []string{"alpine", "ubuntu"}
+
+			queue := &v1beta1.Queue{
+				Spec: v1beta1.QueueSpec{Name: ubuntu,
+					Components: v1beta1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
+				},
+				Status: v1beta1.QueueStatus{},
+			}
+			queueList := &v1beta1.QueueList{
+				Items: []v1beta1.Queue{
+					{
+						Spec: v1beta1.QueueSpec{
+							Name:       alpine,
+							NoOfOrder:  1,
+							Components: v1beta1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
+				},
+			}
+
+			updating := c.setQueueOrderFollowingPriorityQueues(queue, queueList, priorityQueues)
+
+			g.Expect(len(queueList.Items)).To(Equal(1))
+			g.Expect(queue.Spec.NoOfOrder).To(Equal(2))
+
+			newUpdating := getNonEmptyQueue(updating)
+			g.Expect(len(newUpdating)).To(Equal(0))
+
+		})
+
+		It("should set order of the highest bundle queue following priority queues", func() {
+
+			g := NewWithT(GinkgoT())
+
+			c := controller{}
+			alpine := "alpine"
+			ubuntu := "ubuntu"
+			stretch := "stretch"
+
+			priorityQueues := []string{"group", "alpine"}
+
+			queue := &v1beta1.Queue{
+				Spec: v1beta1.QueueSpec{Name: "group", Bundle: "group",
+					Components: v1beta1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
+				},
+				Status: v1beta1.QueueStatus{},
+			}
+			queueList := &v1beta1.QueueList{
+				Items: []v1beta1.Queue{
+					{
+						Spec: v1beta1.QueueSpec{
+							Name:       alpine,
+							NoOfOrder:  1,
+							Components: v1beta1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
+					{
+						Spec: v1beta1.QueueSpec{
+							Name:      "group",
+							Bundle:    "group",
+							NoOfOrder: 2,
+							Components: v1beta1.QueueComponents{
+								{Name: stretch, Repository: stretch, Version: "3.9.1"},
+								{Name: ubuntu, Repository: ubuntu, Version: "3.9.2"},
+							},
+						},
+						Status: v1beta1.QueueStatus{},
+					},
+				},
+			}
+
+			updating := c.setQueueOrderFollowingPriorityQueues(queue, queueList, priorityQueues)
+
+			g.Expect(len(queueList.Items)).To(Equal(2))
+
+			newUpdating := getNonEmptyQueue(updating)
+			g.Expect(len(newUpdating)).To(Equal(2))
+			g.Expect(newUpdating[0].Spec.Name).To(Equal(alpine))
+			g.Expect(newUpdating[0].Spec.NoOfOrder).To(Equal(1))
+			g.Expect(newUpdating[1].Spec.Name).To(Equal("group"))
+			g.Expect(newUpdating[1].Spec.NoOfOrder).To(Equal(0))
+
+		})
+
 	})
 
 	Describe("Reset Queue order", func() {
@@ -222,3 +369,14 @@ var _ = Describe("Queue Controller", func() {
 		})
 	})
 })
+
+func getNonEmptyQueue(queues []v1beta1.Queue) []v1beta1.Queue {
+	out := make([]v1beta1.Queue, 0)
+	for _, q := range queues {
+		if q.Spec.Name != "" {
+			out = append(out, q)
+		}
+	}
+
+	return out
+}
