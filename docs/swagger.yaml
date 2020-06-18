@@ -50,6 +50,11 @@ definitions:
     type: object
   v1beta1.ActivePromotionSpec:
     properties:
+      promotedBy:
+        description: |-
+          PromotedBy represents a person who promoted the ActivePromotion
+          +optional
+        type: string
       skipTestRunner:
         description: |-
           SkipTestRunner represents a flag for skipping running pre-active test

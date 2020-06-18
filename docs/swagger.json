@@ -701,6 +701,10 @@
         "v1beta1.ActivePromotionSpec": {
             "type": "object",
             "properties": {
+                "promotedBy": {
+                    "description": "PromotedBy represents a person who promoted the ActivePromotion\n+optional",
+                    "type": "string"
+                },
                 "skipTestRunner": {
                     "description": "SkipTestRunner represents a flag for skipping running pre-active test\n+optional",
                     "type": "boolean"
