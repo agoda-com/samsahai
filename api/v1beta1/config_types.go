@@ -289,7 +289,7 @@ type ConfigSpec struct {
 	Bundles ConfigBundles `json:"bundles,omitempty"`
 
 	// PriorityQueues represents a list of bundles/components' name which needs to be prioritized
-	// the first one is highest priority and the last one is lowest priority
+	// the first one has the highest priority and the last one has the lowest priority
 	// +optional
 	PriorityQueues []string `json:"priorityQueues,omitempty"`
 

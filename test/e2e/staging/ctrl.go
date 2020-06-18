@@ -257,7 +257,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 				bundleName: []string{redisCompName, mariaDBCompName},
 			},
 			PriorityQueues: []string{wordpressCompName, redisCompName},
-			Components: []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
+			Components:     []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
 		},
 	}
 
