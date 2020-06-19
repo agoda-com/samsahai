@@ -355,6 +355,14 @@ definitions:
           ordering by less priority to high priority
           +optional
         type: object
+      priorityQueues:
+        description: |-
+          PriorityQueues represents a list of bundles/components' name which needs to be prioritized
+          the first one has the highest priority and the last one has the lowest priority
+          +optional
+        items:
+          type: string
+        type: array
       report:
         $ref: '#/definitions/v1beta1.ConfigReporter'
         description: |-

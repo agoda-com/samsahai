@@ -51,7 +51,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.3"}},
 		)
 
-		var err = controller.Add(q)
+		var err = controller.Add(q, nil)
 		Expect(err).To(BeNil())
 
 		size := controller.Size()
@@ -89,15 +89,15 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		Expect(controller.Size()).To(Equal(0), "should start with empty queue")
 
-		By("Create 3 queue")
+		By("Create 3 queues")
 
-		err = controller.Add(alpine390)
+		err = controller.Add(alpine390, nil)
 		Expect(err).To(BeNil())
-		err = controller.Add(ubuntu)
+		err = controller.Add(ubuntu, nil)
 		Expect(err).To(BeNil())
 		err = controller.Add(queue.NewUpgradeQueue(teamName, namespace, "node", "",
 			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.0"}},
-		))
+		), nil)
 		Expect(err).To(BeNil())
 		size = controller.Size()
 		Expect(size).To(Equal(3))
@@ -108,7 +108,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		By("Adding alpine 3.9.1")
 
-		err = controller.Add(alpine391)
+		err = controller.Add(alpine391, nil)
 		Expect(err).To(BeNil())
 		first, err = controller.First()
 		Expect(err).To(BeNil())
@@ -147,29 +147,29 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		var err error
 		var first *s2hv1beta1.Queue
-		var alpine = queue.NewUpgradeQueue(teamName, namespace, "application", "application",
+		var alpine = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.0"}},
 		)
 		var ubuntu = queue.NewUpgradeQueue(teamName, namespace, "ubuntu", "",
 			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "18.04"}},
 		)
-		var node = queue.NewUpgradeQueue(teamName, namespace, "application", "application",
+		var node = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.0"}},
 		)
 		var size int
 
 		Expect(controller.Size()).To(Equal(0), "should start with empty queue")
 
-		By("Create 2 queue")
+		By("Create 2 queues")
 
-		err = controller.Add(alpine)
+		err = controller.Add(alpine, nil)
 		Expect(err).To(BeNil())
-		err = controller.Add(ubuntu)
+		err = controller.Add(ubuntu, nil)
 		Expect(err).To(BeNil())
 
 		By("Add node application")
 
-		err = controller.Add(node)
+		err = controller.Add(node, nil)
 		Expect(err).To(BeNil())
 		size = controller.Size()
 		Expect(size).To(Equal(2))
@@ -177,8 +177,8 @@ var _ = Describe("[e2e] Queue controller", func() {
 		first, err = controller.First()
 		Expect(err).To(BeNil())
 		Expect(len(first.Spec.Components)).To(Equal(2))
-		Expect(first.ContainSameComponent("application", alpine.Spec.Components[0])).To(BeTrue())
-		Expect(first.ContainSameComponent("application", node.Spec.Components[0])).To(BeTrue())
+		Expect(first.ContainSameComponent("group", alpine.Spec.Components[0])).To(BeTrue())
+		Expect(first.ContainSameComponent("group", node.Spec.Components[0])).To(BeTrue())
 
 		By("Removing all queues")
 
@@ -193,7 +193,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		var err error
 		var first *s2hv1beta1.Queue
-		var application = queue.NewUpgradeQueue(teamName, namespace, "application", "application",
+		var application = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{
 				{Name: "alpine", Version: "3.9.0"},
 				{Name: "node", Version: "11.0.0"},
@@ -202,23 +202,23 @@ var _ = Describe("[e2e] Queue controller", func() {
 		var ubuntu = queue.NewUpgradeQueue(teamName, namespace, "ubuntu", "",
 			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "18.04"}},
 		)
-		var node = queue.NewUpgradeQueue(teamName, namespace, "application", "application",
+		var node = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.2"}},
 		)
 		var size int
 
 		Expect(controller.Size()).To(Equal(0), "should start with empty queue")
 
-		By("Create 2 queue")
+		By("Create 2 queues")
 
-		err = controller.Add(application)
+		err = controller.Add(application, nil)
 		Expect(err).To(BeNil())
-		err = controller.Add(ubuntu)
+		err = controller.Add(ubuntu, nil)
 		Expect(err).To(BeNil())
 
 		By("Update node application")
 
-		err = controller.Add(node)
+		err = controller.Add(node, nil)
 		Expect(err).To(BeNil())
 		size = controller.Size()
 		Expect(size).To(Equal(2))
@@ -226,8 +226,8 @@ var _ = Describe("[e2e] Queue controller", func() {
 		first, err = controller.First()
 		Expect(err).To(BeNil())
 		Expect(len(first.Spec.Components)).To(Equal(2))
-		Expect(first.ContainSameComponent("application", application.Spec.Components[0])).To(BeTrue())
-		Expect(first.ContainSameComponent("application", node.Spec.Components[0])).To(BeTrue())
+		Expect(first.ContainSameComponent("group", application.Spec.Components[0])).To(BeTrue())
+		Expect(first.ContainSameComponent("group", node.Spec.Components[0])).To(BeTrue())
 
 		By("Removing all queues")
 
@@ -242,7 +242,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		var err error
 		var first *s2hv1beta1.Queue
-		var application = queue.NewUpgradeQueue(teamName, namespace, "application", "application",
+		var application = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{
 				{Name: "alpine", Version: "3.9.0"},
 				{Name: "node", Version: "11.0.0"},
@@ -258,16 +258,16 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		Expect(controller.Size()).To(Equal(0), "should start with empty queue")
 
-		By("Create 2 queue")
+		By("Create 2 queues")
 
-		err = controller.Add(application)
+		err = controller.Add(application, nil)
 		Expect(err).To(BeNil())
-		err = controller.Add(duplicatedNode)
+		err = controller.Add(duplicatedNode, nil)
 		Expect(err).To(BeNil())
 
 		By("Update node application to not in bundle")
 
-		err = controller.Add(node)
+		err = controller.Add(node, nil)
 		Expect(err).To(BeNil())
 		size = controller.Size()
 		Expect(size).To(Equal(2))
@@ -275,7 +275,80 @@ var _ = Describe("[e2e] Queue controller", func() {
 		first, err = controller.First()
 		Expect(err).To(BeNil())
 		Expect(len(first.Spec.Components)).To(Equal(1))
-		Expect(first.ContainSameComponent("application", application.Spec.Components[0])).To(BeTrue())
+		Expect(first.ContainSameComponent("group", application.Spec.Components[0])).To(BeTrue())
+
+		By("Removing all queues")
+
+		err = controller.RemoveAllQueues()
+		Expect(err).To(BeNil())
+		size = controller.Size()
+		Expect(size).To(Equal(0))
+	}, 3)
+
+	It("should successfully create queue following priority queues", func(done Done) {
+		defer close(done)
+
+		priorityQueues := []string{"alpine", "ubuntu"}
+
+		var err error
+		var size int
+		var alpine = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
+			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.1"}},
+		)
+		var ubuntu16 = queue.NewUpgradeQueue(teamName, namespace, "ubuntu", "",
+			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "16.04"}},
+		)
+		var ubuntu18 = queue.NewUpgradeQueue(teamName, namespace, "ubuntu", "",
+			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "18.04"}},
+		)
+		var node = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
+			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.0"}},
+		)
+
+		Expect(controller.Size()).To(Equal(0), "should start with empty queue")
+
+		By("Create 1 bundle queue")
+
+		err = controller.Add(node, priorityQueues)
+		Expect(err).To(BeNil())
+
+		By("Create 1 queue with higher priority")
+
+		err = controller.Add(ubuntu16, priorityQueues)
+		Expect(err).To(BeNil())
+
+		size = controller.Size()
+		Expect(size).To(Equal(2))
+
+		first, err := controller.First()
+		Expect(err).To(BeNil())
+		Expect(first.ContainSameComponent(ubuntu16.Name, ubuntu16.Spec.Components[0])).To(BeTrue())
+
+		By("Create 1 bundle queue with the highest priority")
+
+		err = controller.Add(alpine, priorityQueues)
+		Expect(err).To(BeNil())
+
+		size = controller.Size()
+		Expect(size).To(Equal(2))
+
+		first, err = controller.First()
+		Expect(err).To(BeNil())
+		Expect(first.ContainSameComponent(alpine.Name, alpine.Spec.Components[0])).To(BeTrue())
+		Expect(first.ContainSameComponent(node.Name, node.Spec.Components[0])).To(BeTrue())
+
+		By("Create 1 queue with lower priority")
+
+		err = controller.Add(ubuntu18, priorityQueues)
+		Expect(err).To(BeNil())
+
+		size = controller.Size()
+		Expect(size).To(Equal(2))
+
+		first, err = controller.First()
+		Expect(err).To(BeNil())
+		Expect(first.ContainSameComponent(alpine.Name, alpine.Spec.Components[0])).To(BeTrue())
+		Expect(first.ContainSameComponent(node.Name, node.Spec.Components[0])).To(BeTrue())
 
 		By("Removing all queues")
 

@@ -256,7 +256,8 @@ var _ = Describe("[e2e] Staging controller", func() {
 			Bundles: s2hv1beta1.ConfigBundles{
 				bundleName: []string{redisCompName, mariaDBCompName},
 			},
-			Components: []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
+			PriorityQueues: []string{wordpressCompName, redisCompName},
+			Components:     []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
 		},
 	}
 
@@ -413,8 +414,8 @@ var _ = Describe("[e2e] Staging controller", func() {
 		mariaDBQueue := queue.NewUpgradeQueue(teamName, namespace, bundleName, bundleName,
 			s2hv1beta1.QueueComponents{{Name: mariaDBCompName, Repository: "bitnami/mariadb", Version: "10.3.18-debian-9-r32"}},
 		)
-		Expect(queueCtrl.Add(redisQueue)).To(BeNil())
-		Expect(queueCtrl.Add(mariaDBQueue)).To(BeNil())
+		Expect(queueCtrl.Add(redisQueue, nil)).To(BeNil())
+		Expect(queueCtrl.Add(mariaDBQueue, nil)).To(BeNil())
 
 		By("Deploying")
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {

@@ -127,6 +127,11 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		logger.Error(err, "cannot get bundle name", "team", c.teamName, "component", comp.Spec.Name)
 	}
 
+	priorityQueues, err := c.s2hClient.GetPriorityQueues(ctx, &samsahairpc.TeamName{Name: c.teamName})
+	if err != nil {
+		logger.Error(err, "cannot get priority queues", "team", c.teamName)
+	}
+
 	comps := []*s2hv1beta1.QueueComponent{
 		{
 			Name:       comp.Spec.Name,
@@ -135,7 +140,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		},
 	}
 	q := queue.NewUpgradeQueue(c.teamName, req.Namespace, comp.Spec.Name, bundle.Name, comps)
-	err = c.queueCtrl.Add(q)
+	err = c.queueCtrl.Add(q, priorityQueues.GetQueues())
 	if err != nil {
 		return reconcile.Result{}, err
 	}

@@ -254,3 +254,13 @@ func (c *controller) getBundleName(compName, teamName string) string {
 
 	return ""
 }
+
+func (c *controller) GetPriorityQueues(ctx context.Context, teamName *rpc.TeamName) (*rpc.PriorityQueues, error) {
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	queues, _ := c.GetConfigController().GetPriorityQueues(teamName.Name)
+
+	return &rpc.PriorityQueues{Queues: queues}, nil
+}
