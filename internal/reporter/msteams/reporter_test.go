@@ -562,6 +562,10 @@ func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
 	return nil
 }
 
+func (c *mockConfigCtrl) GetPriorityQueues(configName string) ([]string, error) {
+	return nil, nil
+}
+
 func (c *mockConfigCtrl) Delete(configName string) error {
 	return nil
 }

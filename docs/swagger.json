@@ -1016,6 +1016,13 @@
                     "description": "Envs represents urls of values file per environments\nordering by less priority to high priority\n+optional",
                     "type": "object"
                 },
+                "priorityQueues": {
+                    "description": "PriorityQueues represents a list of bundles/components' name which needs to be prioritized\nthe first one has the highest priority and the last one has the lowest priority\n+optional",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "report": {
                     "description": "Reporter represents configuration about reporter\n+optional",
                     "type": "object",

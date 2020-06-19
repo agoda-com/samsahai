@@ -8,8 +8,8 @@ import (
 
 // QueueController manages updating component queue through CRD
 type QueueController interface {
-	// Add adds Queue
-	Add(q *v1beta1.Queue) error
+	// Add adds Queue with priority list
+	Add(q *v1beta1.Queue, priorityQueues []string) error
 
 	// AddTop adds Queue to the top
 	AddTop(q *v1beta1.Queue) error
