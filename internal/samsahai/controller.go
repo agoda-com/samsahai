@@ -57,7 +57,8 @@ const (
 	CtrlName          = "samsahai-ctrl"
 	teamFinalizerName = "team.finalizers.samsahai.io"
 
-	DefaultPluginsDir = "plugins"
+	DefaultPluginsDir  = "plugins"
+	PromotedBySamsahai = "samsahai"
 
 	// MaxConcurrentProcess represents no. of concurrent process in internal process
 	MaxConcurrentProcess = 1
@@ -968,6 +969,9 @@ func (c *controller) createActivePromotion(teamName string) error {
 	atp := &s2hv1beta1.ActivePromotion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: teamName,
+		},
+		Spec: s2hv1beta1.ActivePromotionSpec{
+			PromotedBy: PromotedBySamsahai,
 		},
 	}
 
