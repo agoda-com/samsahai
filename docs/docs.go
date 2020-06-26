@@ -723,7 +723,7 @@ var doc = `{
             "type": "object",
             "properties": {
                 "promotedBy": {
-                    "description": "PromotedBy represents a person who promoted the ActivePromotion\n+optional",
+                    "description": "ActivePromotedBy represents a person who promoted the ActivePromotion\n+optional",
                     "type": "string"
                 },
                 "skipTestRunner": {

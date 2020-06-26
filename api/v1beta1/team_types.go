@@ -106,6 +106,10 @@ type TeamStatus struct {
 	// map[componentName][repository:tag] = image and createdTime
 	// +optional
 	DesiredComponentImageCreatedTime map[string]map[string]DesiredImageTime `json:"desiredComponentImageCreatedTime,omitempty"`
+
+	// ActivePromotedBy represents a person who promoted the ActivePromotion
+	// +optional
+	ActivePromotedBy string `json:"activePromotedBy,omitempty"`
 }
 
 func (ts *TeamStatus) GetStableComponent(stableCompName string) StableComponent {
