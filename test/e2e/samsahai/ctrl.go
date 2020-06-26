@@ -428,11 +428,12 @@ var _ = Describe("[e2e] Main controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
 
-		By("Checking active namespace and previous namespace has been reset")
+		By("Checking active, previous namespace and active promoted by has been reset")
 		teamComp = s2hv1beta1.Team{}
 		err = client.Get(ctx, types.NamespacedName{Name: atp.Name}, &teamComp)
 		Expect(err).To(BeNil())
 		Expect(teamComp.Status.Namespace.Active).To(Equal(preActiveNs))
+		Expect(teamComp.Status.ActivePromotedBy).To(Equal(activePromotion.Spec.PromotedBy))
 
 		err = client.Get(ctx, types.NamespacedName{Name: atvNamespace}, &atvNs)
 		Expect(errors.IsNotFound(err)).To(BeTrue())
@@ -1783,6 +1784,9 @@ var (
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
 			Labels: testLabels,
+		},
+		Spec: s2hv1beta1.ActivePromotionSpec{
+			PromotedBy: "user",
 		},
 	}
 

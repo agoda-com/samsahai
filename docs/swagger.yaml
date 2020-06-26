@@ -52,7 +52,7 @@ definitions:
     properties:
       promotedBy:
         description: |-
-          PromotedBy represents a person who promoted the ActivePromotion
+          ActivePromotedBy represents a person who promoted the ActivePromotion
           +optional
         type: string
       skipTestRunner:
@@ -825,6 +825,11 @@ definitions:
           ActiveComponents represents a list of stable components in active namespace
           +optional
         type: object
+      activePromotedBy:
+        description: |-
+          ActivePromotedBy represents a person who promoted the ActivePromotion
+          +optional
+        type: string
       conditions:
         description: |-
           Conditions contains observations of the resource's state e.g.,

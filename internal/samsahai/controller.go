@@ -316,11 +316,15 @@ func withTeamPreviousActiveNamespaceStatus(namespace string, isDelete ...bool) T
 	}
 }
 
-func withTeamActiveNamespaceStatus(namespace string, isDelete ...bool) TeamNamespaceStatusOption {
+func withTeamActiveNamespaceStatus(namespace, promotedBy string, isDelete ...bool) TeamNamespaceStatusOption {
 	return func(teamComp *s2hv1beta1.Team) (string, s2hv1beta1.TeamConditionType) {
 		teamComp.Status.Namespace.Active = namespace
+		if promotedBy != "" {
+			teamComp.Status.ActivePromotedBy = promotedBy
+		}
 		if len(isDelete) > 0 && isDelete[0] {
 			teamComp.Status.Namespace.Active = ""
+			teamComp.Status.ActivePromotedBy = ""
 		}
 
 		return namespace, s2hv1beta1.TeamNamespaceActiveCreated
@@ -338,6 +342,7 @@ func (c *controller) CreatePreActiveEnvironment(teamName, namespace string) erro
 func (c *controller) PromoteActiveEnvironment(
 	teamComp *s2hv1beta1.Team,
 	namespace string,
+	promotedBy string,
 	comps map[string]s2hv1beta1.StableComponent,
 ) error {
 	preActiveNamespace := teamComp.Status.Namespace.PreActive
@@ -349,7 +354,7 @@ func (c *controller) PromoteActiveEnvironment(
 		}
 
 		teamNsOpts := []TeamNamespaceStatusOption{
-			withTeamActiveNamespaceStatus(preActiveNamespace),
+			withTeamActiveNamespaceStatus(preActiveNamespace, promotedBy),
 			withTeamPreviousActiveNamespaceStatus(activeNamespace),
 			withTeamPreActiveNamespaceStatus(""),
 		}
@@ -613,14 +618,14 @@ func getAllTeamNamespaces(teamComp *s2hv1beta1.Team, isDelete bool) []TeamNamesp
 
 	activeNs := teamComp.Status.Namespace.Active
 	if !strings.EqualFold("", activeNs) {
-		teamNsOpts = append(teamNsOpts, withTeamActiveNamespaceStatus(activeNs, isDelete))
+		teamNsOpts = append(teamNsOpts, withTeamActiveNamespaceStatus(activeNs, "", isDelete))
 	}
 
 	return teamNsOpts
 }
 
 func (c *controller) DestroyActiveEnvironment(teamName, namespace string) error {
-	return c.destroyNamespace(teamName, withTeamActiveNamespaceStatus(namespace, true))
+	return c.destroyNamespace(teamName, withTeamActiveNamespaceStatus(namespace, "", true))
 }
 
 func (c *controller) DestroyPreActiveEnvironment(teamName, namespace string) error {
@@ -755,7 +760,7 @@ func (c *controller) SetActiveNamespace(teamComp *s2hv1beta1.Team, namespace str
 		cond,
 		msg)
 
-	return c.updateTeamNamespacesStatus(teamComp, withTeamActiveNamespaceStatus(namespace))
+	return c.updateTeamNamespacesStatus(teamComp, withTeamActiveNamespaceStatus(namespace, ""))
 }
 
 func (c *controller) updateTeamNamespacesStatus(teamComp *s2hv1beta1.Team, teamNsOpts ...TeamNamespaceStatusOption) error {

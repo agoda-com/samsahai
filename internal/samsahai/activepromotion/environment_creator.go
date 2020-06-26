@@ -59,7 +59,7 @@ func (c *controller) ensureActiveEnvironmentPromoted(ctx context.Context, atpCom
 		return err
 	}
 
-	err = c.s2hCtrl.PromoteActiveEnvironment(teamComp, targetNs, atpComp.Status.ActiveComponents)
+	err = c.s2hCtrl.PromoteActiveEnvironment(teamComp, targetNs, atpComp.Spec.PromotedBy, atpComp.Status.ActiveComponents)
 	if err != nil && k8serrors.IsAlreadyExists(err) {
 		return err
 	}

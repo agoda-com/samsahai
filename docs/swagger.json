@@ -702,7 +702,7 @@
             "type": "object",
             "properties": {
                 "promotedBy": {
-                    "description": "PromotedBy represents a person who promoted the ActivePromotion\n+optional",
+                    "description": "ActivePromotedBy represents a person who promoted the ActivePromotion\n+optional",
                     "type": "string"
                 },
                 "skipTestRunner": {
@@ -1624,6 +1624,10 @@
                 "activeComponents": {
                     "description": "ActiveComponents represents a list of stable components in active namespace\n+optional",
                     "type": "object"
+                },
+                "activePromotedBy": {
+                    "description": "ActivePromotedBy represents a person who promoted the ActivePromotion\n+optional",
+                    "type": "string"
                 },
                 "conditions": {
                     "description": "Conditions contains observations of the resource's state e.g.,\nTeam namespace is created, destroyed\n+optional\n+patchMergeKey=type\n+patchStrategy=merge",
