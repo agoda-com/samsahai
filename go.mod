@@ -41,11 +41,11 @@ require (
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 	helm.sh/helm/v3 v3.0.2
 	k8s.io/api v0.17.0
-	k8s.io/apiextensions-apiserver v0.17.0 // indirect
 	k8s.io/apimachinery v0.17.0
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/utils v0.0.0-20200108110541-e2fb8e668047 // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
+	sigs.k8s.io/controller-tools v0.3.0 // indirect
 )
 
 replace (
