@@ -238,11 +238,15 @@ type TeamCondition struct {
 type TeamConditionType string
 
 const (
-	TeamNamespaceStagingCreated        TeamConditionType = "TeamNamespaceStagingCreated"
-	TeamNamespacePreActiveCreated      TeamConditionType = "TeamNamespacePreActiveCreated"
-	TeamNamespacePreviousActiveCreated TeamConditionType = "TeamNamespacePreviousActiveCreated"
-	TeamNamespaceActiveCreated         TeamConditionType = "TeamNamespaceActiveCreated"
-	TeamConfigExisted                  TeamConditionType = "TeamConfigExist"
+	TeamNamespaceStagingCreated           TeamConditionType = "TeamNamespaceStagingCreated"
+	TeamNamespacePreActiveCreated         TeamConditionType = "TeamNamespacePreActiveCreated"
+	TeamNamespacePreviousActiveCreated    TeamConditionType = "TeamNamespacePreviousActiveCreated"
+	TeamNamespaceActiveCreated            TeamConditionType = "TeamNamespaceActiveCreated"
+	TeamConfigExisted                     TeamConditionType = "TeamConfigExist"
+	TeamPostStagingNamespaceCreationRun   TeamConditionType = "TeamPostStagingNamespaceCreationRun"
+	TeamPostPreActiveNamespaceCreationRun TeamConditionType = "TeamPostPreActiveNamespaceCreationRun"
+	TeamFirstNotifyComponentChanged       TeamConditionType = "TeamFirstNotifyComponentChanged"
+	TeamFirstActivePromotionRun           TeamConditionType = "TeamFirstActivePromotionRun"
 )
 
 func (ts *TeamStatus) IsConditionTrue(cond TeamConditionType) bool {
