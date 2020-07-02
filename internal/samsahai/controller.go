@@ -447,10 +447,27 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 				if err := controllerutil.SetControllerReference(teamComp, &namespaceObj, c.scheme); err != nil {
 					return err
 				}
+
+				teamComp.Status.SetCondition(
+					s2hv1beta1.TeamFirstNotifyComponentChanged,
+					corev1.ConditionFalse,
+					"namespace has been being created")
+
+				if c.configs.ActivePromotion.PromoteOnTeamCreation {
+					teamComp.Status.SetCondition(
+						s2hv1beta1.TeamFirstActivePromotionRun,
+						corev1.ConditionFalse,
+						"namespace has been being created")
+				}
 			}
 
 			if err := c.client.Create(ctx, &namespaceObj); err != nil && !k8serrors.IsAlreadyExists(err) {
 				return err
+			}
+
+			if c.configs.PostNamespaceCreation != nil {
+				setPostNamespaceCreationCondition(teamComp, nsConditionType, corev1.ConditionFalse,
+					"namespace has been being created")
 			}
 
 			return errors.ErrTeamNamespaceStillCreating
@@ -469,23 +486,43 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 
 	if !teamComp.Status.IsConditionTrue(nsConditionType) {
 		if c.configs.PostNamespaceCreation != nil {
-			logger.Debug("start executing command after creating namespace",
-				"team", teamComp.Name, "namespace", namespace)
-			if err := c.runPostNamespaceCreation(namespace, teamComp); err != nil {
-				logger.Error(err, "cannot execute command after creating namespace",
-					"namespace", namespace)
+			postStagingNsNotRun := nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated &&
+				!teamComp.Status.IsConditionTrue(s2hv1beta1.TeamPostStagingNamespaceCreationRun)
+			postPreActiveNsNotRun := nsConditionType == s2hv1beta1.TeamNamespacePreActiveCreated &&
+				!teamComp.Status.IsConditionTrue(s2hv1beta1.TeamPostPreActiveNamespaceCreationRun)
+
+			if postStagingNsNotRun || postPreActiveNsNotRun {
+				logger.Debug("start executing command after creating namespace",
+					"team", teamComp.Name, "namespace", namespace)
+				if err := c.runPostNamespaceCreation(namespace, teamComp); err != nil {
+					logger.Error(err, "cannot execute command after creating namespace",
+						"namespace", namespace)
+				}
+
+				setPostNamespaceCreationCondition(teamComp, nsConditionType, corev1.ConditionTrue,
+					"post namespace creation has been executed successfully")
 			}
+
 		}
 
 		if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
-			logger.Debug("start notifying component", "team", teamComp.Name, "namespace", namespace)
-			if err := c.notifyComponentChanged(teamComp.Name); err != nil {
-				logger.Error(err, "cannot notify component changed while creating staging namespace",
-					"team", teamComp.Name, "namespace", namespace)
-				return errors.ErrTeamNamespaceComponentNotified
+			if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstNotifyComponentChanged) {
+				logger.Debug("start notifying component", "team", teamComp.Name, "namespace", namespace)
+				if err := c.notifyComponentChanged(teamComp.Name); err != nil {
+					logger.Error(err, "cannot notify component changed while creating staging namespace",
+						"team", teamComp.Name, "namespace", namespace)
+					return errors.ErrTeamNamespaceComponentNotified
+				}
+
+				teamComp.Status.SetCondition(
+					s2hv1beta1.TeamFirstNotifyComponentChanged,
+					corev1.ConditionTrue,
+					fmt.Sprintf("notified component changed successfully"))
 			}
 
-			if c.configs.ActivePromotion.PromoteOnTeamCreation {
+			if c.configs.ActivePromotion.PromoteOnTeamCreation &&
+				!teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstActivePromotionRun) {
+
 				logger.Debug("start creating active promotion",
 					"team", teamComp.Name, "namespace", namespace)
 				if err := c.createActivePromotion(teamComp.Name); err != nil {
@@ -493,6 +530,11 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 						"namespace", namespace)
 					return errors.ErrTeamNamespacePromotionCreated
 				}
+
+				teamComp.Status.SetCondition(
+					s2hv1beta1.TeamFirstActivePromotionRun,
+					corev1.ConditionTrue,
+					fmt.Sprintf("triggered active promotion successfully"))
 			}
 		}
 	}
@@ -571,6 +613,23 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 	}
 
 	return nil
+}
+
+func setPostNamespaceCreationCondition(teamComp *s2hv1beta1.Team, nsConditionType s2hv1beta1.TeamConditionType,
+	cond corev1.ConditionStatus, message string) {
+
+	switch nsConditionType {
+	case s2hv1beta1.TeamNamespaceStagingCreated:
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamPostStagingNamespaceCreationRun,
+			cond,
+			message)
+	case s2hv1beta1.TeamNamespacePreActiveCreated:
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamPostPreActiveNamespaceCreationRun,
+			cond,
+			message)
+	}
 }
 
 func deployStagingCtrl(c client.Client, obj runtime.Object) error {

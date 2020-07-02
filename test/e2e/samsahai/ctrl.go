@@ -1672,6 +1672,70 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Current active components should not be set")
 		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
 	}, 60)
+
+	It("should successfully notify component changed and promote active after creating team", func(done Done) {
+		defer close(done)
+		setupSamsahai(false)
+		ctx := context.TODO()
+
+		By("Creating Config")
+		config := mockConfigOnlyRedis
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(client.Create(ctx, &team)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1beta1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
+
+		teamComp := s2hv1beta1.Team{}
+		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
+
+		By("Waiting TeamFirstNotifyComponentChanged and TeamFirstActivePromotionRun conditions have been set")
+		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
+			teamComp := s2hv1beta1.Team{}
+			if err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
+				return false, nil
+			}
+
+			var foundNotifying, foundPromotion bool
+			for i, c := range teamComp.Status.Conditions {
+				if c.Type == s2hv1beta1.TeamFirstNotifyComponentChanged {
+					if teamComp.Status.Conditions[i].Status == corev1.ConditionTrue {
+						foundNotifying = true
+					}
+				}
+
+				if c.Type == s2hv1beta1.TeamFirstActivePromotionRun {
+					if teamComp.Status.Conditions[i].Status == corev1.ConditionTrue {
+						foundPromotion = true
+					}
+				}
+			}
+
+			if foundNotifying && foundPromotion {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Notify component changed and promote the first active error")
+	}, 20)
 })
 
 var (
