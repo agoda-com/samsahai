@@ -159,10 +159,11 @@ var _ = Describe("Updating Cronjob Controller", func() {
 									Containers: []corev1.Container{
 										{
 											Name:  "kubectl",
-											Image: "reg-hk.agodadev.io/aiab/utils:1.0.1",
+											Image: "quay.io/samsahai/curl:latest",
 											Args:  []string{"/bin/sh", "-c", "set -eux\n\ncurl -X POST -k\nhttps://1234/webhook/component\n-d {\"component\":\"redis\",\"team\":\"teamTest\",\"repository\":\"bitnami/redis\"}"},
 										},
 									},
+									RestartPolicy: "OnFailure",
 								},
 							},
 						},
@@ -195,7 +196,7 @@ var _ = Describe("Updating Cronjob Controller", func() {
 									Containers: []corev1.Container{
 										{
 											Name:  "kubectl",
-											Image: "reg-hk.agodadev.io/aiab/utils:1.0.1",
+											Image: "quay.io/samsahai/curl:latest",
 											Args: []string{
 												"/bin/sh",
 												"-c",
@@ -231,7 +232,7 @@ var _ = Describe("Updating Cronjob Controller", func() {
 									Containers: []corev1.Container{
 										{
 											Name:  "kubectl",
-											Image: "reg-hk.agodadev.io/aiab/utils:1.0.1",
+											Image: "quay.io/samsahai/curl:latest",
 											Args: []string{
 												"/bin/sh",
 												"-c",
@@ -262,50 +263,10 @@ var _ = Describe("Updating Cronjob Controller", func() {
 		g := NewWithT(GinkgoT())
 
 		redisConfigComp.Scheduler = []string{"0 7 * * *", "0 7 * * *"}
-		//expectedCronjob := []batchv1beta1.CronJob{
-		//	{
-		//		ObjectMeta: metav1.ObjectMeta{
-		//			Name:      redisConfigComp.Name + "-checker-0",
-		//			Namespace: namespaceTest,
-		//			Labels: map[string]string{
-		//				"app.kubernetes.io/managed-by": "samsahai",
-		//				"samsahai.io/teamname":         teamTest,
-		//				"component":                    redisConfigComp.Name,
-		//			},
-		//		},
-		//		Spec: batchv1beta1.CronJobSpec{
-		//			Schedule: "0 7 * * *",
-		//			JobTemplate: batchv1beta1.JobTemplateSpec{
-		//				Spec: batchv1.JobSpec{
-		//					Template: corev1.PodTemplateSpec{
-		//						Spec: corev1.PodSpec{
-		//							Containers: []corev1.Container{
-		//								{
-		//									Name:  "kubectl",
-		//									Image: "reg-hk.agodadev.io/aiab/utils:1.0.1",
-		//									Args: []string{
-		//										"/bin/sh",
-		//										"-c",
-		//										"set -eux\n\n" +
-		//											"curl -X POST -k \n" +
-		//											" https://1234/webhook/component \n" +
-		//											"-d {\"component\":\"redis\",\"team\":\"teamTest\",\"repository\":\"bitnami/redis\"}"},
-		//								},
-		//							},
-		//							RestartPolicy: "OnFailure",
-		//						},
-		//					},
-		//				},
-		//			},
-		//		},
-		//	},
-		//}
 
 		c := controller{}
 		_, deletingResult := c.CheckCronjobChange(namespaceTest, teamTest, &redisConfigComp, mockCronjob)
 
-		//g.Expect(creatingResult).To(HaveLen(len(expectedCronjob)))
-		//g.Expect(creatingResult).To(ConsistOf(expectedCronjob))
 		g.Expect(deletingResult).To(HaveLen(len(mockCronjob.Items)))
 		g.Expect(deletingResult).To(ConsistOf(mockCronjob.Items))
 
@@ -315,45 +276,6 @@ var _ = Describe("Updating Cronjob Controller", func() {
 		g := NewWithT(GinkgoT())
 
 		redisConfigComp.Scheduler = []string{}
-		//expectedCronjob := []batchv1beta1.CronJob{
-		//	{
-		//		ObjectMeta: metav1.ObjectMeta{
-		//			Name:      redisConfigComp.Name + "-checker-0",
-		//			Namespace: namespaceTest,
-		//			Labels: map[string]string{
-		//				"app.kubernetes.io/managed-by": "samsahai",
-		//				"samsahai.io/teamname":         teamTest,
-		//				"component":                    redisConfigComp.Name,
-		//			},
-		//		},
-		//		Spec: batchv1beta1.CronJobSpec{
-		//			Schedule: "0 7 * * *",
-		//			JobTemplate: batchv1beta1.JobTemplateSpec{
-		//				Spec: batchv1.JobSpec{
-		//					Template: corev1.PodTemplateSpec{
-		//						Spec: corev1.PodSpec{
-		//							Containers: []corev1.Container{
-		//								{
-		//									Name:  "kubectl",
-		//									Image: "reg-hk.agodadev.io/aiab/utils:1.0.1",
-		//									Args: []string{
-		//										"/bin/sh",
-		//										"-c",
-		//										"set -eux\n\n" +
-		//											"curl -X POST -k \n" +
-		//											" https://1234/webhook/component \n" +
-		//											"-d {\"component\":\"redis\",\"team\":\"teamTest\",\"repository\":\"bitnami/redis\"}"},
-		//								},
-		//							},
-		//							RestartPolicy: "OnFailure",
-		//						},
-		//					},
-		//				},
-		//			},
-		//		},
-		//	},
-		//}
-
 		c := controller{}
 		creatingResult, deletingResult := c.CheckCronjobChange(namespaceTest, teamTest, &redisConfigComp, mockCronjob)
 
