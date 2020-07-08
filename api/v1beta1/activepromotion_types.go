@@ -123,7 +123,7 @@ type ActivePromotionSpec struct {
 	// +optional
 	SkipTestRunner bool `json:"skipTestRunner,omitempty"`
 
-	// ActivePromotedBy represents a person who promoted the ActivePromotion
+	// PromotedBy represents a person who promoted the ActivePromotion
 	// +optional
 	PromotedBy string `json:"promotedBy,omitempty"`
 }
