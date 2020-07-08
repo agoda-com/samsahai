@@ -312,7 +312,7 @@ func (c *controller) GetCreatingCronJob(namespace, teamName string, comp s2hv1be
 									Containers: []corev1.Container{
 										{
 											Name:  "kubectl",
-											Image: "reg-hk.agodadev.io/aiab/utils:1.0.1",
+											Image: "quay.io/samsahai/curl:latest",
 											Args:  cronjobDefaultArgs,
 										},
 									},
