@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -1672,6 +1673,76 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Current active components should not be set")
 		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
 	}, 60)
+
+	It("should succesfully create cronjob", func(done Done) {
+		defer close(done)
+		setupSamsahai(true)
+		ctx := context.TODO()
+
+		By("Creating Config that have Scheduler")
+		configRedis := mockConfigOnlyRedis
+		configRedis.Spec.Components[0].Scheduler = []string{"0 4 * * *"}
+		Expect(client.Create(ctx, &configRedis)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(client.Create(ctx, &team)).To(BeNil())
+
+		By("Verifying namespace and config have been created") //verifyNSCreatedTimeout
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1beta1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Verifying CronJob have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			cronjobList := &batchv1beta1.CronJobList{}
+			cronjobLabel := labels.SelectorFromSet(map[string]string{"component": configRedis.Spec.Components[0].Name})
+			listOption := &rclient.ListOptions{Namespace: stgNamespace, LabelSelector: cronjobLabel}
+			if err := client.List(ctx, cronjobList, listOption); err != nil {
+				return false, err
+			}
+
+			if len(cronjobList.Items) == 0 || len(cronjobList.Items) != len(configRedis.Spec.Components[0].Scheduler) {
+				return false, nil
+			}
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify creating CronJob error")
+
+		By("Updating Config that have no Scheduler")
+		configRedis = s2hv1beta1.Config{}
+		_ = client.Get(ctx, types.NamespacedName{Name: teamName}, &configRedis)
+		configRedis.Spec.Components[0].Scheduler = []string{}
+		Expect(client.Update(ctx, &configRedis)).To(BeNil())
+
+		By("Verifying CronJob should be deleted")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			cronjobList := &batchv1beta1.CronJobList{}
+			cronjobLabel := labels.SelectorFromSet(map[string]string{"component": configRedis.Spec.Components[0].Name})
+			listOption := &rclient.ListOptions{Namespace: stgNamespace, LabelSelector: cronjobLabel}
+			if err := client.List(ctx, cronjobList, listOption); err != nil {
+				return false, nil
+			}
+
+			if len(cronjobList.Items) != 0 {
+				return false, nil
+			}
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Config should be deleted")
+	}, 90)
 })
 
 var (

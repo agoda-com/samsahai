@@ -2,10 +2,18 @@ package config
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
+	batchv1 "k8s.io/api/batch/v1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	cr "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -99,10 +107,11 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Co
 			// add to comps
 			for _, dep := range comp.Dependencies {
 				comps = append(comps, &s2hv1beta1.Component{
-					Parent: comp.Name,
-					Name:   dep.Name,
-					Image:  dep.Image,
-					Source: dep.Source,
+					Parent:    comp.Name,
+					Name:      dep.Name,
+					Image:     dep.Image,
+					Source:    dep.Source,
+					Scheduler: dep.Scheduler,
 				})
 			}
 		}
@@ -246,6 +255,125 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envTy
 	return baseValues, nil
 }
 
+func (c *controller) CreateCronjob(cronjob batchv1beta1.CronJob) error {
+	if err := c.client.Create(context.TODO(), &cronjob); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *controller) DeleteCronjob(cronjob batchv1beta1.CronJob) error {
+	if err := c.client.Delete(context.TODO(), &cronjob); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *controller) GetCreatingCronJob(namespace, teamName string, comp s2hv1beta1.Component,
+	cronjobList batchv1beta1.CronJobList) []batchv1beta1.CronJob {
+	creatingCronJobs := []batchv1beta1.CronJob{}
+	uniqueCreatingCronJobs := map[string]batchv1beta1.CronJob{}
+	commandBody := "{\"component\":\"" + comp.Name + "\",\"team\":\"" + teamName
+	commandBodyRepo := "{\"component\":\"" + comp.Name + "\",\"team\":\"" + teamName + "\",\"repository\":\"" + comp.Image.Repository + "\"}"
+	cronjobCmd := "set -eux\n\ncurl -X POST -k \n https://1234/webhook/component \n-d "
+	for i, schedule := range comp.Scheduler {
+		notContain := true
+		for _, cj := range cronjobList.Items {
+			if schedule == cj.Spec.Schedule {
+				argList := cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args
+				for _, arg := range argList {
+					if !strings.Contains(arg, commandBody) {
+						continue
+					} else if !strings.Contains(arg, commandBodyRepo) {
+						notContain = true
+					} else {
+						notContain = false
+					}
+				}
+			}
+		}
+		if notContain {
+			cronjobName := comp.Name + "-checker-" + strconv.Itoa(i)
+			cronjobLabel := internal.GetDefaultLabels(teamName)
+			cronjobLabel["component"] = comp.Name
+			cronjobDefaultArgs := []string{"/bin/sh", "-c", cronjobCmd + commandBodyRepo}
+			cronjob := batchv1beta1.CronJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      cronjobName,
+					Namespace: namespace,
+					Labels:    cronjobLabel,
+				},
+				Spec: batchv1beta1.CronJobSpec{
+					Schedule: schedule,
+					JobTemplate: batchv1beta1.JobTemplateSpec{
+						Spec: batchv1.JobSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name:  "kubectl",
+											Image: "reg-hk.agodadev.io/aiab/utils:1.0.1",
+											Args:  cronjobDefaultArgs,
+										},
+									},
+									RestartPolicy: "OnFailure",
+								},
+							},
+						},
+					},
+				},
+			}
+
+			if _, ok := uniqueCreatingCronJobs[schedule]; !ok {
+				uniqueCreatingCronJobs[schedule] = cronjob
+			}
+		}
+	}
+
+	for _, v := range uniqueCreatingCronJobs {
+		creatingCronJobs = append(creatingCronJobs, v)
+	}
+
+	return creatingCronJobs
+}
+
+func (c *controller) GetDeletingCronJob(teamName string, comp s2hv1beta1.Component,
+	cronjobList batchv1beta1.CronJobList) []batchv1beta1.CronJob {
+	deletingCronjobObjs := []batchv1beta1.CronJob{}
+	commandBody := "{\"component\":\"" + comp.Name + "\",\"team\":\"" + teamName
+	commandBodyRepo := "{\"component\":\"" + comp.Name + "\",\"team\":\"" + teamName + "\",\"repository\":\"" + comp.Image.Repository + "\"}"
+	for _, cj := range cronjobList.Items {
+		notContain := true
+		for _, schedule := range comp.Scheduler {
+			if schedule == cj.Spec.Schedule {
+				argList := cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args
+				for _, arg := range argList {
+					if !strings.Contains(arg, commandBody) {
+						continue
+					} else if !strings.Contains(arg, commandBodyRepo) {
+						notContain = true
+					} else {
+						notContain = false
+					}
+				}
+			}
+		}
+		if notContain {
+			deletingCronjobObjs = append(deletingCronjobObjs, cj)
+		}
+	}
+	return deletingCronjobObjs
+}
+
+func (c *controller) CheckCronjobChange(namespace, teamName string, comp *s2hv1beta1.Component,
+	cronjobList batchv1beta1.CronJobList) ([]batchv1beta1.CronJob, []batchv1beta1.CronJob) {
+
+	creatingCronjobObj := c.GetCreatingCronJob(namespace, teamName, *comp, cronjobList)
+	deletingCronjobObj := c.GetDeletingCronJob(teamName, *comp, cronjobList)
+
+	return creatingCronjobObj, deletingCronjobObj
+}
+
 // assignParent assigns Parent to SubComponent
 // only support 1 level of dependencies
 func (c *controller) assignParent(config *s2hv1beta1.ConfigSpec) {
@@ -267,7 +395,7 @@ func (c *controller) getConfig(configName string) (*s2hv1beta1.Config, error) {
 }
 
 // ensureComponentChanged detects added or removed component
-func (c *controller) ensureComponentChanged(teamName, namespace string) error {
+func (c *controller) ensureConfigChanged(teamName, namespace string) error {
 	comps, err := c.GetComponents(teamName)
 	if err != nil {
 		logger.Error(err, "cannot get components from configuration",
@@ -291,20 +419,47 @@ func (c *controller) ensureComponentChanged(teamName, namespace string) error {
 		return err
 	}
 
-	c.notifyComponentChanged(teamName, namespace, comps)
+	if err := c.detectSchedulerChange(comps, teamName, namespace); err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (c *controller) notifyComponentChanged(teamName, namespace string, comps map[string]*s2hv1beta1.Component) {
-	if c.s2hCtrl == nil {
-		logger.Debug("no s2h ctrl, skip notify changed")
-	}
-
-	logger.Debug("start notifying components", "team", teamName, "namespace", namespace)
+func (c *controller) detectSchedulerChange(comps map[string]*s2hv1beta1.Component, teamName, namespace string) error {
+	ctx := context.TODO()
 	for _, comp := range comps {
-		c.s2hCtrl.NotifyComponentChanged(comp.Name, comp.Image.Repository, teamName)
+		cronjobList := &batchv1beta1.CronJobList{}
+		componentLabel := map[string]string{"component": comp.Name}
+		listOption := &client.ListOptions{Namespace: namespace, LabelSelector: labels.SelectorFromSet(componentLabel)}
+		err := c.client.List(ctx, cronjobList, listOption)
+		if err != nil {
+			logger.Error(err, "cannot list cronjob ", "component", comp.Name)
+			return err
+		}
+
+		creatingCronjobObjs, deletingCronjobObjs := c.CheckCronjobChange(namespace, teamName, comp, *cronjobList)
+		if len(deletingCronjobObjs) != 0 {
+			for _, obj := range deletingCronjobObjs {
+				err := c.DeleteCronjob(obj)
+				if err != nil {
+					logger.Error(err, "cannot delete cronjob", "component", obj.Name)
+					return err
+				}
+			}
+		}
+
+		if len(creatingCronjobObjs) != 0 {
+			for _, obj := range creatingCronjobObjs {
+				err := c.CreateCronjob(obj)
+				if err != nil {
+					logger.Error(err, "cannot create cronjob", "component", obj.Name)
+					return err
+				}
+			}
+		}
 	}
+	return nil
 }
 
 func (c *controller) detectRemovedDesiredComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
@@ -454,10 +609,10 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	stagingNs := teamComp.Status.Namespace.Staging
 	if stagingNs == "" {
 		logger.Debug("no staging namespace to process", "team", req.Name)
-		return cr.Result{}, nil
+		return cr.Result{}, fmt.Errorf("staging namespace of team %s not found", req.Name)
 	}
 
-	if err := c.ensureComponentChanged(req.Name, stagingNs); err != nil {
+	if err := c.ensureConfigChanged(req.Name, stagingNs); err != nil {
 		return cr.Result{}, err
 	}
 

@@ -190,6 +190,10 @@ definitions:
       parent:
         description: +optional
         type: string
+      scheduler:
+        items:
+          type: string
+        type: array
       source:
         description: +optional
         type: string
@@ -961,6 +965,10 @@ definitions:
         parent:
           description: +optional
           type: string
+        scheduler:
+          items:
+            type: string
+          type: array
         source:
           description: +optional
           type: string

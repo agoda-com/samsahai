@@ -835,6 +835,12 @@
                     "description": "+optional",
                     "type": "string"
                 },
+                "scheduler": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "source": {
                     "description": "+optional",
                     "type": "string"
@@ -1805,6 +1811,12 @@
                     "parent": {
                         "description": "+optional",
                         "type": "string"
+                    },
+                    "scheduler": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     },
                     "source": {
                         "description": "+optional",
