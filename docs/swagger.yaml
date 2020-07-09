@@ -52,7 +52,7 @@ definitions:
     properties:
       promotedBy:
         description: |-
-          ActivePromotedBy represents a person who promoted the ActivePromotion
+          PromotedBy represents a person who promoted the ActivePromotion
           +optional
         type: string
       skipTestRunner:
@@ -190,7 +190,8 @@ definitions:
       parent:
         description: +optional
         type: string
-      scheduler:
+      schedules:
+        description: +optional
         items:
           type: string
         type: array
@@ -965,7 +966,8 @@ definitions:
         parent:
           description: +optional
           type: string
-        scheduler:
+        schedules:
+          description: +optional
           items:
             type: string
           type: array

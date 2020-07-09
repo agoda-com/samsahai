@@ -1745,7 +1745,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Creating Config that have Scheduler")
 		configRedis := mockConfigOnlyRedis
-		configRedis.Spec.Components[0].Scheduler = []string{"0 4 * * *"}
+		configRedis.Spec.Components[0].Schedules = []string{"0 4 * * *"}
 		Expect(client.Create(ctx, &configRedis)).To(BeNil())
 
 		By("Creating Team")
@@ -1778,7 +1778,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				return false, err
 			}
 
-			if len(cronjobList.Items) == 0 || len(cronjobList.Items) != len(configRedis.Spec.Components[0].Scheduler) {
+			if len(cronjobList.Items) == 0 || len(cronjobList.Items) != len(configRedis.Spec.Components[0].Schedules) {
 				return false, nil
 			}
 			return true, nil
@@ -1788,7 +1788,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Updating Config that have no Scheduler")
 		configRedis = s2hv1beta1.Config{}
 		_ = client.Get(ctx, types.NamespacedName{Name: teamName}, &configRedis)
-		configRedis.Spec.Components[0].Scheduler = []string{}
+		configRedis.Spec.Components[0].Schedules = []string{}
 		Expect(client.Update(ctx, &configRedis)).To(BeNil())
 
 		By("Verifying CronJob should be deleted")

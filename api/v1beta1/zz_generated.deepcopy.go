@@ -365,8 +365,8 @@ func (in *Component) DeepCopyInto(out *Component) {
 			}
 		}
 	}
-	if in.Scheduler != nil {
-		in, out := &in.Scheduler, &out.Scheduler
+	if in.Schedules != nil {
+		in, out := &in.Schedules, &out.Schedules
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}

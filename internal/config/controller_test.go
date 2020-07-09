@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -11,7 +12,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
+)
+
+const (
+	AppName        = "samsahai"
+	ContainerName  = "component-checker"
+	ContainerImage = "quay.io/samsahai/curl:latest"
+	ContainerRestartPolicy =  "OnFailure"
 )
 
 func TestConfig(t *testing.T) {
@@ -97,11 +106,14 @@ var _ = Describe("Config Controller", func() {
 })
 
 var _ = Describe("Updating Cronjob Controller", func() {
+	mockcontroller := controller{
+		s2hConfig: internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
+	}
 	teamTest := "teamTest"
 	namespaceTest := "namespaceTest"
 	compSource := s2hv1beta1.UpdatingSource("public-registry")
 	redisCompName := "redis"
-	redisScheduler := []string{"0 4 * * *", "0 5 * * *"}
+	redisSchedules := []string{"0 4 * * *", "0 5 * * *"}
 
 	redisConfigComp := s2hv1beta1.Component{
 		Name: redisCompName,
@@ -113,7 +125,7 @@ var _ = Describe("Updating Cronjob Controller", func() {
 			Repository: "bitnami/redis",
 			Pattern:    "5.*debian-9.*",
 		},
-		Scheduler: redisScheduler,
+		Schedules: redisSchedules,
 		Source:    &compSource,
 		Values: s2hv1beta1.ComponentValues{
 			"image": map[string]interface{}{
@@ -145,7 +157,7 @@ var _ = Describe("Updating Cronjob Controller", func() {
 					Name:      redisConfigComp.Name + "-checker-0",
 					Namespace: namespaceTest,
 					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "samsahai",
+						"app.kubernetes.io/managed-by": AppName,
 						"component":                    redisConfigComp.Name,
 						"samsahai.io/teamname":         teamTest,
 					},
@@ -158,12 +170,15 @@ var _ = Describe("Updating Cronjob Controller", func() {
 								Spec: corev1.PodSpec{
 									Containers: []corev1.Container{
 										{
-											Name:  "kubectl",
-											Image: "quay.io/samsahai/curl:latest",
-											Args:  []string{"/bin/sh", "-c", "set -eux\n\ncurl -X POST -k\nhttps://1234/webhook/component\n-d {\"component\":\"redis\",\"team\":\"teamTest\",\"repository\":\"bitnami/redis\"}"},
+											Name:  ContainerName,
+											Image: ContainerImage,
+											Args: []string{"/bin/sh", "-c", fmt.Sprintf(`set -eux
+
+curl -X POST -k %s-d '{"component": %s ,"team": %s ,"repository": %s}'
+`, mockcontroller.s2hConfig.SamsahaiExternalURL, "redis", "teamTest", "bitnami/redis")},
 										},
 									},
-									RestartPolicy: "OnFailure",
+									RestartPolicy: ContainerRestartPolicy,
 								},
 							},
 						},
@@ -182,7 +197,7 @@ var _ = Describe("Updating Cronjob Controller", func() {
 					Name:      redisConfigComp.Name + "-checker-0",
 					Namespace: namespaceTest,
 					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "samsahai",
+						"app.kubernetes.io/managed-by": AppName,
 						"samsahai.io/teamname":         teamTest,
 						"component":                    redisConfigComp.Name,
 					},
@@ -195,18 +210,15 @@ var _ = Describe("Updating Cronjob Controller", func() {
 								Spec: corev1.PodSpec{
 									Containers: []corev1.Container{
 										{
-											Name:  "kubectl",
-											Image: "quay.io/samsahai/curl:latest",
-											Args: []string{
-												"/bin/sh",
-												"-c",
-												"set -eux\n\n" +
-													"curl -X POST -k \n" +
-													" https://1234/webhook/component \n" +
-													"-d {\"component\":\"redis\",\"team\":\"teamTest\",\"repository\":\"bitnami/redis\"}"},
+											Name:  ContainerName,
+											Image: ContainerImage,
+											Args: []string{"/bin/sh", "-c", fmt.Sprintf(`set -eux
+
+curl -X POST -k %v -d '{"component": %s, "team": %s, "repository": %s}'
+`, mockcontroller.s2hConfig.SamsahaiExternalURL, "redis", "teamTest", "bitnami/redis")},
 										},
 									},
-									RestartPolicy: "OnFailure",
+									RestartPolicy: ContainerRestartPolicy,
 								},
 							},
 						},
@@ -218,7 +230,7 @@ var _ = Describe("Updating Cronjob Controller", func() {
 					Name:      redisConfigComp.Name + "-checker-1",
 					Namespace: namespaceTest,
 					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "samsahai",
+						"app.kubernetes.io/managed-by": AppName,
 						"samsahai.io/teamname":         teamTest,
 						"component":                    redisConfigComp.Name,
 					},
@@ -231,17 +243,15 @@ var _ = Describe("Updating Cronjob Controller", func() {
 								Spec: corev1.PodSpec{
 									Containers: []corev1.Container{
 										{
-											Name:  "kubectl",
-											Image: "quay.io/samsahai/curl:latest",
-											Args: []string{
-												"/bin/sh",
-												"-c",
-												"set -eux\n\n" +
-													"curl -X POST -k \n https://1234/webhook/component \n" +
-													"-d {\"component\":\"redis\",\"team\":\"teamTest\",\"repository\":\"bitnami/redis\"}"},
+											Name:  ContainerName,
+											Image: ContainerImage,
+											Args: []string{"/bin/sh", "-c", fmt.Sprintf(`set -eux
+
+curl -X POST -k %v -d '{"component": %s, "team": %s, "repository": %s}'
+`, mockcontroller.s2hConfig.SamsahaiExternalURL, "redis", "teamTest", "bitnami/redis")},
 										},
 									},
-									RestartPolicy: "OnFailure",
+									RestartPolicy: ContainerRestartPolicy,
 								},
 							},
 						},
@@ -250,8 +260,10 @@ var _ = Describe("Updating Cronjob Controller", func() {
 			},
 		}
 
-		c := controller{}
-		creatingResult, deletingResult := c.CheckCronjobChange(namespaceTest, teamTest, &redisConfigComp, mockCronjob)
+		c := controller{
+			s2hConfig: internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
+		}
+		creatingResult, deletingResult := c.GetUpdateCronJobs(namespaceTest, teamTest, &redisConfigComp, mockCronjob)
 
 		g.Expect(creatingResult).To(HaveLen(len(expectedCronjob)))
 		g.Expect(creatingResult).To(ConsistOf(expectedCronjob))
@@ -262,10 +274,10 @@ var _ = Describe("Updating Cronjob Controller", func() {
 	It("should create/delete cronjob correctly when config have duplicate scheduler", func() {
 		g := NewWithT(GinkgoT())
 
-		redisConfigComp.Scheduler = []string{"0 7 * * *", "0 7 * * *"}
+		redisConfigComp.Schedules = []string{"0 7 * * *", "0 7 * * *"}
 
 		c := controller{}
-		_, deletingResult := c.CheckCronjobChange(namespaceTest, teamTest, &redisConfigComp, mockCronjob)
+		_, deletingResult := c.GetUpdateCronJobs(namespaceTest, teamTest, &redisConfigComp, mockCronjob)
 
 		g.Expect(deletingResult).To(HaveLen(len(mockCronjob.Items)))
 		g.Expect(deletingResult).To(ConsistOf(mockCronjob.Items))
@@ -275,9 +287,9 @@ var _ = Describe("Updating Cronjob Controller", func() {
 	It("should create cronjob/delete correctly when config have no scheduler", func() {
 		g := NewWithT(GinkgoT())
 
-		redisConfigComp.Scheduler = []string{}
+		redisConfigComp.Schedules = []string{}
 		c := controller{}
-		creatingResult, deletingResult := c.CheckCronjobChange(namespaceTest, teamTest, &redisConfigComp, mockCronjob)
+		creatingResult, deletingResult := c.GetUpdateCronJobs(namespaceTest, teamTest, &redisConfigComp, mockCronjob)
 
 		g.Expect(len(creatingResult)).To(Equal(0))
 		g.Expect(deletingResult).To(HaveLen(len(mockCronjob.Items)))
