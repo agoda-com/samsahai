@@ -55,6 +55,12 @@ func WithS2hCtrl(s2hCtrl internal.SamsahaiController) Option {
 	}
 }
 
+func WithS2hConfig(s2hConfig internal.SamsahaiConfig) Option {
+	return func(c *controller) {
+		c.s2hConfig = s2hConfig
+	}
+}
+
 func New(mgr cr.Manager, options ...Option) internal.ConfigController {
 	c := &controller{}
 

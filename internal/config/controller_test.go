@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	AppName        = "samsahai"
-	ContainerName  = "component-checker"
-	ContainerImage = "quay.io/samsahai/curl:latest"
-	ContainerRestartPolicy =  "OnFailure"
+	AppName                = "samsahai"
+	ContainerName          = "component-checker"
+	ContainerImage         = "quay.io/samsahai/curl:latest"
+	ContainerRestartPolicy = "OnFailure"
 )
 
 func TestConfig(t *testing.T) {
