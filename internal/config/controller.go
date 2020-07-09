@@ -2,10 +2,18 @@ package config
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
+	batchv1 "k8s.io/api/batch/v1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	cr "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,8 +36,9 @@ const (
 )
 
 type controller struct {
-	client  client.Client
-	s2hCtrl internal.SamsahaiController
+	client    client.Client
+	s2hCtrl   internal.SamsahaiController
+	s2hConfig internal.SamsahaiConfig
 }
 
 type Option func(*controller)
@@ -43,6 +52,12 @@ func WithClient(client client.Client) Option {
 func WithS2hCtrl(s2hCtrl internal.SamsahaiController) Option {
 	return func(c *controller) {
 		c.s2hCtrl = s2hCtrl
+	}
+}
+
+func WithS2hConfig(s2hConfig internal.SamsahaiConfig) Option {
+	return func(c *controller) {
+		c.s2hConfig = s2hConfig
 	}
 }
 
@@ -99,10 +114,11 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Co
 			// add to comps
 			for _, dep := range comp.Dependencies {
 				comps = append(comps, &s2hv1beta1.Component{
-					Parent: comp.Name,
-					Name:   dep.Name,
-					Image:  dep.Image,
-					Source: dep.Source,
+					Parent:    comp.Name,
+					Name:      dep.Name,
+					Image:     dep.Image,
+					Source:    dep.Source,
+					Schedules: dep.Schedules,
 				})
 			}
 		}
@@ -246,6 +262,125 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envTy
 	return baseValues, nil
 }
 
+func (c *controller) CreateCronJob(cronJob batchv1beta1.CronJob) error {
+	if err := c.client.Create(context.TODO(), &cronJob); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *controller) DeleteCronJob(cronJob batchv1beta1.CronJob) error {
+	if err := c.client.Delete(context.TODO(), &cronJob); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *controller) GetCreatingCronJobs(namespace, teamName string, comp s2hv1beta1.Component,
+	cronJobList batchv1beta1.CronJobList) []batchv1beta1.CronJob {
+	creatingCronJobs := []batchv1beta1.CronJob{}
+	uniqueCreatingCronJobs := map[string]batchv1beta1.CronJob{}
+	cronJobCmd := fmt.Sprintf(`set -eux
+
+curl -X POST -k %v -d '{"component": %s, "team": %s, "repository": %s}'
+`, c.s2hConfig.SamsahaiExternalURL, comp.Name, teamName, comp.Image.Repository)
+
+	for i, schedule := range comp.Schedules {
+		isCronJobChanged := true
+		for _, cj := range cronJobList.Items {
+			if schedule == cj.Spec.Schedule {
+				argList := cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args
+				for _, arg := range argList {
+					if !strings.Contains(arg, cronJobCmd) {
+						isCronJobChanged = true
+					} else {
+						isCronJobChanged = false
+					}
+				}
+			}
+		}
+		if isCronJobChanged {
+			cronJobName := comp.Name + "-checker-" + strconv.Itoa(i)
+			cronJobLabel := internal.GetDefaultLabels(teamName)
+			cronJobLabel["component"] = comp.Name
+			cronJobDefaultArgs := []string{"/bin/sh", "-c", cronJobCmd}
+			cronJob := batchv1beta1.CronJob{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      cronJobName,
+					Namespace: namespace,
+					Labels:    cronJobLabel,
+				},
+				Spec: batchv1beta1.CronJobSpec{
+					Schedule: schedule,
+					JobTemplate: batchv1beta1.JobTemplateSpec{
+						Spec: batchv1.JobSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name:  "component-checker",
+											Image: "quay.io/samsahai/curl:latest",
+											Args:  cronJobDefaultArgs,
+										},
+									},
+									RestartPolicy: "OnFailure",
+								},
+							},
+						},
+					},
+				},
+			}
+
+			if _, ok := uniqueCreatingCronJobs[schedule]; !ok {
+				uniqueCreatingCronJobs[schedule] = cronJob
+			}
+		}
+	}
+
+	for _, v := range uniqueCreatingCronJobs {
+		creatingCronJobs = append(creatingCronJobs, v)
+	}
+
+	return creatingCronJobs
+}
+
+func (c *controller) GetDeletingCronJobs(teamName string, comp s2hv1beta1.Component,
+	cronJobList batchv1beta1.CronJobList) []batchv1beta1.CronJob {
+	deletingCronJobObjs := []batchv1beta1.CronJob{}
+	cronJobCmd := fmt.Sprintf(`set -eux
+              
+curl -X POST -k %v -d '{"component": %s, "team": %s, "repository": %s}'
+`, c.s2hConfig.SamsahaiExternalURL, comp.Name, teamName, comp.Image.Repository)
+	for _, cj := range cronJobList.Items {
+		isCronJobChanged := true
+		for _, schedule := range comp.Schedules {
+			if schedule == cj.Spec.Schedule {
+				argList := cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args
+				for _, arg := range argList {
+					if !strings.Contains(arg, cronJobCmd) {
+						isCronJobChanged = true
+					} else {
+						isCronJobChanged = false
+					}
+				}
+			}
+		}
+		if isCronJobChanged {
+			deletingCronJobObjs = append(deletingCronJobObjs, cj)
+		}
+	}
+	return deletingCronJobObjs
+}
+
+func (c *controller) GetUpdateCronJobs(namespace, teamName string, comp *s2hv1beta1.Component,
+	cronjobList batchv1beta1.CronJobList) ([]batchv1beta1.CronJob, []batchv1beta1.CronJob) {
+
+	creatingCronJobObjs := c.GetCreatingCronJobs(namespace, teamName, *comp, cronjobList)
+	deletingCronJobObjs := c.GetDeletingCronJobs(teamName, *comp, cronjobList)
+
+	return creatingCronJobObjs, deletingCronJobObjs
+}
+
 // assignParent assigns Parent to SubComponent
 // only support 1 level of dependencies
 func (c *controller) assignParent(config *s2hv1beta1.ConfigSpec) {
@@ -267,7 +402,7 @@ func (c *controller) getConfig(configName string) (*s2hv1beta1.Config, error) {
 }
 
 // ensureComponentChanged detects added or removed component
-func (c *controller) ensureComponentChanged(teamName, namespace string) error {
+func (c *controller) ensureConfigChanged(teamName, namespace string) error {
 	comps, err := c.GetComponents(teamName)
 	if err != nil {
 		logger.Error(err, "cannot get components from configuration",
@@ -291,20 +426,47 @@ func (c *controller) ensureComponentChanged(teamName, namespace string) error {
 		return err
 	}
 
-	c.notifyComponentChanged(teamName, namespace, comps)
+	if err := c.detectSchedulerChanged(comps, teamName, namespace); err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (c *controller) notifyComponentChanged(teamName, namespace string, comps map[string]*s2hv1beta1.Component) {
-	if c.s2hCtrl == nil {
-		logger.Debug("no s2h ctrl, skip notify changed")
-	}
-
-	logger.Debug("start notifying components", "team", teamName, "namespace", namespace)
+func (c *controller) detectSchedulerChanged(comps map[string]*s2hv1beta1.Component, teamName, namespace string) error {
+	ctx := context.TODO()
 	for _, comp := range comps {
-		c.s2hCtrl.NotifyComponentChanged(comp.Name, comp.Image.Repository, teamName)
+		cronJobList := &batchv1beta1.CronJobList{}
+		componentLabel := labels.SelectorFromSet(map[string]string{"component": comp.Name})
+		listOption := &client.ListOptions{Namespace: namespace, LabelSelector: componentLabel}
+		err := c.client.List(ctx, cronJobList, listOption)
+		if err != nil {
+			logger.Error(err, "cannot list cronJob ", "component", comp.Name)
+			return err
+		}
+
+		creatingCronJobObjs, deletingCronJobObjs := c.GetUpdateCronJobs(namespace, teamName, comp, *cronJobList)
+		if len(deletingCronJobObjs) > 0 {
+			for _, obj := range deletingCronJobObjs {
+				err := c.DeleteCronJob(obj)
+				if err != nil && !k8serrors.IsNotFound(err) {
+					logger.Error(err, "cannot delete cronJob", "component", obj.Name)
+					return err
+				}
+			}
+		}
+
+		if len(creatingCronJobObjs) > 0 {
+			for _, obj := range creatingCronJobObjs {
+				err := c.CreateCronJob(obj)
+				if err != nil && !k8serrors.IsAlreadyExists(err) {
+					logger.Error(err, "cannot create cronJob", "component", obj.Name)
+					return err
+				}
+			}
+		}
 	}
+	return nil
 }
 
 func (c *controller) detectRemovedDesiredComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
@@ -454,10 +616,10 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	stagingNs := teamComp.Status.Namespace.Staging
 	if stagingNs == "" {
 		logger.Debug("no staging namespace to process", "team", req.Name)
-		return cr.Result{}, nil
+		return cr.Result{}, fmt.Errorf("staging namespace of team %s not found", req.Name)
 	}
 
-	if err := c.ensureComponentChanged(req.Name, stagingNs); err != nil {
+	if err := c.ensureConfigChanged(req.Name, stagingNs); err != nil {
 		return cr.Result{}, err
 	}
 

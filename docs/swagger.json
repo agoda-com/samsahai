@@ -702,7 +702,7 @@
             "type": "object",
             "properties": {
                 "promotedBy": {
-                    "description": "ActivePromotedBy represents a person who promoted the ActivePromotion\n+optional",
+                    "description": "PromotedBy represents a person who promoted the ActivePromotion\n+optional",
                     "type": "string"
                 },
                 "skipTestRunner": {
@@ -834,6 +834,13 @@
                 "parent": {
                     "description": "+optional",
                     "type": "string"
+                },
+                "schedules": {
+                    "description": "+optional",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "source": {
                     "description": "+optional",
@@ -1805,6 +1812,13 @@
                     "parent": {
                         "description": "+optional",
                         "type": "string"
+                    },
+                    "schedules": {
+                        "description": "+optional",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     },
                     "source": {
                         "description": "+optional",

@@ -126,7 +126,7 @@ func New(
 		configs:         configs,
 	}
 
-	c.configCtrl = configctrl.New(mgr, configctrl.WithS2hCtrl(c))
+	c.configCtrl = configctrl.New(mgr, configctrl.WithS2hCtrl(c), configctrl.WithS2hConfig(c.configs))
 
 	if mgr != nil {
 		// create runtime client

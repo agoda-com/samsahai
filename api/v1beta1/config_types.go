@@ -37,6 +37,8 @@ type Component struct {
 	Source *UpdatingSource `json:"source,omitempty"`
 	// +optional
 	Dependencies []*Component `json:"dependencies,omitempty"`
+	// +optional
+	Schedules []string `json:"schedules,omitempty"`
 }
 
 // ComponentImage represents an image repository, tag and pattern which is a regex of tag
