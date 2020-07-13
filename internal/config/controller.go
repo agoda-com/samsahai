@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,6 +33,8 @@ var logger = s2hlog.Log.WithName(ctrlName)
 const (
 	ctrlName                = "config-ctrl"
 	maxConcurrentReconciles = 1
+
+	webhookAPI = "webhook/component"
 )
 
 type controller struct {
@@ -262,31 +264,45 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envTy
 	return baseValues, nil
 }
 
-func (c *controller) CreateCronJob(cronJob batchv1beta1.CronJob) error {
+func (c *controller) createCronJob(cronJob batchv1beta1.CronJob) error {
 	if err := c.client.Create(context.TODO(), &cronJob); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *controller) DeleteCronJob(cronJob batchv1beta1.CronJob) error {
-	if err := c.client.Delete(context.TODO(), &cronJob); err != nil {
+func (c *controller) deleteCronJobAndMatchingJobs(cronJob batchv1beta1.CronJob) error {
+	ctx := context.TODO()
+	jobList := &batchv1.JobList{}
+	selectors := labels.SelectorFromSet(cronJob.Labels)
+	listOption := &client.ListOptions{Namespace: cronJob.Namespace, LabelSelector: selectors}
+	if err := c.client.List(ctx, jobList, listOption); err != nil {
+		logger.Error(err, "cannot list jobs", "cronjob", cronJob.Name)
+	}
+
+	for i := range jobList.Items {
+		if err := c.client.Delete(ctx, &jobList.Items[i]); err != nil {
+			logger.Error(err, "cannot delete job", "cronjob", cronJob.Name)
+		}
+	}
+
+	if err := c.client.Delete(ctx, &cronJob); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func (c *controller) GetCreatingCronJobs(namespace, teamName string, comp s2hv1beta1.Component,
-	cronJobList batchv1beta1.CronJobList) []batchv1beta1.CronJob {
-	creatingCronJobs := []batchv1beta1.CronJob{}
+func (c *controller) getCreatingCronJobs(namespace, teamName string, comp s2hv1beta1.Component,
+	cronJobList *batchv1beta1.CronJobList) []batchv1beta1.CronJob {
+
+	creatingCronJobs := make([]batchv1beta1.CronJob, 0)
 	uniqueCreatingCronJobs := map[string]batchv1beta1.CronJob{}
-	cronJobCmd := fmt.Sprintf(`set -eux
+	cronJobCmd := c.getCronJobCmd(comp.Name, teamName, comp.Image.Repository)
 
-curl -X POST -k %v -d '{"component": %s, "team": %s, "repository": %s}'
-`, c.s2hConfig.SamsahaiExternalURL, comp.Name, teamName, comp.Image.Repository)
-
-	for i, schedule := range comp.Schedules {
+	for _, schedule := range comp.Schedules {
 		isCronJobChanged := true
+
 		for _, cj := range cronJobList.Items {
 			if schedule == cj.Spec.Schedule {
 				argList := cj.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args
@@ -300,36 +316,8 @@ curl -X POST -k %v -d '{"component": %s, "team": %s, "repository": %s}'
 			}
 		}
 		if isCronJobChanged {
-			cronJobName := comp.Name + "-checker-" + strconv.Itoa(i)
-			cronJobLabel := internal.GetDefaultLabels(teamName)
-			cronJobLabel["component"] = comp.Name
-			cronJobDefaultArgs := []string{"/bin/sh", "-c", cronJobCmd}
-			cronJob := batchv1beta1.CronJob{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      cronJobName,
-					Namespace: namespace,
-					Labels:    cronJobLabel,
-				},
-				Spec: batchv1beta1.CronJobSpec{
-					Schedule: schedule,
-					JobTemplate: batchv1beta1.JobTemplateSpec{
-						Spec: batchv1.JobSpec{
-							Template: corev1.PodTemplateSpec{
-								Spec: corev1.PodSpec{
-									Containers: []corev1.Container{
-										{
-											Name:  "component-checker",
-											Image: "quay.io/samsahai/curl:latest",
-											Args:  cronJobDefaultArgs,
-										},
-									},
-									RestartPolicy: "OnFailure",
-								},
-							},
-						},
-					},
-				},
-			}
+			cronJobName := comp.Name + "-checker-" + c.getCronJobSuffix(schedule)
+			cronJob := c.generateCronJob(cronJobName, cronJobCmd, schedule, comp.Name, namespace, teamName)
 
 			if _, ok := uniqueCreatingCronJobs[schedule]; !ok {
 				uniqueCreatingCronJobs[schedule] = cronJob
@@ -344,13 +332,49 @@ curl -X POST -k %v -d '{"component": %s, "team": %s, "repository": %s}'
 	return creatingCronJobs
 }
 
-func (c *controller) GetDeletingCronJobs(teamName string, comp s2hv1beta1.Component,
-	cronJobList batchv1beta1.CronJobList) []batchv1beta1.CronJob {
-	deletingCronJobObjs := []batchv1beta1.CronJob{}
-	cronJobCmd := fmt.Sprintf(`set -eux
-              
-curl -X POST -k %v -d '{"component": %s, "team": %s, "repository": %s}'
-`, c.s2hConfig.SamsahaiExternalURL, comp.Name, teamName, comp.Image.Repository)
+func (c *controller) generateCronJob(cronJobName, cronJobCmd, schedule, compName, namespace, teamName string) batchv1beta1.CronJob {
+	cronJobLabels := c.getCronJobLabels(cronJobName, teamName, compName)
+	cronJobDefaultArgs := []string{"/bin/sh", "-c", cronJobCmd}
+	cronJob := batchv1beta1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cronJobName,
+			Namespace: namespace,
+			Labels:    cronJobLabels,
+		},
+		Spec: batchv1beta1.CronJobSpec{
+			Schedule: schedule,
+			JobTemplate: batchv1beta1.JobTemplateSpec{
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: cronJobLabels,
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:      "component-checker",
+									Image:     "quay.io/samsahai/curl:latest",
+									Args:      cronJobDefaultArgs,
+									Resources: c.getCronJobResources(),
+								},
+							},
+							RestartPolicy: "OnFailure",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return cronJob
+}
+
+func (c *controller) getDeletingCronJobs(teamName string, comp s2hv1beta1.Component,
+	cronJobList *batchv1beta1.CronJobList) []batchv1beta1.CronJob {
+
+	deletingCronJobObjs := make([]batchv1beta1.CronJob, 0)
+	cronJobCmd := c.getCronJobCmd(comp.Name, teamName, comp.Image.Repository)
+
 	for _, cj := range cronJobList.Items {
 		isCronJobChanged := true
 		for _, schedule := range comp.Schedules {
@@ -372,13 +396,40 @@ curl -X POST -k %v -d '{"component": %s, "team": %s, "repository": %s}'
 	return deletingCronJobObjs
 }
 
-func (c *controller) GetUpdateCronJobs(namespace, teamName string, comp *s2hv1beta1.Component,
-	cronjobList batchv1beta1.CronJobList) ([]batchv1beta1.CronJob, []batchv1beta1.CronJob) {
+func (c *controller) getUpdatedCronJobs(namespace, teamName string, comp *s2hv1beta1.Component,
+	cronJobList *batchv1beta1.CronJobList) ([]batchv1beta1.CronJob, []batchv1beta1.CronJob) {
 
-	creatingCronJobObjs := c.GetCreatingCronJobs(namespace, teamName, *comp, cronjobList)
-	deletingCronJobObjs := c.GetDeletingCronJobs(teamName, *comp, cronjobList)
+	creatingCronJobObjs := c.getCreatingCronJobs(namespace, teamName, *comp, cronJobList)
+	deletingCronJobObjs := c.getDeletingCronJobs(teamName, *comp, cronJobList)
 
 	return creatingCronJobObjs, deletingCronJobObjs
+}
+
+func (c *controller) getCronJobCmd(compName, teamName, imageRepo string) string {
+	return fmt.Sprintf(`set -eux
+curl -X POST -k %s/%s -d '{"component": "%s", "team": "%s", "repository": "%s"}'
+`, c.s2hConfig.SamsahaiExternalURL, webhookAPI, compName, teamName, imageRepo)
+}
+
+func (c *controller) getCronJobResources() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("500m"),
+			corev1.ResourceMemory: resource.MustParse("500Mi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("500m"),
+			corev1.ResourceMemory: resource.MustParse("500Mi"),
+		},
+	}
+}
+
+func (c *controller) getCronJobLabels(cronJobName, teamName, compName string) map[string]string {
+	cronJobLabels := internal.GetDefaultLabels(teamName)
+	cronJobLabels["cronjob-name"] = cronJobName
+	cronJobLabels["component"] = compName
+
+	return cronJobLabels
 }
 
 // assignParent assigns Parent to SubComponent
@@ -445,10 +496,10 @@ func (c *controller) detectSchedulerChanged(comps map[string]*s2hv1beta1.Compone
 			return err
 		}
 
-		creatingCronJobObjs, deletingCronJobObjs := c.GetUpdateCronJobs(namespace, teamName, comp, *cronJobList)
+		creatingCronJobObjs, deletingCronJobObjs := c.getUpdatedCronJobs(namespace, teamName, comp, cronJobList)
 		if len(deletingCronJobObjs) > 0 {
 			for _, obj := range deletingCronJobObjs {
-				err := c.DeleteCronJob(obj)
+				err := c.deleteCronJobAndMatchingJobs(obj)
 				if err != nil && !k8serrors.IsNotFound(err) {
 					logger.Error(err, "cannot delete cronJob", "component", obj.Name)
 					return err
@@ -458,7 +509,7 @@ func (c *controller) detectSchedulerChanged(comps map[string]*s2hv1beta1.Compone
 
 		if len(creatingCronJobObjs) > 0 {
 			for _, obj := range creatingCronJobObjs {
-				err := c.CreateCronJob(obj)
+				err := c.createCronJob(obj)
 				if err != nil && !k8serrors.IsAlreadyExists(err) {
 					logger.Error(err, "cannot create cronJob", "component", obj.Name)
 					return err
@@ -586,6 +637,13 @@ func (c *controller) detectRemovedStableComponents(comps map[string]*s2hv1beta1.
 	}
 
 	return nil
+}
+
+func (c *controller) getCronJobSuffix(schedule string) string {
+	suffix := strings.Replace(schedule, " ", "x", -1)
+	suffix = strings.Replace(suffix, "*", "", -1)
+
+	return suffix
 }
 
 func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {

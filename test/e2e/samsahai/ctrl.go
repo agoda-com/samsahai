@@ -1738,7 +1738,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Notify component changed and promote the first active error")
 	}, 20)
 
-	It("should succesfully create cronjob", func(done Done) {
+	It("should successfully create cronjob", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
 		ctx := context.TODO()
