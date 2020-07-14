@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -103,198 +102,196 @@ var _ = Describe("Config Controller", func() {
 			},
 		}))
 	})
-})
 
-var _ = Describe("Updating Cronjob Controller", func() {
-	mockcontroller := controller{
-		s2hConfig: internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
-	}
-	teamTest := "teamTest"
-	namespaceTest := "namespaceTest"
-	compSource := s2hv1beta1.UpdatingSource("public-registry")
-	redisCompName := "redis"
-	redisSchedules := []string{"0 4 * * *", "0 5 * * *"}
-
-	redisConfigComp := s2hv1beta1.Component{
-		Name: redisCompName,
-		Chart: s2hv1beta1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
-			Name:       redisCompName,
-		},
-		Image: s2hv1beta1.ComponentImage{
-			Repository: "bitnami/redis",
-			Pattern:    "5.*debian-9.*",
-		},
-		Schedules: redisSchedules,
-		Source:    &compSource,
-		Values: s2hv1beta1.ComponentValues{
-			"image": map[string]interface{}{
-				"repository": "bitnami/redis",
-				"pullPolicy": "IfNotPresent",
-			},
-			"cluster": map[string]interface{}{
-				"enabled": false,
-			},
-			"usePassword": false,
-			"master": map[string]interface{}{
-				"persistence": map[string]interface{}{
-					"enabled": false,
-				},
-			},
-		},
-	}
-
-	mockCronjob := batchv1beta1.CronJobList{
-		TypeMeta: metav1.TypeMeta{},
-		ListMeta: metav1.ListMeta{},
-		Items: []batchv1beta1.CronJob{
-			{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Cronjob",
-					APIVersion: "batch/v1beta1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      redisConfigComp.Name + "-checker-0",
-					Namespace: namespaceTest,
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": AppName,
-						"component":                    redisConfigComp.Name,
-						"samsahai.io/teamname":         teamTest,
-					},
-				},
-				Spec: batchv1beta1.CronJobSpec{
-					Schedule: "0 11 * * *",
-					JobTemplate: batchv1beta1.JobTemplateSpec{
-						Spec: batchv1.JobSpec{
-							Template: corev1.PodTemplateSpec{
-								Spec: corev1.PodSpec{
-									Containers: []corev1.Container{
-										{
-											Name:  ContainerName,
-											Image: ContainerImage,
-											Args: []string{"/bin/sh", "-c", fmt.Sprintf(`set -eux
-
-curl -X POST -k %s-d '{"component": %s ,"team": %s ,"repository": %s}'
-`, mockcontroller.s2hConfig.SamsahaiExternalURL, "redis", "teamTest", "bitnami/redis")},
-										},
-									},
-									RestartPolicy: ContainerRestartPolicy,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	It("should create/delete cronjob correctly", func() {
-		g := NewWithT(GinkgoT())
-
-		expectedCronjob := []batchv1beta1.CronJob{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      redisConfigComp.Name + "-checker-0",
-					Namespace: namespaceTest,
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": AppName,
-						"samsahai.io/teamname":         teamTest,
-						"component":                    redisConfigComp.Name,
-					},
-				},
-				Spec: batchv1beta1.CronJobSpec{
-					Schedule: "0 4 * * *",
-					JobTemplate: batchv1beta1.JobTemplateSpec{
-						Spec: batchv1.JobSpec{
-							Template: corev1.PodTemplateSpec{
-								Spec: corev1.PodSpec{
-									Containers: []corev1.Container{
-										{
-											Name:  ContainerName,
-											Image: ContainerImage,
-											Args: []string{"/bin/sh", "-c", fmt.Sprintf(`set -eux
-
-curl -X POST -k %v -d '{"component": %s, "team": %s, "repository": %s}'
-`, mockcontroller.s2hConfig.SamsahaiExternalURL, "redis", "teamTest", "bitnami/redis")},
-										},
-									},
-									RestartPolicy: ContainerRestartPolicy,
-								},
-							},
-						},
-					},
-				},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      redisConfigComp.Name + "-checker-1",
-					Namespace: namespaceTest,
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": AppName,
-						"samsahai.io/teamname":         teamTest,
-						"component":                    redisConfigComp.Name,
-					},
-				},
-				Spec: batchv1beta1.CronJobSpec{
-					Schedule: "0 5 * * *",
-					JobTemplate: batchv1beta1.JobTemplateSpec{
-						Spec: batchv1.JobSpec{
-							Template: corev1.PodTemplateSpec{
-								Spec: corev1.PodSpec{
-									Containers: []corev1.Container{
-										{
-											Name:  ContainerName,
-											Image: ContainerImage,
-											Args: []string{"/bin/sh", "-c", fmt.Sprintf(`set -eux
-
-curl -X POST -k %v -d '{"component": %s, "team": %s, "repository": %s}'
-`, mockcontroller.s2hConfig.SamsahaiExternalURL, "redis", "teamTest", "bitnami/redis")},
-										},
-									},
-									RestartPolicy: ContainerRestartPolicy,
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-
-		c := controller{
+	Describe("Component scheduler", func() {
+		mockController := controller{
 			s2hConfig: internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
 		}
-		creatingResult, deletingResult := c.GetUpdateCronJobs(namespaceTest, teamTest, &redisConfigComp, mockCronjob)
+		teamTest := "teamtest"
+		namespaceTest := "namespace"
+		compSource := s2hv1beta1.UpdatingSource("public-registry")
+		redisCompName := "redis"
+		redisSchedules := []string{"0 4 * * *", "0 5 * * *"}
 
-		g.Expect(creatingResult).To(HaveLen(len(expectedCronjob)))
-		g.Expect(creatingResult).To(ConsistOf(expectedCronjob))
-		g.Expect(deletingResult).To(HaveLen(len(mockCronjob.Items)))
-		g.Expect(deletingResult).To(ConsistOf(mockCronjob.Items))
+		cronJobCmd := mockController.getCronJobCmd("redis", teamTest, "bitnami/redis")
+		cronJobResources := mockController.getCronJobResources()
+		redisConfigComp := s2hv1beta1.Component{
+			Name: redisCompName,
+			Chart: s2hv1beta1.ComponentChart{
+				Repository: "https://kubernetes-charts.storage.googleapis.com",
+				Name:       redisCompName,
+			},
+			Image: s2hv1beta1.ComponentImage{
+				Repository: "bitnami/redis",
+				Pattern:    "5.*debian-9.*",
+			},
+			Schedules: redisSchedules,
+			Source:    &compSource,
+			Values: s2hv1beta1.ComponentValues{
+				"image": map[string]interface{}{
+					"repository": "bitnami/redis",
+					"pullPolicy": "IfNotPresent",
+				},
+				"cluster": map[string]interface{}{
+					"enabled": false,
+				},
+				"usePassword": false,
+				"master": map[string]interface{}{
+					"persistence": map[string]interface{}{
+						"enabled": false,
+					},
+				},
+			},
+		}
+
+		redisCronJobName := redisConfigComp.Name + "-checker-0x11xxx"
+		redisCronJobLabels := mockController.getCronJobLabels(redisCronJobName, teamTest, redisCompName)
+		mockCronJobs := &batchv1beta1.CronJobList{
+			TypeMeta: metav1.TypeMeta{},
+			ListMeta: metav1.ListMeta{},
+			Items: []batchv1beta1.CronJob{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Cronjob",
+						APIVersion: "batch/v1beta1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      redisCronJobName,
+						Namespace: namespaceTest,
+						Labels:    redisCronJobLabels,
+					},
+					Spec: batchv1beta1.CronJobSpec{
+						Schedule: "0 11 * * *",
+						JobTemplate: batchv1beta1.JobTemplateSpec{
+							Spec: batchv1.JobSpec{
+								Template: corev1.PodTemplateSpec{
+									ObjectMeta: metav1.ObjectMeta{
+										Labels: redisCronJobLabels,
+									},
+									Spec: corev1.PodSpec{
+										Containers: []corev1.Container{
+											{
+												Name:      ContainerName,
+												Image:     ContainerImage,
+												Args:      []string{"/bin/sh", "-c", cronJobCmd},
+												Resources: cronJobResources,
+											},
+										},
+										RestartPolicy: ContainerRestartPolicy,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		It("should create/delete cronjob correctly", func() {
+			g := NewWithT(GinkgoT())
+
+			cronJobName04 := redisConfigComp.Name + "-checker-0x4xxx"
+			cronJobLabels04 := mockController.getCronJobLabels(cronJobName04, teamTest, redisConfigComp.Name)
+			cronJobName05 := redisConfigComp.Name + "-checker-0x5xxx"
+			cronJobLabels05 := mockController.getCronJobLabels(cronJobName05, teamTest, redisConfigComp.Name)
+			expectedCronjob := []batchv1beta1.CronJob{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      cronJobName04,
+						Namespace: namespaceTest,
+						Labels:    cronJobLabels04,
+					},
+					Spec: batchv1beta1.CronJobSpec{
+						Schedule: "0 4 * * *",
+						JobTemplate: batchv1beta1.JobTemplateSpec{
+							Spec: batchv1.JobSpec{
+								Template: corev1.PodTemplateSpec{
+									ObjectMeta: metav1.ObjectMeta{
+										Labels: cronJobLabels04,
+									},
+									Spec: corev1.PodSpec{
+										Containers: []corev1.Container{
+											{
+												Name:      ContainerName,
+												Image:     ContainerImage,
+												Args:      []string{"/bin/sh", "-c", cronJobCmd},
+												Resources: cronJobResources,
+											},
+										},
+										RestartPolicy: ContainerRestartPolicy,
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      cronJobName05,
+						Namespace: namespaceTest,
+						Labels:    cronJobLabels05,
+					},
+					Spec: batchv1beta1.CronJobSpec{
+						Schedule: "0 5 * * *",
+						JobTemplate: batchv1beta1.JobTemplateSpec{
+							Spec: batchv1.JobSpec{
+								Template: corev1.PodTemplateSpec{
+									ObjectMeta: metav1.ObjectMeta{
+										Labels: cronJobLabels05,
+									},
+									Spec: corev1.PodSpec{
+										Containers: []corev1.Container{
+											{
+												Name:      ContainerName,
+												Image:     ContainerImage,
+												Args:      []string{"/bin/sh", "-c", cronJobCmd},
+												Resources: cronJobResources,
+											},
+										},
+										RestartPolicy: ContainerRestartPolicy,
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			c := controller{
+				s2hConfig: internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
+			}
+			creatingResult, deletingResult := c.getUpdatedCronJobs(namespaceTest, teamTest, &redisConfigComp, mockCronJobs)
+
+			g.Expect(creatingResult).To(HaveLen(len(expectedCronjob)))
+			g.Expect(creatingResult).To(ConsistOf(expectedCronjob))
+			g.Expect(deletingResult).To(HaveLen(len(mockCronJobs.Items)))
+			g.Expect(deletingResult).To(ConsistOf(mockCronJobs.Items))
+		})
+
+		It("should create/delete cronjob correctly when config have duplicate scheduler", func() {
+			g := NewWithT(GinkgoT())
+
+			redisConfigComp.Schedules = []string{"0 7 * * *", "0 7 * * *"}
+
+			c := controller{}
+			_, deletingResult := c.getUpdatedCronJobs(namespaceTest, teamTest, &redisConfigComp, mockCronJobs)
+
+			g.Expect(deletingResult).To(HaveLen(len(mockCronJobs.Items)))
+			g.Expect(deletingResult).To(ConsistOf(mockCronJobs.Items))
+		})
+
+		It("should create/delete cronjob correctly when config have no scheduler", func() {
+			g := NewWithT(GinkgoT())
+
+			redisConfigComp.Schedules = make([]string, 0)
+			c := controller{}
+			creatingResult, deletingResult := c.getUpdatedCronJobs(namespaceTest, teamTest, &redisConfigComp, mockCronJobs)
+
+			g.Expect(len(creatingResult)).To(Equal(0))
+			g.Expect(deletingResult).To(HaveLen(len(mockCronJobs.Items)))
+			g.Expect(deletingResult).To(ConsistOf(mockCronJobs.Items))
+
+		})
+
 	})
-
-	It("should create/delete cronjob correctly when config have duplicate scheduler", func() {
-		g := NewWithT(GinkgoT())
-
-		redisConfigComp.Schedules = []string{"0 7 * * *", "0 7 * * *"}
-
-		c := controller{}
-		_, deletingResult := c.GetUpdateCronJobs(namespaceTest, teamTest, &redisConfigComp, mockCronjob)
-
-		g.Expect(deletingResult).To(HaveLen(len(mockCronjob.Items)))
-		g.Expect(deletingResult).To(ConsistOf(mockCronjob.Items))
-
-	})
-
-	It("should create cronjob/delete correctly when config have no scheduler", func() {
-		g := NewWithT(GinkgoT())
-
-		redisConfigComp.Schedules = []string{}
-		c := controller{}
-		creatingResult, deletingResult := c.GetUpdateCronJobs(namespaceTest, teamTest, &redisConfigComp, mockCronjob)
-
-		g.Expect(len(creatingResult)).To(Equal(0))
-		g.Expect(deletingResult).To(HaveLen(len(mockCronjob.Items)))
-		g.Expect(deletingResult).To(ConsistOf(mockCronjob.Items))
-
-	})
-
 })
