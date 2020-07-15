@@ -27,6 +27,8 @@ func TestConfig(t *testing.T) {
 }
 
 var _ = Describe("Config Controller", func() {
+	successfulJobsHistoryLimit := successfulJobsHistoryLimit
+
 	compSource := s2hv1beta1.UpdatingSource("public-registry")
 	redisCompName := "redis"
 	redisConfigComp := s2hv1beta1.Component{
@@ -161,6 +163,7 @@ var _ = Describe("Config Controller", func() {
 						Labels:    redisCronJobLabels,
 					},
 					Spec: batchv1beta1.CronJobSpec{
+						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
 						Schedule: "0 11 * * *",
 						JobTemplate: batchv1beta1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
@@ -202,6 +205,7 @@ var _ = Describe("Config Controller", func() {
 						Labels:    cronJobLabels04,
 					},
 					Spec: batchv1beta1.CronJobSpec{
+						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
 						Schedule: "0 4 * * *",
 						JobTemplate: batchv1beta1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
@@ -232,6 +236,7 @@ var _ = Describe("Config Controller", func() {
 						Labels:    cronJobLabels05,
 					},
 					Spec: batchv1beta1.CronJobSpec{
+						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
 						Schedule: "0 5 * * *",
 						JobTemplate: batchv1beta1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
