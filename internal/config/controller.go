@@ -34,7 +34,8 @@ const (
 	ctrlName                = "config-ctrl"
 	maxConcurrentReconciles = 1
 
-	webhookAPI = "webhook/component"
+	webhookAPI                 = "webhook/component"
+	successfulJobsHistoryLimit = int32(1)
 )
 
 type controller struct {
@@ -333,6 +334,7 @@ func (c *controller) getCreatingCronJobs(namespace, teamName string, comp s2hv1b
 }
 
 func (c *controller) generateCronJob(cronJobName, cronJobCmd, schedule, compName, namespace, teamName string) batchv1beta1.CronJob {
+	successfulJobsHistoryLimit := successfulJobsHistoryLimit
 	cronJobLabels := c.getCronJobLabels(cronJobName, teamName, compName)
 	cronJobDefaultArgs := []string{"/bin/sh", "-c", cronJobCmd}
 	cronJob := batchv1beta1.CronJob{
@@ -342,7 +344,8 @@ func (c *controller) generateCronJob(cronJobName, cronJobCmd, schedule, compName
 			Labels:    cronJobLabels,
 		},
 		Spec: batchv1beta1.CronJobSpec{
-			Schedule: schedule,
+			SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
+			Schedule:                   schedule,
 			JobTemplate: batchv1beta1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
