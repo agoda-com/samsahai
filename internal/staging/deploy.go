@@ -281,7 +281,7 @@ func (c *controller) deployComponents(
 	queue *s2hv1beta1.Queue,
 	queueComps map[string]*s2hv1beta1.Component,
 	queueParentComps map[string]*s2hv1beta1.Component,
-	deployTimeOut time.Duration,
+	deployTimeout time.Duration,
 ) error {
 
 	stableMap, err := c.getStableComponentsMap()
@@ -289,7 +289,7 @@ func (c *controller) deployComponents(
 		return err
 	}
 
-	err = c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeOut)
+	err = c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout)
 	if err != nil {
 		return err
 	}
@@ -299,7 +299,7 @@ func (c *controller) deployComponents(
 		return nil
 	}
 
-	err = c.deployQueueComponent(deployEngine, queue, queueComps, queueParentComps, stableMap, deployTimeOut)
+	err = c.deployQueueComponent(deployEngine, queue, queueComps, queueParentComps, stableMap, deployTimeout)
 	if err != nil {
 		return err
 	}
