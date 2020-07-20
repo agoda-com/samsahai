@@ -371,7 +371,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		wgStop.Wait()
 	}, 10)
 
-	FIt("should successfully start and stop", func(done Done) {
+	It("should successfully start and stop", func(done Done) {
 		defer close(done)
 		ctx := context.Background()
 
