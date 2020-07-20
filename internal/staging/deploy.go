@@ -3,7 +3,6 @@ package staging
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"helm.sh/helm/v3/pkg/release"
@@ -288,11 +287,9 @@ func (c *controller) deployComponents(
 		return err
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
 
 	go func() {
-		err := c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout, &wg)
+		err := c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout)
 		logger.Error(err, "cannot deploy components except current queue", "queue", queue.Name)
 	}()
 
@@ -302,11 +299,10 @@ func (c *controller) deployComponents(
 	}
 
 	go func() {
-		err := c.deployQueueComponent(deployEngine, queue, queueComps, queueParentComps, stableMap, deployTimeout, &wg)
+		err := c.deployQueueComponent(deployEngine, queue, queueComps, queueParentComps, stableMap, deployTimeout)
 		logger.Error(err, "cannot deploy current queue component", "queue", queue.Name)
 	}()
 
-	wg.Wait()
 	return nil
 }
 
@@ -321,9 +317,7 @@ func (c *controller) deployComponentsExceptQueue(
 	queueParentComps map[string]*s2hv1beta1.Component,
 	stableMap map[string]s2hv1beta1.StableComponent,
 	deployTimeout time.Duration,
-	wg *sync.WaitGroup,
 ) error {
-	defer wg.Done()
 	parentComps, err := c.getConfigController().GetParentComponents(c.teamName)
 	if err != nil {
 		return err
@@ -367,9 +361,7 @@ func (c *controller) deployQueueComponent(
 	queueParentComps map[string]*s2hv1beta1.Component,
 	stableMap map[string]s2hv1beta1.StableComponent,
 	deployTimeout time.Duration,
-	wg *sync.WaitGroup,
 ) error {
-	defer wg.Done()
 	cfg, err := c.getConfiguration()
 	if err != nil {
 		return err
