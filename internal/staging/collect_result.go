@@ -272,7 +272,7 @@ func (c *controller) createDeploymentZipLogs(q *s2hv1beta1.Queue) (string, error
 	if viper.GetString("kubeconfig") != "" {
 		extraArg = " --kubeconfig " + viper.GetString("kubeconfig")
 	}
-	kubeGetAll := execCommand("kubectl", strings.Split("get po,svc,deploy,sts,rs,job -o wide"+extraArg, " ")...)
+	kubeGetAll := execCommand("kubectl", strings.Split("get po,svc,deploy,sts,rs,job,ing -o wide"+extraArg, " ")...)
 	appendFileToZip(zipw, "kube.get.all.txt", kubeGetAll)
 
 	deployEngine := c.getDeployEngine(q)
