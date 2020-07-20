@@ -10,6 +10,7 @@ const (
 	ErrInternalError             = Error("internal error")
 	ErrNotImplemented            = Error("not implemented")
 	ErrDeployTimeout             = Error("deploy timeout")
+	ErrReleaseFailed             = Error("release failed")
 	ErrTestTimeout               = Error("test timeout")
 	ErrTestRunnerNotFound        = Error("test runner not found")
 	ErrRequestTimeout            = Error("request timeout")

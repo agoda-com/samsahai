@@ -69,7 +69,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		},
 		Spec: s2hv1beta1.StableComponentSpec{
 			Name:       wordpressCompName,
-			Version:    "5.2.2-debian-9-r2",
+			Version:    "5.3.2-debian-10-r32",
 			Repository: "bitnami/wordpress",
 		},
 	}

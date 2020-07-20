@@ -88,6 +88,7 @@ func (e *engine) Create(
 	_ *v1beta1.Component,
 	parentComp *v1beta1.Component,
 	values map[string]interface{},
+	deployTimeout time.Duration,
 ) error {
 	if err := e.helmInit(); err != nil {
 		return err
@@ -104,7 +105,7 @@ func (e *engine) Create(
 	if err != nil {
 		switch err {
 		case driver.ErrReleaseNotFound:
-			err = e.helmInstall(refName, parentComp.Chart.Name, cpo, values)
+			err = e.helmInstall(refName, parentComp.Chart.Name, cpo, values, deployTimeout)
 			if err != nil {
 				return err
 			}
@@ -222,6 +223,7 @@ func (e *engine) helmInstall(
 	chartName string,
 	cpo action.ChartPathOptions,
 	values map[string]interface{},
+	deployTimeout time.Duration,
 ) error {
 	logger.Debug("helm install", "releaseName", refName, "chartName", chartName)
 
@@ -230,6 +232,8 @@ func (e *engine) helmInstall(
 	client.Namespace = e.namespace
 	client.ReleaseName = refName
 	client.DisableVerify = true
+	client.Timeout = deployTimeout
+	client.Wait = true
 
 	ch, err := e.helmPrepareChart(chartName, cpo)
 	if err != nil {
@@ -398,4 +402,14 @@ func DeleteAllReleases(ns string, debug bool) error {
 		}
 	}
 	return nil
+}
+
+func HelmList(ns string, debug bool) ([]*release.Release, error) {
+	e := New(ns, debug).(*engine)
+
+	releases, err := e.helmList()
+	if err != nil {
+		return []*release.Release{}, err
+	}
+	return releases, nil
 }

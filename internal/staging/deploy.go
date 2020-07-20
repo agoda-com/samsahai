@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"helm.sh/helm/v3/pkg/release"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +16,7 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
+	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
 	"github.com/agoda-com/samsahai/internal/third_party/k8s.io/kubernetes/deployment/util"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
 )
@@ -85,7 +87,7 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 	// Deploy
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueDeployStarted) {
 
-		err := c.deployComponents(deployEngine, queue, queueComps, queueParentComps)
+		err := c.deployComponents(deployEngine, queue, queueComps, queueParentComps, deployTimeout.Duration)
 		if err != nil {
 			return err
 		}
@@ -97,6 +99,29 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 		if err := c.updateQueue(queue); err != nil {
 			return err
 		}
+	}
+
+	//check helm deployment result
+	releases, err := helm3.HelmList(c.namespace, false)
+	if err != nil {
+		return err
+	} else if len(releases) == 0 {
+		return nil
+	}
+
+	isDeployed, isFailed := c.checkAllReleasesDeployed(releases)
+	if isFailed {
+		queue.Status.SetCondition(
+			s2hv1beta1.QueueDeployed,
+			corev1.ConditionFalse,
+			"release deployment failed")
+
+		logger.Error(s2herrors.ErrReleaseFailed, fmt.Sprintf("queue: %s release failed", queue.Name))
+
+		return c.updateQueueWithState(queue, s2hv1beta1.Collecting)
+	} else if !isDeployed {
+		time.Sleep(2 * time.Second)
+		return nil
 	}
 
 	// checking environment is ready
@@ -254,6 +279,7 @@ func (c *controller) deployComponents(
 	queue *s2hv1beta1.Queue,
 	queueComps map[string]*s2hv1beta1.Component,
 	queueParentComps map[string]*s2hv1beta1.Component,
+	deployTimeout time.Duration,
 ) error {
 
 	stableMap, err := c.getStableComponentsMap()
@@ -261,20 +287,21 @@ func (c *controller) deployComponents(
 		return err
 	}
 
-	err = c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap)
-	if err != nil {
-		return err
-	}
+
+	go func() {
+		err := c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout)
+		logger.Error(err, "cannot deploy components except current queue", "queue", queue.Name)
+	}()
 
 	if !c.isUpgradeRelatedQueue(queue) {
 		// ignore queue component if Queue type is not Upgrade or Reverify
 		return nil
 	}
 
-	err = c.deployQueueComponent(deployEngine, queue, queueComps, queueParentComps, stableMap)
-	if err != nil {
-		return err
-	}
+	go func() {
+		err := c.deployQueueComponent(deployEngine, queue, queueComps, queueParentComps, stableMap, deployTimeout)
+		logger.Error(err, "cannot deploy current queue component", "queue", queue.Name)
+	}()
 
 	return nil
 }
@@ -289,6 +316,7 @@ func (c *controller) deployComponentsExceptQueue(
 	queue *s2hv1beta1.Queue,
 	queueParentComps map[string]*s2hv1beta1.Component,
 	stableMap map[string]s2hv1beta1.StableComponent,
+	deployTimeout time.Duration,
 ) error {
 	parentComps, err := c.getConfigController().GetParentComponents(c.teamName)
 	if err != nil {
@@ -318,7 +346,7 @@ func (c *controller) deployComponentsExceptQueue(
 
 		values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, comp)
 
-		if err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values); err != nil {
+		if err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values, deployTimeout); err != nil {
 			return err
 		}
 	}
@@ -332,8 +360,8 @@ func (c *controller) deployQueueComponent(
 	queueComps map[string]*s2hv1beta1.Component,
 	queueParentComps map[string]*s2hv1beta1.Component,
 	stableMap map[string]s2hv1beta1.StableComponent,
+	deployTimeout time.Duration,
 ) error {
-
 	cfg, err := c.getConfiguration()
 	if err != nil {
 		return err
@@ -369,7 +397,7 @@ func (c *controller) deployQueueComponent(
 		}
 
 		values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, parentComp)
-		if err := deployEngine.Create(c.genReleaseName(parentComp), parentComp, parentComp, values); err != nil {
+		if err := deployEngine.Create(c.genReleaseName(parentComp), parentComp, parentComp, values, deployTimeout); err != nil {
 			return err
 		}
 	}
@@ -528,4 +556,18 @@ func (c *controller) isPVCsReady(listOpt *client.ListOptions) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (c *controller) checkAllReleasesDeployed(releases []*release.Release) (isDeployed, isFailed bool) {
+	for _, r := range releases {
+		switch r.Info.Status {
+		case release.StatusDeployed:
+			continue
+		case release.StatusFailed:
+			return false, true
+		default:
+			return false, false
+		}
+	}
+	return true, false
 }

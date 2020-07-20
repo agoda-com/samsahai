@@ -2,6 +2,7 @@ package mock
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -14,7 +15,7 @@ const (
 	EngineName = "mock"
 )
 
-type CreateCallbackFn func(refName string, comp *v1beta1.Component, parentComp *v1beta1.Component, values map[string]interface{})
+type CreateCallbackFn func(refName string, comp *v1beta1.Component, parentComp *v1beta1.Component, values map[string]interface{}, deployTimeout time.Duration)
 type DeleteCallbackFn func(refName string)
 
 type engine struct {
@@ -40,9 +41,10 @@ func (e *engine) Create(
 	comp *v1beta1.Component,
 	parentComp *v1beta1.Component,
 	values map[string]interface{},
+	deployTimeout time.Duration,
 ) error {
 	if e.createFn != nil {
-		e.createFn(refName, comp, parentComp, values)
+		e.createFn(refName, comp, parentComp, values, deployTimeout)
 	}
 	logger.Debug(fmt.Sprintf("create env with resource key: %s", refName))
 	return nil
