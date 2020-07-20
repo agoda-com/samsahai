@@ -48,6 +48,7 @@ const (
 	verifyTime10s          = 10 * time.Second
 	verifyTime15s          = 15 * time.Second
 	verifyTime30s          = 30 * time.Second
+	verifyTime45s          = 45 * time.Second
 	verifyTime60s          = 60 * time.Second
 	verifyNSCreatedTimeout = verifyTime15s
 	promoteTimeOut         = 220 * time.Second
@@ -1012,7 +1013,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Verifying DesiredComponent has been created")
-		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime45s, func() (ok bool, err error) {
 			_, _, _ = utilhttp.Post(server.URL+"/webhook/component", jsonData)
 
 			dc := s2hv1beta1.DesiredComponent{}
@@ -1023,7 +1024,7 @@ var _ = Describe("[e2e] Main controller", func() {
 			return true, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify DesiredComponent error")
-	}, 60)
+	}, 75)
 
 	It("should detect image missing and not create desired component", func(done Done) {
 		defer close(done)

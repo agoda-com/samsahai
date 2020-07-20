@@ -3,9 +3,10 @@ package staging
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
-	release "helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/release"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,12 +88,10 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 	// Deploy
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueDeployStarted) {
 
-		go func() {
-			err := c.deployComponents(deployEngine, queue, queueComps, queueParentComps, deployTimeout.Duration)
-			if err != nil {
-				logger.Error(err, "cannot deploy components", "queue", queue.Name)
-			}
-		}()
+		err := c.deployComponents(deployEngine, queue, queueComps, queueParentComps, deployTimeout.Duration)
+		if err != nil {
+			logger.Error(err, "cannot deploy components", "queue", queue.Name)
+		}
 
 		queue.Status.SetCondition(
 			s2hv1beta1.QueueDeployStarted,
@@ -289,21 +288,25 @@ func (c *controller) deployComponents(
 		return err
 	}
 
-	err = c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout)
-	if err != nil {
-		return err
-	}
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		err := c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout, &wg)
+		logger.Error(err, "cannot deploy components except current queue", "queue", queue.Name)
+	}()
 
 	if !c.isUpgradeRelatedQueue(queue) {
 		// ignore queue component if Queue type is not Upgrade or Reverify
 		return nil
 	}
 
-	err = c.deployQueueComponent(deployEngine, queue, queueComps, queueParentComps, stableMap, deployTimeout)
-	if err != nil {
-		return err
-	}
+	go func() {
+		err := c.deployQueueComponent(deployEngine, queue, queueComps, queueParentComps, stableMap, deployTimeout, &wg)
+		logger.Error(err, "cannot deploy current queue component", "queue", queue.Name)
+	}()
 
+	wg.Wait()
 	return nil
 }
 
@@ -318,7 +321,9 @@ func (c *controller) deployComponentsExceptQueue(
 	queueParentComps map[string]*s2hv1beta1.Component,
 	stableMap map[string]s2hv1beta1.StableComponent,
 	deployTimeout time.Duration,
+	wg *sync.WaitGroup,
 ) error {
+	defer wg.Done()
 	parentComps, err := c.getConfigController().GetParentComponents(c.teamName)
 	if err != nil {
 		return err
@@ -362,8 +367,9 @@ func (c *controller) deployQueueComponent(
 	queueParentComps map[string]*s2hv1beta1.Component,
 	stableMap map[string]s2hv1beta1.StableComponent,
 	deployTimeout time.Duration,
+	wg *sync.WaitGroup,
 ) error {
-
+	defer wg.Done()
 	cfg, err := c.getConfiguration()
 	if err != nil {
 		return err
@@ -560,7 +566,7 @@ func (c *controller) isPVCsReady(listOpt *client.ListOptions) (bool, error) {
 	return true, nil
 }
 
-func (c *controller) checkAllReleasesDeployed(releases []*release.Release) (bool, bool) {
+func (c *controller) checkAllReleasesDeployed(releases []*release.Release) (isDeployed, isFailed bool) {
 	for _, r := range releases {
 		switch r.Info.Status {
 		case release.StatusDeployed:

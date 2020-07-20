@@ -164,7 +164,7 @@ var _ = Describe("Config Controller", func() {
 					},
 					Spec: batchv1beta1.CronJobSpec{
 						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
-						Schedule: "0 11 * * *",
+						Schedule:                   "0 11 * * *",
 						JobTemplate: batchv1beta1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
 								Template: corev1.PodTemplateSpec{
@@ -206,7 +206,7 @@ var _ = Describe("Config Controller", func() {
 					},
 					Spec: batchv1beta1.CronJobSpec{
 						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
-						Schedule: "0 4 * * *",
+						Schedule:                   "0 4 * * *",
 						JobTemplate: batchv1beta1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
 								Template: corev1.PodTemplateSpec{
@@ -237,7 +237,7 @@ var _ = Describe("Config Controller", func() {
 					},
 					Spec: batchv1beta1.CronJobSpec{
 						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
-						Schedule: "0 5 * * *",
+						Schedule:                   "0 5 * * *",
 						JobTemplate: batchv1beta1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
 								Template: corev1.PodTemplateSpec{
