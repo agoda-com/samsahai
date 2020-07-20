@@ -89,7 +89,7 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 
 		err := c.deployComponents(deployEngine, queue, queueComps, queueParentComps, deployTimeout.Duration)
 		if err != nil {
-			logger.Error(err, "cannot deploy components", "queue", queue.Name)
+			return err
 		}
 
 		queue.Status.SetCondition(
