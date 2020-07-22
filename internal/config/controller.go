@@ -35,7 +35,7 @@ const (
 	maxConcurrentReconciles = 1
 
 	webhookAPI                 = "webhook/component"
-	successfulJobsHistoryLimit = int32(1)
+	successfulJobsHistoryLimit = int32(0)
 )
 
 type controller struct {
