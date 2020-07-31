@@ -3,6 +3,8 @@ package internal
 import (
 	"time"
 
+	"helm.sh/helm/v3/pkg/release"
+
 	"github.com/agoda-com/samsahai/api/v1beta1"
 )
 
@@ -14,7 +16,13 @@ type DeployEngine interface {
 	GetValues() (map[string][]byte, error)
 
 	// Create creates environment
-	Create(refName string, comp *v1beta1.Component, parentComp *v1beta1.Component, values map[string]interface{}, deployTimeout time.Duration) error
+	Create(refName string, comp *v1beta1.Component, parentComp *v1beta1.Component, values map[string]interface{}, deployTimeout *time.Duration) error
+
+	// Rollback rollback helm release
+	Rollback(refName string, revision int) error
+
+	// GetHistories returns histories of release
+	GetHistories(refName string) ([]*release.Release, error)
 
 	// Delete deletes environment
 	Delete(refName string) error
