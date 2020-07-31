@@ -591,10 +591,8 @@ func (c *controller) checkAllReleasesDeployed(deployEngine internal.DeployEngine
 				foundHistoryDeployed = true
 			case release.StatusFailed:
 				return false, true, hist.Info.Description
-			}
-
-			if foundHistoryDeployed {
-				break
+			case release.StatusPendingInstall, release.StatusPendingUpgrade:
+				return false, false, ""
 			}
 		}
 
