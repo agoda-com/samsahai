@@ -88,7 +88,7 @@ func (e *engine) Create(
 	_ *v1beta1.Component,
 	parentComp *v1beta1.Component,
 	values map[string]interface{},
-	deployTimeout time.Duration,
+	deployTimeout *time.Duration,
 ) error {
 	if err := e.helmInit(); err != nil {
 		return err
@@ -99,9 +99,7 @@ func (e *engine) Create(
 		RepoURL: parentComp.Chart.Repository,
 	}
 
-	cliHist := action.NewHistory(e.actionSettings)
-	cliHist.Max = 1
-	_, err := cliHist.Run(refName)
+	_, err := e.GetHistories(refName)
 	if err != nil {
 		switch err {
 		case driver.ErrReleaseNotFound:
@@ -123,13 +121,24 @@ func (e *engine) Create(
 
 	if !reflect.DeepEqual(values, v) {
 		// update
-		err = e.helmUpgrade(refName, parentComp.Chart.Name, cpo, values)
+		err = e.helmUpgrade(refName, parentComp.Chart.Name, cpo, values, deployTimeout)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (e *engine) Rollback(refName string, revision int) error {
+	return e.helmRollback(refName, revision)
+}
+
+func (e *engine) GetHistories(refName string) ([]*release.Release, error) {
+	cliHist := action.NewHistory(e.actionSettings)
+	cliHist.Max = 1
+
+	return cliHist.Run(refName)
 }
 
 func (e *engine) Delete(refName string) error {
@@ -223,7 +232,7 @@ func (e *engine) helmInstall(
 	chartName string,
 	cpo action.ChartPathOptions,
 	values map[string]interface{},
-	deployTimeout time.Duration,
+	deployTimeout *time.Duration,
 ) error {
 	logger.Debug("helm install", "releaseName", refName, "chartName", chartName)
 
@@ -232,8 +241,10 @@ func (e *engine) helmInstall(
 	client.Namespace = e.namespace
 	client.ReleaseName = refName
 	client.DisableVerify = true
-	client.Timeout = deployTimeout
-	client.Wait = true
+	if deployTimeout != nil {
+		client.Timeout = *deployTimeout
+		client.Wait = true
+	}
 
 	ch, err := e.helmPrepareChart(chartName, cpo)
 	if err != nil {
@@ -257,6 +268,7 @@ func (e *engine) helmUpgrade(
 	chartName string,
 	cpo action.ChartPathOptions,
 	values map[string]interface{},
+	deployTimeout *time.Duration,
 ) error {
 	logger.Debug("helm upgrade", "releaseName", refName, "chartName", chartName)
 
@@ -265,6 +277,10 @@ func (e *engine) helmUpgrade(
 	client.Namespace = e.namespace
 	client.Atomic = true
 	client.DisableVerify = true
+	if deployTimeout != nil {
+		client.Timeout = *deployTimeout
+		client.Wait = true
+	}
 
 	ch, err := e.helmPrepareChart(chartName, cpo)
 	if err != nil {
@@ -276,6 +292,21 @@ func (e *engine) helmUpgrade(
 	if err != nil {
 		logger.Error(err, "helm upgrade failed", "releaseName", refName, "chartName", chartName)
 		return errors.Wrapf(err, "helm upgrade failed")
+	}
+
+	return nil
+}
+
+func (e *engine) helmRollback(refName string, revision int) error {
+	logger.Debug("helm rollback", "releaseName", refName, "revision", revision)
+
+	client := action.NewRollback(e.actionSettings)
+	client.Version = revision
+
+	err := client.Run(refName)
+	if err != nil {
+		logger.Error(err, "helm rollback failed", "releaseName", refName, "revision", revision)
+		return errors.Wrapf(err, "helm rollback failed")
 	}
 
 	return nil

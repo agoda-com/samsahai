@@ -109,12 +109,12 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 		return nil
 	}
 
-	isDeployed, isFailed := c.checkAllReleasesDeployed(releases)
+	isDeployed, isFailed, errMsg := c.checkAllReleasesDeployed(deployEngine, releases)
 	if isFailed {
 		queue.Status.SetCondition(
 			s2hv1beta1.QueueDeployed,
 			corev1.ConditionFalse,
-			"release deployment failed")
+			fmt.Sprintf("release deployment failed: %s", errMsg))
 
 		logger.Error(s2herrors.ErrReleaseFailed, fmt.Sprintf("queue: %s release failed", queue.Name))
 
@@ -281,26 +281,27 @@ func (c *controller) deployComponents(
 	queueParentComps map[string]*s2hv1beta1.Component,
 	deployTimeout time.Duration,
 ) error {
-
 	stableMap, err := c.getStableComponentsMap()
 	if err != nil {
 		return err
 	}
 
-
 	go func() {
 		err := c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout)
-		logger.Error(err, "cannot deploy components except current queue", "queue", queue.Name)
+		if err != nil {
+			logger.Error(err, "cannot deploy components except current queue", "queue", queue.Name)
+		}
 	}()
 
-	if !c.isUpgradeRelatedQueue(queue) {
-		// ignore queue component if Queue type is not Upgrade or Reverify
-		return nil
-	}
-
 	go func() {
+		if !c.isUpgradeRelatedQueue(queue) {
+			return
+		}
+
 		err := c.deployQueueComponent(deployEngine, queue, queueComps, queueParentComps, stableMap, deployTimeout)
-		logger.Error(err, "cannot deploy current queue component", "queue", queue.Name)
+		if err != nil {
+			logger.Error(err, "cannot deploy current queue component", "queue", queue.Name)
+		}
 	}()
 
 	return nil
@@ -344,16 +345,32 @@ func (c *controller) deployComponentsExceptQueue(
 			stableMap,
 			baseValues)
 
-		values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, comp)
-
-		if err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values, deployTimeout); err != nil {
-			return err
+		switch queue.Spec.Type {
+		case s2hv1beta1.QueueTypeDemoteFromActive:
+			// rollback current active instead of upgrading
+			if err := deployEngine.Rollback(c.genReleaseName(comp), 1); err != nil {
+				return err
+			}
+		case s2hv1beta1.QueueTypePreActive:
+			// 1st: apply base values for pre-active queue only
+			if err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values, nil); err != nil {
+				return err
+			}
+			fallthrough
+		default:
+			// 2nd: apply queue type values
+			values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, comp)
+			if err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values, &deployTimeout); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
+// deployQueueComponent ensures queue components deployed
+// will be skipped if queue type is not upgrade or reverify
 func (c *controller) deployQueueComponent(
 	deployEngine internal.DeployEngine,
 	queue *s2hv1beta1.Queue,
@@ -397,7 +414,7 @@ func (c *controller) deployQueueComponent(
 		}
 
 		values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, parentComp)
-		if err := deployEngine.Create(c.genReleaseName(parentComp), parentComp, parentComp, values, deployTimeout); err != nil {
+		if err := deployEngine.Create(c.genReleaseName(parentComp), parentComp, parentComp, values, &deployTimeout); err != nil {
 			return err
 		}
 	}
@@ -558,16 +575,33 @@ func (c *controller) isPVCsReady(listOpt *client.ListOptions) (bool, error) {
 	return true, nil
 }
 
-func (c *controller) checkAllReleasesDeployed(releases []*release.Release) (isDeployed, isFailed bool) {
+func (c *controller) checkAllReleasesDeployed(deployEngine internal.DeployEngine, releases []*release.Release) (
+	isDeployed, isFailed bool, errMsg string,
+) {
 	for _, r := range releases {
-		switch r.Info.Status {
-		case release.StatusDeployed:
-			continue
-		case release.StatusFailed:
-			return false, true
-		default:
-			return false, false
+		histories, err := deployEngine.GetHistories(r.Name)
+		if err != nil {
+			return false, false, ""
+		}
+
+		foundHistoryDeployed := false
+		for _, hist := range histories {
+			switch hist.Info.Status {
+			case release.StatusDeployed:
+				foundHistoryDeployed = true
+			case release.StatusFailed:
+				return false, true, hist.Info.Description
+			}
+
+			if foundHistoryDeployed {
+				break
+			}
+		}
+
+		if !foundHistoryDeployed {
+			return false, false, ""
 		}
 	}
-	return true, false
+
+	return true, false, ""
 }
