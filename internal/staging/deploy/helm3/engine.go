@@ -190,6 +190,15 @@ func (e *engine) GetValues() (map[string][]byte, error) {
 	return valuesYaml, nil
 }
 
+func (e *engine) GetReleases() ([]*release.Release, error) {
+	releases, err := e.helmList()
+	if err != nil {
+		return []*release.Release{}, err
+	}
+
+	return releases, nil
+}
+
 func (e *engine) helmUninstall(refName string, disableHooks bool) error {
 	client := action.NewUninstall(e.actionSettings)
 	client.Timeout = DefaultUninstallTimeout
@@ -433,14 +442,4 @@ func DeleteAllReleases(ns string, debug bool) error {
 		}
 	}
 	return nil
-}
-
-func HelmList(ns string, debug bool) ([]*release.Release, error) {
-	e := New(ns, debug).(*engine)
-
-	releases, err := e.helmList()
-	if err != nil {
-		return []*release.Release{}, err
-	}
-	return releases, nil
 }

@@ -80,6 +80,11 @@ func (e *engine) GetValues() (map[string][]byte, error) {
 	return nil, nil
 }
 
+func (e *engine) GetReleases() ([]*release.Release, error) {
+	logger.Debug("get all releases")
+	return []*release.Release{}, nil
+}
+
 func (e *engine) GetName() string {
 	return EngineName
 }
