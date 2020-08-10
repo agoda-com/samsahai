@@ -33,6 +33,9 @@ type DeployEngine interface {
 	// GetLabelSelector returns map of label for select the components that created by the engine
 	GetLabelSelectors(refName string) map[string]string
 
+	// GetReleases returns all deployed releases
+	GetReleases() ([]*release.Release, error)
+
 	// IsMocked uses for skip some functions due to mock deploy
 	//
 	// Skipped function: WaitForComponentsCleaned

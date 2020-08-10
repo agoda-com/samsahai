@@ -16,7 +16,6 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
-	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
 	"github.com/agoda-com/samsahai/internal/third_party/k8s.io/kubernetes/deployment/util"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
 )
@@ -25,7 +24,7 @@ import (
 func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 	deployTimeout := metav1.Duration{Duration: 1800 * time.Second}
 
-	if deployConfig := c.getDeployConfiguration(queue); deployConfig != nil {
+	if deployConfig := c.getDeployConfiguration(queue); deployConfig != nil && deployConfig.Timeout.Duration != 0 {
 		deployTimeout = deployConfig.Timeout
 	}
 
@@ -86,7 +85,6 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 
 	// Deploy
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueDeployStarted) {
-
 		err := c.deployComponents(deployEngine, queue, queueComps, queueParentComps, deployTimeout.Duration)
 		if err != nil {
 			return err
@@ -102,11 +100,15 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 	}
 
 	//check helm deployment result
-	releases, err := helm3.HelmList(c.namespace, false)
+	releases, err := deployEngine.GetReleases()
 	if err != nil {
 		return err
-	} else if len(releases) == 0 {
-		return nil
+	}
+
+	if len(releases) == 0 {
+		if !deployEngine.IsMocked() {
+			return nil
+		}
 	}
 
 	isDeployed, isFailed, errMsg := c.checkAllReleasesDeployed(deployEngine, releases)
