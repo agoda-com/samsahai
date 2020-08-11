@@ -155,3 +155,8 @@ func IsRollingBackActivePromotion(err error) bool {
 func IsEnsuringConfigDestroyed(err error) bool {
 	return ErrEnsureConfigDestroyed.Error() == err.Error()
 }
+
+// IsErrReleaseFailed checks release failed
+func IsErrReleaseFailed(err error) bool {
+	return ErrReleaseFailed.Error() == err.Error()
+}
