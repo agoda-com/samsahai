@@ -419,7 +419,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete previous namespace error")
 
 		By("ActivePromotion should be deleted")
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
 			err = client.Get(ctx, types.NamespacedName{Name: atp.Name}, &atpTemp)
 			if err != nil && errors.IsNotFound(err) {
@@ -495,7 +495,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				Expect(data).NotTo(BeNil())
 			}
 		}
-	}, 230)
+	}, 250)
 
 	It("should successfully promote an active environment even demote timeout", func(done Done) {
 		defer close(done)
@@ -1189,7 +1189,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Verifying redis DesiredComponent has been created")
-		err = wait.PollImmediate(verifyTime1s, 50*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
 			_, _, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataRedis)
 			dRedis := s2hv1beta1.DesiredComponent{}
 			if err = client.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dRedis); err != nil {
@@ -1295,7 +1295,7 @@ var _ = Describe("[e2e] Main controller", func() {
 			return true, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify StableComponents error")
-	}, 100)
+	}, 110)
 
 	It("should successfully create outdated component when no any active namespace left but there are active components in team", func(done Done) {
 		defer close(done)
@@ -1947,23 +1947,6 @@ var (
 	stableRedis     = s2hv1beta1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{Name: redisCompName, Namespace: stgNamespace},
 		Spec:       stableSpecRedis,
-	}
-
-	mockDesiredCompList = &s2hv1beta1.DesiredComponentList{
-		Items: []s2hv1beta1.DesiredComponent{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: mariaDBCompName, Namespace: stgNamespace},
-				Spec:       s2hv1beta1.DesiredComponentSpec{Name: mariaDBCompName, Repository: "bitnami/mariadb", Version: "10.3.18-debian-9-r32"},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: redisCompName, Namespace: stgNamespace},
-				Spec:       s2hv1beta1.DesiredComponentSpec{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.7-debian-9-r56"},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: wordpressCompName, Namespace: stgNamespace},
-				Spec:       s2hv1beta1.DesiredComponentSpec{Name: wordpressCompName, Repository: "bitnami/wordpress", Version: "5.2.4-debian-9-r18"},
-			},
-		},
 	}
 
 	mockQueueList = &s2hv1beta1.QueueList{

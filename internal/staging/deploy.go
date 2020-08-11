@@ -85,8 +85,8 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 
 	// Deploy
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueDeployStarted) {
-		err := c.deployComponents(deployEngine, queue, queueComps, queueParentComps, deployTimeout.Duration)
-		if err != nil {
+		isDeployed, err := c.deployComponents(deployEngine, queue, queueComps, queueParentComps, deployTimeout.Duration)
+		if err != nil && !isDeployed {
 			return err
 		}
 
@@ -282,21 +282,39 @@ func (c *controller) deployComponents(
 	queueComps map[string]*s2hv1beta1.Component,
 	queueParentComps map[string]*s2hv1beta1.Component,
 	deployTimeout time.Duration,
-) error {
+) (isDeployed bool, err error) {
 	stableMap, err := c.getStableComponentsMap()
 	if err != nil {
-		return err
+		return false, err
 	}
 
+	releaseRevision := make(map[string]int)
+	releases, err := deployEngine.GetReleases()
+	if err != nil {
+		return false, err
+	}
+	for _, rel := range releases {
+		releaseRevision[rel.Name] = rel.Version
+	}
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancelFunc()
+
+	isDeployedCh := make(chan bool, 2)
+	errCh := make(chan error, 2)
 	go func() {
-		err := c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout)
+		isDeployed, err := c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout)
 		if err != nil {
 			logger.Error(err, "cannot deploy components except current queue", "queue", queue.Name)
 		}
+		isDeployedCh <- isDeployed
+		errCh <- err
 	}()
 
 	go func() {
 		if !c.isUpgradeRelatedQueue(queue) {
+			isDeployedCh <- true
+			errCh <- nil
 			return
 		}
 
@@ -304,9 +322,41 @@ func (c *controller) deployComponents(
 		if err != nil {
 			logger.Error(err, "cannot deploy current queue component", "queue", queue.Name)
 		}
+		isDeployedCh <- isDeployed
+		errCh <- err
 	}()
 
-	return nil
+	isDeployed = true
+	for i := 0; i < 2; i++ {
+		select {
+		case <-ctx.Done():
+			releases, err = deployEngine.GetReleases()
+			if err != nil {
+				return
+			}
+
+			if len(releases) == 0 {
+				err = fmt.Errorf("release is being deployed")
+				return
+			}
+			for _, rel := range releases {
+				if revision, ok := releaseRevision[rel.Name]; ok {
+					if rel.Version <= revision {
+						err = fmt.Errorf("release is being deployed")
+						return
+					}
+				}
+			}
+
+		case isDeployed := <-isDeployedCh:
+			err := <-errCh
+			if err != nil {
+				return isDeployed, err
+			}
+		}
+	}
+
+	return
 }
 
 func (c *controller) isUpgradeRelatedQueue(q *s2hv1beta1.Queue) bool {
@@ -320,15 +370,15 @@ func (c *controller) deployComponentsExceptQueue(
 	queueParentComps map[string]*s2hv1beta1.Component,
 	stableMap map[string]s2hv1beta1.StableComponent,
 	deployTimeout time.Duration,
-) error {
+) (isDeployed bool, err error) {
 	parentComps, err := c.getConfigController().GetParentComponents(c.teamName)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	cfg, err := c.getConfiguration()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	for name, comp := range parentComps {
@@ -339,7 +389,7 @@ func (c *controller) deployComponentsExceptQueue(
 
 		baseValues, err := configctrl.GetEnvComponentValues(cfg, name, s2hv1beta1.EnvBase)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		values := valuesutil.GenStableComponentValues(
@@ -351,24 +401,17 @@ func (c *controller) deployComponentsExceptQueue(
 		case s2hv1beta1.QueueTypeDemoteFromActive:
 			// rollback current active instead of upgrading
 			if err := deployEngine.Rollback(c.genReleaseName(comp), 1); err != nil {
-				return err
+				return true, err
 			}
-		case s2hv1beta1.QueueTypePreActive:
-			// 1st: apply base values for pre-active queue only
-			if err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values, nil); err != nil {
-				return err
-			}
-			fallthrough
 		default:
-			// 2nd: apply queue type values
 			values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, comp)
 			if err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values, &deployTimeout); err != nil {
-				return err
+				return true, err
 			}
 		}
 	}
 
-	return nil
+	return true, nil
 }
 
 // deployQueueComponent ensures queue components deployed
