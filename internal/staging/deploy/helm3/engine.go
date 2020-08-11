@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -113,18 +112,10 @@ func (e *engine) Create(
 		}
 	}
 
-	cliGet := action.NewGetValues(e.actionSettings)
-	v, err := cliGet.Run(refName)
+	// update
+	err = e.helmUpgrade(refName, parentComp.Chart.Name, cpo, values, deployTimeout)
 	if err != nil {
-		return errors.Wrapf(err, "cannot get helm values of release %q", refName)
-	}
-
-	if !reflect.DeepEqual(values, v) {
-		// update
-		err = e.helmUpgrade(refName, parentComp.Chart.Name, cpo, values, deployTimeout)
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
 	return nil
