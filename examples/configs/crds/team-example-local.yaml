@@ -1,0 +1,16 @@
+apiVersion: env.samsahai.io/v1beta1
+kind: Team
+metadata:
+  name: example
+spec:
+  description: Example team
+
+  owners:
+    - example@samsahai.io
+
+  stagingCtrl:
+    endpoint: http://127.0.0.1:8090
+    isDeploy: false
+
+  credential:
+    secretName: s2h-example-secret

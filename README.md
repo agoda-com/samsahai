@@ -106,7 +106,7 @@ and there are 2 different processes between testing passes and fails.
 - [Run/Debug Locally](#rundebug-locally)
 
 #### Configuration
-Find more configuration information in [samsahai-example](https://www.github.com/agoda-com/samsahai-example)
+Find more configuration information in [examples](https://www.github.com/agoda-com/samsahai/tree/master/examples)
 
 #### Minikube
 1. Create and access into samsahai directory in go path
