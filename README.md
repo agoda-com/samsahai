@@ -47,6 +47,14 @@ These are the meaning of verification states which happen in particular upgradin
 6. **Cleaning after:** cleaning the staging namespace after deploying components.
 7. **Finished:** the verification process has been finished.
 
+##### Notes:
+> - In case you want to verify components more than one at the same queue, you can do that by adding the components into `spec.bundles` field.  
+> Please see the example in [config.yaml](https://www.github.com/agoda-com/samsahai/tree/master/examples/starter/crds/config.yaml).
+> - In case you want to prioritize your components in queue to always be at the top of the queue, you can do that by adding the component or bundle into `spec.priorityQueues` field.  
+> Please see the example in [config.yaml](https://www.github.com/agoda-com/samsahai/tree/master/examples/starter/crds/config.yaml).
+> - In case you do not want to verify a component in staging flow which also want to mark all upcoming latest component version as stable, you can skip verifying process by defining the `spec.staging.deployment.engine` to be `mock`.  
+> Please see the example in [config.yaml](https://www.github.com/agoda-com/samsahai/tree/master/examples/starter/crds/config.yaml).
+
 ### Active Promotion Workflow
 ![](docs/images/flow-active.png)
 
@@ -58,9 +66,12 @@ and `old active` will be switched to `previous active` and it will be destroyed 
   - In case the testing failed, the switching namespace will not be proceeded and `pre-active` namespace will be destroyed.
 So your `old active` namespace is still there as it is.
 
-> Note: At the promotion time, there will be 3 namespaces running in parallel; staging, pre-active and active.
+##### Notes:
+> - At the promotion time, there will be 3 namespaces running in parallel; staging, pre-active and active.
 > As in our use case, we use active namespace for testing the pull requests and we don't want to break it.
 > So we let the `pre-active` namespace setting up finished, then we destroy `previous active` namespace without downtime.
+> - In case you want to skip running test when promoting, you are allowed to do that by adding `skipTestRunner` flag in active-promotion.yaml.  
+> Please see the example in [active-promotion.yaml](https://www.github.com/agoda-com/samsahai/tree/master/examples/starter/crds/active-promotion.yaml).
 
 #### Active Promotion States
 These are the meaning of verification states which happen in particular active promotion.
