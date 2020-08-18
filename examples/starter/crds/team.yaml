@@ -1,0 +1,35 @@
+apiVersion: env.samsahai.io/v1beta1
+kind: Team
+metadata:
+  # what is your team name?
+  # team name should be lowercase without any special character
+  # this affects to your namespace name
+  # i.e., `s2h-<team_name>` for staging namespace
+  # and `s2h-<team_name>-xxx` for pre-active and active namespaces
+  name: <your_team_name>
+spec:
+  desc: <your_team_description>
+  
+  # how can we contact you?
+  owners:
+    - <your_team_email>
+
+  # how many resources for your namespace?
+  resources: null
+    # cpu: '4'
+    # memory: 4Gi
+
+  stagingCtrl:
+    # do you want to deploy staging controller in your namespace?
+    # otherwise, there is no process running in your namespace
+    isDeploy: true
+
+  # credential configuration
+  credential: null
+    # # secret kubernetes object name
+    # # before you specify the secret name, be ensure that
+    # # the secret has been applied to your cluster
+    # # you can manually apply your secret by using secret.yaml file
+    # # the secret name has to be the same as specifying
+    # # in metadata.name of secret.yaml
+    # secretName: <secret_name>

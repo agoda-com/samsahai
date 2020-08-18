@@ -1,0 +1,88 @@
+apiVersion: env.samsahai.io/v1beta1
+kind: Config
+metadata:
+  name: example
+spec:
+  envs:
+    base:
+      wordpress:
+        - https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/envs/base/wordpress.yaml
+    staging:
+      redis:
+        - https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/envs/staging/redis.yaml
+    pre-active:
+      redis:
+        - https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/envs/pre-active/redis.yaml
+    active:
+      redis:
+        - https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/envs/active/redis.yaml
+
+  staging:
+    maxRetry: 3
+    deployment:
+      timeout: 5m
+      engine: helm3
+      testRunner:
+        timeout: 240s
+        pollingTime: 5s
+        testMock:
+          result: true
+
+  activePromotion:
+    timeout: 10m
+    maxHistories: 5
+    tearDownDuration: 10s
+    deployment:
+      timeout: 5m
+      engine: helm3
+      testRunner:
+        timeout: 240s
+        pollingTime: 5s
+        testMock:
+          result: true
+
+  report:
+    reportMock: true
+    
+  bundles:
+    db:
+      - redis
+      - mariadb
+
+  priorityQueues:
+    - redis
+    - wordpress
+
+  components:
+    - name: redis
+      chart:
+        repository: https://kubernetes-charts.storage.googleapis.com
+        name: redis
+      image:
+        repository: bitnami/redis
+        pattern: '5.*debian-9.*'
+      source: public-registry
+      values:
+        image:
+          repository: bitnami/redis
+          pullPolicy: IfNotPresent
+        cluster:
+          enabled: false
+        usePassword: false
+        master:
+          persistence:
+            enabled: false
+    - name: wordpress
+      chart:
+        repository: https://kubernetes-charts.storage.googleapis.com
+        name: wordpress
+      image:
+        repository: bitnami/wordpress
+        pattern: '5\.2.*debian-9.*'
+      source: public-registry
+      dependencies:
+        - name: mariadb
+          image:
+            repository: bitnami/mariadb
+            pattern: '10\.3.*debian-9.*'
+          source: public-registry

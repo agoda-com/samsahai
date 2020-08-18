@@ -1,0 +1,4 @@
+master:
+  service:
+    type: NodePort
+    nodePort: 31002

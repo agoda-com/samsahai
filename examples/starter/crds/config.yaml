@@ -1,0 +1,272 @@
+apiVersion: env.samsahai.io/v1beta1
+kind: Config
+metadata:
+  # this must be the same as your team name
+  # name must consist of lower case alphanumeric characters, '-' or '.',
+  # and must start and end with an alphanumeric character
+  name: <your_team_name>
+spec:
+  # [optional] bundle of components which need to be verified in a same queue in staging environment
+  # can have multiple bundles
+  bundles:
+    # bundle name will be used as a queue name
+    # bundle name must consist of lower case alphanumeric characters, '-' or '.',
+    # and must start and end with an alphanumeric character
+    <bundle_name1>:
+      - <service_name_or_dependencies_service_name>
+
+  # [optional] a list of bundles/components' name which needs to be prioritized
+  # the first one has the highest priority and the last one has the lowest priority
+  priorityQueues:
+    - <service_name_or_dependencies_service_or_bundle_name>
+      
+  # what components do you want to verify?
+  components:
+    # name must consist of lower case alphanumeric characters, '-' or '.',
+    # and must start and end with an alphanumeric character
+    - name: <service_name>
+      # metadata of helm chart
+      chart:
+        # helm chart repository URL which contains desired component charts
+        repository: https://kubernetes-charts.storage.googleapis.com
+        # helm chart name e.g. wordpress, redis
+        name: <chart_name>
+      # [optional] image repository and image tag pattern of parent component chart
+      image:
+        repository: <service_image_repository>
+        # [optional] samsahai will retrieve the latest image version matching with a defined pattern
+        pattern: <service_image_tag_pattern>
+
+      # image source for checking desired version of components
+      # use 'public-registry' for retrieving latest version from public registry e.g. hub.docker.com
+      # use 'harbor' for retrieving latest version from harbor
+      # use 'samsahai-stable' for retrieving version from stable component version of other teams in samsahai itself
+      source: public-registry
+
+      # overriding values of main service following chart templates
+      values: null
+
+      # dependencies of main service
+      dependencies:
+        # name must consist of lower case alphanumeric characters, '-' or '.',
+        # and must start and end with an alphanumeric character
+        - name: <dependencies_service_name>
+          # image repository and image tag pattern of component chart
+          image:
+            repository: <dependencies_image_repository>
+            # [optional] samsahai will retrieve the latest image version matching with a defined pattern
+            pattern: <service_image_tag_pattern>
+
+          # image source for checking desired version of components
+          # use 'public-registry' for retrieving latest version from public registry e.g. hub.docker.com
+          # use 'harbor' for retrieving latest version from harbor
+          # use 'samsahai-stable' for retrieving version from stable component version of other teams in samsahai itself
+          source: public-registry
+
+  # staging flow configuration
+  staging:
+    # how many times the component should be tested?
+    # default value is 0
+    maxRetry: 2
+    deployment:
+      # how long the staging environment should be ready?
+      # support units are either <number>s, <number>m or <number>h
+      # default value is 30m
+      timeout: 60m
+
+      # how long components cleanup should take?
+      # support units are either <number>s, <number>m or <number>h
+      # default value is 15m
+      componentCleanupTimeout: 20m
+
+      # deployment engine which is used for deploying releases
+      # use 'helm3' for using helm v3 find more details in https://helm.sh/docs/
+      # use 'mock' for fake deploying release into a namespace, all releases will be stamped as success
+      engine: helm3
+
+      # [optional] testing flow configuration for running against staging environment
+      testRunner:
+        # your teamcity build configuration
+        teamcity:
+          # build configuration type id which wants to run against desired components
+          buildTypeID: <your_regression_teamcity_build_type_id>
+
+          # build branch which wants to run against desired components
+          branch: <default>
+
+        # how long all testing flows in teamcity should take?
+        # support units are either <number>s, <number>m or <number>h
+        # default value is 30m
+        timeout: 1h
+
+        # [optional] polling time to verify finished status in teamcity
+        # support units are either <number>s, <number>m or <number>h
+        # default value is 5s
+        pollingTime: 10s
+
+  # active promotion flow configuration
+  activePromotion:
+    # how long idle time of old active namespace before destroying?
+    # when pre-active switches to active namespace successfully
+    # so old active will be destroyed in xx minutes
+    # support units are either <number>s, <number>m or <number>h
+    # default value is 20m
+    tearDownDuration: 30m
+
+    # how long the whole flow of active promotion should take?
+    # support units are either <number>s, <number>m or <number>h
+    # default value is 1h
+    timeout: 3h
+
+    # [optional] what is the maximum active promotion histories to store?
+    # default value is 7
+    maxHistories: 20
+
+    # deployment flow of active environment configuration
+    deployment:
+      # how long the active environment should be ready?
+      # support units are either <number>s, <number>m or <number>h
+      # default value is 30m
+      timeout: 60m
+      
+      # how long components cleanup should take?
+      # support units are either <number>s, <number>m or <number>h
+      # default value is 15m
+      componentCleanupTimeout: 20m
+
+      # deployment engine which is used for deploying releases
+      # use 'helm3' for using helm v3 find more details in https://helm.sh/docs/
+      # use 'mock' for fake deploying release into a namespace, all releases will be stamped as success
+      engine: helm3
+
+      # [optional] testing flow configuration for running against active environment
+      testRunner:
+        # your teamcity build configuration
+        teamcity:
+          # build configuration type id which wants to run against desired components
+          buildTypeID: <your_regression_teamcity_build_type_id>
+
+          # build branch which wants to run against desired components
+          branch: <default>
+
+        # how long all testing flows in teamcity should take?
+        # support units are either <number>s, <number>m or <number>h
+        # default value is 30m
+        timeout: 1h
+
+        # [optional] polling time to verify finished status in teamcity
+        # support units are either <number>s, <number>m or <number>h
+        # default value is 5s
+        pollingTime: 10s
+
+    # [optional] outdated notification to report configuration
+    # in case you would like to disable this notification
+    # you can remove this parameter
+    outdatedNotification:
+      # how long of outdated component should be marked as outdated?
+      # in case this parameter is not set, component will be marked as outdated
+      # in any case if stable version is not equal to desired version
+      # support units are either <number>s, <number>m or <number>h
+      exceedDuration: 24h
+
+      # calculate outdated duration by excluding weekend (Sat. and Sun.) periods
+      excludeWeekendCalculation: true
+
+  # reporting flow configuration
+  report:
+    # sending notification via slack
+    slack:
+      # if you would like to specify your channel
+      # please add our samsahai bot to your channel
+      channels:
+        - samsahai-dev
+      componentUpgrade:
+        # how often of sending component upgrade notification within a retry cycle
+        # use 'everytime' for sending slack notification in every component upgrade runs
+        # use 'retry' for sending slack notification after retry only <default>
+        interval: retry
+
+        # a criteria of sending component upgrade notification
+        # use 'success' for sending slack notification when component upgrade is success only
+        # use 'failure' for sending slack notification when component upgrade is failure only <default>
+        # use 'both' for sending slack notification whether component upgrade is success or failure
+        criteria: failure
+  
+    # sending notification via Microsoft Teams
+    msTeams:
+      groups:
+        # support both group name and group id
+        # in case there are duplicated group names, will use the first found group
+        - groupNameOrID: Samsahai
+          # support both channel name and channel id
+          channelNameOrIDs:
+            - Samsahai Dev 
+        componentUpgrade:  
+          # how often of sending component upgrade notification within a retry cycle
+          # use 'everytime' for sending ms teams notification in every component upgrade runs
+          # use 'retry' for sending ms teams notification after retry only <default>
+          interval: retry
+
+          # a criteria of sending component upgrade notification
+          # use 'success' for sending ms teams notification when component upgrade is success only
+          # use 'failure' for sending ms teams notification when component upgrade is failure only <default>
+          # use 'both' for sending ms teams notification whether component upgrade is success or failure
+          criteria: failure
+
+    cmd:
+      # active promotion external command line
+      # check supported value format from
+      # https://raw.githubusercontent.com/agoda-com/samsahai/master/internal/reporter.go#ActivePromotionReporter
+      activePromotion:
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "active promotion result: {{ .Result }} of {{ .TeamName }}"
+
+      # component upgrade external command line
+      # check support values format from
+      # https://raw.githubusercontent.com/agoda-com/samsahai/master/internal/reporter.go#ComponentUpgradeReporter
+      componentUpgrade:
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "queue name: {{ .Name }} of {{ .TeamName }}"
+
+      # image missing external command line
+      # check support values format from
+      # https://raw.githubusercontent.com/agoda-com/samsahai/master/internal/reporter.go#ImageMissingReporter
+      imageMissing:
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "image missing: {{ .Repository }}:{{ .Tag }}, component: {{ .ComponentName }}"
+
+  # values file urls of parent component per environment
+  envs:
+    # base environment will be applied every running
+    base:
+      # component name must consist of lower case alphanumeric characters, '-' or '.',
+      # and must start and end with an alphanumeric character
+      <component_name>:
+        - <values_file_url>
+
+    # staging environment will be applied when running component upgrade
+    staging:
+      # component name must consist of lower case alphanumeric characters, '-' or '.',
+      # and must start and end with an alphanumeric character
+      <component_name>:
+        - <values_file_url>
+
+    # pre-active environment will be applied when doing active promotion
+    pre-active:
+      # component name must consist of lower case alphanumeric characters, '-' or '.',
+      # and must start and end with an alphanumeric character
+      <component_name>:
+        - <values_file_url>
+        
+    # active environment will be applied when active promotion passed
+    active:
+      # component name must consist of lower case alphanumeric characters, '-' or '.',
+      # and must start and end with an alphanumeric character
+      <component_name>:
+        - <values_file_url>
