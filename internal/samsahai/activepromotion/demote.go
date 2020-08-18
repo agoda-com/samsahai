@@ -112,4 +112,3 @@ func (c *controller) checkDemotionTimeout(ctx context.Context, atpComp *s2hv1bet
 
 	return nil
 }
-
