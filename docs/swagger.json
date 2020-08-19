@@ -1664,6 +1664,9 @@
                 "buildID": {
                     "type": "string"
                 },
+                "buildNumber": {
+                    "type": "string"
+                },
                 "buildTypeID": {
                     "type": "string"
                 },

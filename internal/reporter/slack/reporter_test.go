@@ -47,7 +47,7 @@ var _ = Describe("send slack message", func() {
 			}
 			mockSlackCli := &mockSlack{}
 			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
-			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url"}}
+			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url", BuildNumber: "teamcity-build-number"}}
 			comp := internal.NewComponentUpgradeReporter(
 				rpcComp,
 				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
@@ -65,7 +65,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("1.1.0"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("image-1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Desired component failed"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("<teamcity-url|Click here>"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("<teamcity-url|#teamcity-build-number>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/queue/histories/comp1-5678/log|Download here>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner-staging"))
@@ -201,7 +201,7 @@ var _ = Describe("send slack message", func() {
 				},
 				PreActiveQueue: s2hv1beta1.QueueStatus{
 					TestRunner: s2hv1beta1.TestRunner{
-						Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url"},
+						Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url", BuildNumber: "teamcity-build-number"},
 					},
 				},
 			}
@@ -215,7 +215,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Success"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner-123456"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("<teamcity-url|Click here>"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("<teamcity-url|#teamcity-build-number"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Outdated Components"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("comp1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Not update for 1d 0h 0m"))

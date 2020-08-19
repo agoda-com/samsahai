@@ -62,8 +62,9 @@ type TriggerResponse struct {
 }
 
 type ResultResponse struct {
-	State  string `xml:"state,attr"`
-	Status string `xml:"status,attr"`
+	BuildNumber string `xml:"number,attr"`
+	State       string `xml:"state,attr"`
+	Status      string `xml:"status,attr"`
 }
 
 type testRunner struct {
@@ -235,6 +236,8 @@ func (t *testRunner) GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueu
 		logger.Error(err, "cannot unmarshal request data")
 		return false, false, err
 	}
+
+	currentQueue.Status.TestRunner.Teamcity.BuildNumber = response.BuildNumber
 
 	isBuildFinished = false
 	if strings.EqualFold(buildFinished, response.State) {

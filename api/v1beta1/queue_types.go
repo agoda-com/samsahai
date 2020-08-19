@@ -150,6 +150,7 @@ type TestRunner struct {
 
 type Teamcity struct {
 	BuildID     string `json:"buildID,omitempty"`
+	BuildNumber string `json:"buildNumber,omitempty"`
 	BuildTypeID string `json:"buildTypeID,omitempty"`
 	BuildURL    string `json:"buildURL,omitempty"`
 }

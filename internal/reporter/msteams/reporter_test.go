@@ -48,7 +48,7 @@ var _ = Describe("send ms teams message", func() {
 			mockMSTeamsCli := &mockMSTeams{}
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
-			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url"}}
+			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url", BuildNumber: "teamcity-build-number"}}
 			comp := internal.NewComponentUpgradeReporter(
 				rpcComp,
 				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
@@ -69,7 +69,7 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("1.1.0"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("image-1"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Desired component failed"))
-			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="teamcity-url">Click here</a>`))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="teamcity-url">#teamcity-build-number</a>`))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/queue/histories/comp1-5678/log">Download here</a>`))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner-staging"))
@@ -213,7 +213,7 @@ var _ = Describe("send ms teams message", func() {
 				},
 				PreActiveQueue: s2hv1beta1.QueueStatus{
 					TestRunner: s2hv1beta1.TestRunner{
-						Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url"},
+						Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url", BuildNumber: "teamcity-build-number"},
 					},
 				},
 			}
@@ -231,7 +231,7 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Success"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner-123456"))
-			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="teamcity-url">Click here</a>`))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="teamcity-url">#teamcity-build-number</a>`))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Outdated Components"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("comp1"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Not update for 1d 0h 0m"))
