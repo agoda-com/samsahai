@@ -237,7 +237,7 @@ func (t *testRunner) GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueu
 		return false, false, err
 	}
 
-	currentQueue.Status.TestRunner.Teamcity.BuildNumber = response.BuildNumber
+	currentQueue.Status.TestRunner.Teamcity.BuildNumber = "#" + response.BuildNumber
 
 	isBuildFinished = false
 	if strings.EqualFold(buildFinished, response.State) {
