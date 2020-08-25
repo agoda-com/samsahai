@@ -144,6 +144,9 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 	if err := c.client.Get(context.TODO(), types.NamespacedName{
 		Namespace: comp.GetNamespace(),
 		Name:      comp.GetName()}, queue); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return &rpc.Empty{}, nil
+		}
 		logger.Error(err, "cannot get the queue")
 	}
 	exporter.SetQueueMetric(queue)
@@ -224,6 +227,9 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 		queue := &s2hv1beta1.Queue{}
 		err := c.client.Get(context.TODO(), types.NamespacedName{Namespace: comp.GetNamespace(), Name: queueName}, queue)
 		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				return &rpc.Empty{}, nil
+			}
 			logger.Error(err, "cannot get the queue")
 		}
 		exporter.SetQueueMetric(queue)

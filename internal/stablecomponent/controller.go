@@ -207,6 +207,31 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		return cr.Result{}, err
 	}
 
+	// if stable version equal desired version then remove component from queue
+	desiredComp := &s2hv1beta1.DesiredComponent{}
+	err = c.client.Get(ctx, req.NamespacedName, desiredComp)
+	if err != nil {
+		logger.Error(err, "cannot get DesiredComponent", "name", req.Name, "namespace", req.Namespace)
+		return cr.Result{}, err
+	}
+
+	if stableComp.Spec.Version == desiredComp.Spec.Version {
+		//queueList := &s2hv1beta1.QueueList{}
+		queueList, err := c.s2hCtrl.GetQueues(req.Namespace)
+		if err != nil {
+			return cr.Result{}, err
+		}
+		queue := s2hv1beta1.Queue{}
+		for _, queue = range queueList.Items {
+			if queue.Spec.Name == stableComp.Name {
+				if err := c.deleteQueue(ctx, queue); err != nil {
+					return cr.Result{}, err
+				}
+				break
+			}
+		}
+	}
+
 	return cr.Result{}, nil
 }
 
@@ -221,4 +246,8 @@ func (c *controller) detectSpecChanged(stableComp *s2hv1beta1.StableComponent, t
 	}
 
 	return true
+}
+
+func (c *controller) deleteQueue(ctx context.Context, q s2hv1beta1.Queue) error {
+	return c.client.Delete(ctx, &q)
 }
