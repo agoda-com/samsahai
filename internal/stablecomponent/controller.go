@@ -216,7 +216,6 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	}
 
 	if stableComp.Spec.Version == desiredComp.Spec.Version {
-		//queueList := &s2hv1beta1.QueueList{}
 		queueList, err := c.s2hCtrl.GetQueues(req.Namespace)
 		if err != nil {
 			return cr.Result{}, err
