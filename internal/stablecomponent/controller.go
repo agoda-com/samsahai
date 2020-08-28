@@ -207,7 +207,6 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		return cr.Result{}, err
 	}
 
-	// if stable version equal desired version then remove component from queue
 	desiredComp := &s2hv1beta1.DesiredComponent{}
 	err = c.client.Get(ctx, req.NamespacedName, desiredComp)
 	if err != nil {
@@ -215,19 +214,20 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		return cr.Result{}, err
 	}
 
-	if stableComp.Spec.Version == desiredComp.Spec.Version {
-		queueList, err := c.s2hCtrl.GetQueues(req.Namespace)
-		if err != nil {
+	queueList, err := c.s2hCtrl.GetQueues(req.Namespace)
+	if err != nil {
+		return cr.Result{}, err
+	}
+
+	removeQueue, updateQueue := c.removeSameVersionQueue(queueList, stableComp, desiredComp)
+	if removeQueue.Name != "" {
+		if err := c.deleteQueue(ctx, removeQueue); err != nil {
 			return cr.Result{}, err
 		}
-		queue := s2hv1beta1.Queue{}
-		for _, queue = range queueList.Items {
-			if queue.Spec.Name == stableComp.Name {
-				if err := c.deleteQueue(ctx, queue); err != nil {
-					return cr.Result{}, err
-				}
-				break
-			}
+	}
+	if updateQueue.Name != "" {
+		if err := c.updateQueue(ctx, updateQueue); err != nil {
+			return cr.Result{}, err
 		}
 	}
 
@@ -249,4 +249,37 @@ func (c *controller) detectSpecChanged(stableComp *s2hv1beta1.StableComponent, t
 
 func (c *controller) deleteQueue(ctx context.Context, q s2hv1beta1.Queue) error {
 	return c.client.Delete(ctx, &q)
+}
+
+func (c *controller) updateQueue(ctx context.Context, q s2hv1beta1.Queue) error {
+	return c.client.Update(context.Background(), &q)
+}
+
+// removeSameVersionQueue removes component from queue if stable version equal desired version
+func (c *controller) removeSameVersionQueue(queueList *s2hv1beta1.QueueList, stableComp *s2hv1beta1.StableComponent, desiredComp *s2hv1beta1.DesiredComponent) (removeQueue, updateQueue s2hv1beta1.Queue) {
+	if stableComp.Spec.Repository == desiredComp.Spec.Repository &&
+		stableComp.Spec.Version == desiredComp.Spec.Version {
+		for _, queue := range queueList.Items {
+
+			if len(queue.Spec.Components) == 1 {
+				if queue.Spec.Components[0].Name == stableComp.Name {
+					removeQueue = queue
+				}
+			} else {
+				var validComponents []*s2hv1beta1.QueueComponent
+				for _, comp := range queue.Spec.Components {
+					if comp.Name != stableComp.Name {
+						validComponents = append(validComponents, comp) // if do not delete component append in valid
+					}
+				}
+
+				if len(validComponents) != len(queue.Spec.Components) {
+					queue.Spec.Components = validComponents
+					updateQueue = queue
+				}
+			}
+		}
+		return removeQueue, updateQueue
+	}
+	return s2hv1beta1.Queue{}, s2hv1beta1.Queue{}
 }
