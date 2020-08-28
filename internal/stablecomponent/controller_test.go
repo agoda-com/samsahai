@@ -68,17 +68,6 @@ var _ = Describe("Stable component Controller", func() {
 				},
 			}
 
-			desiredComponentRedis := &s2hv1beta1.DesiredComponent{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: redisName,
-				},
-				Spec: s2hv1beta1.DesiredComponentSpec{
-					Name:       redisName,
-					Repository: redisName,
-					Version:    "1.0.0",
-				},
-			}
-
 			stableComponentWordpress := &s2hv1beta1.StableComponent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: wordpressName,
@@ -87,6 +76,17 @@ var _ = Describe("Stable component Controller", func() {
 					Name:       wordpressName,
 					Repository: wordpressName,
 					Version:    "2.0.0",
+				},
+			}
+
+			desiredComponentRedis := &s2hv1beta1.DesiredComponent{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: redisName,
+				},
+				Spec: s2hv1beta1.DesiredComponentSpec{
+					Name:       redisName,
+					Repository: redisName,
+					Version:    "1.0.0",
 				},
 			}
 
