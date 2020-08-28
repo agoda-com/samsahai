@@ -32,19 +32,16 @@ var _ = Describe("Stable component Controller", func() {
 				Spec: s2hv1beta1.QueueSpec{Name: redisName,
 					Components: s2hv1beta1.QueueComponents{{Name: redisName, Repository: redisName, Version: "1.0.1"}},
 				},
-				//Status: s2hv1beta1.QueueStatus{},
 			}
 			queueWordpress := s2hv1beta1.Queue{
 				Spec: s2hv1beta1.QueueSpec{Name: wordpressName,
 					Components: s2hv1beta1.QueueComponents{{Name: wordpressName, Repository: wordpressName, Version: "2.0.1"}},
 				},
-				//Status: s2hv1beta1.QueueStatus{},
 			}
 			queueMariadb := s2hv1beta1.Queue{
 				Spec: s2hv1beta1.QueueSpec{Name: mariadbName,
 					Components: s2hv1beta1.QueueComponents{{Name: mariadbName, Repository: mariadbName, Version: "3.0.1"}},
 				},
-				//Status: s2hv1beta1.QueueStatus{},
 			}
 			queueBundle := s2hv1beta1.Queue{
 				Spec: s2hv1beta1.QueueSpec{Name: "db", Bundle: "group",
@@ -53,7 +50,6 @@ var _ = Describe("Stable component Controller", func() {
 						{Name: mariadbName, Repository: mariadbName, Version: "3.0.1"},
 					},
 				},
-				//Status: s2hv1beta1.QueueStatus{},
 			}
 			queueList := &s2hv1beta1.QueueList{
 				Items: []s2hv1beta1.Queue{
