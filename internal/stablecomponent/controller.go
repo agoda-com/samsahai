@@ -269,7 +269,7 @@ func (c *controller) removeSameVersionQueue(queueList *s2hv1beta1.QueueList, sta
 				var validComponents []*s2hv1beta1.QueueComponent
 				for _, comp := range queue.Spec.Components {
 					if comp.Name != stableComp.Name {
-						validComponents = append(validComponents, comp) // if do not delete component append in valid
+						validComponents = append(validComponents, comp)
 					}
 				}
 
