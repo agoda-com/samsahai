@@ -11,7 +11,7 @@ import (
 )
 
 func TestController(t *testing.T) {
-	unittest.InitGinkgo(t, "Samsamhai")
+	unittest.InitGinkgo(t, "Samsahai")
 }
 
 var _ = Describe("S2H Controller", func() {

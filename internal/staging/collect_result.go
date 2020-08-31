@@ -33,6 +33,17 @@ import (
 
 func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 	// check deploy and test result
+	pods := &corev1.PodList{}
+	if err := c.client.List(context.TODO(), pods, &client.ListOptions{}); err != nil {
+		logger.Error(err, "cannot list pods")
+		return err
+	}
+
+	jobs := &batchv1.JobList{}
+	if err := c.client.List(context.TODO(), jobs, &client.ListOptions{}); err != nil {
+		logger.Error(err, "cannot list jobs")
+		return err
+	}
 
 	if queue.Status.KubeZipLog == "" {
 		logZip, err := c.createDeploymentZipLogs(queue)
@@ -47,7 +58,7 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 		}
 	}
 
-	if err := c.setDeploymentIssues(queue); err != nil {
+	if err := c.setDeploymentIssues(queue, pods, jobs); err != nil {
 		return err
 	}
 
@@ -70,28 +81,6 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 
 	// made queue to clean after state
 	return c.updateQueueWithState(queue, s2hv1beta1.CleaningAfter)
-}
-
-func (c *controller) extractComponentNameFromPod(pod corev1.Pod) string {
-	compName := pod.Name
-	for _, podRef := range pod.OwnerReferences {
-		if strings.ToLower(podRef.Kind) == "replicaset" {
-			rs := &appsv1.ReplicaSet{}
-			err := c.client.Get(context.TODO(), types.NamespacedName{Name: podRef.Name, Namespace: pod.Namespace}, rs)
-			if err != nil {
-				logger.Error(err, "cannot get replicaset %s", podRef.Name)
-			}
-
-			for _, rsRef := range rs.OwnerReferences {
-				compName = rsRef.Name
-			}
-			break
-		}
-
-		compName = podRef.Name
-	}
-
-	return compName
 }
 
 func (c *controller) setStableAndSendReport(queue *s2hv1beta1.Queue) error {
@@ -504,7 +493,7 @@ func (c *controller) getReverificationStatus(queue *s2hv1beta1.Queue) rpc.Compon
 	return rpc.ComponentUpgrade_ReverificationStatus_FAILURE
 }
 
-func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
+func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue, pods *corev1.PodList, jobs *batchv1.JobList) error {
 	initContainerIssues := s2hv1beta1.DeploymentIssue{
 		IssueType:         s2hv1beta1.DeploymentIssueWaitForInitContainer,
 		FailureComponents: make([]s2hv1beta1.FailureComponent, 0),
@@ -534,12 +523,6 @@ func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
 		FailureComponents: make([]s2hv1beta1.FailureComponent, 0),
 	}
 
-	pods := &corev1.PodList{}
-	if err := c.client.List(context.TODO(), pods, &client.ListOptions{}); err != nil {
-		logger.Error(err, "cannot list pods")
-		return err
-	}
-
 	for _, pod := range pods.Items {
 		compName := c.extractComponentNameFromPod(pod)
 		failureComp := s2hv1beta1.FailureComponent{
@@ -548,12 +531,17 @@ func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
 
 		// check init container issue
 		initContainerStatuses := pod.Status.InitContainerStatuses
+		initFound := false
 		for _, initContainerStatus := range initContainerStatuses {
 			if !initContainerStatus.Ready {
+				initFound = true
 				failureComp.FirstFailureContainerName = initContainerStatus.Name
 				failureComp.RestartCount = initContainerStatus.RestartCount
 				initContainerIssues.FailureComponents = append(initContainerIssues.FailureComponents, failureComp)
 			}
+		}
+		if initFound {
+			continue
 		}
 
 		containerStatuses := pod.Status.ContainerStatuses
@@ -580,6 +568,7 @@ func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
 					case "ContainerCreating":
 						containerCreatingIssues.FailureComponents = append(containerCreatingIssues.FailureComponents,
 							failureComp)
+						found = true
 					}
 				}
 
@@ -617,12 +606,6 @@ func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
 	}
 
 	// check job not complete issue
-	jobs := &batchv1.JobList{}
-	if err := c.client.List(context.TODO(), jobs, &client.ListOptions{}); err != nil {
-		logger.Error(err, "cannot list jobs")
-		return err
-	}
-
 	for _, job := range jobs.Items {
 		failureComp := s2hv1beta1.FailureComponent{
 			ComponentName: job.Name,
@@ -660,4 +643,26 @@ func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
 	queue.Status.SetDeploymentIssues(deploymentIssues)
 
 	return nil
+}
+
+func (c *controller) extractComponentNameFromPod(pod corev1.Pod) string {
+	compName := pod.Name
+	for _, podRef := range pod.OwnerReferences {
+		if strings.ToLower(podRef.Kind) == "replicaset" {
+			rs := &appsv1.ReplicaSet{}
+			err := c.client.Get(context.TODO(), types.NamespacedName{Name: podRef.Name, Namespace: pod.Namespace}, rs)
+			if err != nil {
+				logger.Error(err, "cannot get replicaset %s", podRef.Name)
+			}
+
+			for _, rsRef := range rs.OwnerReferences {
+				compName = rsRef.Name
+			}
+			break
+		}
+
+		compName = podRef.Name
+	}
+
+	return compName
 }

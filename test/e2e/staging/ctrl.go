@@ -588,7 +588,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		qhl := &s2hv1beta1.QueueHistoryList{}
 		err = wait.PollImmediate(1*time.Second, 120*time.Second, func() (ok bool, err error) {
-			err = client.List(context.TODO(), qhl, &rclient.ListOptions{})
+			err = client.List(context.TODO(), qhl, &rclient.ListOptions{Namespace: namespace})
 			if err != nil || len(qhl.Items) < 1 {
 				return false, nil
 			}
@@ -609,7 +609,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 			return true, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Should have waiting queue")
-	}, 120)
+	}, 180)
 
 	It("should successfully get health check", func(done Done) {
 		defer close(done)
