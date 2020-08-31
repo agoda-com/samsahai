@@ -257,29 +257,28 @@ func (c *controller) updateQueue(ctx context.Context, q s2hv1beta1.Queue) error 
 
 // removeSameVersionQueue removes component from queue if stable version equal desired version
 func (c *controller) removeSameVersionQueue(queueList *s2hv1beta1.QueueList, stableComp *s2hv1beta1.StableComponent, desiredComp *s2hv1beta1.DesiredComponent) (removeQueue, updateQueue s2hv1beta1.Queue) {
+	removeQueue, updateQueue = s2hv1beta1.Queue{}, s2hv1beta1.Queue{}
 	if stableComp.Spec.Repository == desiredComp.Spec.Repository &&
 		stableComp.Spec.Version == desiredComp.Spec.Version {
 		for _, queue := range queueList.Items {
 
-			if len(queue.Spec.Components) == 1 {
-				if queue.Spec.Components[0].Name == stableComp.Name {
-					removeQueue = queue
+			var validComponents []*s2hv1beta1.QueueComponent
+			for _, comp := range queue.Spec.Components {
+				if comp.Name != stableComp.Name {
+					validComponents = append(validComponents, comp)
 				}
-			} else {
-				var validComponents []*s2hv1beta1.QueueComponent
-				for _, comp := range queue.Spec.Components {
-					if comp.Name != stableComp.Name {
-						validComponents = append(validComponents, comp)
-					}
-				}
+			}
 
-				if len(validComponents) != len(queue.Spec.Components) {
-					queue.Spec.Components = validComponents
-					updateQueue = queue
-				}
+			if len(validComponents) == 0 {
+				removeQueue = queue
+				break
+			} else if len(validComponents) != len(queue.Spec.Components) {
+				queue.Spec.Components = validComponents
+				updateQueue = queue
+				break
 			}
 		}
 		return removeQueue, updateQueue
 	}
-	return s2hv1beta1.Queue{}, s2hv1beta1.Queue{}
+	return
 }

@@ -141,13 +141,14 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 
 	// Add metric updateQueueMetric & histories
 	queue := &s2hv1beta1.Queue{}
-	if err := c.client.Get(context.TODO(), types.NamespacedName{
+	err := c.client.Get(context.TODO(), types.NamespacedName{
 		Namespace: comp.GetNamespace(),
-		Name:      comp.GetName()}, queue); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return &rpc.Empty{}, nil
+		Name:      comp.GetName()}, queue)
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			logger.Error(err, "cannot get the queue")
 		}
-		logger.Error(err, "cannot get the queue")
+		return &rpc.Empty{}, nil
 	}
 	exporter.SetQueueMetric(queue)
 
@@ -225,12 +226,14 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 	queueName := comp.GetName()
 	if queueName != "" {
 		queue := &s2hv1beta1.Queue{}
-		err := c.client.Get(context.TODO(), types.NamespacedName{Namespace: comp.GetNamespace(), Name: queueName}, queue)
+		err := c.client.Get(context.TODO(), types.NamespacedName{
+			Namespace: comp.GetNamespace(),
+			Name:      queueName}, queue)
 		if err != nil {
-			if k8serrors.IsNotFound(err) {
-				return &rpc.Empty{}, nil
+			if !k8serrors.IsNotFound(err) {
+				logger.Error(err, "cannot get the queue")
 			}
-			logger.Error(err, "cannot get the queue")
+			return &rpc.Empty{}, nil
 		}
 		exporter.SetQueueMetric(queue)
 	}
