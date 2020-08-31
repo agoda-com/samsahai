@@ -611,7 +611,7 @@ func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue, pods *corev1.P
 			ComponentName: job.Name,
 		}
 
-		if job.Status.Active != 0 {
+		if job.Status.CompletionTime == nil {
 			jobNotCompleteIssues.FailureComponents = append(jobNotCompleteIssues.FailureComponents, failureComp)
 		}
 	}
@@ -664,6 +664,8 @@ func (c *controller) extractComponentNameFromPod(pod corev1.Pod) string {
 		compName = podRef.Name
 	}
 
-	compName = strings.ReplaceAll(compName, pod.Namespace + "-", "")
+	if pod.Namespace != "" {
+		compName = strings.ReplaceAll(compName, pod.Namespace+"-", "")
+	}
 	return compName
 }
