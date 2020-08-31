@@ -23,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -33,18 +34,6 @@ import (
 
 func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 	// check deploy and test result
-	pods := &corev1.PodList{}
-	if err := c.client.List(context.TODO(), pods, &client.ListOptions{}); err != nil {
-		logger.Error(err, "cannot list pods")
-		return err
-	}
-
-	jobs := &batchv1.JobList{}
-	if err := c.client.List(context.TODO(), jobs, &client.ListOptions{}); err != nil {
-		logger.Error(err, "cannot list jobs")
-		return err
-	}
-
 	if queue.Status.KubeZipLog == "" {
 		logZip, err := c.createDeploymentZipLogs(queue)
 		if err != nil {
@@ -58,8 +47,34 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 		}
 	}
 
-	if err := c.setDeploymentIssues(queue, pods, jobs); err != nil {
+	// set deployment issues matching with release label
+	deployEngine := c.getDeployEngine(queue)
+	parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
+	if err != nil {
 		return err
+	}
+
+	for parentComp := range parentComps {
+		ns := queue.Namespace
+		refName := internal.GenReleaseName(ns, parentComp)
+		selectors := deployEngine.GetLabelSelectors(refName)
+		listOpt := &client.ListOptions{Namespace: ns, LabelSelector: labels.SelectorFromSet(selectors)}
+
+		pods := &corev1.PodList{}
+		if err := c.client.List(context.TODO(), pods, listOpt); err != nil {
+			logger.Error(err, "cannot list pods")
+			return err
+		}
+
+		jobs := &batchv1.JobList{}
+		if err := c.client.List(context.TODO(), jobs, listOpt); err != nil {
+			logger.Error(err, "cannot list jobs")
+			return err
+		}
+
+		if err := c.setDeploymentIssues(queue, pods, jobs); err != nil {
+			return err
+		}
 	}
 
 	// Queue will finished if type are Active promotion related
@@ -527,6 +542,18 @@ func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue, pods *corev1.P
 		compName := c.extractComponentNameFromPod(pod)
 		failureComp := s2hv1beta1.FailureComponent{
 			ComponentName: compName,
+		}
+
+		// ignore job pod
+		jobFound := false
+		for _, podRef := range pod.OwnerReferences {
+			if strings.ToLower(podRef.Kind) == "job" {
+				jobFound = true
+				break
+			}
+		}
+		if jobFound {
+			break
 		}
 
 		// check init container issue
