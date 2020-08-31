@@ -211,18 +211,18 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 *Owner:* {{ .TeamName }}
 *Namespace:* {{ .Namespace }}
 {{- if eq .Status 0 }}
+  {{- if .ComponentUpgrade.DeploymentIssues }}
+*Deployment Issues:*
+  {{- range .ComponentUpgrade.DeploymentIssues }}
+>- *Issue type:* {{ .IssueType }}
+>   *Components:* {{ range .FailureComponents }}{{ .ComponentName }},{{ end }} 
+  {{- end }} 
+  {{- end }} 
   {{- if .TestRunner.Teamcity.BuildURL }}
 *Teamcity URL:* <{{ .TestRunner.Teamcity.BuildURL }}|#{{ .TestRunner.Teamcity.BuildNumber }}>
   {{- end }}
 *Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log|Download here>
 *Deployment History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}|Click here>
-{{- if .ComponentUpgrade.DeploymentIssues }}
-*Deployment Issues:*
-{{- range .ComponentUpgrade.DeploymentIssues }}
->- *Issue type:* {{ .IssueType }}
->   *Components:* {{ range .FailureComponents }}{{ .ComponentName }},{{ end }} 
-{{- end }} 
-{{- end }} 
 {{- end}}
 `
 	return strings.TrimSpace(template.TextRender("SlackComponentUpgradeFailure", message, comp))
@@ -240,6 +240,15 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 {{- end }}
 *Current Active Namespace:* {{ .CurrentActiveNamespace }}
 *Owner:* {{ .TeamName }}
+{{- if eq .Result "Failure" }}
+  {{- if .PreActiveQueue.DeploymentIssues }}
+*Deployment Issues:*
+  {{- range .PreActiveQueue.DeploymentIssues }}
+>- *Issue type:* {{ .IssueType }}
+>   *Components:* {{ range .FailureComponents }}{{ .ComponentName }},{{ end }} 
+  {{- end }} 
+  {{- end }}
+{{- end }}
 {{- if and .PreActiveQueue.TestRunner (and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL) }}
 *Teamcity URL:* <{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}|#{{ .PreActiveQueue.TestRunner.Teamcity.BuildNumber }}>
 {{- end }}

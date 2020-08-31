@@ -280,7 +280,7 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(err).Should(BeNil())
 		})
 
-		It("should correctly send active promotion failure with outdated components/image missing message",
+		It("should correctly send active promotion failure with outdated components/image missing/deployment issues message",
 			func() {
 				configCtrl := newMockConfigCtrl("", "", "")
 				g.Expect(configCtrl).ShouldNot(BeNil())
@@ -295,6 +295,14 @@ var _ = Describe("send ms teams message", func() {
 						ImageMissingList: []s2hv1beta1.Image{
 							{Repository: "repo1", Tag: "1.xx"},
 							{Repository: "repo2", Tag: "2.xx"},
+						},
+						DeploymentIssues: []s2hv1beta1.DeploymentIssue{
+							{
+								IssueType: s2hv1beta1.DeploymentIssueCrashLoopBackOff,
+								FailureComponents: []s2hv1beta1.FailureComponent{
+									{ComponentName: "comp1"},
+								},
+							},
 						},
 					},
 					OutdatedComponents: map[string]s2hv1beta1.OutdatedComponent{
@@ -336,6 +344,8 @@ var _ = Describe("send ms teams message", func() {
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`Current Version: <a href="http://repo/comp1">1.1.0</a>`))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`Latest Version: <a href="http://repo/comp1">1.1.2</a>`))
 				g.Expect(mockMSTeamsCli.message).ShouldNot(ContainSubstring("comp2"))
+				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>- Issue type:</b> CrashLoopBackOff"))
+				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>&nbsp;&nbsp;Components:</b> comp1"))
 				g.Expect(err).Should(BeNil())
 			})
 
