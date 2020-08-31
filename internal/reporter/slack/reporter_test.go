@@ -44,6 +44,14 @@ var _ = Describe("send slack message", func() {
 				QueueHistoryName: "comp1-1234",
 				IsReverify:       false,
 				Runs:             2,
+				DeploymentIssues: []*rpc.DeploymentIssue{
+					{
+						IssueType: string(s2hv1beta1.DeploymentIssueCrashLoopBackOff),
+						FailureComponents: []*rpc.FailureComponent{
+							{ComponentName: "comp1"},
+						},
+					},
+				},
 			}
 			mockSlackCli := &mockSlack{}
 			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
@@ -61,7 +69,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
 			// Should contain information
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("#2"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("comp1"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("*Name:* comp1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("1.1.0"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("image-1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Desired component failed"))
@@ -70,6 +78,8 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner-staging"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/queue/histories/comp1-5678|Click here>"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("*Issue type:* CrashLoopBackOff"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("*Components:* comp1"))
 			g.Expect(mockSlackCli.message).ShouldNot(ContainSubstring("Image Missing List"))
 		})
 

@@ -220,6 +220,13 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
  {{- end }}
 <br/><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log">Download here</a>
 <br/><b>Deployment History:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}">Click here</a>
+{{- if .ComponentUpgrade.DeploymentIssues }}
+<br/><b>Deployment Issues:</b>
+{{- range .ComponentUpgrade.DeploymentIssues }}
+<li><b>- Issue type:</b> {{ .IssueType }}</li>
+<li><b>&nbsp;&nbsp;Components:</b> {{ range .FailureComponents }}{{ .ComponentName }},{{ end }} 
+{{- end }} 
+{{- end }} 
 {{- end}}
 `
 	return strings.TrimSpace(template.TextRender("MSTeamsComponentUpgradeFailure", message, comp))

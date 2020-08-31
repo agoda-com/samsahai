@@ -44,6 +44,14 @@ var _ = Describe("send ms teams message", func() {
 				QueueHistoryName: "comp1-1234",
 				IsReverify:       false,
 				Runs:             2,
+				DeploymentIssues: []*rpc.DeploymentIssue{
+					{
+						IssueType: string(s2hv1beta1.DeploymentIssueCrashLoopBackOff),
+						FailureComponents: []*rpc.FailureComponent{
+							{ComponentName: "comp1"},
+						},
+					},
+				},
 			}
 			mockMSTeamsCli := &mockMSTeams{}
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
@@ -74,6 +82,8 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner-staging"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/queue/histories/comp1-5678">Click here</a>`))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>- Issue type:</b> CrashLoopBackOff"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>&nbsp;&nbsp;Components:</b> comp1"))
 			g.Expect(mockMSTeamsCli.message).ShouldNot(ContainSubstring("Image Missing List"))
 		})
 

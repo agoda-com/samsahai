@@ -216,6 +216,13 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
   {{- end }}
 *Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log|Download here>
 *Deployment History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}|Click here>
+{{- if .ComponentUpgrade.DeploymentIssues }}
+*Deployment Issues:*
+{{- range .ComponentUpgrade.DeploymentIssues }}
+>- *Issue type:* {{ .IssueType }}
+>   *Components:* {{ range .FailureComponents }}{{ .ComponentName }},{{ end }} 
+{{- end }} 
+{{- end }} 
 {{- end}}
 `
 	return strings.TrimSpace(template.TextRender("SlackComponentUpgradeFailure", message, comp))

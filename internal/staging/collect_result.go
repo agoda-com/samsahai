@@ -444,6 +444,7 @@ func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_Upgr
 		Runs:                 int32(queue.Spec.NoOfRetry + 1),
 		IsReverify:           queue.IsReverify(),
 		ReverificationStatus: c.getReverificationStatus(queue),
+		DeploymentIssues:     c.getDeploymentIssuesRPC(queue),
 	}
 
 	if c.s2hClient != nil {
@@ -455,6 +456,27 @@ func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_Upgr
 	}
 
 	return nil
+}
+
+func (c *controller) getDeploymentIssuesRPC(queue *s2hv1beta1.Queue) []*rpc.DeploymentIssue {
+	deploymentIssues := make([]*rpc.DeploymentIssue, 0)
+	for _, deploymentIssue := range queue.Status.DeploymentIssues {
+		failureComps := make([]*rpc.FailureComponent, 0)
+		for _, failureComp := range deploymentIssue.FailureComponents {
+			failureComps = append(failureComps, &rpc.FailureComponent{
+				ComponentName:             failureComp.ComponentName,
+				FirstFailureContainerName: failureComp.FirstFailureContainerName,
+				RestartCount:              failureComp.RestartCount,
+			})
+		}
+
+		deploymentIssues = append(deploymentIssues, &rpc.DeploymentIssue{
+			IssueType:         string(deploymentIssue.IssueType),
+			FailureComponents: failureComps,
+		})
+	}
+
+	return deploymentIssues
 }
 
 func (c *controller) getIssueType(imageMissingList []*rpc.Image, queue *s2hv1beta1.Queue) rpc.ComponentUpgrade_IssueType {
