@@ -664,5 +664,6 @@ func (c *controller) extractComponentNameFromPod(pod corev1.Pod) string {
 		compName = podRef.Name
 	}
 
+	compName = strings.ReplaceAll(compName, pod.Namespace + "-", "")
 	return compName
 }
