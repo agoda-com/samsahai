@@ -598,6 +598,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		Expect(qhl.Items[0].Spec.Queue.IsDeploySuccess()).To(BeFalse(), "Should deploy failed")
 		Expect(qhl.Items[0].Spec.Queue.Status.KubeZipLog).NotTo(BeEmpty(), "KubeZipLog should not be empty")
+		Expect(qhl.Items[0].Spec.Queue.Status.DeploymentIssues).NotTo(HaveLen(0), "Should have deployment issue defined")
 
 		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
 			q := &s2hv1beta1.Queue{}

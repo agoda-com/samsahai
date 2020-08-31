@@ -18,6 +18,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/twitchtv/twirp"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,6 +47,10 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 		}
 	}
 
+	if err := c.setDeploymentIssues(queue); err != nil {
+		return err
+	}
+
 	// Queue will finished if type are Active promotion related
 	if queue.IsActivePromotionQueue() {
 		return c.updateQueueWithState(queue, s2hv1beta1.Finished)
@@ -64,6 +70,28 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 
 	// made queue to clean after state
 	return c.updateQueueWithState(queue, s2hv1beta1.CleaningAfter)
+}
+
+func (c *controller) extractComponentNameFromPod(pod corev1.Pod) string {
+	compName := pod.Name
+	for _, podRef := range pod.OwnerReferences {
+		if strings.ToLower(podRef.Kind) == "replicaset" {
+			rs := &appsv1.ReplicaSet{}
+			err := c.client.Get(context.TODO(), types.NamespacedName{Name: podRef.Name, Namespace: pod.Namespace}, rs)
+			if err != nil {
+				logger.Error(err, "cannot get replicaset %s", podRef.Name)
+			}
+
+			for _, rsRef := range rs.OwnerReferences {
+				compName = rsRef.Name
+			}
+			break
+		}
+
+		compName = podRef.Name
+	}
+
+	return compName
 }
 
 func (c *controller) setStableAndSendReport(queue *s2hv1beta1.Queue) error {
@@ -452,4 +480,162 @@ func (c *controller) getReverificationStatus(queue *s2hv1beta1.Queue) rpc.Compon
 	}
 
 	return rpc.ComponentUpgrade_ReverificationStatus_FAILURE
+}
+
+func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
+	initContainerIssues := s2hv1beta1.DeploymentIssue{
+		IssueType:         s2hv1beta1.DeploymentIssueWaitForInitContainer,
+		FailureComponents: make([]s2hv1beta1.FailureComponent, 0),
+	}
+	imagePullBackOffIssues := s2hv1beta1.DeploymentIssue{
+		IssueType:         s2hv1beta1.DeploymentIssueImagePullBackOff,
+		FailureComponents: make([]s2hv1beta1.FailureComponent, 0),
+	}
+	crashLoopBackOffIssues := s2hv1beta1.DeploymentIssue{
+		IssueType:         s2hv1beta1.DeploymentIssueCrashLoopBackOff,
+		FailureComponents: make([]s2hv1beta1.FailureComponent, 0),
+	}
+	containerCreatingIssues := s2hv1beta1.DeploymentIssue{
+		IssueType:         s2hv1beta1.DeploymentIssueContainerCreating,
+		FailureComponents: make([]s2hv1beta1.FailureComponent, 0),
+	}
+	jobNotCompleteIssues := s2hv1beta1.DeploymentIssue{
+		IssueType:         s2hv1beta1.DeploymentIssueJobNotComplete,
+		FailureComponents: make([]s2hv1beta1.FailureComponent, 0),
+	}
+	pendingIssues := s2hv1beta1.DeploymentIssue{
+		IssueType:         s2hv1beta1.DeploymentIssuePending,
+		FailureComponents: make([]s2hv1beta1.FailureComponent, 0),
+	}
+	undefinedIssues := s2hv1beta1.DeploymentIssue{
+		IssueType:         s2hv1beta1.DeploymentIssueUndefined,
+		FailureComponents: make([]s2hv1beta1.FailureComponent, 0),
+	}
+
+	pods := &corev1.PodList{}
+	if err := c.client.List(context.TODO(), pods, &client.ListOptions{}); err != nil {
+		logger.Error(err, "cannot list pods")
+		return err
+	}
+
+	for _, pod := range pods.Items {
+		compName := c.extractComponentNameFromPod(pod)
+		failureComp := s2hv1beta1.FailureComponent{
+			ComponentName: compName,
+		}
+
+		// check init container issue
+		initContainerStatuses := pod.Status.InitContainerStatuses
+		for _, initContainerStatus := range initContainerStatuses {
+			if !initContainerStatus.Ready {
+				failureComp.FirstFailureContainerName = initContainerStatus.Name
+				failureComp.RestartCount = initContainerStatus.RestartCount
+				initContainerIssues.FailureComponents = append(initContainerIssues.FailureComponents, failureComp)
+			}
+		}
+
+		containerStatuses := pod.Status.ContainerStatuses
+		found := false
+		for _, containerStatus := range containerStatuses {
+			if !containerStatus.Ready {
+				failureComp.FirstFailureContainerName = containerStatus.Name
+				failureComp.RestartCount = containerStatus.RestartCount
+
+				waitingState := containerStatus.State.Waiting
+				if waitingState != nil {
+					switch waitingState.Reason {
+					// check ImagePullBackOff issue
+					case "ImagePullBackOff", "ErrImagePull":
+						imagePullBackOffIssues.FailureComponents = append(imagePullBackOffIssues.FailureComponents,
+							failureComp)
+						found = true
+
+					case "CrashLoopBackOff":
+						crashLoopBackOffIssues.FailureComponents = append(crashLoopBackOffIssues.FailureComponents,
+							failureComp)
+						found = true
+
+					case "ContainerCreating":
+						containerCreatingIssues.FailureComponents = append(containerCreatingIssues.FailureComponents,
+							failureComp)
+					}
+				}
+
+				if found {
+					break
+				}
+
+				runningState := containerStatus.State.Running
+				if runningState != nil {
+					// if running 0/1, count as CrashLoopBackOff
+					if containerStatus.RestartCount > 0 {
+						crashLoopBackOffIssues.FailureComponents = append(crashLoopBackOffIssues.FailureComponents,
+							failureComp)
+						found = true
+						break
+					}
+				}
+			}
+		}
+
+		if found {
+			continue
+		}
+
+		// check pod pending issue
+		if pod.Status.Phase == corev1.PodPending {
+			pendingIssues.FailureComponents = append(pendingIssues.FailureComponents, failureComp)
+			continue
+		}
+
+		// for other not running pod will be shown as undefined type
+		if pod.Status.Phase != corev1.PodRunning {
+			undefinedIssues.FailureComponents = append(undefinedIssues.FailureComponents, failureComp)
+		}
+	}
+
+	// check job not complete issue
+	jobs := &batchv1.JobList{}
+	if err := c.client.List(context.TODO(), jobs, &client.ListOptions{}); err != nil {
+		logger.Error(err, "cannot list jobs")
+		return err
+	}
+
+	for _, job := range jobs.Items {
+		failureComp := s2hv1beta1.FailureComponent{
+			ComponentName: job.Name,
+		}
+
+		if job.Status.Active != 0 {
+			jobNotCompleteIssues.FailureComponents = append(jobNotCompleteIssues.FailureComponents, failureComp)
+		}
+	}
+
+	// append all failure types into list
+	deploymentIssues := make([]s2hv1beta1.DeploymentIssue, 0)
+	if len(initContainerIssues.FailureComponents) > 0 {
+		deploymentIssues = append(deploymentIssues, initContainerIssues)
+	}
+	if len(imagePullBackOffIssues.FailureComponents) > 0 {
+		deploymentIssues = append(deploymentIssues, imagePullBackOffIssues)
+	}
+	if len(crashLoopBackOffIssues.FailureComponents) > 0 {
+		deploymentIssues = append(deploymentIssues, crashLoopBackOffIssues)
+	}
+	if len(containerCreatingIssues.FailureComponents) > 0 {
+		deploymentIssues = append(deploymentIssues, containerCreatingIssues)
+	}
+	if len(jobNotCompleteIssues.FailureComponents) > 0 {
+		deploymentIssues = append(deploymentIssues, jobNotCompleteIssues)
+	}
+	if len(pendingIssues.FailureComponents) > 0 {
+		deploymentIssues = append(deploymentIssues, pendingIssues)
+	}
+	if len(undefinedIssues.FailureComponents) > 0 {
+		deploymentIssues = append(deploymentIssues, undefinedIssues)
+	}
+
+	queue.Status.SetDeploymentIssues(deploymentIssues)
+
+	return nil
 }

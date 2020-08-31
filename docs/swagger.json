@@ -1120,11 +1120,44 @@
                 }
             }
         },
+        "v1beta1.DeploymentIssue": {
+            "type": "object",
+            "properties": {
+                "failureComponents": {
+                    "description": "FailureComponents defines a list of failure components",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1beta1.FailureComponent"
+                    }
+                },
+                "issueType": {
+                    "description": "IssueType defines a deployment issue type",
+                    "type": "string"
+                }
+            }
+        },
         "v1beta1.Endpoint": {
             "type": "object",
             "properties": {
                 "url": {
                     "type": "string"
+                }
+            }
+        },
+        "v1beta1.FailureComponent": {
+            "type": "object",
+            "properties": {
+                "componentName": {
+                    "description": "ComponentName defines a name of component",
+                    "type": "string"
+                },
+                "firstFailureContainerName": {
+                    "description": "FirstFailureContainerName defines a first found failure container name",
+                    "type": "string"
+                },
+                "restartCount": {
+                    "description": "RestartCount defines the number of times the container has been restarted",
+                    "type": "integer"
                 }
             }
         },
@@ -1362,8 +1395,15 @@
                     "description": "DeployEngine represents engine using during installation",
                     "type": "string"
                 },
+                "deploymentIssues": {
+                    "description": "DeploymentIssues defines a list of deployment issue types\n+optional",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1beta1.DeploymentIssue"
+                    }
+                },
                 "imageMissingList": {
-                    "description": "ImageMissingList defines image missing list",
+                    "description": "ImageMissingList defines image missing lists",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v1beta1.Image"
