@@ -3,13 +3,16 @@ package staging
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"helm.sh/helm/v3/pkg/release"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
@@ -562,12 +565,32 @@ func (c *controller) isPodsReady(listOpt *client.ListOptions) (bool, error) {
 
 	for _, pod := range pods.Items {
 		isReady := false
-		for _, cond := range pod.Status.Conditions {
-			if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
+		for _, podRef := range pod.OwnerReferences {
+			if strings.ToLower(podRef.Kind) == "job" {
+				job := &batchv1.Job{}
+				err := c.client.Get(context.TODO(), types.NamespacedName{Name: podRef.Name, Namespace: pod.Namespace}, job)
+				if err != nil {
+					logger.Error(err, "cannot get job %s", podRef.Name)
+				}
+
+				if job.Status.CompletionTime == nil {
+					return false, nil
+				}
+
 				isReady = true
 				break
 			}
 		}
+
+		if !isReady {
+			for _, cond := range pod.Status.Conditions {
+				if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
+					isReady = true
+					break
+				}
+			}
+		}
+
 		if !isReady {
 			return false, nil
 		}

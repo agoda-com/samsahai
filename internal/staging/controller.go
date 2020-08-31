@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -557,6 +558,17 @@ func forceCleanupPod(log s2hlog.Logger, c client.Client, namespace string, selec
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
 	); err != nil {
 		log.Error(err, "delete daemonset error")
+	}
+
+	log.Warn("force delete job")
+	if err = c.DeleteAllOf(ctx,
+		&batchv1.Job{},
+		client.InNamespace(namespace),
+		client.MatchingLabels(selectors),
+		client.GracePeriodSeconds(0),
+		client.PropagationPolicy(metav1.DeletePropagationBackground),
+	); err != nil {
+		log.Error(err, "delete job error")
 	}
 
 	log.Warn("force delete pod")
