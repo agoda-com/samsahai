@@ -576,9 +576,6 @@ func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1
 						case "ContainerCreating":
 							c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueContainerCreating, failureComp, issuesMaps)
 							found = true
-						default:
-							c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueUndefined, failureComp, issuesMaps)
-							found = true
 						}
 					}
 
@@ -595,6 +592,10 @@ func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1
 							break
 						}
 					}
+
+					c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueUndefined, failureComp, issuesMaps)
+					found = true
+					break
 				}
 			}
 
