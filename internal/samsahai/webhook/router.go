@@ -185,7 +185,7 @@ func (h *handler) readRequestBody(w http.ResponseWriter, r *http.Request) ([]byt
 }
 
 type newComponentEventJSON struct {
-	TeamName   string `json:"teamName"`
+	TeamName   string `json:"teamName,omitempty"`
 	Component  string `json:"component"`
 	Repository string `json:"repository,omitempty"`
 }
