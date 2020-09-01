@@ -18,9 +18,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/twitchtv/twirp"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -31,7 +34,6 @@ import (
 
 func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 	// check deploy and test result
-
 	if queue.Status.KubeZipLog == "" {
 		logZip, err := c.createDeploymentZipLogs(queue)
 		if err != nil {
@@ -43,6 +45,10 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 		if err = c.updateQueue(queue); err != nil {
 			return err
 		}
+	}
+
+	if err := c.setDeploymentIssues(queue); err != nil {
+		return err
 	}
 
 	// Queue will finished if type are Active promotion related
@@ -416,6 +422,7 @@ func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_Upgr
 		Runs:                 int32(queue.Spec.NoOfRetry + 1),
 		IsReverify:           queue.IsReverify(),
 		ReverificationStatus: c.getReverificationStatus(queue),
+		DeploymentIssues:     c.getDeploymentIssuesRPC(queue),
 	}
 
 	if c.s2hClient != nil {
@@ -427,6 +434,28 @@ func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_Upgr
 	}
 
 	return nil
+}
+
+func (c *controller) getDeploymentIssuesRPC(queue *s2hv1beta1.Queue) []*rpc.DeploymentIssue {
+	deploymentIssues := make([]*rpc.DeploymentIssue, 0)
+	for _, deploymentIssue := range queue.Status.DeploymentIssues {
+		failureComps := make([]*rpc.FailureComponent, 0)
+		for _, failureComp := range deploymentIssue.FailureComponents {
+			failureComps = append(failureComps, &rpc.FailureComponent{
+				ComponentName:             failureComp.ComponentName,
+				FirstFailureContainerName: failureComp.FirstFailureContainerName,
+				RestartCount:              failureComp.RestartCount,
+				NodeName:                  failureComp.NodeName,
+			})
+		}
+
+		deploymentIssues = append(deploymentIssues, &rpc.DeploymentIssue{
+			IssueType:         string(deploymentIssue.IssueType),
+			FailureComponents: failureComps,
+		})
+	}
+
+	return deploymentIssues
 }
 
 func (c *controller) getIssueType(imageMissingList []*rpc.Image, queue *s2hv1beta1.Queue) rpc.ComponentUpgrade_IssueType {
@@ -452,4 +481,203 @@ func (c *controller) getReverificationStatus(queue *s2hv1beta1.Queue) rpc.Compon
 	}
 
 	return rpc.ComponentUpgrade_ReverificationStatus_FAILURE
+}
+
+func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
+	// set deployment issues matching with release label
+	deployEngine := c.getDeployEngine(queue)
+	parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
+	if err != nil {
+		return err
+	}
+
+	deploymentIssuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+	for parentComp := range parentComps {
+		ns := c.namespace
+		refName := internal.GenReleaseName(ns, parentComp)
+		selectors := deployEngine.GetLabelSelectors(refName)
+		listOpt := &client.ListOptions{Namespace: ns, LabelSelector: labels.SelectorFromSet(selectors)}
+
+		pods := &corev1.PodList{}
+		if err := c.client.List(context.TODO(), pods, listOpt); err != nil {
+			logger.Error(err, "cannot list pods")
+			return err
+		}
+
+		jobs := &batchv1.JobList{}
+		if err := c.client.List(context.TODO(), jobs, listOpt); err != nil {
+			logger.Error(err, "cannot list jobs")
+			return err
+		}
+
+		c.extractDeploymentIssues(pods, jobs, deploymentIssuesMaps)
+	}
+
+	deploymentIssues := c.convertToDeploymentIssues(deploymentIssuesMaps)
+	queue.Status.SetDeploymentIssues(deploymentIssues)
+
+	return nil
+}
+
+func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1.JobList,
+	issuesMaps map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent) {
+
+	for _, pod := range pods.Items {
+		compName := c.extractComponentNameFromPod(pod)
+		failureComp := s2hv1beta1.FailureComponent{
+			ComponentName: compName,
+			NodeName:      pod.Spec.NodeName,
+		}
+
+		// ignore job pod
+		jobFound := false
+		for _, podRef := range pod.OwnerReferences {
+			if strings.ToLower(podRef.Kind) == "job" {
+				jobFound = true
+				break
+			}
+		}
+
+		if !jobFound {
+			// check init container issue
+			initContainerStatuses := pod.Status.InitContainerStatuses
+			initFound := false
+			for _, initContainerStatus := range initContainerStatuses {
+				if !initContainerStatus.Ready {
+					initFound = true
+					failureComp.FirstFailureContainerName = initContainerStatus.Name
+					failureComp.RestartCount = initContainerStatus.RestartCount
+					c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueWaitForInitContainer, failureComp, issuesMaps)
+				}
+			}
+			if initFound {
+				continue
+			}
+
+			containerStatuses := pod.Status.ContainerStatuses
+			found := false
+			for _, containerStatus := range containerStatuses {
+				if !containerStatus.Ready {
+					failureComp.FirstFailureContainerName = containerStatus.Name
+					failureComp.RestartCount = containerStatus.RestartCount
+
+					waitingState := containerStatus.State.Waiting
+					if waitingState != nil {
+						switch waitingState.Reason {
+						// check ImagePullBackOff issue
+						case "ImagePullBackOff", "ErrImagePull":
+							c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueImagePullBackOff, failureComp, issuesMaps)
+							found = true
+
+						case "CrashLoopBackOff", "Error":
+							c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueCrashLoopBackOff, failureComp, issuesMaps)
+							found = true
+
+						case "ContainerCreating":
+							c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueContainerCreating, failureComp, issuesMaps)
+							found = true
+						}
+					}
+
+					if found {
+						break
+					}
+
+					runningState := containerStatus.State.Running
+					if runningState != nil {
+						// if running 0/1, count as CrashLoopBackOff
+						if containerStatus.RestartCount > 0 {
+							c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueCrashLoopBackOff, failureComp, issuesMaps)
+							found = true
+							break
+						}
+					}
+
+					c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueUndefined, failureComp, issuesMaps)
+					found = true
+					break
+				}
+			}
+
+			if found {
+				continue
+			}
+
+			// check pod pending issue
+			if pod.Status.Phase == corev1.PodPending {
+				c.appendDeploymentIssues(s2hv1beta1.DeploymentIssuePending, failureComp, issuesMaps)
+				continue
+			}
+
+			// for other not running pod will be shown as undefined type
+			if pod.Status.Phase != corev1.PodRunning {
+				c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueUndefined, failureComp, issuesMaps)
+			}
+		}
+	}
+
+	// check job not complete issue
+	for _, job := range jobs.Items {
+		failureComp := s2hv1beta1.FailureComponent{
+			ComponentName: job.Name,
+		}
+
+		if job.Status.CompletionTime == nil {
+			failureComp.RestartCount = job.Status.Failed
+			c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueJobNotComplete, failureComp, issuesMaps)
+		}
+	}
+}
+
+func (c *controller) extractComponentNameFromPod(pod corev1.Pod) string {
+	compName := pod.Name
+	for _, podRef := range pod.OwnerReferences {
+		if strings.ToLower(podRef.Kind) == "replicaset" {
+			rs := &appsv1.ReplicaSet{}
+			err := c.client.Get(context.TODO(), types.NamespacedName{Name: podRef.Name, Namespace: pod.Namespace}, rs)
+			if err != nil {
+				logger.Error(err, "cannot get replicaset %s", podRef.Name)
+			}
+
+			for _, rsRef := range rs.OwnerReferences {
+				compName = rsRef.Name
+			}
+			break
+		}
+
+		compName = podRef.Name
+	}
+
+	if pod.Namespace != "" {
+		compName = strings.ReplaceAll(compName, pod.Namespace+"-", "")
+	}
+	return compName
+}
+
+func (c *controller) appendDeploymentIssues(
+	issueType s2hv1beta1.DeploymentIssueType,
+	failureComp s2hv1beta1.FailureComponent,
+	issuesMaps map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent,
+) {
+
+	if _, ok := issuesMaps[issueType]; !ok {
+		issuesMaps[issueType] = []s2hv1beta1.FailureComponent{failureComp}
+	} else {
+		issuesMaps[issueType] = append(issuesMaps[issueType], failureComp)
+	}
+}
+
+func (c *controller) convertToDeploymentIssues(
+	issuesMaps map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent,
+) (issues []s2hv1beta1.DeploymentIssue) {
+
+	issues = make([]s2hv1beta1.DeploymentIssue, 0)
+	for issueType, failureComps := range issuesMaps {
+		issues = append(issues, s2hv1beta1.DeploymentIssue{
+			IssueType:         issueType,
+			FailureComponents: failureComps,
+		})
+	}
+
+	return
 }

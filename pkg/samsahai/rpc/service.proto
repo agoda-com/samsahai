@@ -59,6 +59,7 @@ message ComponentUpgrade {
     int32 runs = 10;
     bool isReverify = 11;
     ReverificationStatus reverificationStatus = 12;
+    repeated DeploymentIssue deploymentIssues = 13;
 }
 
 message Component {
@@ -78,4 +79,16 @@ message ImageList {
 message TeamWithCurrentComponent {
     string teamName = 1;
     repeated Component components = 2;
+}
+
+message DeploymentIssue {
+    string issueType = 1;
+    repeated FailureComponent failureComponents = 2;
+}
+
+message FailureComponent {
+    string componentName = 1;
+    string firstFailureContainerName = 2;
+    int32 restartCount = 3;
+    string nodeName = 4;
 }

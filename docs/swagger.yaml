@@ -437,10 +437,38 @@ definitions:
           +optional
         type: object
     type: object
+  v1beta1.DeploymentIssue:
+    properties:
+      failureComponents:
+        description: FailureComponents defines a list of failure components
+        items:
+          $ref: '#/definitions/v1beta1.FailureComponent'
+        type: array
+      issueType:
+        description: IssueType defines a deployment issue type
+        type: string
+    type: object
   v1beta1.Endpoint:
     properties:
       url:
         type: string
+    type: object
+  v1beta1.FailureComponent:
+    properties:
+      componentName:
+        description: ComponentName defines a name of component
+        type: string
+      firstFailureContainerName:
+        description: FirstFailureContainerName defines a first found failure container
+          name
+        type: string
+      nodeName:
+        description: NodeName defines the node name of pod
+        type: string
+      restartCount:
+        description: RestartCount defines the number of times the container has been
+          restarted
+        type: integer
     type: object
   v1beta1.Image:
     properties:
@@ -621,8 +649,15 @@ definitions:
       deployEngine:
         description: DeployEngine represents engine using during installation
         type: string
+      deploymentIssues:
+        description: |-
+          DeploymentIssues defines a list of deployment issue types
+          +optional
+        items:
+          $ref: '#/definitions/v1beta1.DeploymentIssue'
+        type: array
       imageMissingList:
-        description: ImageMissingList defines image missing list
+        description: ImageMissingList defines image missing lists
         items:
           $ref: '#/definitions/v1beta1.Image'
         type: array

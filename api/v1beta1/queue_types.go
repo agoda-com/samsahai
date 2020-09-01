@@ -161,6 +161,44 @@ func (t *Teamcity) SetTeamcity(buildID, buildTypeID, buildURL string) {
 	t.BuildURL = buildURL
 }
 
+type FailureComponent struct {
+	// ComponentName defines a name of component
+	ComponentName string `json:"componentName"`
+	// FirstFailureContainerName defines a first found failure container name
+	FirstFailureContainerName string `json:"firstFailureContainerName"`
+	// RestartCount defines the number of times the container has been restarted
+	RestartCount int32 `json:"restartCount"`
+	// NodeName defines the node name of pod
+	NodeName string `json:"nodeName"`
+}
+
+type DeploymentIssue struct {
+	// IssueType defines a deployment issue type
+	IssueType DeploymentIssueType `json:"issueType"`
+	// FailureComponents defines a list of failure components
+	FailureComponents []FailureComponent `json:"failureComponents"`
+}
+
+// DeploymentIssueType defines a deployment issue type
+type DeploymentIssueType string
+
+const (
+	// DeploymentIssueImagePullBackOff means the pod can not be started due to image not found
+	DeploymentIssueImagePullBackOff DeploymentIssueType = "ImagePullBackOff"
+	// DeploymentIssueCrashLoopBackOff means the pod failed to start container
+	DeploymentIssueCrashLoopBackOff DeploymentIssueType = "CrashLoopBackOff"
+	// DeploymentIssueContainerCreating means the pod is being creating
+	DeploymentIssueContainerCreating DeploymentIssueType = "ContainerCreating"
+	// DeploymentIssuePending means the pod is waiting for assigning to node
+	DeploymentIssuePending DeploymentIssueType = "Pending"
+	// DeploymentIssueWaitForInitContainer means the container can not be start due to wait for finishing init container
+	DeploymentIssueWaitForInitContainer DeploymentIssueType = "WaitForInitContainer"
+	// DeploymentIssueJobNotComplete means the job is not completed
+	DeploymentIssueJobNotComplete DeploymentIssueType = "JobNotComplete"
+	// DeploymentIssueUndefined represents other issues
+	DeploymentIssueUndefined DeploymentIssueType = "Undefined"
+)
+
 type QueueConditionType string
 
 const (
@@ -227,11 +265,19 @@ type QueueStatus struct {
 	// KubeZipLog defines log of k8s resources during deployment in base64 zip format
 	KubeZipLog string `json:"kubeZipLog"`
 
-	// ImageMissingList defines image missing list
+	// DeploymentIssues defines a list of deployment issue types
+	// +optional
+	DeploymentIssues []DeploymentIssue `json:"deploymentIssues,omitempty"`
+
+	// ImageMissingList defines image missing lists
 	ImageMissingList []Image `json:"imageMissingList,omitempty"`
 
 	// DeployEngine represents engine using during installation
 	DeployEngine string `json:"deployEngine,omitempty"`
+}
+
+func (qs *QueueStatus) SetDeploymentIssues(deploymentIssues []DeploymentIssue) {
+	qs.DeploymentIssues = deploymentIssues
 }
 
 func (qs *QueueStatus) SetImageMissingList(images []Image) {
