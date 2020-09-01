@@ -215,7 +215,10 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 *Deployment Issues:*
   {{- range .ComponentUpgrade.DeploymentIssues }}
 >- *Issue type:* {{ .IssueType }}
->   *Components:* {{ range .FailureComponents }}{{ .ComponentName }},{{ end }} 
+>   *Components:* {{ range .FailureComponents }}{{ .ComponentName }},{{ end }}
+    {{- if eq .IssueType "WaitForInitContainer" }}
+>   *Wait for:* {{ range .FailureComponents }}{{ .FirstFailureContainerName }},{{ end }}
+    {{- end }}
   {{- end }} 
   {{- end }} 
   {{- if .TestRunner.Teamcity.BuildURL }}
@@ -245,7 +248,10 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 *Deployment Issues:*
   {{- range .PreActiveQueue.DeploymentIssues }}
 >- *Issue type:* {{ .IssueType }}
->   *Components:* {{ range .FailureComponents }}{{ .ComponentName }},{{ end }} 
+>   *Components:* {{ range .FailureComponents }}{{ .ComponentName }},{{ end }}
+    {{- if eq .IssueType "WaitForInitContainer" }}
+>   *Wait for:* {{ range .FailureComponents }}{{ .FirstFailureContainerName }},{{ end }}
+    {{- end }}
   {{- end }} 
   {{- end }}
 {{- end }}

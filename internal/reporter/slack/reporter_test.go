@@ -277,9 +277,12 @@ var _ = Describe("send slack message", func() {
 						},
 						DeploymentIssues: []s2hv1beta1.DeploymentIssue{
 							{
-								IssueType: s2hv1beta1.DeploymentIssueCrashLoopBackOff,
+								IssueType: s2hv1beta1.DeploymentIssueWaitForInitContainer,
 								FailureComponents: []s2hv1beta1.FailureComponent{
-									{ComponentName: "comp1"},
+									{
+										ComponentName:             "comp1",
+										FirstFailureContainerName: "dep1",
+									},
 								},
 							},
 						},
@@ -318,8 +321,9 @@ var _ = Describe("send slack message", func() {
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("Not update for 1d 0h 0m"))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("Current Version: <http://repo/comp1|1.1.0>"))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("Latest Version: <http://repo/comp1|1.1.2>"))
-				g.Expect(mockSlackCli.message).Should(ContainSubstring("*Issue type:* CrashLoopBackOff"))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring("*Issue type:* WaitForInitContainer"))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("*Components:* comp1"))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring("*Wait for:* dep1"))
 				g.Expect(err).Should(BeNil())
 			})
 

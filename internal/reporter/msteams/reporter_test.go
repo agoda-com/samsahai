@@ -298,9 +298,12 @@ var _ = Describe("send ms teams message", func() {
 						},
 						DeploymentIssues: []s2hv1beta1.DeploymentIssue{
 							{
-								IssueType: s2hv1beta1.DeploymentIssueCrashLoopBackOff,
+								IssueType: s2hv1beta1.DeploymentIssueWaitForInitContainer,
 								FailureComponents: []s2hv1beta1.FailureComponent{
-									{ComponentName: "comp1"},
+									{
+										ComponentName:             "comp1",
+										FirstFailureContainerName: "dep1",
+									},
 								},
 							},
 						},
@@ -344,8 +347,9 @@ var _ = Describe("send ms teams message", func() {
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`Current Version: <a href="http://repo/comp1">1.1.0</a>`))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`Latest Version: <a href="http://repo/comp1">1.1.2</a>`))
 				g.Expect(mockMSTeamsCli.message).ShouldNot(ContainSubstring("comp2"))
-				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>- Issue type:</b> CrashLoopBackOff"))
+				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>- Issue type:</b> WaitForInitContainer"))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>&nbsp;&nbsp;Components:</b> comp1"))
+				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>&nbsp;&nbsp;Wait for:</b> dep1"))
 				g.Expect(err).Should(BeNil())
 			})
 
