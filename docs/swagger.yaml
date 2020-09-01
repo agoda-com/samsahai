@@ -462,6 +462,9 @@ definitions:
         description: FirstFailureContainerName defines a first found failure container
           name
         type: string
+      nodeName:
+        description: NodeName defines the node name of pod
+        type: string
       restartCount:
         description: RestartCount defines the number of times the container has been
           restarted

@@ -445,6 +445,7 @@ func (c *controller) getDeploymentIssuesRPC(queue *s2hv1beta1.Queue) []*rpc.Depl
 				ComponentName:             failureComp.ComponentName,
 				FirstFailureContainerName: failureComp.FirstFailureContainerName,
 				RestartCount:              failureComp.RestartCount,
+				NodeName:                  failureComp.NodeName,
 			})
 		}
 
@@ -525,6 +526,7 @@ func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1
 		compName := c.extractComponentNameFromPod(pod)
 		failureComp := s2hv1beta1.FailureComponent{
 			ComponentName: compName,
+			NodeName:      pod.Spec.NodeName,
 		}
 
 		// ignore job pod

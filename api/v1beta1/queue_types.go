@@ -168,6 +168,8 @@ type FailureComponent struct {
 	FirstFailureContainerName string `json:"firstFailureContainerName"`
 	// RestartCount defines the number of times the container has been restarted
 	RestartCount int32 `json:"restartCount"`
+	// NodeName defines the node name of pod
+	NodeName string `json:"nodeName"`
 }
 
 type DeploymentIssue struct {
