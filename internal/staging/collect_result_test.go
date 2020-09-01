@@ -17,271 +17,323 @@ var _ = Describe("Set deployment issues in Queue", func() {
 
 	compName := "comp1"
 
-	It("should correctly set deployment issue `WaitForInitContainer` in Queue", func() {
-		queue := s2hv1beta1.Queue{Status: s2hv1beta1.QueueStatus{}}
-		pods := corev1.PodList{Items: []corev1.Pod{{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: compName,
-			},
-			Status: corev1.PodStatus{
-				InitContainerStatuses: []corev1.ContainerStatus{{
-					Name:         "wait-for-dep1",
-					Ready:        false,
-					RestartCount: 1,
-				}},
-				ContainerStatuses: []corev1.ContainerStatus{{
-					Name:  compName,
-					Ready: false,
-				}},
-			},
-		}}}
-
-		err := stagingCtrl.setDeploymentIssues(&queue, &pods, &batchv1.JobList{Items: []batchv1.Job{}})
-		g.Expect(err).NotTo(HaveOccurred())
-
-		g.Expect(queue.Status.DeploymentIssues).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].IssueType).To(Equal(s2hv1beta1.DeploymentIssueWaitForInitContainer))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].ComponentName).To(Equal(compName))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].FirstFailureContainerName).To(Equal("wait-for-dep1"))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].RestartCount).To(Equal(int32(1)))
-	})
-
-	It("should correctly set deployment issue `ImagePullBackOff` in Queue", func() {
-		queue := s2hv1beta1.Queue{Status: s2hv1beta1.QueueStatus{}}
-		pods := corev1.PodList{Items: []corev1.Pod{{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: compName,
-			},
-			Status: corev1.PodStatus{
-				ContainerStatuses: []corev1.ContainerStatus{{
-					Name:  compName,
-					Ready: false,
-					State: corev1.ContainerState{
-						Waiting: &corev1.ContainerStateWaiting{
-							Reason: "ErrImagePull",
-						},
-					},
-				}},
-			},
-		}}}
-
-		err := stagingCtrl.setDeploymentIssues(&queue, &pods, &batchv1.JobList{Items: []batchv1.Job{}})
-		g.Expect(err).NotTo(HaveOccurred())
-
-		g.Expect(queue.Status.DeploymentIssues).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].IssueType).To(Equal(s2hv1beta1.DeploymentIssueImagePullBackOff))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].ComponentName).To(Equal(compName))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].FirstFailureContainerName).To(Equal(compName))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].RestartCount).To(Equal(int32(0)))
-	})
-
-	It("should correctly set deployment issue `CrashLoopBackOff` in Queue", func() {
-		queue := s2hv1beta1.Queue{Status: s2hv1beta1.QueueStatus{}}
-		pods := corev1.PodList{Items: []corev1.Pod{{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: compName,
-			},
-			Status: corev1.PodStatus{
-				ContainerStatuses: []corev1.ContainerStatus{{
-					Name:  compName,
-					Ready: false,
-					State: corev1.ContainerState{
-						Waiting: &corev1.ContainerStateWaiting{
-							Reason: "CrashLoopBackOff",
-						},
-					},
-					RestartCount: 1,
-				}},
-			},
-		}}}
-
-		err := stagingCtrl.setDeploymentIssues(&queue, &pods, &batchv1.JobList{Items: []batchv1.Job{}})
-		g.Expect(err).NotTo(HaveOccurred())
-
-		g.Expect(queue.Status.DeploymentIssues).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].IssueType).To(Equal(s2hv1beta1.DeploymentIssueCrashLoopBackOff))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].ComponentName).To(Equal(compName))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].FirstFailureContainerName).To(Equal(compName))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].RestartCount).To(Equal(int32(1)))
-	})
-
-	It("should correctly set deployment issue `CrashLoopBackOff` for Running 0/1 in Queue", func() {
-		queue := s2hv1beta1.Queue{Status: s2hv1beta1.QueueStatus{}}
-		pods := corev1.PodList{Items: []corev1.Pod{{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: compName,
-			},
-			Status: corev1.PodStatus{
-				ContainerStatuses: []corev1.ContainerStatus{{
-					Name:  compName,
-					Ready: false,
-					State: corev1.ContainerState{
-						Running: &corev1.ContainerStateRunning{
-							StartedAt: metav1.Now(),
-						},
-					},
-					RestartCount: 3,
-				}},
-			},
-		}}}
-
-		err := stagingCtrl.setDeploymentIssues(&queue, &pods, &batchv1.JobList{Items: []batchv1.Job{}})
-		g.Expect(err).NotTo(HaveOccurred())
-
-		g.Expect(queue.Status.DeploymentIssues).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].IssueType).To(Equal(s2hv1beta1.DeploymentIssueCrashLoopBackOff))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].ComponentName).To(Equal(compName))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].FirstFailureContainerName).To(Equal(compName))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].RestartCount).To(Equal(int32(3)))
-	})
-
-	It("should correctly set deployment issue `ContainerCreating` in Queue", func() {
-		queue := s2hv1beta1.Queue{Status: s2hv1beta1.QueueStatus{}}
-		pods := corev1.PodList{Items: []corev1.Pod{{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: compName,
-			},
-			Status: corev1.PodStatus{
-				ContainerStatuses: []corev1.ContainerStatus{{
-					Name:  compName,
-					Ready: false,
-					State: corev1.ContainerState{
-						Waiting: &corev1.ContainerStateWaiting{
-							Reason: "ContainerCreating",
-						},
-					},
-				}},
-			},
-		}}}
-
-		err := stagingCtrl.setDeploymentIssues(&queue, &pods, &batchv1.JobList{Items: []batchv1.Job{}})
-		g.Expect(err).NotTo(HaveOccurred())
-
-		g.Expect(queue.Status.DeploymentIssues).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].IssueType).To(Equal(s2hv1beta1.DeploymentIssueContainerCreating))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].ComponentName).To(Equal(compName))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].FirstFailureContainerName).To(Equal(compName))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].RestartCount).To(Equal(int32(0)))
-	})
-
-	It("should correctly set deployment issue `JobNotComplete` in Queue", func() {
-		queue := s2hv1beta1.Queue{Status: s2hv1beta1.QueueStatus{}}
-		jobs := batchv1.JobList{Items: []batchv1.Job{{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: compName,
-			},
-			Status: batchv1.JobStatus{
-				Active: 1,
-			},
-		}}}
-
-		err := stagingCtrl.setDeploymentIssues(&queue, &corev1.PodList{Items: []corev1.Pod{}}, &jobs)
-		g.Expect(err).NotTo(HaveOccurred())
-
-		g.Expect(queue.Status.DeploymentIssues).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].IssueType).To(Equal(s2hv1beta1.DeploymentIssueJobNotComplete))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].ComponentName).To(Equal(compName))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].FirstFailureContainerName).To(BeEmpty())
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].RestartCount).To(Equal(int32(0)))
-	})
-
-	It("should correctly set deployment issue `Pending` in Queue", func() {
-		queue := s2hv1beta1.Queue{Status: s2hv1beta1.QueueStatus{}}
-		pods := corev1.PodList{Items: []corev1.Pod{{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: compName,
-			},
-			Status: corev1.PodStatus{
-				Phase: corev1.PodPending,
-			},
-		}}}
-
-		err := stagingCtrl.setDeploymentIssues(&queue, &pods, &batchv1.JobList{Items: []batchv1.Job{}})
-		g.Expect(err).NotTo(HaveOccurred())
-
-		g.Expect(queue.Status.DeploymentIssues).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].IssueType).To(Equal(s2hv1beta1.DeploymentIssuePending))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents).To(HaveLen(1))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].ComponentName).To(Equal(compName))
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].FirstFailureContainerName).To(BeEmpty())
-		g.Expect(queue.Status.DeploymentIssues[0].FailureComponents[0].RestartCount).To(Equal(int32(0)))
-	})
-
-	It("should correctly set multiple deployment issues in Queue", func() {
-		timeNow := metav1.Now()
-		queue := s2hv1beta1.Queue{Status: s2hv1beta1.QueueStatus{}}
-		pods := corev1.PodList{Items: []corev1.Pod{
-			{
+	Describe("Extract deployment issues", func() {
+		It("should correctly get `WaitForInitContainer` deployment issue from k8s resources", func() {
+			pods := corev1.PodList{Items: []corev1.Pod{{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "multi-comp1",
-					Namespace: "namespace",
+					Name: compName,
+				},
+				Status: corev1.PodStatus{
+					InitContainerStatuses: []corev1.ContainerStatus{{
+						Name:         "wait-for-dep1",
+						Ready:        false,
+						RestartCount: 1,
+					}},
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name:  compName,
+						Ready: false,
+					}},
+				},
+			}}}
+
+			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
+
+			g.Expect(issuesMaps).To(HaveLen(1))
+
+			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueWaitForInitContainer]
+			g.Expect(failureComps).To(HaveLen(1))
+			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
+			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal("wait-for-dep1"))
+			g.Expect(failureComps[0].RestartCount).To(Equal(int32(1)))
+		})
+
+		It("should correctly get `ImagePullBackOff` deployment issue from k8s resources", func() {
+			pods := corev1.PodList{Items: []corev1.Pod{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: compName,
 				},
 				Status: corev1.PodStatus{
 					ContainerStatuses: []corev1.ContainerStatus{{
-						Name:  "multi-comp1",
+						Name:  compName,
 						Ready: false,
 						State: corev1.ContainerState{
 							Waiting: &corev1.ContainerStateWaiting{
-								Reason: "ImagePullBackOff",
+								Reason: "ErrImagePull",
 							},
 						},
 					}},
 				},
-			},
-			{
+			}}}
+
+			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
+
+			g.Expect(issuesMaps).To(HaveLen(1))
+
+			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueImagePullBackOff]
+			g.Expect(failureComps).To(HaveLen(1))
+			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
+			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal(compName))
+			g.Expect(failureComps[0].RestartCount).To(BeZero())
+		})
+
+		It("should correctly get `CrashLoopBackOff` deployment issue from k8s resources", func() {
+			pods := corev1.PodList{Items: []corev1.Pod{{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "multi-comp2",
-					Namespace: "namespace",
+					Name: compName,
 				},
 				Status: corev1.PodStatus{
 					ContainerStatuses: []corev1.ContainerStatus{{
-						Name:  "multi-comp2",
+						Name:  compName,
 						Ready: false,
 						State: corev1.ContainerState{
 							Waiting: &corev1.ContainerStateWaiting{
-								Reason: "CrashLoopBackOff",
+								Reason: "Error",
 							},
 						},
-						RestartCount: 10,
+						RestartCount: 1,
 					}},
 				},
-			},
-		}}
+			}}}
 
-		jobs := batchv1.JobList{Items: []batchv1.Job{{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "job-1",
-			},
-			Status: batchv1.JobStatus{
-				CompletionTime: &timeNow,
-			},
-		}}}
+			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
 
-		err := stagingCtrl.setDeploymentIssues(&queue, &pods, &jobs)
-		g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(issuesMaps).To(HaveLen(1))
 
-		g.Expect(queue.Status.DeploymentIssues).To(HaveLen(2))
-		g.Expect(queue.Status.DeploymentIssues).To(ContainElement(s2hv1beta1.DeploymentIssue{
-			IssueType: s2hv1beta1.DeploymentIssueImagePullBackOff,
-			FailureComponents: []s2hv1beta1.FailureComponent{{
-				ComponentName:             "multi-comp1",
-				FirstFailureContainerName: "multi-comp1",
-				RestartCount:              0,
-			}},
-		}))
-		g.Expect(queue.Status.DeploymentIssues).To(ContainElement(s2hv1beta1.DeploymentIssue{
-			IssueType: s2hv1beta1.DeploymentIssueCrashLoopBackOff,
-			FailureComponents: []s2hv1beta1.FailureComponent{{
-				ComponentName:             "multi-comp2",
-				FirstFailureContainerName: "multi-comp2",
-				RestartCount:              10,
-			}},
-		}))
+			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueCrashLoopBackOff]
+			g.Expect(failureComps).To(HaveLen(1))
+			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
+			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal(compName))
+			g.Expect(failureComps[0].RestartCount).To(Equal(int32(1)))
+		})
+
+		It("should correctly get `CrashLoopBackOff` deployment issue from k8s resources (Running 0/1)", func() {
+			pods := corev1.PodList{Items: []corev1.Pod{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: compName,
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name:  compName,
+						Ready: false,
+						State: corev1.ContainerState{
+							Running: &corev1.ContainerStateRunning{
+								StartedAt: metav1.Now(),
+							},
+						},
+						RestartCount: 3,
+					}},
+				},
+			}}}
+
+			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
+
+			g.Expect(issuesMaps).To(HaveLen(1))
+
+			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueCrashLoopBackOff]
+			g.Expect(failureComps).To(HaveLen(1))
+			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
+			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal(compName))
+			g.Expect(failureComps[0].RestartCount).To(Equal(int32(3)))
+		})
+
+		It("should correctly get `ContainerCreating` deployment issue from k8s resources", func() {
+			pods := corev1.PodList{Items: []corev1.Pod{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: compName,
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name:  compName,
+						Ready: false,
+						State: corev1.ContainerState{
+							Waiting: &corev1.ContainerStateWaiting{
+								Reason: "ContainerCreating",
+							},
+						},
+					}},
+				},
+			}}}
+
+			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
+
+			g.Expect(issuesMaps).To(HaveLen(1))
+
+			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueContainerCreating]
+			g.Expect(failureComps).To(HaveLen(1))
+			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
+			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal(compName))
+			g.Expect(failureComps[0].RestartCount).To(BeZero())
+		})
+
+		It("should correctly get `JobNotComplete` deployment issue from k8s resources", func() {
+			jobs := batchv1.JobList{Items: []batchv1.Job{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: compName,
+				},
+				Status: batchv1.JobStatus{
+					Active: 1,
+					Failed: 4,
+				},
+			}}}
+
+			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			stagingCtrl.extractDeploymentIssues(&corev1.PodList{Items: []corev1.Pod{}}, &jobs, issuesMaps)
+
+			g.Expect(issuesMaps).To(HaveLen(1))
+
+			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueJobNotComplete]
+			g.Expect(failureComps).To(HaveLen(1))
+			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
+			g.Expect(failureComps[0].FirstFailureContainerName).To(BeEmpty())
+			g.Expect(failureComps[0].RestartCount).To(Equal(int32(4)))
+		})
+
+		It("should correctly get `Pending` deployment issue from k8s resources", func() {
+			pods := corev1.PodList{Items: []corev1.Pod{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: compName,
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodPending,
+				},
+			}}}
+
+			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
+
+			g.Expect(issuesMaps).To(HaveLen(1))
+
+			failureComps := issuesMaps[s2hv1beta1.DeploymentIssuePending]
+			g.Expect(failureComps).To(HaveLen(1))
+			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
+			g.Expect(failureComps[0].FirstFailureContainerName).To(BeEmpty())
+			g.Expect(failureComps[0].RestartCount).To(BeZero())
+		})
+
+		It("should correctly set multiple deployment issues in Queue", func() {
+			timeNow := metav1.Now()
+			pods := corev1.PodList{Items: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "multi-comp1",
+						Namespace: "namespace",
+					},
+					Status: corev1.PodStatus{
+						ContainerStatuses: []corev1.ContainerStatus{{
+							Name:  "multi-comp1",
+							Ready: false,
+							State: corev1.ContainerState{
+								Waiting: &corev1.ContainerStateWaiting{
+									Reason: "ImagePullBackOff",
+								},
+							},
+						}},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "multi-comp2",
+						Namespace: "namespace",
+					},
+					Status: corev1.PodStatus{
+						ContainerStatuses: []corev1.ContainerStatus{{
+							Name:  "multi-comp2",
+							Ready: false,
+							State: corev1.ContainerState{
+								Waiting: &corev1.ContainerStateWaiting{
+									Reason: "CrashLoopBackOff",
+								},
+							},
+							RestartCount: 10,
+						}},
+					},
+				},
+			}}
+
+			jobs := batchv1.JobList{Items: []batchv1.Job{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "job-1",
+				},
+				Status: batchv1.JobStatus{
+					CompletionTime: &timeNow,
+				},
+			}}}
+
+			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			stagingCtrl.extractDeploymentIssues(&pods, &jobs, issuesMaps)
+
+			g.Expect(issuesMaps).To(HaveLen(2))
+
+			failureComps1 := issuesMaps[s2hv1beta1.DeploymentIssueImagePullBackOff]
+			g.Expect(failureComps1).To(HaveLen(1))
+			g.Expect(failureComps1[0].ComponentName).To(Equal("multi-comp1"))
+			g.Expect(failureComps1[0].FirstFailureContainerName).To(Equal("multi-comp1"))
+			g.Expect(failureComps1[0].RestartCount).To(BeZero())
+
+			failureComps2 := issuesMaps[s2hv1beta1.DeploymentIssueCrashLoopBackOff]
+			g.Expect(failureComps2).To(HaveLen(1))
+			g.Expect(failureComps2[0].ComponentName).To(Equal("multi-comp2"))
+			g.Expect(failureComps2[0].FirstFailureContainerName).To(Equal("multi-comp2"))
+			g.Expect(failureComps2[0].RestartCount).To(Equal(int32(10)))
+		})
+	})
+
+	Describe("Convert deployment issues maps into list", func() {
+		It("should correctly convert deployment issues maps into list", func() {
+			issuesMaps := map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent{
+				s2hv1beta1.DeploymentIssueUndefined: {
+					{
+						ComponentName:             "comp1",
+						FirstFailureContainerName: "comp1",
+						RestartCount:              0,
+					},
+					{
+						ComponentName:             "comp2",
+						FirstFailureContainerName: "comp2",
+						RestartCount:              3,
+					},
+				},
+				s2hv1beta1.DeploymentIssueWaitForInitContainer: {
+					{
+						ComponentName:             "comp3",
+						FirstFailureContainerName: "wait-for-dep3",
+						RestartCount:              10,
+					},
+				},
+			}
+
+			issues := stagingCtrl.convertToDeploymentIssues(issuesMaps)
+			g.Expect(issues).To(HaveLen(2))
+			g.Expect(issues).Should(ContainElement(s2hv1beta1.DeploymentIssue{
+				IssueType: s2hv1beta1.DeploymentIssueUndefined,
+				FailureComponents: []s2hv1beta1.FailureComponent{
+					{
+						ComponentName:             "comp1",
+						FirstFailureContainerName: "comp1",
+						RestartCount:              0,
+					},
+					{
+						ComponentName:             "comp2",
+						FirstFailureContainerName: "comp2",
+						RestartCount:              3,
+					},
+				},
+			}))
+			g.Expect(issues).Should(ContainElement(s2hv1beta1.DeploymentIssue{
+				IssueType: s2hv1beta1.DeploymentIssueWaitForInitContainer,
+				FailureComponents: []s2hv1beta1.FailureComponent{
+					{
+						ComponentName:             "comp3",
+						FirstFailureContainerName: "wait-for-dep3",
+						RestartCount:              10,
+					},
+				},
+			}))
+		})
 	})
 })
