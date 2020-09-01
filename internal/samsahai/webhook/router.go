@@ -185,6 +185,7 @@ func (h *handler) readRequestBody(w http.ResponseWriter, r *http.Request) ([]byt
 }
 
 type newComponentEventJSON struct {
+	TeamName   string `json:"teamName"`
 	Component  string `json:"component"`
 	Repository string `json:"repository,omitempty"`
 }
@@ -211,7 +212,8 @@ func (h *handler) newComponentWebhook(w http.ResponseWriter, r *http.Request, pa
 		h.error(w, http.StatusBadRequest, s2herrors.ErrInvalidJSONData)
 		return
 	}
-	h.samsahai.NotifyComponentChanged(jsonData.Component, jsonData.Repository, "")
+	//h.samsahai.NotifyComponentChanged(jsonData.Component, jsonData.Repository, "")
+	h.samsahai.NotifyComponentChanged(jsonData.Component, jsonData.Repository, jsonData.TeamName)
 
 	w.WriteHeader(http.StatusNoContent)
 }
