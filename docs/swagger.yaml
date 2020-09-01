@@ -968,6 +968,8 @@ definitions:
         type: string
       repository:
         type: string
+      teamName:
+        type: string
     type: object
   webhook.teamActivePromotion:
     properties:

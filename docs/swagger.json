@@ -1809,6 +1809,9 @@
                 },
                 "repository": {
                     "type": "string"
+                },
+                "teamName": {
+                    "type": "string"
                 }
             }
         },
