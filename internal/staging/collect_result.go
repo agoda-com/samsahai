@@ -544,10 +544,11 @@ func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1
 			initFound := false
 			for _, initContainerStatus := range initContainerStatuses {
 				if !initContainerStatus.Ready {
-					initFound = true
 					failureComp.FirstFailureContainerName = initContainerStatus.Name
 					failureComp.RestartCount = initContainerStatus.RestartCount
 					c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueWaitForInitContainer, failureComp, issuesMaps)
+					initFound = true
+					break
 				}
 			}
 			if initFound {
@@ -612,6 +613,7 @@ func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1
 			// for other not running pod will be shown as undefined type
 			if pod.Status.Phase != corev1.PodRunning {
 				c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueUndefined, failureComp, issuesMaps)
+				continue
 			}
 		}
 	}
