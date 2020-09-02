@@ -141,6 +141,37 @@ var _ = Describe("Set deployment issues in Queue", func() {
 			g.Expect(failureComps[0].NodeName).To(Equal(nodeName))
 		})
 
+		It("should correctly get `ReadinessProbeFailed` deployment issue from k8s resources", func() {
+			pods := corev1.PodList{Items: []corev1.Pod{{
+				ObjectMeta: metav1.ObjectMeta{Name: compName},
+				Spec:       corev1.PodSpec{NodeName: nodeName},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name:  compName,
+						Ready: false,
+						State: corev1.ContainerState{
+							Running: &corev1.ContainerStateRunning{
+								StartedAt: metav1.Now(),
+							},
+						},
+						RestartCount: 0,
+					}},
+				},
+			}}}
+
+			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
+
+			g.Expect(issuesMaps).To(HaveLen(1))
+
+			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueReadinessProbeFailed]
+			g.Expect(failureComps).To(HaveLen(1))
+			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
+			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal(compName))
+			g.Expect(failureComps[0].RestartCount).To(Equal(int32(0)))
+			g.Expect(failureComps[0].NodeName).To(Equal(nodeName))
+		})
+
 		It("should correctly get `ContainerCreating` deployment issue from k8s resources", func() {
 			pods := corev1.PodList{Items: []corev1.Pod{{
 				ObjectMeta: metav1.ObjectMeta{Name: compName},

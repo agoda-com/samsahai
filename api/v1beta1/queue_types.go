@@ -187,6 +187,8 @@ const (
 	DeploymentIssueImagePullBackOff DeploymentIssueType = "ImagePullBackOff"
 	// DeploymentIssueCrashLoopBackOff means the pod failed to start container
 	DeploymentIssueCrashLoopBackOff DeploymentIssueType = "CrashLoopBackOff"
+	// DeploymentIssueReadinessProbeFailed means the pod cannot be run due to readiness probe failed (zero restart count)
+	DeploymentIssueReadinessProbeFailed DeploymentIssueType = "ReadinessProbeFailed"
 	// DeploymentIssueContainerCreating means the pod is being creating
 	DeploymentIssueContainerCreating DeploymentIssueType = "ContainerCreating"
 	// DeploymentIssuePending means the pod is waiting for assigning to node

@@ -586,12 +586,17 @@ func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1
 
 					runningState := containerStatus.State.Running
 					if runningState != nil {
+						found = true
+						
 						// if running 0/1, count as CrashLoopBackOff
 						if containerStatus.RestartCount > 0 {
 							c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueCrashLoopBackOff, failureComp, issuesMaps)
-							found = true
 							break
 						}
+
+						c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueReadinessProbeFailed, failureComp, issuesMaps)
+						found = true
+						break
 					}
 
 					c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueUndefined, failureComp, issuesMaps)
