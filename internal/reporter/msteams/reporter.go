@@ -215,6 +215,16 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 <br/><b>Owner:</b> {{ .TeamName }}
 <br/><b>Namespace:</b> {{ .Namespace }}
 {{- if eq .Status 0 }}
+{{- if .ComponentUpgrade.DeploymentIssues }}
+<br/><b>Deployment Issues:</b>
+{{- range .ComponentUpgrade.DeploymentIssues }}
+<li><b>- Issue type:</b> {{ .IssueType }}</li>
+<li><b>&nbsp;&nbsp;Components:</b> {{ range .FailureComponents }}{{ .ComponentName }},{{ end }}
+    {{- if eq .IssueType "WaitForInitContainer" }}
+<li><b>&nbsp;&nbsp;Wait for:</b> {{ range .FailureComponents }}{{ .FirstFailureContainerName }},{{ end }}
+    {{- end }}
+{{- end }} 
+{{- end }} 
  {{- if .TestRunner.Teamcity.BuildURL }}
 <br/><b>Teamcity URL:</b> <a href="{{ .TestRunner.Teamcity.BuildURL }}">#{{ .TestRunner.Teamcity.BuildNumber }}</a>
  {{- end }}
@@ -237,6 +247,18 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 {{- end }}
 <br/><b>Current Active Namespace:</b> {{ .CurrentActiveNamespace }}
 <br/><b>Owner:</b> {{ .TeamName }}
+{{- if eq .Result "Failure" }}
+  {{- if .PreActiveQueue.DeploymentIssues }}
+<br/><b>Deployment Issues:</b>
+  {{- range .PreActiveQueue.DeploymentIssues }}
+<li><b>- Issue type:</b> {{ .IssueType }}</li>
+<li><b>&nbsp;&nbsp;Components:</b> {{ range .FailureComponents }}{{ .ComponentName }},{{ end }}
+    {{- if eq .IssueType "WaitForInitContainer" }}
+<li><b>&nbsp;&nbsp;Wait for:</b> {{ range .FailureComponents }}{{ .FirstFailureContainerName }},{{ end }}
+    {{- end }}
+  {{- end }} 
+  {{- end }} 
+{{- end }}
 {{- if and .PreActiveQueue.TestRunner (and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL) }}
 <br/><b>Teamcity URL:</b> <a href="{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}">#{{ .PreActiveQueue.TestRunner.Teamcity.BuildNumber }}</a>
 {{- end }}

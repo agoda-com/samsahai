@@ -44,6 +44,14 @@ var _ = Describe("send slack message", func() {
 				QueueHistoryName: "comp1-1234",
 				IsReverify:       false,
 				Runs:             2,
+				DeploymentIssues: []*rpc.DeploymentIssue{
+					{
+						IssueType: string(s2hv1beta1.DeploymentIssueCrashLoopBackOff),
+						FailureComponents: []*rpc.FailureComponent{
+							{ComponentName: "comp1"},
+						},
+					},
+				},
 			}
 			mockSlackCli := &mockSlack{}
 			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
@@ -61,7 +69,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
 			// Should contain information
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("#2"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("comp1"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("*Name:* comp1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("1.1.0"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("image-1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Desired component failed"))
@@ -70,6 +78,8 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner-staging"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/queue/histories/comp1-5678|Click here>"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("*Issue type:* CrashLoopBackOff"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("*Components:* comp1"))
 			g.Expect(mockSlackCli.message).ShouldNot(ContainSubstring("Image Missing List"))
 		})
 
@@ -249,7 +259,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(err).Should(BeNil())
 		})
 
-		It("should correctly send active promotion failure with outdated components/image missing message",
+		It("should correctly send active promotion failure with outdated components/image missing/deployment issues message",
 			func() {
 				configCtrl := newMockConfigCtrl("", "", "")
 				g.Expect(configCtrl).ShouldNot(BeNil())
@@ -264,6 +274,17 @@ var _ = Describe("send slack message", func() {
 						ImageMissingList: []s2hv1beta1.Image{
 							{Repository: "repo1", Tag: "1.xx"},
 							{Repository: "repo2", Tag: "2.xx"},
+						},
+						DeploymentIssues: []s2hv1beta1.DeploymentIssue{
+							{
+								IssueType: s2hv1beta1.DeploymentIssueWaitForInitContainer,
+								FailureComponents: []s2hv1beta1.FailureComponent{
+									{
+										ComponentName:             "comp1",
+										FirstFailureContainerName: "dep1",
+									},
+								},
+							},
 						},
 					},
 					OutdatedComponents: map[string]s2hv1beta1.OutdatedComponent{
@@ -300,6 +321,9 @@ var _ = Describe("send slack message", func() {
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("Not update for 1d 0h 0m"))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("Current Version: <http://repo/comp1|1.1.0>"))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("Latest Version: <http://repo/comp1|1.1.2>"))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring("*Issue type:* WaitForInitContainer"))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring("*Components:* comp1"))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring("*Wait for:* dep1"))
 				g.Expect(err).Should(BeNil())
 			})
 

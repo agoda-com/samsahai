@@ -109,6 +109,9 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	if comp.Status.CreatedAt == nil {
 		comp.Status.CreatedAt = &now
 	}
+	if comp.Status.UpdatedAt == nil {
+		comp.Status.UpdatedAt = &now
+	}
 
 	logger.Debug(fmt.Sprintf("add %s (%s:%s) to queue", comp.Spec.Name, comp.Spec.Repository, comp.Spec.Version))
 
@@ -155,7 +158,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		}
 	}
 
-	comp.Status.UpdatedAt = &now
 	if err := c.client.Update(context.TODO(), comp); err != nil {
 		return reconcile.Result{}, err
 	}

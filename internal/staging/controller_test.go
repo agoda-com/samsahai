@@ -17,8 +17,8 @@ import (
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
 )
 
-func TestApplyEnvBasedConfig(t *testing.T) {
-	unittest.InitGinkgo(t, "Apply Env Based Config")
+func TestStagingController(t *testing.T) {
+	unittest.InitGinkgo(t, "Staging controller")
 }
 
 var _ = Describe("Apply Env Based Config", func() {

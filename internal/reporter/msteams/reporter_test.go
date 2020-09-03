@@ -44,6 +44,14 @@ var _ = Describe("send ms teams message", func() {
 				QueueHistoryName: "comp1-1234",
 				IsReverify:       false,
 				Runs:             2,
+				DeploymentIssues: []*rpc.DeploymentIssue{
+					{
+						IssueType: string(s2hv1beta1.DeploymentIssueCrashLoopBackOff),
+						FailureComponents: []*rpc.FailureComponent{
+							{ComponentName: "comp1"},
+						},
+					},
+				},
 			}
 			mockMSTeamsCli := &mockMSTeams{}
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
@@ -74,6 +82,8 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner-staging"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/queue/histories/comp1-5678">Click here</a>`))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>- Issue type:</b> CrashLoopBackOff"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>&nbsp;&nbsp;Components:</b> comp1"))
 			g.Expect(mockMSTeamsCli.message).ShouldNot(ContainSubstring("Image Missing List"))
 		})
 
@@ -270,7 +280,7 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(err).Should(BeNil())
 		})
 
-		It("should correctly send active promotion failure with outdated components/image missing message",
+		It("should correctly send active promotion failure with outdated components/image missing/deployment issues message",
 			func() {
 				configCtrl := newMockConfigCtrl("", "", "")
 				g.Expect(configCtrl).ShouldNot(BeNil())
@@ -285,6 +295,17 @@ var _ = Describe("send ms teams message", func() {
 						ImageMissingList: []s2hv1beta1.Image{
 							{Repository: "repo1", Tag: "1.xx"},
 							{Repository: "repo2", Tag: "2.xx"},
+						},
+						DeploymentIssues: []s2hv1beta1.DeploymentIssue{
+							{
+								IssueType: s2hv1beta1.DeploymentIssueWaitForInitContainer,
+								FailureComponents: []s2hv1beta1.FailureComponent{
+									{
+										ComponentName:             "comp1",
+										FirstFailureContainerName: "dep1",
+									},
+								},
+							},
 						},
 					},
 					OutdatedComponents: map[string]s2hv1beta1.OutdatedComponent{
@@ -326,6 +347,9 @@ var _ = Describe("send ms teams message", func() {
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`Current Version: <a href="http://repo/comp1">1.1.0</a>`))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`Latest Version: <a href="http://repo/comp1">1.1.2</a>`))
 				g.Expect(mockMSTeamsCli.message).ShouldNot(ContainSubstring("comp2"))
+				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>- Issue type:</b> WaitForInitContainer"))
+				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>&nbsp;&nbsp;Components:</b> comp1"))
+				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>&nbsp;&nbsp;Wait for:</b> dep1"))
 				g.Expect(err).Should(BeNil())
 			})
 

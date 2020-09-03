@@ -81,7 +81,7 @@ type IssueType string
 
 const (
 	IssueUnknown              IssueType = "Unknown issue"
-	IssueDesiredVersionFailed IssueType = "Desired component failed - Please check your test"
+	IssueDesiredVersionFailed IssueType = "Desired component failed"
 	IssueImageMissing         IssueType = "Image missing"
 	IssueEnvironment          IssueType = "Environment issue - Verification failed"
 )
