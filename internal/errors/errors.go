@@ -17,7 +17,6 @@ const (
 	ErrExecutionTimeout             = Error("execution timeout")
 	ErrImageVersionNotFound         = Error("image version not found")
 	ErrNoDesiredComponentVersion    = Error("no desired component version")
-	ErrBuildCannotBeTriggeredInTime = Error("build cannot be triggered in time")
 
 	ErrTeamNamespaceStillCreating     = Error("still creating namespace")
 	ErrTeamNamespaceStillExists       = Error("destroyed namespace still exists")
