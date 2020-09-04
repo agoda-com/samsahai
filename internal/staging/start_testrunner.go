@@ -56,9 +56,6 @@ func (c *controller) checkTestTimeout(queue *s2hv1beta1.Queue, testingTimeout me
 	if queue.Status.StartTestingTime != nil &&
 		now.Sub(queue.Status.StartTestingTime.Time) > testingTimeout.Duration {
 
-		// set teamcity build number to message
-		queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
-
 		// testing timeout
 		if err := c.updateTestQueueCondition(queue, v1.ConditionFalse, "queue testing timeout"); err != nil {
 			return err
@@ -128,6 +125,8 @@ func (c *controller) triggerTest(queue *s2hv1beta1.Queue, testRunner internal.St
 			logger.Error(err, "testing triggered error")
 			return err
 		}
+		// set teamcity build number to message
+		queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
 
 		queue.Status.SetCondition(
 			s2hv1beta1.QueueTestTriggered,
