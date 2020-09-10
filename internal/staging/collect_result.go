@@ -106,12 +106,14 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 			Spec:   q.Spec,
 			Status: q.Status,
 		},
-		AppliedValues:    c.lastAppliedValues,
-		StableComponents: c.lastStableComponentList.Items,
-		IsDeploySuccess:  q.IsDeploySuccess(),
-		IsTestSuccess:    q.IsTestSuccess(),
-		IsReverify:       q.IsReverify(),
-		CreatedAt:        &now,
+		QueueHistoryExtraSpec: s2hv1beta1.QueueHistoryExtraSpec{
+			AppliedValues:    c.lastAppliedValues,
+			StableComponents: c.lastStableComponentList.Items,
+			IsDeploySuccess:  q.IsDeploySuccess(),
+			IsTestSuccess:    q.IsTestSuccess(),
+			IsReverify:       q.IsReverify(),
+			CreatedAt:        &now,
+		},
 	}
 
 	history := &s2hv1beta1.QueueHistory{

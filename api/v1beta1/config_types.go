@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -271,15 +272,62 @@ type Endpoint struct {
 type EnvType string
 
 const (
-	EnvBase      EnvType = "base"
-	EnvStaging   EnvType = "staging"
-	EnvPreActive EnvType = "pre-active"
-	EnvActive    EnvType = "active"
-	EnvDeActive  EnvType = "de-active"
+	EnvBase        EnvType = "base"
+	EnvStaging     EnvType = "staging"
+	EnvPreActive   EnvType = "pre-active"
+	EnvActive      EnvType = "active"
+	EnvDeActive    EnvType = "de-active"
+	EnvPullRequest EnvType = "pull-request"
 )
 
 // ChartValuesURLs represents values file URL of each chart
 type ChartValuesURLs map[string][]string
+
+// PullRequestComponent represents a pull request component configuration
+type PullRequestComponent struct {
+	// Name defines a main component name which is deployed per pull request
+	Name string `json:"name"`
+	// Chart defines a chart repository, name and version of pull request component
+	Chart ComponentChart `json:"chart"`
+	// Image defines an image repository, tag and pattern of pull request component which is a regex of tag
+	// +optional
+	Image ComponentImage `json:"image,omitempty"`
+	// Dependencies defines a list of components which are required to be deployed together with the main component
+	// +optional
+	Dependencies           []string `json:"dependencies,omitempty"`
+	PullRequestExtraConfig `json:",inline"`
+}
+
+// PullRequestTriggerConfig represents a pull request trigger configuration
+type PullRequestTriggerConfig struct {
+	// PollingTime defines a waiting duration time to re-check the pull request image in the registry
+	// +optional
+	PollingTime metav1.Duration `json:"pollingTime,omitempty"`
+	// MaxRetry defines max retry counts of pull request trigger if cannot find image in the registry
+	// +optional
+	MaxRetry int `json:"maxRetry,omitempty"`
+}
+
+// PullRequestExtraConfig represents a pull request extra configuration
+type PullRequestExtraConfig struct {
+	// Parallel defines a parallel number of pull request queue
+	// +optional
+	Parallel int `json:"parallel,omitempty"`
+	// MaxRetry defines max retry counts of pull request deployment if it fails
+	// +optional
+	MaxRetry int `json:"maxRetry,omitempty"`
+	// Resources represents how many resources of pull request namespace
+	// +optional
+	Resources corev1.ResourceList `json:"resources,omitempty"`
+	// +optional
+	Trigger PullRequestTriggerConfig `json:"trigger,omitempty"`
+}
+
+// ConfigPullRequest defines a configuration of pull request
+type ConfigPullRequest struct {
+	Components             []*PullRequestComponent `json:"components"`
+	PullRequestExtraConfig `json:",inline"`
+}
 
 // ConfigSpec defines the desired state of Config
 type ConfigSpec struct {
