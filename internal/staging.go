@@ -44,3 +44,6 @@ type StagingController interface {
 	// LoadDeployEngine loads single deploy engine to controller
 	LoadDeployEngine(engine DeployEngine)
 }
+
+type PullRequestTriggerController interface {
+}

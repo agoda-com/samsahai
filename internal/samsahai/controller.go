@@ -266,7 +266,7 @@ func (c *controller) loadPlugins(dir string) {
 		}
 		c.plugins[p.GetName()] = p
 
-		if _, ok := c.checkers[p.GetName()]; ok {
+		if _, err := c.getComponentChecker(p.GetName()); err != nil {
 			logger.Warn("duplicate checker", "name", p.GetName(), "file", file)
 		}
 		c.checkers[p.GetName()] = p
@@ -1012,6 +1012,15 @@ func (c *controller) GetActivePromotionHistory(name string) (v *s2hv1beta1.Activ
 	v = &s2hv1beta1.ActivePromotionHistory{}
 	err = c.client.Get(context.TODO(), client.ObjectKey{Name: name}, v)
 	return
+}
+
+func (c *controller) getComponentChecker(source string) (internal.DesiredComponentChecker, error) {
+	checker, ok := c.checkers[source]
+	if !ok {
+		return nil, fmt.Errorf("component checker source %s not found", source)
+	}
+
+	return checker, nil
 }
 
 func (c *controller) notifyComponentChanged(teamName string) error {

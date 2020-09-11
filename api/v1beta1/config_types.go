@@ -292,6 +292,9 @@ type PullRequestComponent struct {
 	// Image defines an image repository, tag and pattern of pull request component which is a regex of tag
 	// +optional
 	Image ComponentImage `json:"image,omitempty"`
+	// Source defines a source for image repository
+	// +optional
+	Source *UpdatingSource `json:"source,omitempty"`
 	// Dependencies defines a list of components which are required to be deployed together with the main component
 	// +optional
 	Dependencies           []string `json:"dependencies,omitempty"`
@@ -305,7 +308,7 @@ type PullRequestTriggerConfig struct {
 	PollingTime metav1.Duration `json:"pollingTime,omitempty"`
 	// MaxRetry defines max retry counts of pull request trigger if cannot find image in the registry
 	// +optional
-	MaxRetry int `json:"maxRetry,omitempty"`
+	MaxRetry *int `json:"maxRetry,omitempty"`
 }
 
 // PullRequestExtraConfig represents a pull request extra configuration
@@ -313,9 +316,6 @@ type PullRequestExtraConfig struct {
 	// Parallel defines a parallel number of pull request queue
 	// +optional
 	Parallel int `json:"parallel,omitempty"`
-	// MaxRetry defines max retry counts of pull request deployment if it fails
-	// +optional
-	MaxRetry int `json:"maxRetry,omitempty"`
 	// Resources represents how many resources of pull request namespace
 	// +optional
 	Resources corev1.ResourceList `json:"resources,omitempty"`
@@ -349,6 +349,10 @@ type ConfigSpec struct {
 	// ActivePromotion represents configuration about active promotion
 	// +optional
 	ActivePromotion *ConfigActivePromotion `json:"activePromotion,omitempty"`
+
+	// PullRequest represents configuration about pull request
+	// +optional
+	PullRequest *ConfigPullRequest `json:"pullRequest,omitempty"`
 
 	// Envs represents urls of values file per environments
 	// ordering by less priority to high priority

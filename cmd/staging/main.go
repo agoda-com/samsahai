@@ -40,6 +40,7 @@ import (
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	desiredctrl "github.com/agoda-com/samsahai/internal/desiredcomponent"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	prtriggerctrl "github.com/agoda-com/samsahai/internal/pullrequest/trigger"
 	"github.com/agoda-com/samsahai/internal/queue"
 	stagingctrl "github.com/agoda-com/samsahai/internal/staging"
 	"github.com/agoda-com/samsahai/internal/util"
@@ -141,12 +142,15 @@ func startCtrlCmd() *cobra.Command {
 			queueCtrl := queue.New(namespace, runtimeClient)
 			authToken := viper.GetString(s2h.VKS2HAuthToken)
 			desiredctrl.New(teamName, mgr, queueCtrl, authToken, samsahaiClient)
+			prtriggerctrl.New(teamName, mgr, authToken, samsahaiClient)
+
 			tcBaseURL := viper.GetString(s2h.VKTeamcityURL)
 			tcUsername := viper.GetString(s2h.VKTeamcityUsername)
 			tcPassword := viper.GetString(s2h.VKTeamcityPassword)
 			maxQueueHistDays := viper.GetInt(s2h.VKQueueMaxHistoryDays)
 			stagingCtrl := stagingctrl.NewController(teamName, namespace, authToken, samsahaiClient, mgr,
-				queueCtrl, configCtrl, tcBaseURL, tcUsername, tcPassword, s2h.StagingConfig{MaxHistoryDays: maxQueueHistDays})
+				queueCtrl, configCtrl, tcBaseURL, tcUsername, tcPassword,
+				s2h.StagingConfig{MaxHistoryDays: maxQueueHistDays})
 
 			logger.Info("setup signal handler")
 			stop := signals.SetupSignalHandler()

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,6 +67,9 @@ type SamsahaiConfig struct {
 	// ActivePromotion defines an active promotion configuration
 	ActivePromotion ActivePromotionConfig `json:"activePromotion,omitempty" yaml:"activePromotion,omitempty"`
 
+	// PullRequest represents configuration of pull request
+	PullRequest PullRequestConfig `json:"pullRequest,omitempty" yaml:"pullRequest,omitempty"`
+
 	// PostNamespaceCreation defines commands executing after creating s2h namespace
 	PostNamespaceCreation *struct {
 		s2hv1beta1.CommandAndArgs
@@ -76,6 +80,15 @@ type SamsahaiConfig struct {
 
 	SamsahaiURL        string             `json:"-" yaml:"-"`
 	SamsahaiCredential SamsahaiCredential `json:"-" yaml:"-"`
+}
+
+// PullRequestConfig represents configuration of pull request
+type PullRequestConfig struct {
+	// MaxPRTriggerRetryCounts the maximum times of pull request has been triggered
+	MaxTriggerRetryCounts int `json:"maxTriggerRetryCounts" yaml:"maxTriggerRetryCounts"`
+
+	// TriggerPollingTime defines a waiting duration time to re-check the pull request image in the registry
+	TriggerPollingTime metav1.Duration `json:"triggerPollingTime" yaml:"triggerPollingTime"`
 }
 
 // ActivePromotionConfig represents configuration of active promotion
@@ -158,8 +171,11 @@ type SamsahaiController interface {
 	// NotifyComponentChanged adds Component to queue for checking new version
 	NotifyComponentChanged(name, repository, teamName string)
 
-	// NotifyActivePromotion sends active promotion status report
-	NotifyActivePromotion(atpRpt *ActivePromotionReporter)
+	// NotifyActivePromotionReport sends active promotion status report
+	NotifyActivePromotionReport(atpRpt *ActivePromotionReporter)
+
+	// TriggerPullRequestDeployment creates PullRequestTrigger crd object
+	TriggerPullRequestDeployment(teamName, component, tag, prNumber string) error
 
 	// API
 
@@ -229,4 +245,9 @@ type PostNamespaceCreation struct {
 // GenStagingNamespace returns the name of staging namespace by team name
 func GenStagingNamespace(teamName string) string {
 	return AppPrefix + teamName
+}
+
+// GenPullRequestTriggerName generates PullRequestTrigger name from component and pull request number
+func GenPullRequestTriggerName(component, prNumber string) string {
+	return fmt.Sprintf("%s-%s", component, prNumber)
 }

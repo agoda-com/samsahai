@@ -5,10 +5,13 @@ option go_package = "pkg/samsahai/rpc";
 
 service RPC {
     rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
-    rpc GetMissingVersion (TeamWithCurrentComponent) returns (ImageList);
+    rpc GetMissingVersions (TeamWithCurrentComponent) returns (ImageList);
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
     rpc GetBundleName (TeamWithComponentName) returns (BundleName);
     rpc GetPriorityQueues (TeamName) returns (PriorityQueues);
+    rpc GetPullRequestConfig (TeamName) returns (PullRequestConfig);
+    rpc GetPullRequestComponentSource (TeamWithPullRequest) returns (ComponentSource);
+    rpc GetComponentVersion (ComponentSource) returns (ComponentVersion);
 }
 
 message Empty {
@@ -91,4 +94,31 @@ message FailureComponent {
     string firstFailureContainerName = 2;
     int32 restartCount = 3;
     string nodeName = 4;
+}
+
+message TeamWithPullRequest {
+    string teamName = 1;
+    string componentName = 2;
+    string pullRequestNumber = 3;
+}
+
+message PullRequestConfig {
+    int32 parallel = 1;
+    PullRequestTriggerConfig trigger = 2;
+}
+
+message PullRequestTriggerConfig {
+    int32 maxRetry = 1;
+    string pollingTime = 2;
+}
+
+message ComponentSource {
+    string componentName = 1;
+    string source = 2;
+    string pattern = 3;
+    Image image = 4;
+}
+
+message ComponentVersion {
+    string version = 1;
 }

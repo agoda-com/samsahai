@@ -176,6 +176,22 @@ func (c *controller) GetPriorityQueues(configName string) ([]string, error) {
 	return config.Spec.PriorityQueues, nil
 }
 
+// GetPullRequestConfig returns a configuration of pull request
+func (c *controller) GetPullRequestConfig(configName string) (*s2hv1beta1.ConfigPullRequest, error) {
+	config, err := c.Get(configName)
+	if err != nil {
+		logger.Error(err, "cannot get Config", "name", configName)
+		return &s2hv1beta1.ConfigPullRequest{}, err
+	}
+
+	prConfig := config.Spec.PullRequest
+	if prConfig == nil {
+		prConfig = &s2hv1beta1.ConfigPullRequest{}
+	}
+
+	return prConfig, nil
+}
+
 // Update updates Config CRD
 func (c *controller) Update(config *s2hv1beta1.Config) error {
 	if err := c.client.Update(context.TODO(), config); err != nil {

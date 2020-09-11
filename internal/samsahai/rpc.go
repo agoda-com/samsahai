@@ -15,6 +15,7 @@ import (
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
+	"github.com/agoda-com/samsahai/internal/util/template"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -30,7 +31,7 @@ func (c *controller) authenticateRPC(ctx context.Context) error {
 	return nil
 }
 
-func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWithCurrentComponent) (*rpc.ImageList, error) {
+func (c *controller) GetMissingVersions(ctx context.Context, teamInfo *rpc.TeamWithCurrentComponent) (*rpc.ImageList, error) {
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
@@ -93,7 +94,12 @@ func (c *controller) GetMissingVersion(ctx context.Context, teamInfo *rpc.TeamWi
 }
 
 func (c *controller) detectAndAddImageMissing(source s2hv1beta1.UpdatingSource, repo, name, version string, imgList *rpc.ImageList) {
-	checker := c.checkers[string(source)]
+	checker, err := c.getComponentChecker(string(source))
+	if err != nil {
+		logger.Error(err, "cannot get component checker", "source", string(source))
+		return
+	}
+
 	if err := checker.EnsureVersion(repo, name, version); err != nil {
 		if s2herrors.IsImageNotFound(err) || s2herrors.IsErrRequestTimeout(err) {
 			imgList.Images = append(imgList.Images, &rpc.Image{
@@ -272,4 +278,139 @@ func (c *controller) GetPriorityQueues(ctx context.Context, teamName *rpc.TeamNa
 	queues, _ := c.GetConfigController().GetPriorityQueues(teamName.Name)
 
 	return &rpc.PriorityQueues{Queues: queues}, nil
+}
+
+func (c *controller) GetComponentVersion(ctx context.Context, compSource *rpc.ComponentSource) (*rpc.ComponentVersion, error) {
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	source := compSource.Source
+	checker, err := c.getComponentChecker(source)
+	if err != nil {
+		logger.Error(err, "cannot get component checker", "source", compSource.Source)
+		return nil, err
+	}
+
+	var (
+		imgRepository string
+		imgTag        string
+	)
+	if compSource.Image != nil {
+		imgRepository = compSource.Image.Repository
+		imgTag = compSource.Image.Tag
+	}
+
+	// use pattern if tag is not defined
+	if imgTag == "" {
+		imgTag = compSource.Pattern
+	}
+
+	version, err := checker.GetVersion(imgRepository, compSource.ComponentName, imgTag)
+	if err != nil {
+		switch err.Error() {
+		case s2herrors.ErrNoDesiredComponentVersion.Error(), s2herrors.ErrRequestTimeout.Error():
+			return nil, fmt.Errorf("%s:%s not found, %v", imgRepository, imgTag, err)
+		default:
+			return nil, err
+		}
+	}
+
+	return &rpc.ComponentVersion{Version: version}, nil
+}
+
+func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.TeamName) (*rpc.PullRequestConfig, error) {
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	configCtrl := c.GetConfigController()
+	prConfig, err := configCtrl.GetPullRequestConfig(teamName.Name)
+	if err != nil {
+		return &rpc.PullRequestConfig{},
+			errors.Wrapf(err, "cannot get pull request configuration of team: %s", teamName)
+	}
+
+	maxRetry := &c.configs.PullRequest.MaxTriggerRetryCounts
+	if prConfig.Trigger.MaxRetry != nil {
+		maxRetry = prConfig.Trigger.MaxRetry
+	}
+
+	pollingTime := c.configs.PullRequest.TriggerPollingTime
+	if prConfig.Trigger.PollingTime.Duration != 0 {
+		pollingTime = prConfig.Trigger.PollingTime
+	}
+
+	rpcPRConfig := &rpc.PullRequestConfig{
+		Parallel: int32(prConfig.Parallel),
+		Trigger: &rpc.PullRequestTriggerConfig{
+			MaxRetry:    int32(*maxRetry),
+			PollingTime: pollingTime.Duration.String(),
+		},
+	}
+
+	return rpcPRConfig, nil
+}
+
+// PullRequestData defines a pull request data for template rendering
+type PullRequestData struct {
+	PRNumber string
+}
+
+func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWithPR *rpc.TeamWithPullRequest) (*rpc.ComponentSource, error) {
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	configCtrl := c.GetConfigController()
+
+	teamName := teamWithPR.TeamName
+	prConfig, err := configCtrl.GetPullRequestConfig(teamWithPR.TeamName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get pull request configuration of team: %s", teamName)
+	}
+
+	compSource := &rpc.ComponentSource{Image: &rpc.Image{}}
+
+	comps, err := configCtrl.GetComponents(teamName)
+	if err != nil {
+		return nil, err
+	}
+
+	for compName, comp := range comps {
+		if compName == teamWithPR.ComponentName {
+			if comp.Source != nil {
+				compSource.Source = string(*comp.Source)
+			}
+			compSource.Pattern = comp.Image.Pattern
+			compSource.Image.Repository = comp.Image.Repository
+			compSource.Image.Tag = comp.Image.Tag
+		}
+	}
+
+	for _, prComp := range prConfig.Components {
+		if prComp.Name == teamWithPR.ComponentName {
+			if prComp.Source != nil && *prComp.Source != "" {
+				compSource.Source = string(*prComp.Source)
+			}
+
+			// resolve pull request number for image tag pattern
+			if prComp.Image.Pattern != "" {
+				compSource.Pattern = prComp.Image.Pattern
+			}
+
+			if prComp.Image.Repository != "" {
+				compSource.Image.Repository = prComp.Image.Repository
+			}
+
+			if prComp.Image.Tag != "" {
+				compSource.Image.Tag = prComp.Image.Tag
+			}
+		}
+	}
+
+	prData := PullRequestData{PRNumber: teamWithPR.PullRequestNumber}
+	compSource.Pattern = template.TextRender("PullRequestTagPattern", compSource.Pattern, prData)
+
+	return compSource, nil
 }

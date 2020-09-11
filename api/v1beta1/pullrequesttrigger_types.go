@@ -17,14 +17,21 @@ limitations under the License.
 package v1beta1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // PullRequestTriggerSpec defines the desired state of PullRequestTrigger
 type PullRequestTriggerSpec struct {
-	Name     string `json:"name"`
-	PRNumber int    `json:"prNumber"`
-	Image    Image  `json:"image"`
+	Component         string             `json:"component"`
+	PullRequestNumber intstr.IntOrString `json:"pullRequestNumber"`
+	// +optional
+	Image *Image `json:"image,omitempty"`
+	// +optional
+	Pattern string `json:"pattern,omitempty"`
+	// +optional
+	Source UpdatingSource `json:"source,omitempty"`
 }
 
 // PullRequestTriggerStatus defines the observed state of PullRequestTrigger
@@ -36,7 +43,55 @@ type PullRequestTriggerStatus struct {
 	UpdatedAt *metav1.Time `json:"updatedAt,omitempty"`
 
 	// NextProcessAt represents time to re-check the image in the target registry
+	// +optional
 	NextProcessAt *metav1.Time `json:"nextProcessAt,omitempty"`
+
+	// NoOfRetry defines how many times this pull request has been triggered
+	// +optional
+	NoOfRetry *int `json:"noOfRetry,omitempty"`
+
+	// Conditions contains observations of the resource's state e.g.,
+	// Queue deployed, being tested
+	// +optional
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	Conditions []PullRequestTriggerCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+}
+
+type PullRequestTriggerCondition struct {
+	Type   PullRequestTriggerConditionType `json:"type"`
+	Status v1.ConditionStatus              `json:"status"`
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// +optional
+	Reason string `json:"reason,omitempty"`
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
+type PullRequestTriggerConditionType string
+
+const (
+	// PullRequestTriggerCondFailed means the pull request trigger failed to retrieve the image from the registry
+	PullRequestTriggerCondFailed PullRequestTriggerConditionType = "Failed"
+)
+
+func (pr *PullRequestTriggerStatus) SetCondition(cond PullRequestTriggerConditionType, status v1.ConditionStatus, message string) {
+	for i, c := range pr.Conditions {
+		if c.Type == cond {
+			pr.Conditions[i].Status = status
+			pr.Conditions[i].LastTransitionTime = metav1.Now()
+			pr.Conditions[i].Message = message
+			return
+		}
+	}
+
+	pr.Conditions = append(pr.Conditions, PullRequestTriggerCondition{
+		Type:               cond,
+		Status:             status,
+		LastTransitionTime: metav1.Now(),
+		Message:            message,
+	})
 }
 
 // +kubebuilder:object:root=true

@@ -150,7 +150,7 @@ func (c *controller) checkTeamComponentChanged(compName, repository, teamName st
 			continue
 		}
 
-		if _, ok := c.checkers[string(*comp.Source)]; !ok {
+		if _, err := c.getComponentChecker(string(*comp.Source)); err != nil {
 			// ignore non-existing source
 			continue
 		}
@@ -185,7 +185,12 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	var err error
 
 	// run checker to get desired version
-	checker := c.checkers[updateInfo.ComponentSource]
+	checker, err := c.getComponentChecker(updateInfo.ComponentSource)
+	if err != nil {
+		logger.Error(err, "cannot get component checker",
+			"team", updateInfo.TeamName, "source", updateInfo.ComponentSource)
+		return err
+	}
 	checkPattern := updateInfo.ComponentImage.Pattern
 
 	team := &s2hv1beta1.Team{}
