@@ -46,6 +46,10 @@ type TeamSpec struct {
 	// Credential
 	// +optional
 	Credential Credential `json:"credential,omitempty"`
+
+	// Template
+	// +optional
+	Template string `json:"template,omitempty"`
 }
 
 type StagingCtrl struct {
@@ -247,6 +251,7 @@ const (
 	TeamPostPreActiveNamespaceCreationRun TeamConditionType = "TeamPostPreActiveNamespaceCreationRun"
 	TeamFirstNotifyComponentChanged       TeamConditionType = "TeamFirstNotifyComponentChanged"
 	TeamFirstActivePromotionRun           TeamConditionType = "TeamFirstActivePromotionRun"
+	TeamApplyTemplate                     TeamConditionType = "TeamApplyTemplate"
 )
 
 func (ts *TeamStatus) IsConditionTrue(cond TeamConditionType) bool {

@@ -378,6 +378,11 @@ definitions:
         $ref: '#/definitions/v1beta1.ConfigStaging'
         description: Staging represents configuration about staging
         type: object
+      template:
+        description: |-
+          Template
+          +optional
+        type: string
     type: object
   v1beta1.ConfigStaging:
     properties:
@@ -857,6 +862,11 @@ definitions:
           For easier for developing, debugging and testing purposes
           +optional
         type: object
+      template:
+        description: |-
+          Template
+          +optional
+        type: string
     type: object
   v1beta1.TeamStatus:
     properties:

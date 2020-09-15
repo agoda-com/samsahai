@@ -13,6 +13,7 @@ require (
 	github.com/golang/protobuf v1.4.1
 	github.com/google/go-cmp v0.4.0
 	github.com/google/uuid v1.1.1
+	github.com/imdario/mergo v0.3.11
 	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/lusis/go-slackbot v0.0.0-20180109053408-401027ccfef5 // indirect
@@ -38,7 +39,6 @@ require (
 	google.golang.org/protobuf v1.24.0
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
-	gopkg.in/yaml.v2 v2.2.7 // indirect
 	helm.sh/helm/v3 v3.0.2
 	k8s.io/api v0.17.0
 	k8s.io/apiextensions-apiserver v0.17.0 // indirect

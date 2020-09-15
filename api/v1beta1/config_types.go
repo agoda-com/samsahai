@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -201,6 +202,8 @@ const (
 	CriteriaFailure ReporterCriteria = "failure"
 	// CriteriaBoth means sending slack notification whether component upgrade is success or failure
 	CriteriaBoth ReporterCriteria = "both"
+	// ConfigApplyTemplate means the template configuration has been applied
+	ConfigApplyTemplate ConfigConditionType = "ConfigApplyTemplate"
 )
 
 // Slack defines a configuration of slack
@@ -310,11 +313,29 @@ type ConfigSpec struct {
 	// Reporter represents configuration about reporter
 	// +optional
 	Reporter *ConfigReporter `json:"report,omitempty"`
+
+	// Template
+	// +optional
+	Template string `json:"template,omitempty"`
 }
 
 // ConfigStatus defines the observed state of Config
 type ConfigStatus struct {
+	// Conditions contains observations of the state
+	// +optional
+	Conditions []ConfigCondition `json:"conditions,omitempty"`
 }
+
+type ConfigCondition struct {
+	Type   ConfigConditionType    `json:"type"`
+	Status corev1.ConditionStatus `json:"status"`
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
+type ConfigConditionType string
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
@@ -341,6 +362,34 @@ type ConfigList struct {
 // +k8s:deepcopy-gen=false
 //ComponentValues represents values of a component chart
 type ComponentValues map[string]interface{}
+
+func (cs *ConfigStatus) IsConditionTrue(cond ConfigConditionType) bool {
+	for i, c := range cs.Conditions {
+		if c.Type == cond {
+			return cs.Conditions[i].Status == corev1.ConditionTrue
+		}
+	}
+
+	return false
+}
+
+func (cs *ConfigStatus) SetCondition(cond ConfigConditionType, status corev1.ConditionStatus, message string) {
+	for i, c := range cs.Conditions {
+		if c.Type == cond {
+			cs.Conditions[i].Status = status
+			cs.Conditions[i].LastTransitionTime = metav1.Now()
+			cs.Conditions[i].Message = message
+			return
+		}
+	}
+
+	cs.Conditions = append(cs.Conditions, ConfigCondition{
+		Type:               cond,
+		Status:             status,
+		LastTransitionTime: metav1.Now(),
+		Message:            message,
+	})
+}
 
 func (in *ComponentValues) DeepCopyInto(out *ComponentValues) {
 	if in == nil {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
+	"github.com/imdario/mergo"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -649,6 +650,22 @@ func (c *controller) getCronJobSuffix(schedule string) string {
 	return suffix
 }
 
+func (c *controller) applyConfigTemplate(config *s2hv1beta1.Config) error {
+	configTemplate, err := c.getConfig(config.Spec.Template)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			logger.Error(err, "template not found", "config", config.Spec.Template)
+		}
+		return err
+	}
+
+	if err := mergo.Merge(&config.Spec, configTemplate.Spec); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	ctx := context.Background()
 	configComp := &s2hv1beta1.Config{}
@@ -666,6 +683,22 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	if c.s2hCtrl == nil {
 		logger.Debug("no s2h ctrl, skip detect changed component", "team", req.Name)
 		return cr.Result{}, nil
+	}
+
+	if configComp.Spec.Template != "" && !configComp.Status.IsConditionTrue(s2hv1beta1.ConfigApplyTemplate) {
+		err := c.applyConfigTemplate(configComp)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		configComp.Status.SetCondition(
+			s2hv1beta1.ConfigApplyTemplate,
+			corev1.ConditionTrue,
+			"applied config template successfully")
+
+		if err := c.Update(configComp); err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	teamComp := s2hv1beta1.Team{}

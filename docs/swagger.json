@@ -1043,6 +1043,10 @@
                     "description": "Staging represents configuration about staging",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.ConfigStaging"
+                },
+                "template": {
+                    "description": "Template\n+optional",
+                    "type": "string"
                 }
             }
         },
@@ -1666,6 +1670,10 @@
                     "description": "StagingCtrl represents configuration about the staging controller.\nFor easier for developing, debugging and testing purposes\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.StagingCtrl"
+                },
+                "template": {
+                    "description": "Template\n+optional",
+                    "type": "string"
                 }
             }
         },
