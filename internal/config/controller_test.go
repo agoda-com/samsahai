@@ -75,7 +75,7 @@ var _ = Describe("Config Controller", func() {
 		g := NewWithT(GinkgoT())
 
 		config := mockConfig
-		compValues, err := GetEnvValues(&config, s2hv1beta1.EnvStaging)
+		compValues, err := GetEnvValues(&config, s2hv1beta1.EnvStaging, "teamtest")
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(compValues).To(Equal(map[string]s2hv1beta1.ComponentValues{
 			redisCompName: {
@@ -93,7 +93,7 @@ var _ = Describe("Config Controller", func() {
 		g := NewWithT(GinkgoT())
 
 		config := mockConfig
-		compValues, err := GetEnvComponentValues(&config, redisCompName, s2hv1beta1.EnvStaging)
+		compValues, err := GetEnvComponentValues(&config, redisCompName, "teamtest", s2hv1beta1.EnvStaging)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(compValues).To(Equal(s2hv1beta1.ComponentValues{
 			"master": map[string]interface{}{
