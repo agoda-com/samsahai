@@ -142,7 +142,7 @@ type SamsahaiController interface {
 	LoadTeamSecret(teamComp *s2hv1beta1.Team) error
 
 	// CreateStagingEnvironment creates staging environment
-	CreateStagingEnvironment(teamName, namespaceName string) error
+	CreateStagingEnvironment(teamName, namespace string) error
 
 	// CreatePreActiveEnvironment creates pre-active environment
 	CreatePreActiveEnvironment(teamName, namespace string) error
@@ -247,7 +247,7 @@ func GenStagingNamespace(teamName string) string {
 	return AppPrefix + teamName
 }
 
-// GenPullRequestTriggerName generates PullRequestTrigger name from component and pull request number
-func GenPullRequestTriggerName(component, prNumber string) string {
+// GenPullRequestComponentName generates PullRequest object name from component and pull request number
+func GenPullRequestComponentName(component, prNumber string) string {
 	return fmt.Sprintf("%s-%s", component, prNumber)
 }

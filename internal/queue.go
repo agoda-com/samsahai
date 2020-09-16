@@ -3,34 +3,34 @@ package internal
 import (
 	"time"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // QueueController manages updating component queue through CRD
 type QueueController interface {
 	// Add adds Queue with priority list
-	Add(q *v1beta1.Queue, priorityQueues []string) error
+	Add(q runtime.Object, priorityQueues []string) error
 
 	// AddTop adds Queue to the top
-	AddTop(q *v1beta1.Queue) error
+	AddTop(q runtime.Object) error
 
 	// First returns first component in Queue or current running Queue
-	First() (*v1beta1.Queue, error)
+	First() (runtime.Object, error)
 
 	// Remove removes Queue
-	Remove(q *v1beta1.Queue) error
+	Remove(q runtime.Object) error
 
 	// Size returns no of queues
 	Size() int
 
 	// SetLastOrder sets queue order to the last
-	SetLastOrder(q *v1beta1.Queue) error
+	SetLastOrder(q runtime.Object) error
 
 	// SetReverifyQueueAtFirst sets queue to reverify type
-	SetReverifyQueueAtFirst(q *v1beta1.Queue) error
+	SetReverifyQueueAtFirst(q runtime.Object) error
 
 	// SetRetryQueue sets Queue to retry one time
-	SetRetryQueue(q *v1beta1.Queue, noOfRetry int, nextAt time.Time) error
+	SetRetryQueue(q runtime.Object, noOfRetry int, nextAt time.Time) error
 
 	// RemoveAllQueues removes all queues
 	RemoveAllQueues() error

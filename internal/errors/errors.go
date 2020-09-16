@@ -47,6 +47,8 @@ const (
 	ErrTestConfigurationNotFound = Error("test configuration not found")
 
 	ErrEnsureConfigDestroyed = Error("config been being destroyed")
+
+	ErrParsingRuntimeObject = Error("cannot parse runtime object")
 )
 
 var (

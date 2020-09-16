@@ -20,6 +20,7 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	prqueuectrl "github.com/agoda-com/samsahai/internal/pullrequest/queue"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -30,23 +31,26 @@ const (
 var logger = s2hlog.Log.WithName(CtrlName)
 
 type controller struct {
-	teamName  string
-	client    client.Client
-	authToken string
-	s2hClient samsahairpc.RPC
+	teamName    string
+	client      client.Client
+	prQueueCtrl internal.QueueController
+	authToken   string
+	s2hClient   samsahairpc.RPC
 }
 
 func New(
 	teamName string,
 	mgr manager.Manager,
+	prQueueCtrl internal.QueueController,
 	authToken string,
 	s2hClient samsahairpc.RPC,
 ) internal.PullRequestTriggerController {
 	c := &controller{
-		teamName:  teamName,
-		client:    mgr.GetClient(),
-		authToken: authToken,
-		s2hClient: s2hClient,
+		teamName:    teamName,
+		client:      mgr.GetClient(),
+		prQueueCtrl: prQueueCtrl,
+		authToken:   authToken,
+		s2hClient:   s2hClient,
 	}
 
 	if err := add(mgr, c); err != nil {
@@ -173,7 +177,10 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
-	if err := c.createPullRequestQueue(version.Version); err != nil {
+	imgRepo := prTrigger.Spec.Image.Repository
+	prNumber := prTrigger.Spec.PullRequestNumber
+	err = c.createPullRequestQueue(req.Namespace, prTrigger.Spec.Component, imgRepo, version.Version, prNumber.String())
+	if err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -251,7 +258,20 @@ func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger
 	return prCompSource, nil
 }
 
-func (c *controller) createPullRequestQueue(version string) error {
+func (c *controller) createPullRequestQueue(namespace, compName, compRepo, compVersion, prNumber string) error {
+	comps := s2hv1beta1.QueueComponents{
+		{
+			Name:       compName,
+			Repository: compRepo,
+			Version:    compVersion,
+		},
+	}
+
+	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, compName, prNumber, comps)
+	if err := c.prQueueCtrl.Add(prQueue, nil); err != nil {
+		return err
+	}
+
 	// TODO: pohfy, create pr queue
 	return nil
 }

@@ -8,11 +8,13 @@ import (
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
+	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 )
 
@@ -33,9 +35,7 @@ func NewUpgradeQueue(teamName, namespace, name, bundle string, comps []*s2hv1bet
 		queueName = bundle
 	}
 
-	qLabels := internal.GetDefaultLabels(teamName)
-	qLabels["app"] = queueName
-	qLabels["component"] = queueName
+	qLabels := getQueueLabels(teamName, queueName)
 	return &s2hv1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      queueName,
@@ -62,11 +62,21 @@ func New(ns string, runtimeClient client.Client) internal.QueueController {
 	return c
 }
 
-func (c *controller) Add(q *s2hv1beta1.Queue, priorityQueues []string) error {
+func (c *controller) Add(obj runtime.Object, priorityQueues []string) error {
+	q, ok := obj.(*s2hv1beta1.Queue)
+	if !ok {
+		return s2herrors.ErrParsingRuntimeObject
+	}
+
 	return c.add(context.TODO(), q, false, priorityQueues)
 }
 
-func (c *controller) AddTop(q *s2hv1beta1.Queue) error {
+func (c *controller) AddTop(obj runtime.Object) error {
+	q, ok := obj.(*s2hv1beta1.Queue)
+	if !ok {
+		return s2herrors.ErrParsingRuntimeObject
+	}
+
 	return c.add(context.TODO(), q, true, nil)
 }
 
@@ -79,7 +89,7 @@ func (c *controller) Size() int {
 	return len(list.Items)
 }
 
-func (c *controller) First() (*s2hv1beta1.Queue, error) {
+func (c *controller) First() (runtime.Object, error) {
 	list, err := c.list(nil)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
@@ -103,8 +113,8 @@ func (c *controller) First() (*s2hv1beta1.Queue, error) {
 	return nil, nil
 }
 
-func (c *controller) Remove(q *s2hv1beta1.Queue) error {
-	return c.client.Delete(context.TODO(), q)
+func (c *controller) Remove(obj runtime.Object) error {
+	return c.client.Delete(context.TODO(), obj)
 }
 
 func (c *controller) RemoveAllQueues() error {
@@ -411,7 +421,12 @@ func (c *controller) list(opts *client.ListOptions) (list *s2hv1beta1.QueueList,
 	return list, nil
 }
 
-func (c *controller) SetLastOrder(q *s2hv1beta1.Queue) error {
+func (c *controller) SetLastOrder(obj runtime.Object) error {
+	q, ok := obj.(*s2hv1beta1.Queue)
+	if !ok {
+		return s2herrors.ErrParsingRuntimeObject
+	}
+
 	queueList, err := c.list(nil)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
@@ -424,7 +439,12 @@ func (c *controller) SetLastOrder(q *s2hv1beta1.Queue) error {
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) SetReverifyQueueAtFirst(q *s2hv1beta1.Queue) error {
+func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
+	q, ok := obj.(*s2hv1beta1.Queue)
+	if !ok {
+		return s2herrors.ErrParsingRuntimeObject
+	}
+
 	list, err := c.list(nil)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
@@ -442,7 +462,12 @@ func (c *controller) SetReverifyQueueAtFirst(q *s2hv1beta1.Queue) error {
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) SetRetryQueue(q *s2hv1beta1.Queue, noOfRetry int, nextAt time.Time) error {
+func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time) error {
+	q, ok := obj.(*s2hv1beta1.Queue)
+	if !ok {
+		return s2herrors.ErrParsingRuntimeObject
+	}
+
 	list, err := c.list(nil)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
@@ -578,4 +603,12 @@ func ensureQueue(ctx context.Context, c client.Client, q *s2hv1beta1.Queue) (err
 	q.Spec = fetched.Spec
 	q.Status = fetched.Status
 	return nil
+}
+
+func getQueueLabels(teamName, component string) map[string]string {
+	qLabels := internal.GetDefaultLabels(teamName)
+	qLabels["app"] = component
+	qLabels["component"] = component
+
+	return qLabels
 }

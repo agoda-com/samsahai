@@ -40,6 +40,7 @@ import (
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	desiredctrl "github.com/agoda-com/samsahai/internal/desiredcomponent"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	prqueuectrl "github.com/agoda-com/samsahai/internal/pullrequest/queue"
 	prtriggerctrl "github.com/agoda-com/samsahai/internal/pullrequest/trigger"
 	"github.com/agoda-com/samsahai/internal/queue"
 	stagingctrl "github.com/agoda-com/samsahai/internal/staging"
@@ -142,7 +143,8 @@ func startCtrlCmd() *cobra.Command {
 			queueCtrl := queue.New(namespace, runtimeClient)
 			authToken := viper.GetString(s2h.VKS2HAuthToken)
 			desiredctrl.New(teamName, mgr, queueCtrl, authToken, samsahaiClient)
-			prtriggerctrl.New(teamName, mgr, authToken, samsahaiClient)
+			prQueueCtrl := prqueuectrl.New(teamName, namespace, mgr, authToken, samsahaiClient)
+			prtriggerctrl.New(teamName, mgr, prQueueCtrl, authToken, samsahaiClient)
 
 			tcBaseURL := viper.GetString(s2h.VKTeamcityURL)
 			tcUsername := viper.GetString(s2h.VKTeamcityUsername)

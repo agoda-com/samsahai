@@ -12,6 +12,8 @@ service RPC {
     rpc GetPullRequestConfig (TeamName) returns (PullRequestConfig);
     rpc GetPullRequestComponentSource (TeamWithPullRequest) returns (ComponentSource);
     rpc GetComponentVersion (ComponentSource) returns (ComponentVersion);
+    rpc CreatePullRequestEnvironment (TeamWithNamespace) returns (Empty);
+    rpc DestroyPullRequestEnvironment (TeamWithNamespace) returns (Empty);
 }
 
 message Empty {
@@ -94,6 +96,11 @@ message FailureComponent {
     string firstFailureContainerName = 2;
     int32 restartCount = 3;
     string nodeName = 4;
+}
+
+message TeamWithNamespace {
+    string teamName = 1;
+    string namespace = 2;
 }
 
 message TeamWithPullRequest {

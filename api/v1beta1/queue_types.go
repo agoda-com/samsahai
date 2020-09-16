@@ -47,6 +47,12 @@ const (
 	// QueueTypeDemoteFromActive components will deploy with latest stable + `tmp` env config
 	QueueTypeDemoteFromActive QueueType = "demote-from-active"
 
+	// QueueTypePullRequest
+	QueueTypePullRequest QueueType = "pull-request"
+
+	// QueueTypePullRequestReverify we will deploy last stable to check is there any environment issue
+	QueueTypePullRequestReverify QueueType = "pull-request-reverify"
+
 	// QueueState
 	//
 	// Waiting waiting in queues

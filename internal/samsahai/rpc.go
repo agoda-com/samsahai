@@ -414,3 +414,21 @@ func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWith
 
 	return compSource, nil
 }
+
+func (c *controller) CreatePullRequestEnvironment(ctx context.Context, teamWithNS *rpc.TeamWithNamespace) (*rpc.Empty, error) {
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	return &rpc.Empty{},
+		c.createNamespace(teamWithNS.TeamName, withTeamPullRequestNamespaceStatus(teamWithNS.Namespace))
+}
+
+func (c *controller) DestroyPullRequestEnvironment(ctx context.Context, teamWithNS *rpc.TeamWithNamespace) (*rpc.Empty, error) {
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	return &rpc.Empty{},
+		c.destroyNamespace(teamWithNS.TeamName, withTeamPullRequestNamespaceStatus(teamWithNS.Namespace, true))
+}

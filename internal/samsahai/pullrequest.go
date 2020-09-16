@@ -22,7 +22,7 @@ func (c *controller) TriggerPullRequestDeployment(teamName, component, tag, prNu
 	}
 
 	namespace := teamComp.Status.Namespace.Staging
-	prTriggerName := internal.GenPullRequestTriggerName(component, prNumber)
+	prTriggerName := internal.GenPullRequestComponentName(component, prNumber)
 	prTrigger := s2hv1beta1.PullRequestTrigger{}
 	err := c.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: prTriggerName}, &prTrigger)
 	if err != nil {

@@ -331,6 +331,39 @@ func withTeamActiveNamespaceStatus(namespace, promotedBy string, isDelete ...boo
 	}
 }
 
+func withTeamPullRequestNamespaceStatus(namespace string, isDelete ...bool) TeamNamespaceStatusOption {
+	return func(teamComp *s2hv1beta1.Team) (string, s2hv1beta1.TeamConditionType) {
+		if len(teamComp.Status.Namespace.PullRequests) == 0 {
+			teamComp.Status.Namespace.PullRequests = make([]string, 0)
+		}
+
+		found := false
+		for _, prNamespace := range teamComp.Status.Namespace.PullRequests {
+			if prNamespace == namespace {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			teamComp.Status.Namespace.PullRequests = append(teamComp.Status.Namespace.PullRequests, namespace)
+		}
+
+		if len(isDelete) > 0 && isDelete[0] {
+			newPRNamespaces := make([]string, 0)
+			for _, prNamespace := range teamComp.Status.Namespace.PullRequests {
+				if prNamespace != namespace {
+					newPRNamespaces = append(newPRNamespaces, prNamespace)
+				}
+			}
+
+			teamComp.Status.Namespace.PullRequests = newPRNamespaces
+		}
+
+		return namespace, s2hv1beta1.TeamNamespacePreActiveCreated
+	}
+}
+
 func (c *controller) CreateStagingEnvironment(teamName, namespace string) error {
 	return c.createNamespace(teamName, withTeamStagingNamespaceStatus(namespace))
 }

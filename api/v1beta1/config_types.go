@@ -325,6 +325,8 @@ type PullRequestExtraConfig struct {
 
 // ConfigPullRequest defines a configuration of pull request
 type ConfigPullRequest struct {
+	// Deployment represents configuration about deploy
+	Deployment             *ConfigDeploy           `json:"deployment"`
 	Components             []*PullRequestComponent `json:"components"`
 	PullRequestExtraConfig `json:",inline"`
 }
