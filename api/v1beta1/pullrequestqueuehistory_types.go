@@ -17,13 +17,18 @@ limitations under the License.
 package v1beta1
 
 import (
+	"sort"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// QueueHistorySpec defines the desired state of QueueHistory
+// PullRequestQueueHistorySpec defines the desired state of PullRequestQueueHistory
 type PullRequestQueueHistorySpec struct {
-	PullRequestQueue      *PullRequestQueue `json:"pullRequestQueue,omitempty"`
-	QueueHistoryExtraSpec `json:",inline"`
+	PullRequestQueue *PullRequestQueue `json:"pullRequestQueue,omitempty"`
+}
+
+// PullRequestQueueHistoryStatus defines the observed state of PullRequestQueueHistory
+type PullRequestQueueHistoryStatus struct {
 }
 
 // +kubebuilder:object:root=true
@@ -33,8 +38,8 @@ type PullRequestQueueHistory struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   QueueHistorySpec   `json:"spec,omitempty"`
-	Status QueueHistoryStatus `json:"status,omitempty"`
+	Spec   PullRequestQueueHistorySpec   `json:"spec,omitempty"`
+	Status PullRequestQueueHistoryStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -45,6 +50,20 @@ type PullRequestQueueHistoryList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []PullRequestQueueHistory `json:"items"`
 }
+
+// sort PullRequestQueueHistory by timestamp DESC
+func (prql *PullRequestQueueHistoryList) SortDESC() {
+	sort.Sort(PullRequestQueueHistoryByCreatedTimeDESC(prql.Items))
+}
+
+type PullRequestQueueHistoryByCreatedTimeDESC []PullRequestQueueHistory
+
+func (prq PullRequestQueueHistoryByCreatedTimeDESC) Len() int { return len(prq) }
+func (prq PullRequestQueueHistoryByCreatedTimeDESC) Less(i, j int) bool {
+	return prq[i].CreationTimestamp.Time.After(prq[j].CreationTimestamp.Time)
+}
+
+func (prq PullRequestQueueHistoryByCreatedTimeDESC) Swap(i, j int) { prq[i], prq[j] = prq[j], prq[i] }
 
 func init() {
 	SchemeBuilder.Register(&PullRequestQueueHistory{}, &PullRequestQueueHistoryList{})

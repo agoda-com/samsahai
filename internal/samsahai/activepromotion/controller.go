@@ -369,7 +369,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	case s2hv1beta1.ActivePromotionTestingPreActive:
 		if err := c.testPreActiveEnvironment(atpComp); err != nil {
-			if s2herrors.IsEnsuringActiveTested(err) {
+			if s2herrors.IsEnsuringComponentTested(err) {
 				return reconcile.Result{
 					Requeue:      true,
 					RequeueAfter: 2 * time.Second,
@@ -380,7 +380,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	case s2hv1beta1.ActivePromotionCollectingPreActiveResult:
 		if err := c.collectResult(ctx, atpComp); err != nil {
-			if s2herrors.IsEnsuringActiveTested(err) {
+			if s2herrors.IsEnsuringComponentTested(err) {
 				return reconcile.Result{
 					Requeue:      true,
 					RequeueAfter: 2 * time.Second,

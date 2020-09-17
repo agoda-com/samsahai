@@ -281,43 +281,43 @@ func (c *controller) GetPlugins() map[string]internal.Plugin {
 	return c.plugins
 }
 
-type TeamNamespaceStatusOption func(teamComp *s2hv1beta1.Team) (string, s2hv1beta1.TeamConditionType)
+type TeamNamespaceStatusOption func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType)
 
 func withTeamStagingNamespaceStatus(namespace string, isDelete ...bool) TeamNamespaceStatusOption {
-	return func(teamComp *s2hv1beta1.Team) (string, s2hv1beta1.TeamConditionType) {
+	return func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType) {
 		teamComp.Status.Namespace.Staging = namespace
 		if len(isDelete) > 0 && isDelete[0] {
 			teamComp.Status.Namespace.Staging = ""
 		}
 
-		return namespace, s2hv1beta1.TeamNamespaceStagingCreated
+		return namespace, nil, s2hv1beta1.TeamNamespaceStagingCreated
 	}
 }
 
 func withTeamPreActiveNamespaceStatus(namespace string, isDelete ...bool) TeamNamespaceStatusOption {
-	return func(teamComp *s2hv1beta1.Team) (string, s2hv1beta1.TeamConditionType) {
+	return func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType) {
 		teamComp.Status.Namespace.PreActive = namespace
 		if len(isDelete) > 0 && isDelete[0] {
 			teamComp.Status.Namespace.PreActive = ""
 		}
 
-		return namespace, s2hv1beta1.TeamNamespacePreActiveCreated
+		return namespace, nil, s2hv1beta1.TeamNamespacePreActiveCreated
 	}
 }
 
 func withTeamPreviousActiveNamespaceStatus(namespace string, isDelete ...bool) TeamNamespaceStatusOption {
-	return func(teamComp *s2hv1beta1.Team) (string, s2hv1beta1.TeamConditionType) {
+	return func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType) {
 		teamComp.Status.Namespace.PreviousActive = namespace
 		if len(isDelete) > 0 && isDelete[0] {
 			teamComp.Status.Namespace.PreviousActive = ""
 		}
 
-		return namespace, s2hv1beta1.TeamNamespacePreviousActiveCreated
+		return namespace, nil, s2hv1beta1.TeamNamespacePreviousActiveCreated
 	}
 }
 
 func withTeamActiveNamespaceStatus(namespace, promotedBy string, isDelete ...bool) TeamNamespaceStatusOption {
-	return func(teamComp *s2hv1beta1.Team) (string, s2hv1beta1.TeamConditionType) {
+	return func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType) {
 		teamComp.Status.Namespace.Active = namespace
 		if promotedBy != "" {
 			teamComp.Status.ActivePromotedBy = promotedBy
@@ -327,12 +327,12 @@ func withTeamActiveNamespaceStatus(namespace, promotedBy string, isDelete ...boo
 			teamComp.Status.ActivePromotedBy = ""
 		}
 
-		return namespace, s2hv1beta1.TeamNamespaceActiveCreated
+		return namespace, nil, s2hv1beta1.TeamNamespaceActiveCreated
 	}
 }
 
-func withTeamPullRequestNamespaceStatus(namespace string, isDelete ...bool) TeamNamespaceStatusOption {
-	return func(teamComp *s2hv1beta1.Team) (string, s2hv1beta1.TeamConditionType) {
+func withTeamPullRequestNamespaceStatus(namespace string, resources corev1.ResourceList, isDelete ...bool) TeamNamespaceStatusOption {
+	return func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType) {
 		if len(teamComp.Status.Namespace.PullRequests) == 0 {
 			teamComp.Status.Namespace.PullRequests = make([]string, 0)
 		}
@@ -360,7 +360,7 @@ func withTeamPullRequestNamespaceStatus(namespace string, isDelete ...bool) Team
 			teamComp.Status.Namespace.PullRequests = newPRNamespaces
 		}
 
-		return namespace, s2hv1beta1.TeamNamespacePreActiveCreated
+		return namespace, resources, s2hv1beta1.TeamNamespacePullRequestCreated
 	}
 }
 
@@ -433,7 +433,7 @@ func (c *controller) createNamespace(teamName string, teamNsOpt TeamNamespaceSta
 		return err
 	}
 
-	namespace, nsConditionType := teamNsOpt(teamComp)
+	namespace, _, nsConditionType := teamNsOpt(teamComp)
 	if err := c.createNamespaceByTeam(teamComp, teamNsOpt); err != nil {
 		if errors.IsNamespaceStillCreating(err) ||
 			errors.IsNewNamespaceEnvObjsCreated(err) ||
@@ -465,7 +465,7 @@ func (c *controller) createNamespace(teamName string, teamNsOpt TeamNamespaceSta
 }
 
 func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt TeamNamespaceStatusOption) error {
-	namespace, nsConditionType := teamNsOpt(teamComp)
+	namespace, resources, nsConditionType := teamNsOpt(teamComp)
 	namespaceObj := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
@@ -511,7 +511,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 
 	logger.Debug("start creating s2h environment objects",
 		"team", teamComp.Name, "namespace", namespace)
-	if err := c.createEnvironmentObjects(teamComp, namespace); err != nil {
+	if err := c.createEnvironmentObjects(teamComp, namespace, resources); err != nil {
 		logger.Error(err, "cannot create environment objects",
 			"team", teamComp.Name, "namespace", namespace)
 		return errors.ErrTeamNamespaceEnvObjsCreated
@@ -597,7 +597,7 @@ func (c *controller) runPostNamespaceCreation(ns string, team *s2hv1beta1.Team) 
 	return nil
 }
 
-func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespace string) error {
+func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespace string, resources corev1.ResourceList) error {
 	secretKVs := []k8sobject.KeyValue{
 		{
 			Key:   internal.VKS2HAuthToken,
@@ -635,7 +635,12 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 	}
 
 	if len(teamComp.Spec.Resources) > 0 {
-		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace)
+		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, nil)
+		k8sObjects = append(k8sObjects, quotaObj)
+	}
+
+	if len(resources) > 0 {
+		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, resources)
 		k8sObjects = append(k8sObjects, quotaObj)
 	}
 
@@ -744,7 +749,7 @@ func (c *controller) destroyNamespace(teamName string, teamNsOpt TeamNamespaceSt
 func (c *controller) destroyNamespaces(teamComp *s2hv1beta1.Team, teamNsOpts ...TeamNamespaceStatusOption) error {
 	ctx := context.TODO()
 	for _, teamNsOpt := range teamNsOpts {
-		namespace, nsConditionType := teamNsOpt(teamComp)
+		namespace, _, nsConditionType := teamNsOpt(teamComp)
 		if namespace == "" {
 			teamComp.Status.SetCondition(
 				nsConditionType,

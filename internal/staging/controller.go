@@ -138,7 +138,7 @@ func (c *controller) process() bool {
 	if c.getCurrentQueue() == nil {
 		c.mtQueue.Lock()
 		// pick new queue
-		obj, err := c.queueCtrl.First()
+		obj, err := c.queueCtrl.First(c.namespace)
 		if err != nil {
 			logger.Error(err, "cannot pick the first component of queue")
 			c.mtQueue.Unlock()

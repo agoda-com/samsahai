@@ -52,7 +52,7 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 	}
 
 	// Queue will finished if type are Active promotion related
-	if queue.IsActivePromotionQueue() {
+	if queue.IsActivePromotionQueue() || queue.IsPullRequestQueue() {
 		return c.updateQueueWithState(queue, s2hv1beta1.Finished)
 	}
 
@@ -106,14 +106,12 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 			Spec:   q.Spec,
 			Status: q.Status,
 		},
-		QueueHistoryExtraSpec: s2hv1beta1.QueueHistoryExtraSpec{
-			AppliedValues:    c.lastAppliedValues,
-			StableComponents: c.lastStableComponentList.Items,
-			IsDeploySuccess:  q.IsDeploySuccess(),
-			IsTestSuccess:    q.IsTestSuccess(),
-			IsReverify:       q.IsReverify(),
-			CreatedAt:        &now,
-		},
+		StableComponents: c.lastStableComponentList.Items,
+		AppliedValues:    c.lastAppliedValues,
+		IsDeploySuccess:  q.IsDeploySuccess(),
+		IsTestSuccess:    q.IsTestSuccess(),
+		IsReverify:       q.IsReverify(),
+		CreatedAt:        &now,
 	}
 
 	history := &s2hv1beta1.QueueHistory{

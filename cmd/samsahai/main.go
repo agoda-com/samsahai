@@ -156,8 +156,10 @@ func startCtrlCmd() *cobra.Command {
 					PromoteOnTeamCreation: viper.GetBool(s2h.VKActivePromotionOnTeamCreation),
 				},
 				PullRequest: s2h.PullRequestConfig{
-					MaxTriggerRetryCounts: viper.GetInt(s2h.VKPRTriggerMaxRetryCounts),
-					TriggerPollingTime:    metav1.Duration{Duration: viper.GetDuration(s2h.VKPRTriggerPollingTime)},
+					MaxVerificationRetryCounts: viper.GetInt(s2h.VKPRVerificationMaxRetryCounts),
+					MaxTriggerRetryCounts:      viper.GetInt(s2h.VKPRTriggerMaxRetryCounts),
+					TriggerPollingTime:         metav1.Duration{Duration: viper.GetDuration(s2h.VKPRTriggerPollingTime)},
+					MaxHistoryDays:             viper.GetInt(s2h.VKPullRequestQueueMaxHistoryDays),
 				},
 				SamsahaiCredential: s2h.SamsahaiCredential{
 					InternalAuthToken: authToken,
@@ -263,8 +265,11 @@ func startCtrlCmd() *cobra.Command {
 	cmd.Flags().Bool(s2h.VKActivePromotionOnTeamCreation, true,
 		"Promote active environment when team creation")
 	cmd.Flags().Int(s2h.VKPRTriggerMaxRetryCounts, 30, "Max pull request trigger retry counts.")
+	cmd.Flags().Int(s2h.VKPRVerificationMaxRetryCounts, 30, "Max pull request verification retry counts.")
 	cmd.Flags().Duration(s2h.VKPRTriggerPollingTime, 5*time.Minute,
 		"Waiting duration time to re-check pull request image in the registry.")
+	cmd.Flags().Int(s2h.VKPullRequestQueueMaxHistoryDays, 7,
+		"Max stored pull request queue histories in day.")
 	return cmd
 }
 

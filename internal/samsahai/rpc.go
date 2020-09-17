@@ -4,9 +4,12 @@ import (
 	"context"
 	"crypto/subtle"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -247,7 +250,9 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 	return &rpc.Empty{}, nil
 }
 
-func (c *controller) GetBundleName(ctx context.Context, teamWithCompName *rpc.TeamWithComponentName) (*rpc.BundleName, error) {
+func (c *controller) GetBundleName(ctx context.Context, teamWithCompName *rpc.TeamWithComponentName) (
+	*rpc.BundleName, error) {
+
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
@@ -268,6 +273,45 @@ func (c *controller) getBundleName(compName, teamName string) string {
 	}
 
 	return ""
+}
+
+// GetPullRequestComponentDependencies returns pull request dependencies from configuration
+// repository and version are retrieved from active components
+func (c *controller) GetPullRequestComponentDependencies(
+	ctx context.Context,
+	teamWithCompName *rpc.TeamWithComponentName,
+) (*rpc.PullRequestDependencies, error) {
+
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	teamName := teamWithCompName.TeamName
+	compName := teamWithCompName.ComponentName
+	deps, _ := c.GetConfigController().GetPullRequestComponentDependencies(teamName, compName)
+
+	teamComp := &s2hv1beta1.Team{}
+	if err := c.getTeam(teamName, teamComp); err != nil {
+		return nil, err
+	}
+
+	compDeps := make([]*rpc.Component, 0)
+	if len(teamComp.Status.ActiveComponents) > 0 {
+		for _, dep := range deps {
+			if activeComp, ok := teamComp.Status.ActiveComponents[dep]; ok {
+				compDeps = append(compDeps, &rpc.Component{
+					Name: dep,
+					Image: &rpc.Image{
+						Repository: activeComp.Spec.Repository,
+						Tag:        activeComp.Spec.Version,
+					},
+				})
+			}
+
+		}
+	}
+
+	return &rpc.PullRequestDependencies{Dependencies: compDeps}, nil
 }
 
 func (c *controller) GetPriorityQueues(ctx context.Context, teamName *rpc.TeamName) (*rpc.PriorityQueues, error) {
@@ -331,21 +375,33 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.Tea
 			errors.Wrapf(err, "cannot get pull request configuration of team: %s", teamName)
 	}
 
-	maxRetry := &c.configs.PullRequest.MaxTriggerRetryCounts
+	maxRetryTrigger := &c.configs.PullRequest.MaxTriggerRetryCounts
 	if prConfig.Trigger.MaxRetry != nil {
-		maxRetry = prConfig.Trigger.MaxRetry
+		maxRetryTrigger = prConfig.Trigger.MaxRetry
 	}
 
-	pollingTime := c.configs.PullRequest.TriggerPollingTime
+	pollingTimeTrigger := c.configs.PullRequest.TriggerPollingTime
 	if prConfig.Trigger.PollingTime.Duration != 0 {
-		pollingTime = prConfig.Trigger.PollingTime
+		pollingTimeTrigger = prConfig.Trigger.PollingTime
+	}
+
+	maxRetryVerification := &c.configs.PullRequest.MaxVerificationRetryCounts
+	if prConfig.MaxRetry != nil {
+		maxRetryVerification = prConfig.MaxRetry
+	}
+
+	maxHistoryDays := c.configs.PullRequest.MaxHistoryDays
+	if prConfig.MaxHistoryDays != 0 {
+		maxHistoryDays = prConfig.MaxHistoryDays
 	}
 
 	rpcPRConfig := &rpc.PullRequestConfig{
-		Parallel: int32(prConfig.Parallel),
+		Parallel:       int32(prConfig.Parallel),
+		MaxRetry:       int32(*maxRetryVerification),
+		MaxHistoryDays: int32(maxHistoryDays),
 		Trigger: &rpc.PullRequestTriggerConfig{
-			MaxRetry:    int32(*maxRetry),
-			PollingTime: pollingTime.Duration.String(),
+			MaxRetry:    int32(*maxRetryTrigger),
+			PollingTime: pollingTimeTrigger.Duration.String(),
 		},
 	}
 
@@ -415,13 +471,112 @@ func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWith
 	return compSource, nil
 }
 
-func (c *controller) CreatePullRequestEnvironment(ctx context.Context, teamWithNS *rpc.TeamWithNamespace) (*rpc.Empty, error) {
+func (c *controller) DeployActiveServicesIntoPullRequestEnvironment(ctx context.Context, teamWithNS *rpc.TeamWithNamespace) (*rpc.Empty, error) {
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 
+	teamName := teamWithNS.TeamName
+	prNamespace := teamWithNS.Namespace
+	teamComp := &s2hv1beta1.Team{}
+	if err := c.getTeam(teamName, teamComp); err != nil {
+		return nil, err
+	}
+
+	prSvcList := &corev1.ServiceList{}
+	listOpts := &client.ListOptions{Namespace: prNamespace}
+	if err := c.client.List(ctx, prSvcList, listOpts); err != nil {
+		return nil, err
+	}
+
+	activeNs := teamComp.Status.Namespace.Active
+	activeSvcList := &corev1.ServiceList{}
+	listOpts = &client.ListOptions{Namespace: activeNs}
+	if err := c.client.List(ctx, activeSvcList, listOpts); err != nil {
+		return nil, err
+	}
+
+	diffSvcs := c.getDifferentServices(prSvcList, activeSvcList)
+	for _, svc := range diffSvcs {
+		svcName := c.replaceServiceFromReleaseName(svc.Name, prNamespace, activeNs)
+		newSvc := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      svcName,
+				Namespace: teamWithNS.Namespace,
+			},
+			Spec: corev1.ServiceSpec{
+				Type:         corev1.ServiceTypeExternalName,
+				ExternalName: fmt.Sprintf("%s.%s.svc.%s", svcName, svc.Namespace, c.configs.ClusterDomain),
+			},
+		}
+		if err := c.client.Create(ctx, newSvc); err != nil && !k8serrors.IsAlreadyExists(err) {
+			return nil, err
+		}
+	}
+
+	return &rpc.Empty{}, nil
+}
+
+func (c *controller) getDifferentServices(prSvcList, activeSvcList *corev1.ServiceList) []corev1.Service {
+	diffSvcs := make([]corev1.Service, 0)
+	if activeSvcList == nil {
+		return diffSvcs
+	}
+
+	if prSvcList.Items == nil {
+		return activeSvcList.Items
+	}
+
+	if prSvcList != nil {
+		for _, activeSvc := range activeSvcList.Items {
+			found := false
+			for _, prSvc := range prSvcList.Items {
+				if prSvc.Name == activeSvc.Name {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				diffSvcs = append(diffSvcs, activeSvc)
+			}
+		}
+	}
+
+	return diffSvcs
+}
+
+func (c *controller) replaceServiceFromReleaseName(svcName, prNamespace, activeNamespace string) string {
+	prReleaseName := s2h.GenReleaseName(prNamespace, "")
+	activeReleaseName := s2h.GenReleaseName(activeNamespace, "")
+
+	return strings.ReplaceAll(svcName, activeReleaseName, prReleaseName)
+}
+
+func (c *controller) CreatePullRequestEnvironment(ctx context.Context, teamWithPR *rpc.TeamWithPullRequest) (*rpc.Empty, error) {
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	teamName := teamWithPR.TeamName
+	namespace := teamWithPR.Namespace
+	configCtrl := c.GetConfigController()
+	prConfig, err := configCtrl.GetPullRequestConfig(teamName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get pull request configuration of team: %s", teamName)
+	}
+
+	resources := prConfig.Resources
+	for _, comp := range prConfig.Components {
+		if comp.Name == teamWithPR.ComponentName {
+			if comp.Resources != nil {
+				resources = comp.Resources
+			}
+		}
+	}
+
 	return &rpc.Empty{},
-		c.createNamespace(teamWithNS.TeamName, withTeamPullRequestNamespaceStatus(teamWithNS.Namespace))
+		c.createNamespace(teamWithPR.TeamName, withTeamPullRequestNamespaceStatus(namespace, resources))
 }
 
 func (c *controller) DestroyPullRequestEnvironment(ctx context.Context, teamWithNS *rpc.TeamWithNamespace) (*rpc.Empty, error) {
@@ -429,6 +584,37 @@ func (c *controller) DestroyPullRequestEnvironment(ctx context.Context, teamWith
 		return nil, err
 	}
 
-	return &rpc.Empty{},
-		c.destroyNamespace(teamWithNS.TeamName, withTeamPullRequestNamespaceStatus(teamWithNS.Namespace, true))
+	teamName := teamWithNS.TeamName
+	namespace := teamWithNS.Namespace
+	err := c.destroyNamespace(teamName, withTeamPullRequestNamespaceStatus(namespace, nil, true))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.ensureTeamPullRequestNamespaceUpdated(teamName, namespace); err != nil {
+		return nil, err
+	}
+
+	return &rpc.Empty{}, nil
+
+}
+
+func (c *controller) ensureTeamPullRequestNamespaceUpdated(teamName, targetNs string) error {
+	teamComp := &s2hv1beta1.Team{}
+	if err := c.getTeam(teamName, teamComp); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	for _, prNamespace := range teamComp.Status.Namespace.PullRequests {
+		if prNamespace == targetNs {
+			return s2herrors.ErrTeamNamespaceStillExists
+
+		}
+	}
+
+	return nil
 }

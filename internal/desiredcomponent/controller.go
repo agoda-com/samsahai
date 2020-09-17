@@ -142,7 +142,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			Version:    comp.Spec.Version,
 		},
 	}
-	q := queue.NewUpgradeQueue(c.teamName, req.Namespace, comp.Spec.Name, bundle.Name, comps)
+	q := queue.NewQueue(c.teamName, req.Namespace, comp.Spec.Name, bundle.Name, comps, s2hv1beta1.QueueTypeUpgrade)
 	err = c.queueCtrl.Add(q, priorityQueues.GetQueues())
 	if err != nil {
 		return reconcile.Result{}, err

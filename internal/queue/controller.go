@@ -29,7 +29,7 @@ type controller struct {
 
 var _ internal.QueueController = &controller{}
 
-func NewUpgradeQueue(teamName, namespace, name, bundle string, comps []*s2hv1beta1.QueueComponent) *s2hv1beta1.Queue {
+func NewQueue(teamName, namespace, name, bundle string, comps []*s2hv1beta1.QueueComponent, queueType s2hv1beta1.QueueType) *s2hv1beta1.Queue {
 	queueName := name
 	if bundle != "" {
 		queueName = bundle
@@ -47,7 +47,7 @@ func NewUpgradeQueue(teamName, namespace, name, bundle string, comps []*s2hv1bet
 			TeamName:   teamName,
 			Bundle:     bundle,
 			Components: comps,
-			Type:       s2hv1beta1.QueueTypeUpgrade,
+			Type:       queueType,
 		},
 		Status: s2hv1beta1.QueueStatus{},
 	}
@@ -80,8 +80,9 @@ func (c *controller) AddTop(obj runtime.Object) error {
 	return c.add(context.TODO(), q, true, nil)
 }
 
-func (c *controller) Size() int {
-	list, err := c.list(nil)
+func (c *controller) Size(namespace string) int {
+	listOpts := &client.ListOptions{Namespace: namespace}
+	list, err := c.list(listOpts)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
 		return 0
@@ -89,8 +90,9 @@ func (c *controller) Size() int {
 	return len(list.Items)
 }
 
-func (c *controller) First() (runtime.Object, error) {
-	list, err := c.list(nil)
+func (c *controller) First(namespace string) (runtime.Object, error) {
+	listOpts := &client.ListOptions{Namespace: namespace}
+	list, err := c.list(listOpts)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
 		return nil, err
@@ -117,8 +119,8 @@ func (c *controller) Remove(obj runtime.Object) error {
 	return c.client.Delete(context.TODO(), obj)
 }
 
-func (c *controller) RemoveAllQueues() error {
-	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.Queue{}, client.InNamespace(c.namespace))
+func (c *controller) RemoveAllQueues(namespace string) error {
+	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.Queue{}, client.InNamespace(namespace))
 }
 
 // incoming s`queue` always contains 1 component
@@ -128,7 +130,8 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 		return fmt.Errorf("components should not be empty, queueName: %s", queue.Name)
 	}
 
-	queueList, err := c.list(nil)
+	listOpts := &client.ListOptions{Namespace: queue.Namespace}
+	queueList, err := c.list(listOpts)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
 		return err
@@ -445,7 +448,8 @@ func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
 		return s2herrors.ErrParsingRuntimeObject
 	}
 
-	list, err := c.list(nil)
+	listOpts := &client.ListOptions{Namespace: q.Namespace}
+	list, err := c.list(listOpts)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
 		return err
@@ -468,7 +472,8 @@ func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt tim
 		return s2herrors.ErrParsingRuntimeObject
 	}
 
-	list, err := c.list(nil)
+	listOpts := &client.ListOptions{Namespace: q.Namespace}
+	list, err := c.list(listOpts)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
 		return err
@@ -512,7 +517,7 @@ func (c *controller) resetQueueOrderWithCurrentQueue(ql *s2hv1beta1.QueueList, c
 	}
 }
 
-// EnsurePreActiveComponents ensures that components with were deployed with `pre-active` config and tested
+// EnsurePreActiveComponents ensures that components were deployed with `pre-active` config and tested
 func EnsurePreActiveComponents(c client.Client, teamName, namespace string, skipTest bool) (q *s2hv1beta1.Queue, err error) {
 	q = &s2hv1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
@@ -562,6 +567,27 @@ func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace strin
 	return
 }
 
+// EnsurePullRequestComponents ensures that pull request components were deployed with `pull-request` config and tested
+func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName string, comps s2hv1beta1.QueueComponents) (
+	q *s2hv1beta1.Queue, err error) {
+
+	q = &s2hv1beta1.Queue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      queueName,
+			Namespace: namespace,
+		},
+		Spec: s2hv1beta1.QueueSpec{
+			Name:       queueName,
+			Type:       s2hv1beta1.QueueTypePullRequest,
+			TeamName:   teamName,
+			Components: comps,
+		},
+	}
+
+	err = ensureQueue(context.TODO(), c, q)
+	return
+}
+
 func DeletePreActiveQueue(c client.Client, ns string) error {
 	return deleteQueue(c, ns, string(s2hv1beta1.EnvPreActive))
 }
@@ -572,6 +598,10 @@ func DeletePromoteToActiveQueue(c client.Client, ns string) error {
 
 func DeleteDemoteFromActiveQueue(c client.Client, ns string) error {
 	return deleteQueue(c, ns, string(s2hv1beta1.EnvDeActive))
+}
+
+func DeletePullRequestQueue(c client.Client, ns, queueName string) error {
+	return deleteQueue(c, ns, queueName)
 }
 
 // deleteQueue removes Queue in target namespace by name

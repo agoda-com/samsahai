@@ -47,7 +47,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 	It("should successfully create/get/delete Queue", func(done Done) {
 		defer close(done)
 
-		q := queue.NewUpgradeQueue(teamName, namespace, "alpine", "",
+		q := queue.NewQueue(teamName, namespace, "alpine", "",
 			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.3"}},
 		)
 
@@ -73,16 +73,16 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		var err error
 		var first *s2hv1beta1.Queue
-		var alpine390 = queue.NewUpgradeQueue(teamName, namespace, "alpine", "",
+		var alpine390 = queue.NewQueue(teamName, namespace, "alpine", "",
 			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.0"}},
 		)
-		var alpine391 = queue.NewUpgradeQueue(teamName, namespace, "alpine", "",
+		var alpine391 = queue.NewQueue(teamName, namespace, "alpine", "",
 			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.1"}},
 		)
-		var alpine392 = queue.NewUpgradeQueue(teamName, namespace, "alpine", "",
+		var alpine392 = queue.NewQueue(teamName, namespace, "alpine", "",
 			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.2"}},
 		)
-		var ubuntu = queue.NewUpgradeQueue(teamName, namespace, "ubuntu", "",
+		var ubuntu = queue.NewQueue(teamName, namespace, "ubuntu", "",
 			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "18.04"}},
 		)
 		var size int
@@ -95,7 +95,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(err).To(BeNil())
 		err = controller.Add(ubuntu, nil)
 		Expect(err).To(BeNil())
-		err = controller.Add(queue.NewUpgradeQueue(teamName, namespace, "node", "",
+		err = controller.Add(queue.NewQueue(teamName, namespace, "node", "",
 			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.0"}},
 		), nil)
 		Expect(err).To(BeNil())
@@ -147,13 +147,13 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		var err error
 		var first *s2hv1beta1.Queue
-		var alpine = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
+		var alpine = queue.NewQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.0"}},
 		)
-		var ubuntu = queue.NewUpgradeQueue(teamName, namespace, "ubuntu", "",
+		var ubuntu = queue.NewQueue(teamName, namespace, "ubuntu", "",
 			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "18.04"}},
 		)
-		var node = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
+		var node = queue.NewQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.0"}},
 		)
 		var size int
@@ -193,16 +193,16 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		var err error
 		var first *s2hv1beta1.Queue
-		var application = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
+		var application = queue.NewQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{
 				{Name: "alpine", Version: "3.9.0"},
 				{Name: "node", Version: "11.0.0"},
 			},
 		)
-		var ubuntu = queue.NewUpgradeQueue(teamName, namespace, "ubuntu", "",
+		var ubuntu = queue.NewQueue(teamName, namespace, "ubuntu", "",
 			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "18.04"}},
 		)
-		var node = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
+		var node = queue.NewQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.2"}},
 		)
 		var size int
@@ -242,16 +242,16 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		var err error
 		var first *s2hv1beta1.Queue
-		var application = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
+		var application = queue.NewQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{
 				{Name: "alpine", Version: "3.9.0"},
 				{Name: "node", Version: "11.0.0"},
 			},
 		)
-		var duplicatedNode = queue.NewUpgradeQueue(teamName, namespace, "node", "",
+		var duplicatedNode = queue.NewQueue(teamName, namespace, "node", "",
 			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.1"}},
 		)
-		var node = queue.NewUpgradeQueue(teamName, namespace, "node", "",
+		var node = queue.NewQueue(teamName, namespace, "node", "",
 			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.2"}},
 		)
 		var size int
@@ -292,16 +292,16 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		var err error
 		var size int
-		var alpine = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
+		var alpine = queue.NewQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.1"}},
 		)
-		var ubuntu16 = queue.NewUpgradeQueue(teamName, namespace, "ubuntu", "",
+		var ubuntu16 = queue.NewQueue(teamName, namespace, "ubuntu", "",
 			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "16.04"}},
 		)
-		var ubuntu18 = queue.NewUpgradeQueue(teamName, namespace, "ubuntu", "",
+		var ubuntu18 = queue.NewQueue(teamName, namespace, "ubuntu", "",
 			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "18.04"}},
 		)
-		var node = queue.NewUpgradeQueue(teamName, namespace, "group", "group",
+		var node = queue.NewQueue(teamName, namespace, "group", "group",
 			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.0"}},
 		)
 

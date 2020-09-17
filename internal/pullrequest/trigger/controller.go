@@ -272,6 +272,5 @@ func (c *controller) createPullRequestQueue(namespace, compName, compRepo, compV
 		return err
 	}
 
-	// TODO: pohfy, create pr queue
 	return nil
 }

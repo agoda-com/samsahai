@@ -287,8 +287,6 @@ type ChartValuesURLs map[string][]string
 type PullRequestComponent struct {
 	// Name defines a main component name which is deployed per pull request
 	Name string `json:"name"`
-	// Chart defines a chart repository, name and version of pull request component
-	Chart ComponentChart `json:"chart"`
 	// Image defines an image repository, tag and pattern of pull request component which is a regex of tag
 	// +optional
 	Image ComponentImage `json:"image,omitempty"`
@@ -313,21 +311,28 @@ type PullRequestTriggerConfig struct {
 
 // PullRequestExtraConfig represents a pull request extra configuration
 type PullRequestExtraConfig struct {
-	// Parallel defines a parallel number of pull request queue
-	// +optional
-	Parallel int `json:"parallel,omitempty"`
 	// Resources represents how many resources of pull request namespace
 	// +optional
 	Resources corev1.ResourceList `json:"resources,omitempty"`
-	// +optional
-	Trigger PullRequestTriggerConfig `json:"trigger,omitempty"`
 }
 
 // ConfigPullRequest defines a configuration of pull request
 type ConfigPullRequest struct {
+	// MaxRetry defines max retry counts of pull request component upgrade
+	// +optional
+	MaxRetry *int `json:"maxRetry,omitempty"`
+	// MaxHistoryDays defines maximum days of PullRequestQueueHistory stored
+	// +optional
+	MaxHistoryDays int `json:"maxHistoryDays,omitempty"`
+	// Trigger represents a pull request trigger configuration
+	// +optional
+	Trigger PullRequestTriggerConfig `json:"trigger,omitempty"`
 	// Deployment represents configuration about deploy
-	Deployment             *ConfigDeploy           `json:"deployment"`
-	Components             []*PullRequestComponent `json:"components"`
+	Deployment *ConfigDeploy           `json:"deployment"`
+	Components []*PullRequestComponent `json:"components"`
+	// Parallel defines a parallel number of pull request queue
+	// +optional
+	Parallel               int `json:"parallel,omitempty"`
 	PullRequestExtraConfig `json:",inline"`
 }
 

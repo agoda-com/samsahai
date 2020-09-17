@@ -53,24 +53,39 @@ type PullRequestQueueConditionType string
 const (
 	// PullRequestQueueCondStarted means the pull request queue has been started
 	PullRequestQueueCondStarted PullRequestQueueConditionType = "PullRequestQueueStarted"
-	// PullRequestQueueCondEnvCreated means the pull request environment was created
-	PullRequestQueueCondEnvCreated PullRequestQueueConditionType = "PullRequestEnvCreated"
+	// PullRequestQueueCondEnvCreated means the pull request queue environment has been created
+	PullRequestQueueCondEnvCreated PullRequestQueueConditionType = "PullRequestQueueEnvCreated"
+	// PullRequestQueueCondDeployed means the pull request components have been deployed into pull request namespace
+	PullRequestQueueCondDeployed PullRequestQueueConditionType = "PullRequestQueueComponentsDeployed"
+	// PullRequestQueueCondTested means the pull request components have been tested
+	PullRequestQueueCondTested PullRequestQueueConditionType = "PullRequestQueueComponentsTested"
+	// PullRequestQueueCondResultCollected means the result of pull request queue has been collected
+	PullRequestQueueCondResultCollected PullRequestQueueConditionType = "PullRequestQueueResultCollected"
+	// PullRequestQueueCondEnvCreated means the pull request queue environment has been destroyed
+	PullRequestQueueCondEnvDestroyed PullRequestQueueConditionType = "PullRequestQueueEnvDestroyed"
 )
 
 // PullRequestQueueState defines state of the queue
 type PullRequestQueueState string
 
 const (
-	// PullRequestQueueState
-	//
 	// Waiting waiting in queues
 	PullRequestQueueWaiting PullRequestQueueState = "waiting"
 
-	// Running the environment is creating for test this queue
-	PullRequestQueueRunning PullRequestQueueState = "running"
+	// Creating the environment is creating for deploying components
+	PullRequestQueueEnvCreating PullRequestQueueState = "creating"
+
+	// Deploying the components are being deployed into pull request namespace
+	PullRequestQueueDeploying PullRequestQueueState = "deploying"
+
+	// Testing the components are being tested
+	PullRequestQueueTesting PullRequestQueueState = "testing"
 
 	// Collecting collecting the result from testing
 	PullRequestQueueCollecting PullRequestQueueState = "collecting"
+
+	// Destroying destroying the pull request namespace
+	PullRequestQueueEnvDestroying PullRequestQueueState = "destroying"
 
 	// Finished queue is in finished state, waiting for next process
 	PullRequestQueueFinished PullRequestQueueState = "finished"
@@ -110,6 +125,10 @@ type PullRequestQueueStatus struct {
 	// PullRequestNamespace represents a current pull request namespace
 	PullRequestNamespace string `json:"pullRequestNamespace"`
 
+	// PullRequestQueueHistoryName represents created PullRequestQueueHistory name
+	// +optional
+	PullRequestQueueHistoryName string `json:"pullRequestQueueHistoryName,omitempty"`
+
 	// Result represents a result of the pull request queue
 	// +optional
 	Result PullRequestQueueResult `json:"result,omitempty"`
@@ -121,26 +140,46 @@ type PullRequestQueueStatus struct {
 	// +patchStrategy=merge
 	Conditions []PullRequestQueueCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 
-	// PullRequestQueueHistoryName defines name of history of this queue
-	PullRequestQueueHistoryName string `json:"pullRequestQueueHistoryName"`
-
-	// QueueHistory defines a deployed pull request queue history
+	// DeploymentQueue defines a deployed pull request queue
 	// +optional
-	QueueHistory *QueueHistory `json:"queueHistory,omitempty"`
+	DeploymentQueue *Queue `json:"deploymentQueue,omitempty"`
 }
 
-func (pr *PullRequestQueue) SetState(state PullRequestQueueState) {
-	now := metav1.Now()
-	pr.Status.UpdatedAt = &now
-	pr.Status.State = state
+func (prqs *PullRequestQueueStatus) SetPullRequestNamespace(namespace string) {
+	prqs.PullRequestNamespace = namespace
 }
 
-func (pr *PullRequestQueue) SetPullRequestNamespace(namespace string) {
-	pr.Status.PullRequestNamespace = namespace
+func (prqs *PullRequestQueueStatus) SetResult(res PullRequestQueueResult) {
+	prqs.Result = res
 }
 
-func (pr *PullRequestQueue) SetResult(res PullRequestQueueResult) {
-	pr.Status.Result = res
+func (prqs *PullRequestQueueStatus) SetPullRequestQueueHistoryName(prQueueHistName string) {
+	prqs.PullRequestQueueHistoryName = prQueueHistName
+}
+
+func (prqs *PullRequestQueueStatus) SetDeploymentQueue(q *Queue) {
+	prqs.DeploymentQueue = &Queue{
+		Spec:   q.Spec,
+		Status: q.Status,
+	}
+}
+
+func (prqs *PullRequestQueueStatus) SetCondition(cond PullRequestQueueConditionType, status corev1.ConditionStatus, message string) {
+	for i, c := range prqs.Conditions {
+		if c.Type == cond {
+			prqs.Conditions[i].Status = status
+			prqs.Conditions[i].LastTransitionTime = metav1.Now()
+			prqs.Conditions[i].Message = message
+			return
+		}
+	}
+
+	prqs.Conditions = append(prqs.Conditions, PullRequestQueueCondition{
+		Type:               cond,
+		Status:             status,
+		LastTransitionTime: metav1.Now(),
+		Message:            message,
+	})
 }
 
 // +kubebuilder:object:root=true
@@ -154,6 +193,16 @@ type PullRequestQueue struct {
 	Status PullRequestQueueStatus `json:"status,omitempty"`
 }
 
+func (prq *PullRequestQueue) SetState(state PullRequestQueueState) {
+	now := metav1.Now()
+	prq.Status.UpdatedAt = &now
+	prq.Status.State = state
+
+	if prq.Status.CreatedAt == nil {
+		prq.Status.CreatedAt = &now
+	}
+}
+
 // +kubebuilder:object:root=true
 
 // PullRequestQueueList contains a list of PullRequestQueue
@@ -163,21 +212,80 @@ type PullRequestQueueList struct {
 	Items           []PullRequestQueue `json:"items"`
 }
 
-// sort PullRequestQueue by timestamp ASC
-func (prl *PullRequestQueueList) SortASC() {
-	sort.Sort(PullRequestQueueByCreatedTimeASC(prl.Items))
+// TopQueueOrder returns no of order to be first on the pull request queue
+func (prql *PullRequestQueueList) TopQueueOrder() int {
+	if len(prql.Items) == 0 {
+		return 1
+	}
+	sort.Sort(PullRequestQueueByNoOfOrder(prql.Items))
+	return prql.Items[0].Spec.NoOfOrder - 1
+}
+
+// LastQueueOrder returns no of order to be last on the pull request queue
+func (prql *PullRequestQueueList) LastQueueOrder() int {
+	if len(prql.Items) == 0 {
+		return 1
+	}
+	sort.Sort(PullRequestQueueByNoOfOrder(prql.Items))
+	return prql.Items[len(prql.Items)-1].Spec.NoOfOrder + 1
+}
+
+// First returns the first order of pull request queues
+func (prql *PullRequestQueueList) First() *PullRequestQueue {
+	if len(prql.Items) == 0 {
+		return nil
+	}
+
+	prql.Sort()
+
+	// return non-waiting PullRequestQueue, if any
+	for i, prq := range prql.Items {
+		if prq.Status.State != PullRequestQueueWaiting {
+			return &prql.Items[i]
+		}
+	}
+
+	// return the first PullRequestQueue
+	return &prql.Items[0]
+}
+
+func (prq *PullRequestQueue) IsDeploySuccess() bool {
+	if prq.Status.DeploymentQueue == nil {
+		return false
+	}
+	return prq.Status.DeploymentQueue.Status.IsConditionTrue(QueueDeployed)
+}
+
+func (prq *PullRequestQueue) IsTestSuccess() bool {
+	if prq.Status.DeploymentQueue == nil {
+		return false
+	}
+	return prq.Status.DeploymentQueue.Status.IsConditionTrue(QueueTested)
+}
+
+func (prq *PullRequestQueue) IsCanceled() bool {
+	return prq.Status.Result == PullRequestQueueCanceled
+}
+
+// Sort sorts pull request queue items
+func (prql *PullRequestQueueList) Sort() {
+	sort.Sort(PullRequestQueueByNoOfOrder(prql.Items))
 }
 
 // +k8s:deepcopy-gen=false
 
-type PullRequestQueueByCreatedTimeASC []PullRequestQueue
+type PullRequestQueueByNoOfOrder []PullRequestQueue
 
-func (a PullRequestQueueByCreatedTimeASC) Len() int { return len(a) }
-func (a PullRequestQueueByCreatedTimeASC) Less(i, j int) bool {
-	return a[i].CreationTimestamp.Time.Before(a[j].CreationTimestamp.Time)
+func (prq PullRequestQueueByNoOfOrder) Len() int { return len(prq) }
+func (prq PullRequestQueueByNoOfOrder) Less(i, j int) bool {
+	if prq[i].Spec.NoOfOrder == prq[j].Spec.NoOfOrder {
+		return prq[i].Name < prq[j].Name
+	}
+
+	return prq[i].Spec.NoOfOrder < prq[j].Spec.NoOfOrder
 }
 
-func (a PullRequestQueueByCreatedTimeASC) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (prq PullRequestQueueByNoOfOrder) Swap(i, j int) { prq[i], prq[j] = prq[j], prq[i] }
 
 func init() {
 	SchemeBuilder.Register(&PullRequestQueue{}, &PullRequestQueueList{})

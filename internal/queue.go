@@ -15,16 +15,16 @@ type QueueController interface {
 	AddTop(q runtime.Object) error
 
 	// First returns first component in Queue or current running Queue
-	First() (runtime.Object, error)
+	First(namespace string) (runtime.Object, error)
 
 	// Remove removes Queue
 	Remove(q runtime.Object) error
 
 	// Size returns no of queues
-	Size() int
+	Size(namespace string) int
 
 	// SetLastOrder sets queue order to the last
-	SetLastOrder(q runtime.Object) error
+	SetLastOrder(obj runtime.Object) error
 
 	// SetReverifyQueueAtFirst sets queue to reverify type
 	SetReverifyQueueAtFirst(q runtime.Object) error
@@ -33,5 +33,5 @@ type QueueController interface {
 	SetRetryQueue(q runtime.Object, noOfRetry int, nextAt time.Time) error
 
 	// RemoveAllQueues removes all queues
-	RemoveAllQueues() error
+	RemoveAllQueues(namespace string) error
 }

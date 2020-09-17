@@ -52,8 +52,10 @@ const (
 	VKActivePromotionMaxHistories     = "active-promotion-max-histories"
 	VKActivePromotionOnTeamCreation   = "active-promotion-on-team-creation"
 	VKQueueMaxHistoryDays             = "queue-max-history-days"
+	VKPRVerificationMaxRetryCounts    = "pr-verification-max-retry-counts"
 	VKPRTriggerMaxRetryCounts         = "pr-trigger-max-retry-counts"
 	VKPRTriggerPollingTime            = "pr-trigger-polling-time"
+	VKPullRequestQueueMaxHistoryDays  = "pr-queue-max-history-days"
 )
 
 type ConfigurationJSON struct {

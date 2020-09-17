@@ -84,11 +84,17 @@ type SamsahaiConfig struct {
 
 // PullRequestConfig represents configuration of pull request
 type PullRequestConfig struct {
+	// MaxVerificationRetryCounts the maximum times of pull request has been verified
+	MaxVerificationRetryCounts int `json:"maxVerificationRetryCounts" yaml:"maxVerificationRetryCounts"`
+
 	// MaxPRTriggerRetryCounts the maximum times of pull request has been triggered
 	MaxTriggerRetryCounts int `json:"maxTriggerRetryCounts" yaml:"maxTriggerRetryCounts"`
 
 	// TriggerPollingTime defines a waiting duration time to re-check the pull request image in the registry
 	TriggerPollingTime metav1.Duration `json:"triggerPollingTime" yaml:"triggerPollingTime"`
+
+	// MaxHistoryDays defines maximum days of PullRequestQueueHistory stored
+	MaxHistoryDays int `json:"maxHistoryDays" yaml:"maxHistoryDays"`
 }
 
 // ActivePromotionConfig represents configuration of active promotion

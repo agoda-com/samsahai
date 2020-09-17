@@ -143,8 +143,6 @@ func startCtrlCmd() *cobra.Command {
 			queueCtrl := queue.New(namespace, runtimeClient)
 			authToken := viper.GetString(s2h.VKS2HAuthToken)
 			desiredctrl.New(teamName, mgr, queueCtrl, authToken, samsahaiClient)
-			prQueueCtrl := prqueuectrl.New(teamName, namespace, mgr, authToken, samsahaiClient)
-			prtriggerctrl.New(teamName, mgr, prQueueCtrl, authToken, samsahaiClient)
 
 			tcBaseURL := viper.GetString(s2h.VKTeamcityURL)
 			tcUsername := viper.GetString(s2h.VKTeamcityUsername)
@@ -153,6 +151,9 @@ func startCtrlCmd() *cobra.Command {
 			stagingCtrl := stagingctrl.NewController(teamName, namespace, authToken, samsahaiClient, mgr,
 				queueCtrl, configCtrl, tcBaseURL, tcUsername, tcPassword,
 				s2h.StagingConfig{MaxHistoryDays: maxQueueHistDays})
+
+			prQueueCtrl := prqueuectrl.New(teamName, namespace, mgr, runtimeClient, authToken, samsahaiClient)
+			prtriggerctrl.New(teamName, mgr, prQueueCtrl, authToken, samsahaiClient)
 
 			logger.Info("setup signal handler")
 			stop := signals.SetupSignalHandler()

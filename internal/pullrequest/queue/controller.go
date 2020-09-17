@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/twitchtv/twirp"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crctrl "sigs.k8s.io/controller-runtime/pkg/controller"
@@ -24,15 +25,22 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	"github.com/agoda-com/samsahai/internal/queue"
+	"github.com/agoda-com/samsahai/internal/util/stringutils"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 var logger = s2hlog.Log.WithName(CtrlName)
 
-const CtrlName = "pull-request-queue-ctrl"
+const (
+	CtrlName = "pull-request-queue-ctrl"
+
+	pullRequestQueueFinalizer = "pullrequestqueue.finalizers.samsahai.io"
+)
 
 type controller struct {
 	teamName  string
+	queueCtrl internal.QueueController
 	client    client.Client
 	namespace string
 	authToken string
@@ -67,6 +75,7 @@ func New(
 	teamName string,
 	ns string,
 	mgr manager.Manager,
+	client client.Client,
 	authToken string,
 	s2hClient samsahairpc.RPC,
 ) internal.QueueController {
@@ -74,7 +83,7 @@ func New(
 	c := &controller{
 		teamName:  teamName,
 		namespace: ns,
-		client:    mgr.GetClient(),
+		client:    client,
 		authToken: authToken,
 		s2hClient: s2hClient,
 	}
@@ -84,288 +93,6 @@ func New(
 	}
 
 	return c
-}
-
-func (c *controller) Add(obj runtime.Object, priorityQueues []string) error {
-	q, ok := obj.(*s2hv1beta1.PullRequestQueue)
-	if !ok {
-		return s2herrors.ErrParsingRuntimeObject
-	}
-
-	return c.add(context.TODO(), q, false)
-}
-
-func (c *controller) AddTop(obj runtime.Object) error {
-	q, ok := obj.(*s2hv1beta1.PullRequestQueue)
-	if !ok {
-		return s2herrors.ErrParsingRuntimeObject
-	}
-
-	return c.add(context.TODO(), q, true)
-}
-
-func (c *controller) Size() int {
-	list, err := c.list(nil)
-	if err != nil {
-		logger.Error(err, "cannot list queue")
-		return 0
-	}
-	return len(list.Items)
-}
-
-func (c *controller) First() (runtime.Object, error) {
-	list, err := c.list(nil)
-	if err != nil {
-		logger.Error(err, "cannot list queue")
-		return nil, err
-	}
-
-	q := list.First()
-	c.resetQueueOrderWithCurrentQueue(list, q)
-	if err := c.updateQueueList(list); err != nil {
-		return nil, err
-	}
-
-	if q == nil {
-		return nil, nil
-	}
-
-	if q.Spec.NextProcessAt == nil || time.Now().After(q.Spec.NextProcessAt.Time) {
-		return q, nil
-	}
-
-	return nil, nil
-}
-
-func (c *controller) Remove(obj runtime.Object) error {
-	return c.client.Delete(context.TODO(), obj)
-}
-
-func (c *controller) RemoveAllQueues() error {
-	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.PullRequestQueue{}, client.InNamespace(c.namespace))
-}
-
-func (c *controller) add(ctx context.Context, queue *s2hv1beta1.PullRequestQueue, atTop bool) error {
-	// TODO: pohfy, update here
-	if err := c.client.Create(ctx, queue); err != nil {
-		if k8serrors.IsAlreadyExists(err) {
-			if err := c.client.Update(ctx, queue); err != nil {
-				return err
-			}
-
-			return nil
-		}
-		return err
-	}
-
-	return nil
-}
-
-// queue always contains 1 component
-func (c *controller) isMatchWithStableComponent(ctx context.Context, q *s2hv1beta1.Queue) (isMatch bool, err error) {
-	if len(q.Spec.Components) == 0 {
-		isMatch = true
-		return
-	}
-
-	qComp := q.Spec.Components[0]
-	stableComp := &s2hv1beta1.StableComponent{}
-	err = c.client.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: qComp.Name}, stableComp)
-	if err != nil && k8serrors.IsNotFound(err) {
-		return false, nil
-	} else if err != nil {
-		return
-	}
-
-	isMatch = stableComp.Spec.Repository == qComp.Repository &&
-		stableComp.Spec.Version == qComp.Version
-
-	return
-}
-
-func (c *controller) getExistingQueueNumberInList(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) int {
-	for i, q := range list.Items {
-		for _, qComp := range q.Spec.Components {
-			// queue already existed
-			if qComp.Name == queue.Spec.Components[0].Name {
-				return i
-			}
-		}
-	}
-
-	return -1
-}
-
-// removeAndUpdateSimilarQueue removes similar component/queue (same `component name` from queue) from QueueList
-func (c *controller) removeAndUpdateSimilarQueue(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) (
-	removing []s2hv1beta1.Queue, updating []s2hv1beta1.Queue) {
-
-	updating = make([]s2hv1beta1.Queue, len(list.Items))
-	var items []s2hv1beta1.Queue
-	var containComp = false
-
-	for i, q := range list.Items {
-		if !containComp && q.ContainSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
-			// only add one `queue` to items
-			containComp = true
-		} else {
-			newComps := make([]*s2hv1beta1.QueueComponent, 0)
-			for _, qComp := range q.Spec.Components {
-				if qComp.Name == queue.Spec.Components[0].Name {
-					continue
-				}
-				newComps = append(newComps, qComp)
-			}
-
-			if len(newComps) == 0 {
-				removing = append(removing, q)
-				continue
-			}
-
-			if len(newComps) != len(q.Spec.Components) {
-				q.Spec.Components = newComps
-				updating[i] = q
-			}
-		}
-
-		items = append(items, q)
-	}
-
-	list.Items = items
-	return
-}
-
-func (c *controller) list(opts *client.ListOptions) (list *s2hv1beta1.QueueList, err error) {
-	list = &s2hv1beta1.QueueList{}
-	if opts == nil {
-		opts = &client.ListOptions{Namespace: c.namespace}
-	}
-	if err = c.client.List(context.Background(), list, opts); err != nil {
-		return list, errors.Wrapf(err, "cannot list queue with options: %+v", opts)
-	}
-	return list, nil
-}
-
-func (c *controller) SetLastOrder(obj runtime.Object) error {
-	q, ok := obj.(*s2hv1beta1.Queue)
-	if !ok {
-		return s2herrors.ErrParsingRuntimeObject
-	}
-
-	queueList, err := c.list(nil)
-	if err != nil {
-		logger.Error(err, "cannot list queue")
-		return err
-	}
-
-	q.Spec.NoOfOrder = queueList.LastQueueOrder()
-	q.Status.Conditions = nil
-
-	return c.client.Update(context.TODO(), q)
-}
-
-func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
-	q, ok := obj.(*s2hv1beta1.Queue)
-	if !ok {
-		return s2herrors.ErrParsingRuntimeObject
-	}
-
-	list, err := c.list(nil)
-	if err != nil {
-		logger.Error(err, "cannot list queue")
-		return err
-	}
-
-	now := metav1.Now()
-	q.Status = s2hv1beta1.QueueStatus{
-		CreatedAt:     &now,
-		NoOfProcessed: q.Status.NoOfProcessed,
-		State:         s2hv1beta1.Waiting,
-	}
-	q.Spec.Type = s2hv1beta1.QueueTypeReverify
-	q.Spec.NoOfOrder = list.TopQueueOrder()
-	return c.client.Update(context.TODO(), q)
-}
-
-func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time) error {
-	q, ok := obj.(*s2hv1beta1.Queue)
-	if !ok {
-		return s2herrors.ErrParsingRuntimeObject
-	}
-
-	list, err := c.list(nil)
-	if err != nil {
-		logger.Error(err, "cannot list queue")
-		return err
-	}
-
-	now := metav1.Now()
-	q.Status = s2hv1beta1.QueueStatus{
-		CreatedAt:     &now,
-		NoOfProcessed: q.Status.NoOfProcessed,
-		State:         s2hv1beta1.Waiting,
-	}
-	q.Spec.NextProcessAt = &metav1.Time{Time: nextAt}
-	q.Spec.NoOfRetry = noOfRetry
-	q.Spec.Type = s2hv1beta1.QueueTypeUpgrade
-	q.Spec.NoOfOrder = list.LastQueueOrder()
-	return c.client.Update(context.TODO(), q)
-}
-
-func (c *controller) updateQueueList(ql *s2hv1beta1.QueueList) error {
-	for i := range ql.Items {
-		if err := c.client.Update(context.TODO(), &ql.Items[i]); err != nil {
-			logger.Error(err, "cannot update queue list", "queue", ql.Items[i].Name)
-			return errors.Wrapf(err, "cannot update queue %s in %s", ql.Items[i].Name, ql.Items[i].Namespace)
-		}
-	}
-
-	return nil
-}
-
-// resetQueueOrderWithCurrentQueue resets order of all queues to start with 1 respectively
-func (c *controller) resetQueueOrderWithCurrentQueue(ql *s2hv1beta1.QueueList, currentQueue *s2hv1beta1.Queue) {
-	ql.Sort()
-	count := 2
-	for i := range ql.Items {
-		if ql.Items[i].Name == currentQueue.Name {
-			ql.Items[i].Spec.NoOfOrder = 1
-			continue
-		}
-		ql.Items[i].Spec.NoOfOrder = count
-		count++
-	}
-}
-
-// deleteQueue removes Queue in target namespace by name
-func deleteQueue(c client.Client, ns, name string) error {
-	q := &s2hv1beta1.Queue{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-		},
-	}
-	err := c.Delete(context.TODO(), q)
-	if err != nil && k8serrors.IsNotFound(err) {
-		return nil
-	}
-
-	return errors.Wrap(err, "cannot delete queue")
-}
-
-func ensureQueue(ctx context.Context, c client.Client, q *s2hv1beta1.Queue) (err error) {
-	fetched := &s2hv1beta1.Queue{}
-	err = c.Get(ctx, types.NamespacedName{Namespace: q.Namespace, Name: q.Name}, fetched)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			// Create
-			return c.Create(ctx, q)
-		}
-		return err
-	}
-	q.Spec = fetched.Spec
-	q.Status = fetched.Status
-	return nil
 }
 
 func getQueueLabels(teamName, component string) map[string]string {
@@ -400,6 +127,98 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
+func (c *controller) addFinalizer(prQueue *s2hv1beta1.PullRequestQueue) {
+	if prQueue.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is not being deleted, so if it does not have our finalizer,
+		// then lets add the finalizer and update the object.
+		if !stringutils.ContainsString(prQueue.ObjectMeta.Finalizers, pullRequestQueueFinalizer) {
+			prQueue.ObjectMeta.Finalizers = append(prQueue.ObjectMeta.Finalizers, pullRequestQueueFinalizer)
+		}
+	}
+}
+
+func (c *controller) removeFinalizerObject(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
+	err := c.client.Get(ctx, types.NamespacedName{
+		Name:      prQueue.Name,
+		Namespace: c.namespace,
+	}, &s2hv1beta1.PullRequestQueue{})
+	if err != nil && k8serrors.IsNotFound(err) {
+		return nil
+	}
+
+	if stringutils.ContainsString(prQueue.ObjectMeta.Finalizers, pullRequestQueueFinalizer) {
+		prQueue.ObjectMeta.Finalizers = stringutils.RemoveString(prQueue.ObjectMeta.Finalizers, pullRequestQueueFinalizer)
+		if err := c.updatePullRequestQueue(ctx, prQueue); err != nil {
+			return errors.Wrapf(err, "cannot remove finalizer of pull request queue %s", prQueue.Name)
+		}
+	}
+
+	return nil
+}
+
+func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) (
+	skipReconcile bool, err error) {
+
+	if prQueue.Status.State == s2hv1beta1.PullRequestQueueFinished {
+		if prQueue.ObjectMeta.DeletionTimestamp.IsZero() {
+			logger.Debug("process has been finished and pull request queue has been deleted",
+				"team", c.teamName, "component", prQueue.Spec.ComponentName,
+				"prNumber", prQueue.Spec.PullRequestNumber)
+
+			if err = c.deletePullRequestQueue(ctx, prQueue); err != nil {
+				return
+			}
+
+			// skip updating pull request queue due to pull request queue is being deleted
+			return true, err
+		}
+	}
+
+	if !prQueue.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is being deleted
+		if stringutils.ContainsString(prQueue.ObjectMeta.Finalizers, pullRequestQueueFinalizer) {
+			if prQueue.Status.State == "" ||
+				prQueue.Status.State == s2hv1beta1.PullRequestQueueWaiting ||
+				prQueue.Status.State == s2hv1beta1.PullRequestQueueFinished {
+
+				if err = c.removeFinalizerObject(ctx, prQueue); err != nil {
+					return
+				}
+
+				// pull request queue has been finished
+				skipReconcile = true
+				return
+			}
+
+			if prQueue.IsCanceled() {
+				return
+			}
+
+			prQueue.Status.SetResult(s2hv1beta1.PullRequestQueueCanceled)
+			prQueue.SetState(s2hv1beta1.PullRequestQueueCollecting)
+			if err = c.updatePullRequestQueue(ctx, prQueue); err != nil {
+				return
+			}
+
+			skipReconcile = true
+			return
+		}
+	}
+
+	return
+}
+
+func (c *controller) setup(prQueue *s2hv1beta1.PullRequestQueue) {
+	logger.Info("pull request queue has been created", "team", c.teamName,
+		"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PullRequestNumber)
+
+	prQueue.Labels = c.getStateLabel(stateWaiting)
+	prQueue.SetState(s2hv1beta1.PullRequestQueueWaiting)
+
+	logger.Info("pull request is waiting in queue", "team", c.teamName,
+		"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PullRequestNumber)
+}
+
 const (
 	stateWaiting = "waiting"
 	stateRunning = "running"
@@ -409,58 +228,72 @@ func (c *controller) getStateLabel(state string) map[string]string {
 	return map[string]string{"state": state}
 }
 
-func (c *controller) manageQueue(ctx context.Context, currentPRQueue *s2hv1beta1.PullRequestQueue) (bool, error) {
-	runningPRQueues := s2hv1beta1.PullRequestQueueList{}
+func (c *controller) manageQueue(ctx context.Context, currentPRQueue *s2hv1beta1.PullRequestQueue) (
+	skipReconcile bool, err error) {
+
 	listOpts := client.ListOptions{LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateRunning))}
-	if err := c.client.List(ctx, &runningPRQueues, &listOpts); err != nil {
-		return false, errors.Wrap(err, "cannot list pullrequestqueues")
+	runningPRQueues, err := c.listPullRequestQueues(&listOpts, currentPRQueue.Namespace)
+	if err != nil {
+		err = errors.Wrap(err, "cannot list pull request queues")
+		return
 	}
 
-	// TODO: pohfy, get concurrent pr queue from config
-	concurrentPRQueue := 2
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
+	if err != nil {
+		return
+	}
+
+	concurrentPRQueue := int(prConfig.Parallel)
 	if len(runningPRQueues.Items) >= concurrentPRQueue {
-		return false, nil
+		return
 	}
 
-	waitingPRQueues := s2hv1beta1.PullRequestQueueList{}
 	listOpts = client.ListOptions{LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateWaiting))}
-	if err := c.client.List(ctx, &waitingPRQueues, &listOpts); err != nil {
-		return false, errors.Wrap(err, "cannot list pullrequestqueues")
+	waitingPRQueues, err := c.listPullRequestQueues(&listOpts, currentPRQueue.Namespace)
+	if err != nil {
+		err = errors.Wrap(err, "cannot list pull request queues")
+		return
 	}
 
 	// there is no new queue
 	if len(waitingPRQueues.Items) == 0 {
-		return false, nil
+		return
 	}
 
-	waitingPRQueues.SortASC()
+	waitingPRQueues.Sort()
 
 	if concurrentPRQueue-len(runningPRQueues.Items) > 0 {
-		logger.Info("start running pull request queue",
-			"component", waitingPRQueues.Items[0].Name,
-			"prNumber", waitingPRQueues.Items[0].Spec.PullRequestNumber)
+		logger.Info("start running pull request queue", "team", c.teamName,
+			"component", waitingPRQueues.Items[0].Name, "prNumber", waitingPRQueues.Items[0].Spec.PullRequestNumber)
 
-		waitingPRQueues.Items[0].SetState(s2hv1beta1.PullRequestQueueRunning)
-		// TODO: pohfy, set condition
-		//runningPRQueues.Items[0].Status.SetCondition(s2hv1beta1.ActivePromotionCondStarted, corev1.ConditionTrue,
-		//	"Active promotion has been started")
+		c.addFinalizer(&waitingPRQueues.Items[0])
+		waitingPRQueues.Items[0].SetState(s2hv1beta1.PullRequestQueueEnvCreating)
+		waitingPRQueues.Items[0].Status.SetCondition(s2hv1beta1.PullRequestQueueCondStarted, corev1.ConditionTrue,
+			"Pull request queue has been started")
 		waitingPRQueues.Items[0].Labels = c.getStateLabel(stateRunning)
-		if err := c.updatePullRequestQueue(ctx, &waitingPRQueues.Items[0]); err != nil {
-			return false, err
+		if err = c.updatePullRequestQueue(ctx, &waitingPRQueues.Items[0]); err != nil {
+			return
 		}
 
 		// should not continue the process due to current pull request queue has been updated
 		if waitingPRQueues.Items[0].Name == currentPRQueue.Name {
-			return true, nil
+			skipReconcile = true
+			return
 		}
 	}
 
-	return false, nil
+	return
 }
 
-func (c *controller) updatePullRequestQueue(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
-	if err := c.client.Update(ctx, prQueue); err != nil {
-		return errors.Wrapf(err, "cannot update pullrequestqueue %s", prQueue.Name)
+func (c *controller) ensurePullRequestNamespaceReady(ctx context.Context, ns string) error {
+	prNamespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ns,
+		},
+	}
+
+	if err := c.client.Get(ctx, types.NamespacedName{Name: ns}, prNamespace); err != nil {
+		return errors.Wrapf(err, "cannot get namespace %s", ns)
 	}
 
 	return nil
@@ -468,45 +301,312 @@ func (c *controller) updatePullRequestQueue(ctx context.Context, prQueue *s2hv1b
 
 func (c *controller) createPullRequestEnvironment(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
 	prNamespace := fmt.Sprintf("%s%s-%s", internal.AppPrefix, c.teamName, prQueue.Name)
-	_, err := c.s2hClient.CreatePullRequestEnvironment(ctx, &samsahairpc.TeamWithNamespace{
-		TeamName:  c.teamName,
-		Namespace: prNamespace,
+	_, err := c.s2hClient.CreatePullRequestEnvironment(ctx, &samsahairpc.TeamWithPullRequest{
+		TeamName:      c.teamName,
+		Namespace:     prNamespace,
+		ComponentName: prQueue.Spec.ComponentName,
 	})
 	if err != nil {
 		return err
 	}
 
-	prQueue.SetPullRequestNamespace(prNamespace)
+	if err := c.ensurePullRequestNamespaceReady(ctx, prNamespace); err != nil {
+		logger.Warn("cannot ensure pull request namespace created", "error", err.Error())
+		return s2herrors.ErrTeamNamespaceStillCreating
+	}
 
-	// TODO: pohfy, check result, set condition and send to collecting state
-	prQueue.SetResult(s2hv1beta1.PullRequestQueueSuccess)
-	prQueue.SetState(s2hv1beta1.PullRequestQueueCollecting)
+	prQueue.Status.SetPullRequestNamespace(prNamespace)
+	prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondEnvCreated, corev1.ConditionTrue,
+		"Pull request environment has been created")
+	prQueue.SetState(s2hv1beta1.PullRequestQueueDeploying)
 
 	return nil
 }
 
-func (c *controller) deletePullRequestQueue(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
-	logger.Info("deleting pullrequestqueue",
-		"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PullRequestNumber)
+func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) (
+	skipReconcile bool, err error) {
 
-	prNamespace := fmt.Sprintf("%s%s-%s", internal.AppPrefix, c.teamName, prQueue.Name)
-	_, err := c.s2hClient.DestroyPullRequestEnvironment(ctx, &samsahairpc.TeamWithNamespace{
+	prNamespace := prQueue.Status.PullRequestNamespace
+	if err = queue.DeletePullRequestQueue(c.client, prNamespace, prQueue.Name); err != nil {
+		return
+	}
+
+	_, err = c.s2hClient.DestroyPullRequestEnvironment(ctx, &samsahairpc.TeamWithNamespace{
 		TeamName:  c.teamName,
 		Namespace: prNamespace,
+	})
+	if err != nil {
+		return
+	}
+
+	prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondEnvDestroyed, corev1.ConditionTrue,
+		"Pull request environment has been destroyed")
+
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
+	if err != nil {
+		return
+	}
+
+	if prQueue.Status.Result == s2hv1beta1.PullRequestQueueFailure {
+		maxRetryQueue := int(prConfig.MaxRetry)
+		if prQueue.Spec.NoOfRetry < maxRetryQueue {
+			prQueue.Spec.NoOfRetry++
+			if err = c.SetRetryQueue(prQueue, prQueue.Spec.NoOfRetry, time.Now()); err != nil {
+				err = errors.Wrapf(err, "cannot set retry pull request queue")
+				return
+			}
+
+			c.resetQueueOrderWithRunningQueue(ctx, prQueue)
+			skipReconcile = true
+			return
+		}
+	}
+
+	prQueue.SetState(s2hv1beta1.PullRequestQueueFinished)
+
+	return
+}
+
+func (c *controller) getDeploymentQueue(ctx context.Context, queueName, prNamespace string) (*s2hv1beta1.Queue, error) {
+	deployedQueue := &s2hv1beta1.Queue{}
+	err := c.client.Get(ctx, types.NamespacedName{
+		Namespace: prNamespace,
+		Name:      queueName,
+	}, deployedQueue)
+
+	return deployedQueue, err
+}
+
+func (c *controller) updatePullRequestComponentDependenciesVersion(ctx context.Context, teamName, prCompName string,
+	prComps *s2hv1beta1.QueueComponents) error {
+
+	if prComps == nil {
+		return nil
+	}
+
+	prDependencies, err := c.s2hClient.GetPullRequestComponentDependencies(ctx, &samsahairpc.TeamWithComponentName{
+		TeamName:      teamName,
+		ComponentName: prCompName,
 	})
 	if err != nil {
 		return err
 	}
 
-	if err := c.client.Delete(ctx, prQueue); err != nil {
+	for _, prDep := range prDependencies.Dependencies {
+		imgRepo := prDep.Image.Repository
+		imgTag := prDep.Image.Tag
+		depFound := false
+		for i := range *prComps {
+			if (*prComps)[i].Name == prDep.Name {
+				depFound = true
+				(*prComps)[i].Repository = imgRepo
+				(*prComps)[i].Version = imgTag
+			}
+		}
+
+		if !depFound {
+			*prComps = append(*prComps, &s2hv1beta1.QueueComponent{
+				Name:       prDep.Name,
+				Repository: imgRepo,
+				Version:    imgTag,
+			})
+		}
+	}
+
+	return nil
+}
+
+func (c *controller) ensurePullRequestComponentsDeploying(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
+	prComps := prQueue.Spec.Components
+	prNamespace := prQueue.Status.PullRequestNamespace
+
+	err := c.updatePullRequestComponentDependenciesVersion(ctx, c.teamName, prQueue.Spec.ComponentName, &prComps)
+	if err != nil {
+		return err
+	}
+
+	deployedQueue, err := queue.EnsurePullRequestComponents(c.client, c.teamName, prNamespace, prQueue.Name, prComps)
+	if err != nil {
+		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
+	}
+
+	if deployedQueue.Status.State == s2hv1beta1.Finished || // in case of queue state was finished without deploying
+		(deployedQueue.Status.StartDeployTime != nil && deployedQueue.Status.State != s2hv1beta1.Creating) {
+		if deployedQueue.IsDeploySuccess() {
+			// in case successful deployment
+			logger.Debug("components has been deployed successfully",
+				"team", c.teamName, "component", prQueue.Spec.ComponentName,
+				"prNumber", prQueue.Spec.PullRequestNumber)
+			prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondDeployed, corev1.ConditionTrue,
+				"Components have been deployed successfully")
+			prQueue.SetState(s2hv1beta1.PullRequestQueueTesting)
+		}
+
+		// in case failure deployment
+		prQueue.Status.SetResult(s2hv1beta1.PullRequestQueueFailure)
+		prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondDeployed, corev1.ConditionFalse,
+			"Deployment failed")
+		prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondTested, corev1.ConditionTrue,
+			"Skipped running test due to deployment failed")
+		prQueue.SetState(s2hv1beta1.PullRequestQueueCollecting)
+
+		return nil
+	}
+
+	return s2herrors.ErrEnsureComponentDeployed
+}
+
+func (c *controller) ensurePullRequestComponentsTesting(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
+	prComps := prQueue.Spec.Components
+	prNamespace := prQueue.Status.PullRequestNamespace
+	deployedQueue, err := queue.EnsurePullRequestComponents(c.client, c.teamName, prNamespace, prQueue.Name, prComps)
+	if err != nil {
+		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
+	}
+
+	if deployedQueue.Status.State == s2hv1beta1.Finished || // in case of queue state was finished without deploying
+		(deployedQueue.Status.StartDeployTime != nil && deployedQueue.Status.State != s2hv1beta1.Creating) {
+		if deployedQueue.IsTestSuccess() {
+			// in case successful test
+			logger.Debug("components have been tested successfully",
+				"team", c.teamName, "component", prQueue.Spec.ComponentName,
+				"prNumber", prQueue.Spec.PullRequestNumber)
+			prQueue.Status.SetResult(s2hv1beta1.PullRequestQueueSuccess)
+			prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondTested, corev1.ConditionTrue,
+				"Components have been tested successfully")
+		}
+
+		// in case failure test
+		prQueue.Status.SetResult(s2hv1beta1.PullRequestQueueFailure)
+		prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondTested, corev1.ConditionFalse,
+			"Test failed")
+		prQueue.SetState(s2hv1beta1.PullRequestQueueCollecting)
+
+		return nil
+	}
+
+	return s2herrors.ErrEnsureComponentTested
+}
+
+func (c *controller) collectPullRequestQueueResult(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
+	prComps := prQueue.Spec.Components
+	prNamespace := prQueue.Status.PullRequestNamespace
+	deployedQueue, err := queue.EnsurePullRequestComponents(c.client, c.teamName, prNamespace, prQueue.Name, prComps)
+	if err != nil {
+		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
+	}
+
+	prQueue.SetState(s2hv1beta1.PullRequestQueueEnvDestroying)
+	prQueue.Status.SetDeploymentQueue(deployedQueue)
+	prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondResultCollected, corev1.ConditionTrue,
+		"Pull request queue result has been collected")
+
+	prQueueHistName := generateHistoryName(prQueue.Name, prQueue.CreationTimestamp, prQueue.Spec.NoOfRetry)
+	if _, err := c.getPullRequestQueueHistory(ctx, prQueueHistName); err != nil {
+		if k8serrors.IsNotFound(err) {
+			if err := c.createPullRequestQueueHistory(ctx, prQueue); err != nil {
+				return err
+			}
+
+			// TODO: pohfy, send notification
+			prQueue.Status.SetPullRequestQueueHistoryName(prQueueHistName)
+			return nil
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+func (c *controller) getPullRequestQueueHistory(ctx context.Context, prQueueHistName string) (*s2hv1beta1.PullRequestQueueHistory, error) {
+	prQueueHist := &s2hv1beta1.PullRequestQueueHistory{}
+	err := c.client.Get(ctx, types.NamespacedName{
+		Namespace: c.namespace,
+		Name:      prQueueHistName,
+	}, prQueueHist)
+	if err != nil {
+		return nil, err
+	}
+
+	return prQueueHist, nil
+}
+
+func (c *controller) createPullRequestQueueHistory(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
+	prQueueLabels := getPullRequestQueueLabels(c.teamName, prQueue.Spec.ComponentName, prQueue.Spec.PullRequestNumber)
+
+	if err := c.deletePullRequestQueueHistoryOutOfRange(ctx); err != nil {
+		return err
+	}
+
+	history := &s2hv1beta1.PullRequestQueueHistory{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateHistoryName(prQueue.Name, prQueue.CreationTimestamp, prQueue.Spec.NoOfRetry),
+			Namespace: c.namespace,
+			Labels:    prQueueLabels,
+		},
+		Spec: s2hv1beta1.PullRequestQueueHistorySpec{
+			PullRequestQueue: &s2hv1beta1.PullRequestQueue{
+				Spec:   prQueue.Spec,
+				Status: prQueue.Status,
+			},
+		},
+	}
+
+	if err := c.client.Create(ctx, history); err != nil && !k8serrors.IsAlreadyExists(err) {
+		return errors.Wrapf(err,
+			"cannot create pull request queue history of %s", prQueue.Name)
+	}
+
+	return nil
+}
+
+func (c *controller) deletePullRequestQueueHistoryOutOfRange(ctx context.Context) error {
+	prQueueHists := s2hv1beta1.PullRequestQueueHistoryList{}
+	if err := c.client.List(ctx, &prQueueHists, &client.ListOptions{Namespace: c.namespace}); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil
 		}
 
-		return errors.Wrapf(err, "cannot delete pullrequestqueue %s", prQueue.Name)
+		return errors.Wrapf(err, "cannot list pull request queue histories of namespace: %s", c.namespace)
+	}
+
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
+	if err != nil {
+		return err
+	}
+
+	// parse max stored pull request queue histories in day to time duration
+	maxHistDays := int(prConfig.MaxHistoryDays)
+	maxHistDuration, err := time.ParseDuration(strconv.Itoa(maxHistDays*24) + "h")
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("cannot parse time duration of %d", maxHistDays))
+		return nil
+	}
+
+	prQueueHists.SortDESC()
+	now := metav1.Now()
+	for i := len(prQueueHists.Items) - 1; i > 0; i-- {
+		if now.Sub(prQueueHists.Items[i].CreationTimestamp.Time) >= maxHistDuration {
+			if err := c.client.Delete(ctx, &prQueueHists.Items[i]); err != nil {
+				if k8serrors.IsNotFound(err) {
+					continue
+				}
+
+				logger.Error(err, fmt.Sprintf("cannot delete pull request queue histories %s", prQueueHists.Items[i].Name))
+				return errors.Wrapf(err, "cannot delete pull request queue histories %s", prQueueHists.Items[i].Name)
+			}
+			continue
+		}
+
+		break
 	}
 
 	return nil
+}
+
+func generateHistoryName(prQueueName string, startTime metav1.Time, retryCount int) string {
+	return fmt.Sprintf("%s-%s-%d", prQueueName, startTime.Format("20060102-150405"), retryCount)
 }
 
 // Reconcile reads that state of the cluster for a PullRequestQueue object and makes changes based on the state read
@@ -529,16 +629,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
-	// TODO: pohfy, add finalizer, to check pr namespace, should be destroyed when got deletes
-
-	if isTriggered, err := c.manageQueue(ctx, prQueue); err != nil || isTriggered {
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		// current pull request has been updated, it will re-trigger the reconcile
-		return reconcile.Result{}, nil
-	}
-
 	// make request with samsahai controller
 	headers := make(http.Header)
 	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
@@ -547,14 +637,24 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		logger.Error(err, "cannot set request header")
 	}
 
+	if skipReconcile, err := c.deleteFinalizerWhenFinished(ctx, prQueue); err != nil || skipReconcile {
+		if err != nil && !k8serrors.IsNotFound(err) {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	if skipReconcile, err := c.manageQueue(ctx, prQueue); err != nil || skipReconcile {
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		// current pull request has been updated, it will re-trigger the reconcile
+		return reconcile.Result{}, nil
+	}
+
 	switch prQueue.Status.State {
 	case "":
-		logger.Info("pull request queue has been created",
-			"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PullRequestNumber)
-		prQueue.Labels = c.getStateLabel(stateWaiting)
-		prQueue.SetState(s2hv1beta1.PullRequestQueueWaiting)
-		logger.Info("pull request is waiting in queue",
-			"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PullRequestNumber)
+		c.setup(prQueue)
 
 	case s2hv1beta1.PullRequestQueueWaiting:
 		return reconcile.Result{
@@ -562,10 +662,8 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			RequeueAfter: 2 * time.Second,
 		}, nil
 
-	case s2hv1beta1.PullRequestQueueRunning:
-		// TODO: pohfy, check queue and start doing
-		err = c.createPullRequestEnvironment(ctx, prQueue)
-		if err != nil && !k8serrors.IsAlreadyExists(err) {
+	case s2hv1beta1.PullRequestQueueEnvCreating:
+		if err := c.createPullRequestEnvironment(ctx, prQueue); err != nil && !k8serrors.IsAlreadyExists(err) {
 			if s2herrors.IsNamespaceStillCreating(err) {
 				return reconcile.Result{
 					Requeue:      true,
@@ -576,15 +674,48 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	// TODO: pohfy, check queue in pr namespace is finished or not
+	case s2hv1beta1.PullRequestQueueDeploying:
+		if err := c.ensurePullRequestComponentsDeploying(ctx, prQueue); err != nil {
+			if s2herrors.IsEnsuringComponentDeployed(err) {
+				return reconcile.Result{
+					Requeue:      true,
+					RequeueAfter: 2 * time.Second,
+				}, nil
+			}
+
+			return reconcile.Result{}, err
+		}
+
+	case s2hv1beta1.PullRequestQueueTesting:
+		if err := c.ensurePullRequestComponentsTesting(ctx, prQueue); err != nil {
+			if s2herrors.IsEnsuringComponentTested(err) {
+				return reconcile.Result{
+					Requeue:      true,
+					RequeueAfter: 2 * time.Second,
+				}, nil
+			}
+
+			return reconcile.Result{}, err
+		}
 
 	case s2hv1beta1.PullRequestQueueCollecting:
-		prQueue.SetState(s2hv1beta1.PullRequestQueueFinished)
-
-	case s2hv1beta1.PullRequestQueueFinished:
-		// TODO: pohfy, recreate if failed
-		if err := c.deletePullRequestQueue(ctx, prQueue); err != nil {
+		if err := c.collectPullRequestQueueResult(ctx, prQueue); err != nil {
 			return reconcile.Result{}, err
+		}
+
+	case s2hv1beta1.PullRequestQueueEnvDestroying:
+		if skipReconcile, err := c.destroyPullRequestEnvironment(ctx, prQueue); err != nil || skipReconcile {
+			if err != nil {
+				if s2herrors.IsNamespaceStillExists(err) {
+					return reconcile.Result{
+						Requeue:      true,
+						RequeueAfter: 2 * time.Second,
+					}, nil
+				}
+
+				return reconcile.Result{}, err
+			}
+			return reconcile.Result{}, nil
 		}
 	}
 

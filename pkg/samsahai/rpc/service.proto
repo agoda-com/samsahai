@@ -9,10 +9,12 @@ service RPC {
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
     rpc GetBundleName (TeamWithComponentName) returns (BundleName);
     rpc GetPriorityQueues (TeamName) returns (PriorityQueues);
+    rpc GetPullRequestComponentDependencies (TeamWithComponentName) returns (PullRequestDependencies);
     rpc GetPullRequestConfig (TeamName) returns (PullRequestConfig);
     rpc GetPullRequestComponentSource (TeamWithPullRequest) returns (ComponentSource);
     rpc GetComponentVersion (ComponentSource) returns (ComponentVersion);
-    rpc CreatePullRequestEnvironment (TeamWithNamespace) returns (Empty);
+    rpc DeployActiveServicesIntoPullRequestEnvironment (TeamWithNamespace) returns (Empty);
+    rpc CreatePullRequestEnvironment (TeamWithPullRequest) returns (Empty);
     rpc DestroyPullRequestEnvironment (TeamWithNamespace) returns (Empty);
 }
 
@@ -34,6 +36,10 @@ message TeamName {
 
 message PriorityQueues {
     repeated string queues = 1;
+}
+
+message PullRequestDependencies {
+    repeated Component dependencies = 1;
 }
 
 message ComponentUpgrade {
@@ -107,11 +113,14 @@ message TeamWithPullRequest {
     string teamName = 1;
     string componentName = 2;
     string pullRequestNumber = 3;
+    string namespace = 4;
 }
 
 message PullRequestConfig {
     int32 parallel = 1;
-    PullRequestTriggerConfig trigger = 2;
+    int32 maxRetry = 2;
+    int32 maxHistoryDays = 3;
+    PullRequestTriggerConfig trigger = 4;
 }
 
 message PullRequestTriggerConfig {
