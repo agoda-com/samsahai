@@ -1266,17 +1266,7 @@ func (c *controller) ensureAndUpdateConfig(teamComp *s2hv1beta1.Team) error {
 	return nil
 }
 
-func (c *controller) applyTeamTemplate(teamComp *s2hv1beta1.Team) error {
-	//override value into template => template+override
-	teamTemplate := &s2hv1beta1.Team{}
-	err := c.getTeam(teamComp.Spec.Template, teamTemplate)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			logger.Error(err, "template not found", "team", teamComp.Spec.Template)
-		}
-		return err
-	}
-
+func applyTeamTemplate(teamComp, teamTemplate *s2hv1beta1.Team) error {
 	if err := mergo.Merge(&teamComp.Spec, teamTemplate.Spec); err != nil {
 		return err
 	}
@@ -1340,8 +1330,16 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	// if team use template apply values from template
 	if teamComp.Spec.Template != "" && !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamApplyTemplate) {
+		teamTemplate := &s2hv1beta1.Team{}
+		err := c.getTeam(teamComp.Spec.Template, teamTemplate)
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				logger.Error(err, "template not found", "team", teamComp.Spec.Template)
+			}
+			return reconcile.Result{}, err
+		}
 
-		err = c.applyTeamTemplate(teamComp)
+		err = applyTeamTemplate(teamComp, teamTemplate)
 		if err != nil {
 			return reconcile.Result{}, err
 		}

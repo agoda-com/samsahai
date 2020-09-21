@@ -650,15 +650,7 @@ func (c *controller) getCronJobSuffix(schedule string) string {
 	return suffix
 }
 
-func (c *controller) applyConfigTemplate(config *s2hv1beta1.Config) error {
-	configTemplate, err := c.getConfig(config.Spec.Template)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			logger.Error(err, "template not found", "config", config.Spec.Template)
-		}
-		return err
-	}
-
+func applyConfigTemplate(config, configTemplate *s2hv1beta1.Config) error {
 	if err := mergo.Merge(&config.Spec, configTemplate.Spec); err != nil {
 		return err
 	}
@@ -686,7 +678,15 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	}
 
 	if configComp.Spec.Template != "" && !configComp.Status.IsConditionTrue(s2hv1beta1.ConfigApplyTemplate) {
-		err := c.applyConfigTemplate(configComp)
+		configTemplate, err := c.getConfig(configComp.Spec.Template)
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				logger.Error(err, "template not found", "config", configComp.Spec.Template)
+			}
+			return reconcile.Result{}, err
+		}
+
+		err = applyConfigTemplate(configComp, configTemplate)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
