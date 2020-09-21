@@ -259,7 +259,7 @@ func applyEnvBaseConfig(
 	case s2hv1beta1.QueueTypePromoteToActive:
 		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvActive, teamName)
 	case s2hv1beta1.QueueTypeUpgrade, s2hv1beta1.QueueTypeReverify:
-		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvStaging,teamName)
+		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvStaging, teamName)
 	case s2hv1beta1.QueueTypeDemoteFromActive:
 		return values
 	default:

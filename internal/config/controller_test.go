@@ -29,6 +29,7 @@ func TestConfig(t *testing.T) {
 var _ = Describe("Config Controller", func() {
 	successfulJobsHistoryLimit := successfulJobsHistoryLimit
 
+	teamTest := "teamtest"
 	compSource := s2hv1beta1.UpdatingSource("public-registry")
 	redisCompName := "redis"
 	redisConfigComp := s2hv1beta1.Component{
@@ -75,7 +76,7 @@ var _ = Describe("Config Controller", func() {
 		g := NewWithT(GinkgoT())
 
 		config := mockConfig
-		compValues, err := GetEnvValues(&config, s2hv1beta1.EnvStaging, "teamtest")
+		compValues, err := GetEnvValues(&config, s2hv1beta1.EnvStaging, teamTest)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(compValues).To(Equal(map[string]s2hv1beta1.ComponentValues{
 			redisCompName: {
@@ -93,7 +94,7 @@ var _ = Describe("Config Controller", func() {
 		g := NewWithT(GinkgoT())
 
 		config := mockConfig
-		compValues, err := GetEnvComponentValues(&config, redisCompName, "teamtest", s2hv1beta1.EnvStaging)
+		compValues, err := GetEnvComponentValues(&config, redisCompName, teamTest, s2hv1beta1.EnvStaging)
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(compValues).To(Equal(s2hv1beta1.ComponentValues{
 			"master": map[string]interface{}{
@@ -103,6 +104,24 @@ var _ = Describe("Config Controller", func() {
 				},
 			},
 		}))
+	})
+
+	It("should render teamName values correctly", func() {
+		g := NewWithT(GinkgoT())
+
+		valueTemplate := `
+			wordpress:
+			  ingress:
+				hosts:
+				- wordpress.{{ .TeamName }}-1`
+
+		Values := teamNameRendering(teamTest, valueTemplate)
+		g.Expect(string(Values)).To(Equal(`
+			wordpress:
+			  ingress:
+				hosts:
+				- wordpress.teamtest-1`,
+		))
 	})
 
 	Describe("Component scheduler", func() {

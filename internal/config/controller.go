@@ -227,12 +227,8 @@ func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType, tea
 	return out, nil
 }
 
-type teamObject struct {
-	TeamName string
-}
-
 // GetEnvComponentValues returns component values by the given env type and component name
-func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName,teamName string, envType s2hv1beta1.EnvType) (
+func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName, teamName string, envType s2hv1beta1.EnvType) (
 	s2hv1beta1.ComponentValues, error) {
 
 	opts := []http.Option{
@@ -257,10 +253,8 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName,teamName stri
 				"cannot get values file of %s env from url %s", envType, url)
 		}
 
-		valuesBytes = []byte(template.TextRender("TeamNameRendering",
-			string(valuesBytes),
-			teamObject{ TeamName: teamName },
-		))
+		valuesBytes = teamNameRendering(teamName, string(valuesBytes))
+
 		var v map[string]interface{}
 		if err := yaml.Unmarshal(valuesBytes, &v); err != nil {
 			logger.Error(err, "cannot parse component values",
@@ -272,6 +266,17 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName,teamName stri
 	}
 
 	return baseValues, nil
+}
+
+type teamObject struct {
+	TeamName string
+}
+
+func teamNameRendering(teamName, values string) []byte {
+	return []byte(template.TextRender("TeamNameRendering",
+		values,
+		teamObject{TeamName: teamName},
+	))
 }
 
 func (c *controller) createCronJob(cronJob batchv1beta1.CronJob) error {
