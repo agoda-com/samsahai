@@ -391,7 +391,7 @@ func (c *controller) deployComponentsExceptQueue(
 			continue
 		}
 
-		baseValues, err := configctrl.GetEnvComponentValues(cfg, name, queue.Spec.TeamName, s2hv1beta1.EnvBase)
+		baseValues, err := configctrl.GetEnvComponentValues(cfg, name, c.teamName, s2hv1beta1.EnvBase)
 		if err != nil {
 			return false, err
 		}
@@ -408,7 +408,7 @@ func (c *controller) deployComponentsExceptQueue(
 				return true, err
 			}
 		default:
-			values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, comp, queue.Spec.TeamName)
+			values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, comp, c.teamName)
 			if err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values, &deployTimeout); err != nil {
 				return true, err
 			}
@@ -435,7 +435,7 @@ func (c *controller) deployQueueComponent(
 
 	// deploy current queue
 	for name, parentComp := range queueParentComps {
-		baseValues, err := configctrl.GetEnvComponentValues(cfg, name, queue.Spec.TeamName, s2hv1beta1.EnvBase)
+		baseValues, err := configctrl.GetEnvComponentValues(cfg, name, c.teamName, s2hv1beta1.EnvBase)
 		if err != nil {
 			return err
 		}
@@ -462,7 +462,7 @@ func (c *controller) deployQueueComponent(
 			}
 		}
 
-		values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, parentComp, queue.Spec.TeamName)
+		values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, parentComp, c.teamName)
 		if err := deployEngine.Create(c.genReleaseName(parentComp), parentComp, parentComp, values, &deployTimeout); err != nil {
 			return err
 		}
