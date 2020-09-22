@@ -39,3 +39,8 @@ func (r *reporterMock) SendActivePromotionStatus(configCtrl internal.ConfigContr
 func (r *reporterMock) SendImageMissing(configCtrl internal.ConfigController, imageMissingRpt *internal.ImageMissingReporter) error {
 	return nil
 }
+
+// SendPullRequestTriggerResult implements the reporter SendPullRequestTriggerResult function
+func (r *reporterMock) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
+	return nil
+}

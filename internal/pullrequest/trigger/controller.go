@@ -132,9 +132,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	noOfRetry := prTrigger.Status.NoOfRetry
 	maxRetry := prConfig.Trigger.MaxRetry
 	if maxRetry >= 0 && noOfRetry != nil && *noOfRetry >= int(maxRetry) {
-		// TODO: pohfy, send alert
-
-		if err := c.client.Delete(context.TODO(), prTrigger); err != nil {
+		if err := c.deleteAndSendPullRequestTriggerResult(ctx, prTrigger); err != nil {
 			return reconcile.Result{}, err
 		}
 
@@ -159,6 +157,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	nextProcessAt = &metav1.Time{Time: now.Add(pollingTime)}
 	version, err := c.s2hClient.GetComponentVersion(ctx, prCompSource)
 	if err != nil {
+		// cannot get component version from image registry
 		prTrigger.Status.UpdatedAt = &now
 		prTrigger.Status.NextProcessAt = nextProcessAt
 
@@ -169,6 +168,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		}
 
 		prTrigger.Status.SetCondition(s2hv1beta1.PullRequestTriggerCondFailed, corev1.ConditionTrue, err.Error())
+		prTrigger.Status.SetResult(s2hv1beta1.PullRequestTriggerFailure)
 
 		if err := c.client.Update(context.TODO(), prTrigger); err != nil {
 			return reconcile.Result{}, err
@@ -177,6 +177,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
+	// successfully get component version from image registry
 	imgRepo := prTrigger.Spec.Image.Repository
 	prNumber := prTrigger.Spec.PullRequestNumber
 	err = c.createPullRequestQueue(req.Namespace, prTrigger.Spec.Component, imgRepo, version.Version, prNumber.String())
@@ -184,7 +185,8 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
-	if err := c.client.Delete(context.TODO(), prTrigger); err != nil {
+	prTrigger.Status.SetResult(s2hv1beta1.PullRequestTriggerSuccess)
+	if err := c.deleteAndSendPullRequestTriggerResult(ctx, prTrigger); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -269,6 +271,25 @@ func (c *controller) createPullRequestQueue(namespace, compName, compRepo, compV
 
 	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, compName, prNumber, comps)
 	if err := c.prQueueCtrl.Add(prQueue, nil); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context, prTrigger *s2hv1beta1.PullRequestTrigger) error {
+	prTriggerRPC := &samsahairpc.PullRequestTrigger{
+		Name:      prTrigger.Name,
+		Namespace: prTrigger.Namespace,
+		TeamName:  c.teamName,
+	}
+	if _, err := c.s2hClient.RunPostPullRequestTrigger(ctx, prTriggerRPC); err != nil {
+		return errors.Wrapf(err,
+			"cannot send pull request trigger result report, team: %s, component: %s, prNumber: %s",
+			c.teamName, prTrigger.Spec.Component, prTrigger.Spec.PullRequestNumber)
+	}
+
+	if err := c.client.Delete(context.TODO(), prTrigger); err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 

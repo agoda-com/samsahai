@@ -15,7 +15,6 @@ import (
 	"github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
-	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 const maxDesiredMappingPerComp = 10
@@ -303,7 +302,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 func (c *controller) sendImageMissingReport(teamName, compName, repo, version string) {
 	configCtrl := c.GetConfigController()
 	for _, reporter := range c.reporters {
-		img := &rpc.Image{Repository: repo, Tag: version}
+		img := s2hv1beta1.Image{Repository: repo, Tag: version}
 		imageMissingRpt := internal.NewImageMissingReporter(img, c.configs, teamName, compName)
 		if err := reporter.SendImageMissing(configCtrl, imageMissingRpt); err != nil {
 			logger.Error(err, "cannot send image missing list report", "team", teamName)

@@ -20,8 +20,8 @@ const (
 	ReporterName = "slack"
 	username     = "Samsahai Notification"
 
-	componentUpgradeInterval = s2hv1beta1.IntervalRetry
-	componentUpgradeCriteria = s2hv1beta1.CriteriaFailure
+	statusSuccess = "success"
+	statusFailure = "failure"
 )
 
 type reporter struct {
@@ -73,59 +73,25 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 		return nil
 	}
 
-	if err := r.checkMatchingInterval(slackConfig, comp.IsReverify); err != nil {
-		return nil
+	if slackConfig.ComponentUpgrade != nil {
+		if err := r.checkMatchingInterval(slackConfig.ComponentUpgrade.Interval, comp.IsReverify); err != nil {
+			return nil
+		}
 	}
 
-	if err := r.checkMatchingCriteria(slackConfig, comp.Status); err != nil {
-		return nil
+	if slackConfig.ComponentUpgrade != nil {
+		if err := r.checkMatchingCriteria(slackConfig.ComponentUpgrade.Criteria, string(comp.StatusStr)); err != nil {
+			return nil
+		}
 	}
 
 	message := r.makeComponentUpgradeReport(comp)
 	if len(comp.ImageMissingList) > 0 {
 		message += "\n"
-		message += r.makeImageMissingListReport(comp.ImageMissingList)
+		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList))
 	}
 
 	return r.post(slackConfig, message, internal.ComponentUpgradeType)
-}
-
-func (r *reporter) checkMatchingInterval(slackConfig *s2hv1beta1.Slack, isReverify bool) error {
-	interval := componentUpgradeInterval
-	if slackConfig.ComponentUpgrade != nil && slackConfig.ComponentUpgrade.Interval != "" {
-		interval = slackConfig.ComponentUpgrade.Interval
-	}
-
-	switch interval {
-	case s2hv1beta1.IntervalEveryTime:
-	default:
-		if !isReverify {
-			return s2herrors.New("interval was not matched")
-		}
-	}
-
-	return nil
-}
-
-func (r *reporter) checkMatchingCriteria(slackConfig *s2hv1beta1.Slack, status rpc.ComponentUpgrade_UpgradeStatus) error {
-	criteria := componentUpgradeCriteria
-	if slackConfig.ComponentUpgrade != nil && slackConfig.ComponentUpgrade.Criteria != "" {
-		criteria = slackConfig.ComponentUpgrade.Criteria
-	}
-
-	switch criteria {
-	case s2hv1beta1.CriteriaBoth:
-	case s2hv1beta1.CriteriaSuccess:
-		if status != rpc.ComponentUpgrade_UpgradeStatus_SUCCESS {
-			return s2herrors.New("criteria was not matched")
-		}
-	default:
-		if status != rpc.ComponentUpgrade_UpgradeStatus_FAILURE {
-			return s2herrors.New("criteria was not matched")
-		}
-	}
-
-	return nil
 }
 
 // SendActivePromotionStatus implements the reporter SendActivePromotionStatus function
@@ -140,7 +106,7 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 	imageMissingList := atpRpt.ActivePromotionStatus.PreActiveQueue.ImageMissingList
 	if len(imageMissingList) > 0 {
 		message += "\n"
-		message += r.makeImageMissingListReport(convertImageListToRPCImageList(imageMissingList))
+		message += r.makeImageMissingListReport(imageMissingList)
 	}
 
 	message += "\n"
@@ -170,18 +136,6 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 	return r.post(slackConfig, message, internal.ActivePromotionType)
 }
 
-func convertImageListToRPCImageList(images []s2hv1beta1.Image) []*rpc.Image {
-	rpcImages := make([]*rpc.Image, 0)
-	for _, img := range images {
-		rpcImages = append(rpcImages, &rpc.Image{
-			Repository: img.Repository,
-			Tag:        img.Tag,
-		})
-	}
-
-	return rpcImages
-}
-
 // SendImageMissing implements the reporter SendImageMissing function
 func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageMissingRpt *internal.ImageMissingReporter) error {
 	slackConfig, err := r.getSlackConfig(imageMissingRpt.TeamName, configCtrl)
@@ -189,9 +143,40 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 		return nil
 	}
 
-	message := r.makeImageMissingListReport([]*rpc.Image{imageMissingRpt.Image})
+	message := r.makeImageMissingListReport([]s2hv1beta1.Image{imageMissingRpt.Image})
 
 	return r.post(slackConfig, message, internal.ImageMissingType)
+}
+
+// SendPullRequestTriggerResult implements the reporter SendPullRequestTriggerResult function
+func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
+	slackConfig, err := r.getSlackConfig(prTriggerRpt.TeamName, configCtrl)
+	if err != nil {
+		return nil
+	}
+
+	if slackConfig.PullRequestTrigger != nil {
+		err := r.checkMatchingCriteria(slackConfig.PullRequestTrigger.Criteria, string(prTriggerRpt.Result))
+		if err != nil {
+			return nil
+		}
+	}
+
+	message := r.makePullRequestTriggerResultReport(prTriggerRpt)
+
+	return r.post(slackConfig, message, internal.PullRequestTriggerType)
+}
+
+func convertRPCImageListToK8SImageList(images []*rpc.Image) []s2hv1beta1.Image {
+	k8sImages := make([]s2hv1beta1.Image, 0)
+	for _, img := range images {
+		k8sImages = append(k8sImages, s2hv1beta1.Image{
+			Repository: img.Repository,
+			Tag:        img.Tag,
+		})
+	}
+
+	return k8sImages
 }
 
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
@@ -231,7 +216,7 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 	return strings.TrimSpace(template.TextRender("SlackComponentUpgradeFailure", message, comp))
 }
 
-func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotionReporter) string {
+func (r *reporter) makeActivePromotionStatusReport(atpRpt *internal.ActivePromotionReporter) string {
 	var message = `
 *Active Promotion:* {{ .Result }}
 {{- if ne .Result "Success" }}
@@ -264,7 +249,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 *Active Promotion History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}|Click here>
 `
 
-	return strings.TrimSpace(template.TextRender("SlackActivePromotionStatus", message, comp))
+	return strings.TrimSpace(template.TextRender("SlackActivePromotionStatus", message, atpRpt))
 }
 
 func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1beta1.OutdatedComponent) string {
@@ -312,8 +297,7 @@ func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.Acti
 	return strings.TrimSpace(template.TextRender("DestroyedTime", message, status))
 }
 
-// makeImageMissingListReport implements the reporter makeImageMissingListReport function
-func (r *reporter) makeImageMissingListReport(images []*rpc.Image) string {
+func (r *reporter) makeImageMissingListReport(images []s2hv1beta1.Image) string {
 	var message = `
 *Image Missing List*
 {{- range .Images }}
@@ -321,8 +305,52 @@ func (r *reporter) makeImageMissingListReport(images []*rpc.Image) string {
 {{- end }}
 `
 
-	imagesObj := struct{ Images []*rpc.Image }{Images: images}
+	imagesObj := struct{ Images []s2hv1beta1.Image }{Images: images}
 	return strings.TrimSpace(template.TextRender("SlackImageMissingList", message, imagesObj))
+}
+
+func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.PullRequestTriggerReporter) string {
+	var message = `
+*Pull Request Trigger:* {{ .Result }}
+*Component:* {{ .ComponentName }}
+*PR Number:* {{ .PRNumber }}
+*Image:* {{ if .Image }}{{ .Image.Repository }}:{{ .Image.Tag }}{{ else }}no image defined{{ end }}
+*NO of Retry:* {{ if .NoOfRetry }}{{ .NoOfRetry }}{{ else }}0{{ end }}
+*Owner:* {{ .TeamName }}
+*Start at:* {{ .CreatedAt | TimeFormat }}
+`
+
+	return strings.TrimSpace(template.TextRender("SlackPullRequestTriggerResult", message, prTriggerRpt))
+}
+
+func (r *reporter) checkMatchingInterval(interval s2hv1beta1.ReporterInterval, isReverify bool) error {
+	switch interval {
+	case s2hv1beta1.IntervalEveryTime:
+	default:
+		if !isReverify {
+			return s2herrors.New("interval was not matched")
+		}
+	}
+
+	return nil
+}
+
+func (r *reporter) checkMatchingCriteria(criteria s2hv1beta1.ReporterCriteria, result string) error {
+	lowerCaseResult := strings.ToLower(result)
+
+	switch criteria {
+	case s2hv1beta1.CriteriaBoth:
+	case s2hv1beta1.CriteriaSuccess:
+		if lowerCaseResult != statusSuccess {
+			return s2herrors.New("criteria was not matched")
+		}
+	default:
+		if lowerCaseResult != statusFailure {
+			return s2herrors.New("criteria was not matched")
+		}
+	}
+
+	return nil
 }
 
 func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event internal.EventType) error {

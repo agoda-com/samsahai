@@ -126,20 +126,10 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 		}
 	}
 
-	headers := make(http.Header)
-	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
-	ctx := context.TODO()
-	ctx, err = twirp.WithHTTPRequestHeaders(ctx, headers)
-	if err != nil {
-		return errors.Wrap(err, "cannot set request header")
-	}
-
-	_, err = c.s2hClient.DeployActiveServicesIntoPullRequestEnvironment(ctx, &rpc.TeamWithNamespace{
-		TeamName:  c.teamName,
-		Namespace: c.namespace,
-	})
-	if err != nil {
-		return err
+	if queue.IsPullRequestQueue() {
+		if err := c.deployActiveServicesIntoPullRequestEnvironment(); err != nil {
+			return err
+		}
 	}
 
 	isDeployed, isFailed, errMsg := c.checkAllReleasesDeployed(deployEngine, releases)
@@ -719,4 +709,24 @@ func (c *controller) checkAllReleasesDeployed(deployEngine internal.DeployEngine
 	}
 
 	return true, false, ""
+}
+
+func (c *controller) deployActiveServicesIntoPullRequestEnvironment() error {
+	headers := make(http.Header)
+	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
+	ctx := context.TODO()
+	ctx, err := twirp.WithHTTPRequestHeaders(ctx, headers)
+	if err != nil {
+		return errors.Wrap(err, "cannot set request header")
+	}
+
+	_, err = c.s2hClient.DeployActiveServicesIntoPullRequestEnvironment(ctx, &rpc.TeamWithNamespace{
+		TeamName:  c.teamName,
+		Namespace: c.namespace,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

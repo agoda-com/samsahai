@@ -17,8 +17,8 @@ var logger = s2hlog.Log.WithName(ReporterName)
 const (
 	ReporterName = "msteams"
 
-	componentUpgradeInterval = s2hv1beta1.IntervalRetry
-	componentUpgradeCriteria = s2hv1beta1.CriteriaFailure
+	statusSuccess = "success"
+	statusFailure = "failure"
 
 	styleDanger  = `style="color:#EE2828"`
 	styleWarning = `style="color:#EEA328"`
@@ -74,29 +74,28 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 		return nil
 	}
 
-	if err := r.checkMatchingInterval(msTeamsConfig, comp.IsReverify); err != nil {
-		return nil
+	if msTeamsConfig.ComponentUpgrade != nil {
+		if err := r.checkMatchingInterval(msTeamsConfig.ComponentUpgrade.Interval, comp.IsReverify); err != nil {
+			return nil
+		}
 	}
 
-	if err := r.checkMatchingCriteria(msTeamsConfig, comp.Status); err != nil {
-		return nil
+	if msTeamsConfig.ComponentUpgrade != nil {
+		if err := r.checkMatchingCriteria(msTeamsConfig.ComponentUpgrade.Criteria, string(comp.StatusStr)); err != nil {
+			return nil
+		}
 	}
 
 	message := r.makeComponentUpgradeReport(comp)
 	if len(comp.ImageMissingList) > 0 {
 		message += "<hr/>"
-		message += r.makeImageMissingListReport(comp.ImageMissingList)
+		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList))
 	}
 
 	return r.post(msTeamsConfig, message, internal.ComponentUpgradeType)
 }
 
-func (r *reporter) checkMatchingInterval(msTeamsConfig *s2hv1beta1.MSTeams, isReverify bool) error {
-	interval := componentUpgradeInterval
-	if msTeamsConfig.ComponentUpgrade != nil && msTeamsConfig.ComponentUpgrade.Interval != "" {
-		interval = msTeamsConfig.ComponentUpgrade.Interval
-	}
-
+func (r *reporter) checkMatchingInterval(interval s2hv1beta1.ReporterInterval, isReverify bool) error {
 	switch interval {
 	case s2hv1beta1.IntervalEveryTime:
 	default:
@@ -108,20 +107,17 @@ func (r *reporter) checkMatchingInterval(msTeamsConfig *s2hv1beta1.MSTeams, isRe
 	return nil
 }
 
-func (r *reporter) checkMatchingCriteria(msTeamsConfig *s2hv1beta1.MSTeams, status rpc.ComponentUpgrade_UpgradeStatus) error {
-	criteria := componentUpgradeCriteria
-	if msTeamsConfig.ComponentUpgrade != nil && msTeamsConfig.ComponentUpgrade.Criteria != "" {
-		criteria = msTeamsConfig.ComponentUpgrade.Criteria
-	}
+func (r *reporter) checkMatchingCriteria(criteria s2hv1beta1.ReporterCriteria, result string) error {
+	lowerCaseResult := strings.ToLower(result)
 
 	switch criteria {
 	case s2hv1beta1.CriteriaBoth:
 	case s2hv1beta1.CriteriaSuccess:
-		if status != rpc.ComponentUpgrade_UpgradeStatus_SUCCESS {
+		if lowerCaseResult != statusSuccess {
 			return s2herrors.New("criteria was not matched")
 		}
 	default:
-		if status != rpc.ComponentUpgrade_UpgradeStatus_FAILURE {
+		if lowerCaseResult != statusFailure {
 			return s2herrors.New("criteria was not matched")
 		}
 	}
@@ -141,7 +137,7 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 	imageMissingList := atpRpt.ActivePromotionStatus.PreActiveQueue.ImageMissingList
 	if len(imageMissingList) > 0 {
 		message += "<hr/>"
-		message += r.makeImageMissingListReport(convertImageListToRPCImageList(imageMissingList))
+		message += r.makeImageMissingListReport(imageMissingList)
 	}
 
 	if atpRpt.HasOutdatedComponent {
@@ -174,16 +170,16 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 	return r.post(msTeamsConfig, message, internal.ActivePromotionType)
 }
 
-func convertImageListToRPCImageList(images []s2hv1beta1.Image) []*rpc.Image {
-	rpcImages := make([]*rpc.Image, 0)
+func convertRPCImageListToK8SImageList(images []*rpc.Image) []s2hv1beta1.Image {
+	k8sImages := make([]s2hv1beta1.Image, 0)
 	for _, img := range images {
-		rpcImages = append(rpcImages, &rpc.Image{
+		k8sImages = append(k8sImages, s2hv1beta1.Image{
 			Repository: img.Repository,
 			Tag:        img.Tag,
 		})
 	}
 
-	return rpcImages
+	return k8sImages
 }
 
 // SendImageMissing implements the reporter SendImageMissing function
@@ -193,9 +189,28 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 		return nil
 	}
 
-	message := r.makeImageMissingListReport([]*rpc.Image{imageMissingRpt.Image})
+	message := r.makeImageMissingListReport([]s2hv1beta1.Image{imageMissingRpt.Image})
 
 	return r.post(msTeamsConfig, message, internal.ImageMissingType)
+}
+
+// SendPullRequestTriggerResult implements the reporter SendPullRequestTriggerResult function
+func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
+	msTeamsConfig, err := r.getMSTeamsConfig(prTriggerRpt.TeamName, configCtrl)
+	if err != nil {
+		return nil
+	}
+
+	if msTeamsConfig.PullRequestTrigger != nil && msTeamsConfig.PullRequestTrigger.Criteria != "" {
+		err := r.checkMatchingCriteria(msTeamsConfig.PullRequestTrigger.Criteria, string(prTriggerRpt.Result))
+		if err != nil {
+			return nil
+		}
+	}
+
+	message := r.makePullRequestTriggerResultReport(prTriggerRpt)
+
+	return r.post(msTeamsConfig, message, internal.PullRequestTriggerType)
 }
 
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
@@ -317,8 +332,7 @@ func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.Acti
 	return strings.TrimSpace(template.TextRender("DestroyedTime", message, status))
 }
 
-// makeImageMissingListReport implements the reporter makeImageMissingListReport function
-func (r *reporter) makeImageMissingListReport(images []*rpc.Image) string {
+func (r *reporter) makeImageMissingListReport(images []s2hv1beta1.Image) string {
 	var message = `
 <b>Image Missing List</b>
 {{- range .Images }}
@@ -326,8 +340,22 @@ func (r *reporter) makeImageMissingListReport(images []*rpc.Image) string {
 {{- end }}
 `
 
-	imagesObj := struct{ Images []*rpc.Image }{Images: images}
+	imagesObj := struct{ Images []s2hv1beta1.Image }{Images: images}
 	return strings.TrimSpace(template.TextRender("MSTeamsImageMissingList", message, imagesObj))
+}
+
+func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.PullRequestTriggerReporter) string {
+	var message = `
+<b>Pull Request Trigger:</b>  <span {{ if eq .Result "Success" }}` + styleInfo + `{{ else if eq .Result "Failure" }}` + styleDanger + `{{ end }}>{{ .Result }}</span>
+<br/><b>Component:</b> {{ .ComponentName }}
+<br/><b>PR Number:</b> {{ .PRNumber }}
+<br/><b>Image:</b> {{ if .Image }}{{ .Image.Repository }}:{{ .Image.Tag }}{{ else }}no image defined{{ end }}
+<br/><b>NO of Retry:</b> {{ if .NoOfRetry }}{{ .NoOfRetry }}{{ else }}0{{ end }}
+<br/><b>Owner:</b> {{ .TeamName }}
+<br/><b>Start at:</b> {{ .CreatedAt | TimeFormat }}
+`
+
+	return strings.TrimSpace(template.TextRender("SlackPullRequestTriggerResult", message, prTriggerRpt))
 }
 
 func (r *reporter) post(msTeamsConfig *s2hv1beta1.MSTeams, message string, event internal.EventType) error {

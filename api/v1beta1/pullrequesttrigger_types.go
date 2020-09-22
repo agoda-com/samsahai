@@ -34,6 +34,14 @@ type PullRequestTriggerSpec struct {
 	Source UpdatingSource `json:"source,omitempty"`
 }
 
+// PullRequestTriggerResult represents the result status of a pull request trigger
+type PullRequestTriggerResult string
+
+const (
+	PullRequestTriggerSuccess PullRequestTriggerResult = "Success"
+	PullRequestTriggerFailure PullRequestTriggerResult = "Failure"
+)
+
 // PullRequestTriggerStatus defines the observed state of PullRequestTrigger
 type PullRequestTriggerStatus struct {
 	// CreatedAt represents time when pull request has been triggered firstly
@@ -50,12 +58,20 @@ type PullRequestTriggerStatus struct {
 	// +optional
 	NoOfRetry *int `json:"noOfRetry,omitempty"`
 
+	// Result represents a result of the pull request trigger
+	// +optional
+	Result PullRequestTriggerResult `json:"result,omitempty"`
+
 	// Conditions contains observations of the resource's state e.g.,
 	// Queue deployed, being tested
 	// +optional
 	// +patchMergeKey=type
 	// +patchStrategy=merge
 	Conditions []PullRequestTriggerCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+}
+
+func (pr *PullRequestTriggerStatus) SetResult(res PullRequestTriggerResult) {
+	pr.Result = res
 }
 
 type PullRequestTriggerCondition struct {

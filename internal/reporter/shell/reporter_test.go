@@ -52,7 +52,7 @@ var _ = Describe("shell command reporter", func() {
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
 			configCtrl := newMockConfigCtrl("")
 
-			status := &s2hv1beta1.ActivePromotionStatus{
+			status := s2hv1beta1.ActivePromotionStatus{
 				Result: s2hv1beta1.ActivePromotionSuccess,
 			}
 			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "", "")
@@ -74,13 +74,35 @@ var _ = Describe("shell command reporter", func() {
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
 			configCtrl := newMockConfigCtrl("")
 
-			img := &rpc.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
+			img := s2hv1beta1.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
 			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{}, "owner", "comp1")
 			err := r.SendImageMissing(configCtrl, imageMissingRpt)
 			g.Expect(err).NotTo(HaveOccurred())
 
 			g.Expect(testCmdObj.Command).To(Equal([]string{"/bin/sh", "-c"}))
 			g.Expect(testCmdObj.Args).To(Equal([]string{"echo image missing docker.io/hello-a:2018.01.01 of comp1"}))
+		})
+
+		It("should correctly execute pull request trigger", func() {
+			testCmdObj := &s2hv1beta1.CommandAndArgs{}
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
+				testCmdObj = cmdObj
+				return []byte{}, nil
+			}
+
+			r := shell.New(shell.WithExecCommand(mockExecCommand))
+			configCtrl := newMockConfigCtrl("")
+
+			status := s2hv1beta1.PullRequestTriggerStatus{
+				Result: s2hv1beta1.PullRequestTriggerFailure,
+			}
+			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
+				"owner", "comp1", "1234", nil)
+			err := r.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
+			g.Expect(err).NotTo(HaveOccurred())
+
+			g.Expect(testCmdObj.Command).To(Equal([]string{"/bin/sh", "-c"}))
+			g.Expect(testCmdObj.Args).To(Equal([]string{"echo pull request trigger of 1234: Failure"}))
 		})
 
 		It("should correctly execute command with environment variables", func() {
@@ -189,6 +211,10 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 							Command: []string{"/bin/sh", "-c"},
 							Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }} of {{ .ComponentName }}"},
 						},
+						PullRequestTrigger: &s2hv1beta1.CommandAndArgs{
+							Command: []string{"/bin/sh", "-c"},
+							Args:    []string{"echo pull request trigger of {{ .PRNumber }}: {{ .Result }}"},
+						},
 					},
 				},
 			},
@@ -204,6 +230,10 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	return map[string]*s2hv1beta1.Component{}, nil
 }
 
+func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
 func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
 	return s2hv1beta1.ConfigBundles{}, nil
 }
@@ -213,6 +243,10 @@ func (c *mockConfigCtrl) GetPriorityQueues(configName string) ([]string, error) 
 }
 
 func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1beta1.ConfigPullRequest, error) {
+	return nil, nil
+}
+
+func (c *mockConfigCtrl) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
 	return nil, nil
 }
 

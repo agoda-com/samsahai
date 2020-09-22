@@ -208,14 +208,18 @@ const (
 type Slack struct {
 	Channels []string `json:"channels"`
 	// +optional
-	ComponentUpgrade *ConfigComponentUpgrade `json:"componentUpgrade,omitempty"`
+	ComponentUpgrade *ConfigComponentUpgradeReport `json:"componentUpgrade,omitempty"`
+	// +optional
+	PullRequestTrigger *ConfigPullRequestTriggerReport `json:"pullRequestTrigger,omitempty"`
 }
 
 // MSTeams defines a configuration of Microsoft Teams
 type MSTeams struct {
 	Groups []MSTeamsGroup `json:"groups"`
 	// +optional
-	ComponentUpgrade *ConfigComponentUpgrade `json:"componentUpgrade,omitempty"`
+	ComponentUpgrade *ConfigComponentUpgradeReport `json:"componentUpgrade,omitempty"`
+	// +optional
+	PullRequestTrigger *ConfigPullRequestTriggerReport `json:"pullRequestTrigger,omitempty"`
 }
 
 // MSTeamsGroup defines group name/id and channel name/id of Microsoft Teams
@@ -224,10 +228,16 @@ type MSTeamsGroup struct {
 	ChannelNameOrIDs []string `json:"channelNameOrIDs"`
 }
 
-// ConfigComponentUpgrade defines a configuration of component upgrade report
-type ConfigComponentUpgrade struct {
+// ConfigComponentUpgradeReport defines a configuration of component upgrade report
+type ConfigComponentUpgradeReport struct {
 	// +optional
 	Interval ReporterInterval `json:"interval,omitempty"`
+	// +optional
+	Criteria ReporterCriteria `json:"criteria,omitempty"`
+}
+
+// ConfigPullRequestTrigger defines a configuration of pull request trigger report
+type ConfigPullRequestTriggerReport struct {
 	// +optional
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
 }
@@ -240,6 +250,8 @@ type Rest struct {
 	ActivePromotion *RestObject `json:"activePromotion,omitempty"`
 	// +optional
 	ImageMissing *RestObject `json:"imageMissing,omitempty"`
+	// +optional
+	PullRequestTrigger *RestObject `json:"pullRequestTrigger,omitempty"`
 }
 
 type RestObject struct {
@@ -254,6 +266,8 @@ type Shell struct {
 	ActivePromotion *CommandAndArgs `json:"activePromotion,omitempty"`
 	// +optional
 	ImageMissing *CommandAndArgs `json:"imageMissing,omitempty"`
+	// +optional
+	PullRequestTrigger *CommandAndArgs `json:"pullRequestTrigger,omitempty"`
 }
 
 // CommandAndArgs defines commands and args

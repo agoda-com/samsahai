@@ -5,6 +5,7 @@ option go_package = "pkg/samsahai/rpc";
 
 service RPC {
     rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
+    rpc RunPostPullRequestTrigger (PullRequestTrigger) returns (Empty);
     rpc GetMissingVersions (TeamWithCurrentComponent) returns (ImageList);
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
     rpc GetBundleName (TeamWithComponentName) returns (BundleName);
@@ -137,4 +138,10 @@ message ComponentSource {
 
 message ComponentVersion {
     string version = 1;
+}
+
+message PullRequestTrigger {
+    string name = 1;
+    string namespace = 2;
+    string teamName = 3;
 }

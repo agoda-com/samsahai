@@ -43,7 +43,7 @@ type PullRequestQueueSpec struct {
 	// lower is will be picked first
 	NoOfOrder int `json:"noOfOrder"`
 
-	// TeamName represents team owner of the queue
+	// TeamName represents team owner of the pull request queue
 	TeamName string `json:"teamName"`
 }
 

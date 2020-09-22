@@ -130,6 +130,28 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 	return nil
 }
 
+// SendPullRequestTriggerResult implements the reporter SendPullRequestTriggerResult function
+func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
+	config, err := configCtrl.Get(prTriggerRpt.TeamName)
+	if err != nil {
+		return err
+	}
+
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Shell == nil ||
+		config.Spec.Reporter.Shell.PullRequestTrigger == nil {
+		return nil
+	}
+
+	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.PullRequestTrigger.Command,
+		config.Spec.Reporter.Shell.PullRequestTrigger.Args, prTriggerRpt)
+	if err := r.execute(cmdObj, internal.PullRequestTriggerType); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *reporter) execute(cmdObj *s2hv1beta1.CommandAndArgs, event internal.EventType) error {
 	logger.Debug("start executing command", "event", event)
 
