@@ -222,7 +222,9 @@ var _ = Describe("send slack message", func() {
 			}
 			mockSlackCli := &mockSlack{}
 			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
-			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url", BuildNumber: "teamcity-build-number"}}
+			testRunner := s2hv1beta1.TestRunner{
+				Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url", BuildNumber: "teamcity-build-number"},
+			}
 			comp := internal.NewComponentUpgradeReporter(
 				rpcComp,
 				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
@@ -237,9 +239,10 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("pr1234"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("pr-comp1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("#3"))
-			// TODO: pohfy, update here
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/queue/histories/comp1-5678/log|Download here>"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/queue/histories/comp1-5678|Click here>"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(
+				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log|Download here>"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(
+				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678|Click here>"))
 
 		})
 	})

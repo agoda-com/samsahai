@@ -985,6 +985,24 @@ func (c *controller) GetTeams() (v *s2hv1beta1.TeamList, err error) {
 	return v, errors.Wrap(err, "cannot list teams")
 }
 
+func (c *controller) GetPullRequestQueueHistories(namespace string) (v *s2hv1beta1.PullRequestQueueHistoryList, err error) {
+	v = &s2hv1beta1.PullRequestQueueHistoryList{}
+	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})
+	return v, errors.Wrap(err, "cannot list pull request queue histories")
+}
+
+func (c *controller) GetPullRequestQueueHistory(name, namespace string) (v *s2hv1beta1.PullRequestQueueHistory, err error) {
+	v = &s2hv1beta1.PullRequestQueueHistory{}
+	err = c.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, v)
+	return
+}
+
+func (c *controller) GetPullRequestQueues(namespace string) (v *s2hv1beta1.PullRequestQueueList, err error) {
+	v = &s2hv1beta1.PullRequestQueueList{}
+	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})
+	return v, errors.Wrap(err, "cannot list pull request queues")
+}
+
 func (c *controller) GetQueueHistories(namespace string) (v *s2hv1beta1.QueueHistoryList, err error) {
 	v = &s2hv1beta1.QueueHistoryList{}
 	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})

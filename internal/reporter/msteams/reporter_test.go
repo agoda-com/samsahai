@@ -235,7 +235,9 @@ var _ = Describe("send ms teams message", func() {
 			mockMSTeamsCli := &mockMSTeams{}
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
-			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url", BuildNumber: "teamcity-build-number"}}
+			testRunner := s2hv1beta1.TestRunner{
+				Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url", BuildNumber: "teamcity-build-number"},
+			}
 			comp := internal.NewComponentUpgradeReporter(
 				rpcComp,
 				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
@@ -255,8 +257,10 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Failure"))
 			// Should contain information
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("#2"))
-			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/queue/histories/comp1-5678/log">Download here</a>`))
-			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/queue/histories/comp1-5678">Click here</a>`))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(
+				`<a href="http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log">Download here</a>`))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(
+				`<a href="http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678">Click here</a>`))
 		})
 	})
 

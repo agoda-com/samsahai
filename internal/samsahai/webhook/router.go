@@ -57,8 +57,11 @@ func (h *handler) bind(r *httprouter.Router) {
 	r.GET("/teams/:team/activepromotions/histories/:history", h.getTeamActivePromotionHistory)
 	r.GET("/teams/:team/activepromotions/histories/:history/log", h.getTeamActivePromotionHistoryLog)
 
-	r.POST("/teams/:team/pullrequest/queue", h.pullRequestWebhook)
-
+	r.POST("/teams/:team/pullrequest/trigger", h.pullRequestWebhook)
+	r.GET("/teams/:team/pullrequest/queue", h.getTeamPullRequestQueue)
+	r.GET("/teams/:team/pullrequest/queue/histories/:queue", h.getTeamPullRequestQueueHistory)
+	r.GET("/teams/:team/pullrequest/queue/histories/:queue/log", h.getTeamPullRequestQueueHistoryLog)
+	////
 	r.GET("/activepromotions", h.getActivePromotions)
 
 	//r.GET("/teams/:team/queue/:queue", h.getTeamQueue)

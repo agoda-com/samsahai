@@ -208,24 +208,30 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 }
 
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
+	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}`
+	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log`
+
 	message := `
 <b>Component Upgrade:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure{{ end }}</span>
-` + r.makeDeploymentQueueReport(comp)
+` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL)
 	return strings.TrimSpace(template.TextRender("MSTeamsComponentUpgrade", message, comp))
 }
 
 func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeReporter) string {
+	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}`
+	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}/log`
+
 	message := `
 <b>Pull Request Queue:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure{{ end }}</span>
 {{- if .PullRequestComponent }}
 <br/><b>Component:</b> {{ .PullRequestComponent.ComponentName }}
 <br/><b>PR Number:</b> {{ .PullRequestComponent.PRNumber }}
 {{- end }}
-` + r.makeDeploymentQueueReport(comp)
+` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL)
 	return strings.TrimSpace(template.TextRender("MSTeamsPullRequestQueue", message, comp))
 }
 
-func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeReporter) string {
+func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeReporter, queueHistURL, queueLogURL string) string {
 	message := `
 {{- if eq .Status 0 }}
 <br/><b>Issue type:</b> {{ .IssueTypeStr }}
@@ -254,8 +260,8 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
  {{- if .TestRunner.Teamcity.BuildURL }}
 <br/><b>Teamcity URL:</b> <a href="{{ .TestRunner.Teamcity.BuildURL }}">#{{ .TestRunner.Teamcity.BuildNumber }}</a>
  {{- end }}
-<br/><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log">Download here</a>
-<br/><b>Deployment History:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}">Click here</a>
+<br/><b>Deployment Logs:</b> <a href="` + queueLogURL + `">Download here</a>
+<br/><b>Deployment History:</b> <a href="` + queueHistURL + `">Click here</a>
 {{- end}}
 `
 	return strings.TrimSpace(template.TextRender("MSTeamsDeploymentQueue", message, comp))

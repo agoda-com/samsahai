@@ -204,24 +204,30 @@ func convertRPCImageListToK8SImageList(images []*rpc.Image) []s2hv1beta1.Image {
 }
 
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
+	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}`
+	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log`
+
 	message := `
 *Component Upgrade:* {{ .StatusStr }}
-` + r.makeDeploymentQueueReport(comp)
+` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL)
 	return strings.TrimSpace(template.TextRender("SlackComponentUpgrade", message, comp))
 }
 
 func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeReporter) string {
+	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}`
+	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}/log`
+
 	message := `
 *Pull Request Queue:* {{ .StatusStr }}
 {{- if .PullRequestComponent }}
 *Component:* {{ .PullRequestComponent.ComponentName }}
 *PR Number:* {{ .PullRequestComponent.PRNumber }}
 {{- end }}
-` + r.makeDeploymentQueueReport(comp)
+` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL)
 	return strings.TrimSpace(template.TextRender("SlackPullRequestQueue", message, comp))
 }
 
-func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeReporter) string {
+func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeReporter, queueHistURL, queueLogURL string) string {
 	message := `
 {{- if eq .Status 0 }}
 *Issue type:* {{ .IssueTypeStr }}
@@ -250,8 +256,8 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
   {{- if .TestRunner.Teamcity.BuildURL }}
 *Teamcity URL:* <{{ .TestRunner.Teamcity.BuildURL }}|{{ .TestRunner.Teamcity.BuildNumber }}>
   {{- end }}
-*Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log|Download here>
-*Deployment History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}|Click here>
+*Deployment Logs:* <` + queueLogURL + `|Download here>
+*Deployment History:* <` + queueHistURL + `|Click here>
 {{- end}}
 `
 	return strings.TrimSpace(template.TextRender("SlackDeploymentQueue", message, comp))

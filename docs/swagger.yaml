@@ -271,7 +271,7 @@ definitions:
       items: {}
       type: array
     type: object
-  v1beta1.ConfigComponentUpgrade:
+  v1beta1.ConfigComponentUpgradeReport:
     properties:
       criteria:
         description: +optional
@@ -314,9 +314,23 @@ definitions:
         items:
           $ref: '#/definitions/v1beta1.PullRequestComponent'
         type: array
-      parallel:
+      concurrences:
         description: |-
-          Parallel defines a parallel number of pull request queue
+          Concurrences defines a parallel number of pull request queue
+          +optional
+        type: integer
+      deployment:
+        $ref: '#/definitions/v1beta1.ConfigDeploy'
+        description: Deployment represents configuration about deploy
+        type: object
+      maxHistoryDays:
+        description: |-
+          MaxHistoryDays defines maximum days of PullRequestQueueHistory stored
+          +optional
+        type: integer
+      maxRetry:
+        description: |-
+          MaxRetry defines max retry counts of pull request component upgrade
           +optional
         type: integer
       resources:
@@ -326,8 +340,25 @@ definitions:
         type: string
       trigger:
         $ref: '#/definitions/v1beta1.PullRequestTriggerConfig'
-        description: +optional
+        description: |-
+          Trigger represents a pull request trigger configuration
+          +optional
         type: object
+    type: object
+  v1beta1.ConfigPullRequestQueueReport:
+    properties:
+      criteria:
+        description: +optional
+        type: string
+      interval:
+        description: +optional
+        type: string
+    type: object
+  v1beta1.ConfigPullRequestTriggerReport:
+    properties:
+      criteria:
+        description: +optional
+        type: string
     type: object
   v1beta1.ConfigReporter:
     properties:
@@ -507,13 +538,21 @@ definitions:
   v1beta1.MSTeams:
     properties:
       componentUpgrade:
-        $ref: '#/definitions/v1beta1.ConfigComponentUpgrade'
+        $ref: '#/definitions/v1beta1.ConfigComponentUpgradeReport'
         description: +optional
         type: object
       groups:
         items:
           $ref: '#/definitions/v1beta1.MSTeamsGroup'
         type: array
+      pullRequestQueue:
+        $ref: '#/definitions/v1beta1.ConfigPullRequestQueueReport'
+        description: +optional
+        type: object
+      pullRequestTrigger:
+        $ref: '#/definitions/v1beta1.ConfigPullRequestTriggerReport'
+        description: +optional
+        type: object
     type: object
   v1beta1.MSTeamsGroup:
     properties:
@@ -535,11 +574,6 @@ definitions:
     type: object
   v1beta1.PullRequestComponent:
     properties:
-      chart:
-        $ref: '#/definitions/v1beta1.ComponentChart'
-        description: Chart defines a chart repository, name and version of pull request
-          component
-        type: object
       dependencies:
         description: |-
           Dependencies defines a list of components which are required to be deployed together with the main component
@@ -557,11 +591,6 @@ definitions:
         description: Name defines a main component name which is deployed per pull
           request
         type: string
-      parallel:
-        description: |-
-          Parallel defines a parallel number of pull request queue
-          +optional
-        type: integer
       resources:
         description: |-
           Resources represents how many resources of pull request namespace
@@ -572,10 +601,118 @@ definitions:
           Source defines a source for image repository
           +optional
         type: string
-      trigger:
-        $ref: '#/definitions/v1beta1.PullRequestTriggerConfig'
-        description: +optional
+    type: object
+  v1beta1.PullRequestQueue:
+    properties:
+      spec:
+        $ref: '#/definitions/v1beta1.PullRequestQueueSpec'
         type: object
+      status:
+        $ref: '#/definitions/v1beta1.PullRequestQueueStatus'
+        type: object
+    type: object
+  v1beta1.PullRequestQueueCondition:
+    properties:
+      lastTransitionTime:
+        description: +optional
+        type: string
+      message:
+        description: +optional
+        type: string
+      reason:
+        description: +optional
+        type: string
+      status:
+        type: string
+      type:
+        type: string
+    type: object
+  v1beta1.PullRequestQueueHistory:
+    properties:
+      spec:
+        $ref: '#/definitions/v1beta1.PullRequestQueueHistorySpec'
+        type: object
+      status:
+        $ref: '#/definitions/v1beta1.PullRequestQueueHistoryStatus'
+        type: object
+    type: object
+  v1beta1.PullRequestQueueHistorySpec:
+    properties:
+      pullRequestQueue:
+        $ref: '#/definitions/v1beta1.PullRequestQueue'
+        type: object
+    type: object
+  v1beta1.PullRequestQueueHistoryStatus:
+    type: object
+  v1beta1.PullRequestQueueSpec:
+    properties:
+      componentName:
+        description: ComponentName represents a pull request Component name
+        type: string
+      components:
+        $ref: '#/definitions/v1beta1.QueueComponents'
+        description: |-
+          Components represents a list of components which are deployed
+          +optional
+        type: object
+      noOfOrder:
+        description: |-
+          NoOfOrder defines the position in queue
+          lower is will be picked first
+        type: integer
+      noOfRetry:
+        description: |-
+          NoOfRetry defines how many times this pull request component has been tested
+          +optional
+        type: integer
+      prNumber:
+        description: PRNumber represents a pull request number
+        type: string
+      teamName:
+        description: TeamName represents team owner of the pull request queue
+        type: string
+    type: object
+  v1beta1.PullRequestQueueStatus:
+    properties:
+      conditions:
+        description: |-
+          Conditions contains observations of the resource's state e.g.,
+          Queue deployed, being tested
+          +optional
+          +patchMergeKey=type
+          +patchStrategy=merge
+        items:
+          $ref: '#/definitions/v1beta1.PullRequestQueueCondition'
+        type: array
+      createdAt:
+        description: CreatedAt represents time when the component has been added to
+          queue
+        type: string
+      deploymentQueue:
+        $ref: '#/definitions/v1beta1.Queue'
+        description: |-
+          ComponentUpgrade defines a deployed pull request queue
+          +optional
+        type: object
+      pullRequestNamespace:
+        description: PullRequestNamespace represents a current pull request namespace
+        type: string
+      pullRequestQueueHistoryName:
+        description: |-
+          PullRequestQueueHistoryName represents created PullRequestQueueHistory name
+          +optional
+        type: string
+      result:
+        description: |-
+          Result represents a result of the pull request queue
+          +optional
+        type: string
+      state:
+        description: State represents current status of this queue
+        type: string
+      updatedAt:
+        description: UpdatedAt represents time when the component was processed
+        type: string
     type: object
   v1beta1.PullRequestTriggerConfig:
     properties:
@@ -797,6 +934,14 @@ definitions:
         $ref: '#/definitions/v1beta1.RestObject'
         description: +optional
         type: object
+      pullRequestQueue:
+        $ref: '#/definitions/v1beta1.RestObject'
+        description: +optional
+        type: object
+      pullRequestTrigger:
+        $ref: '#/definitions/v1beta1.RestObject'
+        description: +optional
+        type: object
     type: object
   v1beta1.RestObject:
     properties:
@@ -819,6 +964,14 @@ definitions:
         $ref: '#/definitions/v1beta1.CommandAndArgs'
         description: +optional
         type: object
+      pullRequestQueue:
+        $ref: '#/definitions/v1beta1.CommandAndArgs'
+        description: +optional
+        type: object
+      pullRequestTrigger:
+        $ref: '#/definitions/v1beta1.CommandAndArgs'
+        description: +optional
+        type: object
     type: object
   v1beta1.Slack:
     properties:
@@ -827,7 +980,15 @@ definitions:
           type: string
         type: array
       componentUpgrade:
-        $ref: '#/definitions/v1beta1.ConfigComponentUpgrade'
+        $ref: '#/definitions/v1beta1.ConfigComponentUpgradeReport'
+        description: +optional
+        type: object
+      pullRequestQueue:
+        $ref: '#/definitions/v1beta1.ConfigPullRequestQueueReport'
+        description: +optional
+        type: object
+      pullRequestTrigger:
+        $ref: '#/definitions/v1beta1.ConfigPullRequestTriggerReport'
         description: +optional
         type: object
     type: object
@@ -905,6 +1066,11 @@ definitions:
       previousActive:
         description: +optional
         type: string
+      pullRequests:
+        description: +optional
+        items:
+          type: string
+        type: array
       staging:
         description: +optional
         type: string
@@ -1059,7 +1225,7 @@ definitions:
     properties:
       component:
         type: string
-      pullRequestNumber:
+      prNumber:
         type: string
       tag:
         type: string
@@ -1138,6 +1304,11 @@ definitions:
       previousActive:
         description: +optional
         type: string
+      pullRequests:
+        description: +optional
+        items:
+          type: string
+        type: array
       spec:
         $ref: '#/definitions/v1beta1.TeamSpec'
         type: object
@@ -1149,6 +1320,25 @@ definitions:
         type: object
       teamName:
         type: string
+    type: object
+  webhook.teamPRQueueJSON:
+    properties:
+      current:
+        $ref: '#/definitions/v1beta1.PullRequestQueue'
+        description: +Optional
+        type: object
+      historyNames:
+        items:
+          type: string
+        type: array
+      noOfQueue:
+        description: +optional
+        type: integer
+      queues:
+        description: +Optional
+        items:
+          $ref: '#/definitions/v1beta1.PullRequestQueue'
+        type: array
     type: object
   webhook.teamQueueJSON:
     properties:
@@ -1475,6 +1665,91 @@ paths:
       tags:
       - GET
   /teams/{team}/pullrequest/queue:
+    get:
+      description: Returns queue information of pull request deployment flow.
+      parameters:
+      - description: Team name
+        in: path
+        name: team
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/webhook.teamPRQueueJSON'
+        "404":
+          description: Team not found
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+      summary: Get Team's Pull Request Queues
+      tags:
+      - GET
+  /teams/{team}/pullrequest/queue/histories/{queue}:
+    get:
+      description: Return pull request queue history of team by id
+      parameters:
+      - description: Team name
+        in: path
+        name: team
+        required: true
+        type: string
+      - description: pull request queue history name
+        in: path
+        name: queue
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1beta1.PullRequestQueueHistory'
+        "404":
+          description: pull request queue history not found
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+      summary: Get Team Pull Request Queue History
+      tags:
+      - GET
+  /teams/{team}/pullrequest/queue/histories/{queue}/log:
+    get:
+      description: Returns zip log file of the pull request queue history
+      parameters:
+      - description: Team name
+        in: path
+        name: team
+        required: true
+        type: string
+      - description: pull request queue history name
+        in: path
+        name: queue
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/v1beta1.PullRequestQueueHistory'
+        "404":
+          description: pull request queue history not found
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+      summary: Get Team Pull Request Queue History Log
+      tags:
+      - GET
+  /teams/{team}/pullrequest/trigger:
     post:
       consumes:
       - application/json

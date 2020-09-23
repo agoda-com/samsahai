@@ -203,6 +203,15 @@ type SamsahaiController interface {
 	// GetQueues returns QueueList of the namespace
 	GetQueues(namespace string) (*s2hv1beta1.QueueList, error)
 
+	// GetPullRequestQueueHistories returns PullRequestQueueHistoryList of the namespace
+	GetPullRequestQueueHistories(namespace string) (*s2hv1beta1.PullRequestQueueHistoryList, error)
+
+	// GetQueueHistory returns PullRequestQueue by name and namespace
+	GetPullRequestQueueHistory(name, namespace string) (*s2hv1beta1.PullRequestQueueHistory, error)
+
+	// GetQueues returns PullRequestQueueList of the namespace
+	GetPullRequestQueues(namespace string) (*s2hv1beta1.PullRequestQueueList, error)
+
 	// GetStableValues returns Stable Values of parent component in team
 	GetStableValues(team *s2hv1beta1.Team, comp *s2hv1beta1.Component) (s2hv1beta1.ComponentValues, error)
 
