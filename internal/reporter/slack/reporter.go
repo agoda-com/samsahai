@@ -77,9 +77,7 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 		if err := r.checkMatchingInterval(slackConfig.ComponentUpgrade.Interval, comp.IsReverify); err != nil {
 			return nil
 		}
-	}
 
-	if slackConfig.ComponentUpgrade != nil {
 		if err := r.checkMatchingCriteria(slackConfig.ComponentUpgrade.Criteria, string(comp.StatusStr)); err != nil {
 			return nil
 		}
@@ -92,6 +90,32 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	}
 
 	return r.post(slackConfig, message, internal.ComponentUpgradeType)
+}
+
+// SendPullRequestQueue implements the reporter SendPullRequestQueue function
+func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
+	slackConfig, err := r.getSlackConfig(comp.TeamName, configCtrl)
+	if err != nil {
+		return nil
+	}
+
+	if slackConfig.PullRequestQueue != nil {
+		if err := r.checkMatchingInterval(slackConfig.PullRequestQueue.Interval, comp.IsReverify); err != nil {
+			return nil
+		}
+
+		if err := r.checkMatchingCriteria(slackConfig.PullRequestQueue.Criteria, string(comp.StatusStr)); err != nil {
+			return nil
+		}
+	}
+
+	message := r.makePullRequestQueueReport(comp)
+	if len(comp.ImageMissingList) > 0 {
+		message += "\n"
+		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList))
+	}
+
+	return r.post(slackConfig, message, internal.PullRequestQueueType)
 }
 
 // SendActivePromotionStatus implements the reporter SendActivePromotionStatus function
@@ -181,11 +205,28 @@ func convertRPCImageListToK8SImageList(images []*rpc.Image) []s2hv1beta1.Image {
 
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
 	message := `
-*Component Upgrade:*{{ if eq .Status 1 }} Success {{ else }} Failure {{ end }}
+*Component Upgrade:* {{ .StatusStr }}
+` + r.makeDeploymentQueueReport(comp)
+	return strings.TrimSpace(template.TextRender("SlackComponentUpgrade", message, comp))
+}
+
+func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeReporter) string {
+	message := `
+*Pull Request Queue:* {{ .StatusStr }}
+{{- if .PullRequestComponent }}
+*Component:* {{ .PullRequestComponent.ComponentName }}
+*PR Number:* {{ .PullRequestComponent.PRNumber }}
+{{- end }}
+` + r.makeDeploymentQueueReport(comp)
+	return strings.TrimSpace(template.TextRender("SlackPullRequestQueue", message, comp))
+}
+
+func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeReporter) string {
+	message := `
 {{- if eq .Status 0 }}
 *Issue type:* {{ .IssueTypeStr }}
 {{- end }}
-*Run:*{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}
+*Run:*{{ if .PullRequestComponent }} #{{ .Runs }}{{ else if .IsReverify }} Reverify {{ else }} #{{ .Runs }}{{ end }}
 *Queue:* {{ .Name }}
 *Components* 
 {{- range .Components }}
@@ -213,7 +254,7 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 *Deployment History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}|Click here>
 {{- end}}
 `
-	return strings.TrimSpace(template.TextRender("SlackComponentUpgradeFailure", message, comp))
+	return strings.TrimSpace(template.TextRender("SlackDeploymentQueue", message, comp))
 }
 
 func (r *reporter) makeActivePromotionStatusReport(atpRpt *internal.ActivePromotionReporter) string {
@@ -351,6 +392,10 @@ func (r *reporter) checkMatchingCriteria(criteria s2hv1beta1.ReporterCriteria, r
 	}
 
 	return nil
+}
+
+func (r *reporter) isPullRequestQueue(comp *internal.ComponentUpgradeReporter) bool {
+	return comp.PullRequestComponent != nil && comp.PullRequestComponent.PRNumber != ""
 }
 
 func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event internal.EventType) error {

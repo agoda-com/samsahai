@@ -211,6 +211,8 @@ type Slack struct {
 	ComponentUpgrade *ConfigComponentUpgradeReport `json:"componentUpgrade,omitempty"`
 	// +optional
 	PullRequestTrigger *ConfigPullRequestTriggerReport `json:"pullRequestTrigger,omitempty"`
+	// +optional
+	PullRequestQueue *ConfigPullRequestQueueReport `json:"pullRequestQueue,omitempty"`
 }
 
 // MSTeams defines a configuration of Microsoft Teams
@@ -220,6 +222,8 @@ type MSTeams struct {
 	ComponentUpgrade *ConfigComponentUpgradeReport `json:"componentUpgrade,omitempty"`
 	// +optional
 	PullRequestTrigger *ConfigPullRequestTriggerReport `json:"pullRequestTrigger,omitempty"`
+	// +optional
+	PullRequestQueue *ConfigPullRequestQueueReport `json:"pullRequestQueue,omitempty"`
 }
 
 // MSTeamsGroup defines group name/id and channel name/id of Microsoft Teams
@@ -242,6 +246,14 @@ type ConfigPullRequestTriggerReport struct {
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
 }
 
+// ConfigPullRequestQueueReport defines a configuration of pull request queues report
+type ConfigPullRequestQueueReport struct {
+	// +optional
+	Interval ReporterInterval `json:"interval,omitempty"`
+	// +optional
+	Criteria ReporterCriteria `json:"criteria,omitempty"`
+}
+
 // Rest defines a configuration of http rest
 type Rest struct {
 	// +optional
@@ -252,6 +264,8 @@ type Rest struct {
 	ImageMissing *RestObject `json:"imageMissing,omitempty"`
 	// +optional
 	PullRequestTrigger *RestObject `json:"pullRequestTrigger,omitempty"`
+	// +optional
+	PullRequestQueue *RestObject `json:"pullRequestQueue,omitempty"`
 }
 
 type RestObject struct {
@@ -268,6 +282,8 @@ type Shell struct {
 	ImageMissing *CommandAndArgs `json:"imageMissing,omitempty"`
 	// +optional
 	PullRequestTrigger *CommandAndArgs `json:"pullRequestTrigger,omitempty"`
+	// +optional
+	PullRequestQueue *CommandAndArgs `json:"pullRequestQueue,omitempty"`
 }
 
 // CommandAndArgs defines commands and args
@@ -344,9 +360,9 @@ type ConfigPullRequest struct {
 	// Deployment represents configuration about deploy
 	Deployment *ConfigDeploy           `json:"deployment"`
 	Components []*PullRequestComponent `json:"components"`
-	// Parallel defines a parallel number of pull request queue
+	// Concurrences defines a parallel number of pull request queue
 	// +optional
-	Parallel               int `json:"parallel,omitempty"`
+	Concurrences           int `json:"concurrences,omitempty"`
 	PullRequestExtraConfig `json:",inline"`
 }
 

@@ -84,10 +84,13 @@ type SamsahaiConfig struct {
 
 // PullRequestConfig represents configuration of pull request
 type PullRequestConfig struct {
-	// MaxVerificationRetryCounts the maximum times of pull request has been verified
+	// QueueConcurrences defines number of pull request queue concurrences
+	QueueConcurrences int `json:"queueConcurrences" yaml:"queueConcurrences"`
+
+	// MaxVerificationRetryCounts defines the maximum times of pull request has been verified
 	MaxVerificationRetryCounts int `json:"maxVerificationRetryCounts" yaml:"maxVerificationRetryCounts"`
 
-	// MaxPRTriggerRetryCounts the maximum times of pull request has been triggered
+	// MaxPRTriggerRetryCounts defines the maximum times of pull request has been triggered
 	MaxTriggerRetryCounts int `json:"maxTriggerRetryCounts" yaml:"maxTriggerRetryCounts"`
 
 	// TriggerPollingTime defines a waiting duration time to re-check the pull request image in the registry

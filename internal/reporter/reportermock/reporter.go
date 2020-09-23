@@ -30,6 +30,11 @@ func (r *reporterMock) SendComponentUpgrade(configCtrl internal.ConfigController
 	return nil
 }
 
+// SendPullRequestQueue implements the reporter SendPullRequestQueue function
+func (r *reporterMock) SendPullRequestQueue(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
+	return nil
+}
+
 // SendActivePromotionStatus implements the reporter SendActivePromotionStatus function
 func (r *reporterMock) SendActivePromotionStatus(configCtrl internal.ConfigController, atpRpt *internal.ActivePromotionReporter) error {
 	return nil

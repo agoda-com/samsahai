@@ -31,7 +31,7 @@ func (c *controller) updatePullRequestQueue(ctx context.Context, prQueue *s2hv1b
 
 func (c *controller) deletePullRequestQueue(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
 	logger.Info("deleting pull request queue",
-		"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PullRequestNumber)
+		"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PRNumber)
 
 	if err := c.client.Delete(ctx, prQueue); err != nil {
 		if k8serrors.IsNotFound(err) {

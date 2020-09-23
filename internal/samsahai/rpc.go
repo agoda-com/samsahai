@@ -110,7 +110,17 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 			"cannot get queue history, name: %s, namespace: %s", queueHistName, namespace)
 	}
 
-	if err := c.sendComponentUpgradeReport(queueHist, comp); err != nil {
+	qHist := queueHist
+	// in case of reverify, history will be the latest failure queue
+	if comp.IsReverify && comp.IssueType == rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED {
+		var err error
+		qHist, err = c.getLatestFailureQueueHistory(comp)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := c.sendDeploymentQueueReport(qHist.Name, qHist.Spec.Queue, comp); err != nil {
 		return nil, err
 	}
 
@@ -124,6 +134,33 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 		return &rpc.Empty{}, nil
 	}
 	exporter.SetQueueMetric(queue)
+
+	return &rpc.Empty{}, nil
+}
+
+func (c *controller) RunPostPullRequestQueue(ctx context.Context, comp *rpc.ComponentUpgrade) (*rpc.Empty, error) {
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	prQueueHistName := comp.QueueHistoryName
+	prQueueHistNamespace := comp.Namespace
+	prQueueHist := &s2hv1beta1.PullRequestQueueHistory{}
+	err := c.client.Get(context.TODO(), types.NamespacedName{
+		Name:      prQueueHistName,
+		Namespace: prQueueHistNamespace,
+	}, prQueueHist)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get pull request queue history, name: %s, namespace: %s",
+			prQueueHistName, prQueueHistNamespace)
+	}
+
+	if prQueueHist.Spec.PullRequestQueue != nil {
+		deploymentQueue := prQueueHist.Spec.PullRequestQueue.Status.DeploymentQueue
+		if err := c.sendDeploymentQueueReport(prQueueHistName, deploymentQueue, comp); err != nil {
+			return nil, err
+		}
+	}
 
 	return &rpc.Empty{}, nil
 }
@@ -142,7 +179,7 @@ func (c *controller) RunPostPullRequestTrigger(ctx context.Context, prTriggerRPC
 	}, prTrigger)
 	if err != nil {
 		return nil, errors.Wrapf(err,
-			"cannot get pull request triggers, name: %s, namespace: %s", prTriggerName, prTriggerNamespace)
+			"cannot get pull request trigger, name: %s, namespace: %s", prTriggerName, prTriggerNamespace)
 	}
 
 	c.sendPullRequestTriggerReport(prTrigger, prTriggerRPC)
@@ -295,6 +332,11 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.Tea
 		pollingTimeTrigger = prConfig.Trigger.PollingTime
 	}
 
+	queueConcurrences := c.configs.PullRequest.QueueConcurrences
+	if prConfig != nil {
+		queueConcurrences = prConfig.Concurrences
+	}
+
 	maxRetryVerification := &c.configs.PullRequest.MaxVerificationRetryCounts
 	if prConfig.MaxRetry != nil {
 		maxRetryVerification = prConfig.MaxRetry
@@ -306,7 +348,7 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.Tea
 	}
 
 	rpcPRConfig := &rpc.PullRequestConfig{
-		Parallel:       int32(prConfig.Parallel),
+		Concurrences:   int32(queueConcurrences),
 		MaxRetry:       int32(*maxRetryVerification),
 		MaxHistoryDays: int32(maxHistoryDays),
 		Trigger: &rpc.PullRequestTriggerConfig{
@@ -375,8 +417,9 @@ func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWith
 		}
 	}
 
-	prData := PullRequestData{PRNumber: teamWithPR.PullRequestNumber}
+	prData := PullRequestData{PRNumber: teamWithPR.PRNumber}
 	compSource.Pattern = template.TextRender("PullRequestTagPattern", compSource.Pattern, prData)
+	compSource.ComponentName = teamWithPR.ComponentName
 
 	return compSource, nil
 }
@@ -510,35 +553,32 @@ func (c *controller) getImageSource(comps map[string]*s2hv1beta1.Component, name
 	return source, true
 }
 
-func (c *controller) sendComponentUpgradeReport(queueHist *s2hv1beta1.QueueHistory, comp *rpc.ComponentUpgrade) error {
+func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv1beta1.Queue, comp *rpc.ComponentUpgrade) error {
 	configCtrl := c.GetConfigController()
 
 	for _, reporter := range c.reporters {
-		qHist := queueHist
-		// in case of reverify, history will be the latest failure queue
-		if comp.IsReverify && comp.IssueType == rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED {
-			var err error
-			qHist, err = c.getLatestFailureQueueHistory(comp)
-			if err != nil {
-				return err
-			}
-		}
-
 		testRunner := s2hv1beta1.TestRunner{}
-		if qHist.Spec.Queue != nil {
-			testRunner = qHist.Spec.Queue.Status.TestRunner
+		if queue != nil {
+			testRunner = queue.Status.TestRunner
 		}
 
 		upgradeComp := s2h.NewComponentUpgradeReporter(
 			comp,
 			c.configs,
 			s2h.WithTestRunner(testRunner),
-			s2h.WithQueueHistoryName(qHist.Name),
+			s2h.WithQueueHistoryName(queueHistName),
 		)
 
-		if err := reporter.SendComponentUpgrade(configCtrl, upgradeComp); err != nil {
-			logger.Error(err, "cannot send component upgrade failure report",
-				"team", comp.TeamName, "component", comp.Name)
+		if comp.PullRequestComponent != nil && comp.PullRequestComponent.PRNumber != "" {
+			if err := reporter.SendPullRequestQueue(configCtrl, upgradeComp); err != nil {
+				logger.Error(err, "cannot send component upgrade failure report",
+					"team", comp.TeamName, "component", comp.Name)
+			}
+		} else {
+			if err := reporter.SendComponentUpgrade(configCtrl, upgradeComp); err != nil {
+				logger.Error(err, "cannot send component upgrade failure report",
+					"team", comp.TeamName, "component", comp.Name)
+			}
 		}
 	}
 
@@ -642,10 +682,10 @@ func (c *controller) sendPullRequestTriggerReport(prTrigger *s2hv1beta1.PullRequ
 	configCtrl := c.GetConfigController()
 
 	compName := prTrigger.Spec.Component
-	prNumber := prTrigger.Spec.PullRequestNumber
+	prNumber := prTrigger.Spec.PRNumber
 	for _, reporter := range c.reporters {
 		prTriggerRpt := s2h.NewPullRequestTriggerResultReporter(prTrigger.Status, c.configs, prTriggerRPC.TeamName,
-			compName, prTrigger.Spec.PullRequestNumber.String(), prTrigger.Spec.Image)
+			compName, prTrigger.Spec.PRNumber.String(), prTriggerRPC.Result, prTrigger.Spec.Image)
 
 		if err := reporter.SendPullRequestTriggerResult(configCtrl, prTriggerRpt); err != nil {
 			logger.Error(err, "cannot send pull request trigger result report",

@@ -156,6 +156,7 @@ func startCtrlCmd() *cobra.Command {
 					PromoteOnTeamCreation: viper.GetBool(s2h.VKActivePromotionOnTeamCreation),
 				},
 				PullRequest: s2h.PullRequestConfig{
+					QueueConcurrences:          viper.GetInt(s2h.VKPRQueueConcurrences),
 					MaxVerificationRetryCounts: viper.GetInt(s2h.VKPRVerificationMaxRetryCounts),
 					MaxTriggerRetryCounts:      viper.GetInt(s2h.VKPRTriggerMaxRetryCounts),
 					TriggerPollingTime:         metav1.Duration{Duration: viper.GetDuration(s2h.VKPRTriggerPollingTime)},
@@ -264,6 +265,7 @@ func startCtrlCmd() *cobra.Command {
 		"Max stored active promotion histories per team.")
 	cmd.Flags().Bool(s2h.VKActivePromotionOnTeamCreation, true,
 		"Promote active environment when team creation")
+	cmd.Flags().Int(s2h.VKPRQueueConcurrences, 2, "Concurrent pull request queue deployment.")
 	cmd.Flags().Int(s2h.VKPRTriggerMaxRetryCounts, 30, "Max pull request trigger retry counts.")
 	cmd.Flags().Int(s2h.VKPRVerificationMaxRetryCounts, 30, "Max pull request verification retry counts.")
 	cmd.Flags().Duration(s2h.VKPRTriggerPollingTime, 5*time.Minute,

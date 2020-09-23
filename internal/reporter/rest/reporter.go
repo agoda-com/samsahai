@@ -123,6 +123,34 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	return nil
 }
 
+// SendPullRequestQueue implements the reporter SendPullRequestQueue function
+func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
+	config, err := configCtrl.Get(comp.TeamName)
+	if err != nil {
+		return err
+	}
+
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Rest == nil ||
+		config.Spec.Reporter.Rest.PullRequestQueue == nil {
+		return nil
+	}
+
+	for _, ep := range config.Spec.Reporter.Rest.PullRequestQueue.Endpoints {
+		restObj := &componentUpgradeRest{NewReporterJSON(), *comp}
+		body, err := json.Marshal(restObj)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", body))
+			return err
+		}
+
+		if err = r.send(ep.URL, body, internal.PullRequestQueueType); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // SendActivePromotionStatus send active promotion status via http POST
 func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigController, atpRpt *internal.ActivePromotionReporter) error {
 	config, err := configCtrl.Get(atpRpt.TeamName)

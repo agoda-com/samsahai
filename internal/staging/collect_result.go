@@ -29,6 +29,7 @@ import (
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
+	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -384,7 +385,7 @@ func execCommand(cmd string, args ...string) []byte {
 	return out
 }
 
-func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_UpgradeStatus, queue *s2hv1beta1.Queue) error {
+func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_UpgradeStatus, q *s2hv1beta1.Queue) error {
 	var err error
 	headers := make(http.Header)
 	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
@@ -394,93 +395,17 @@ func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_Upgr
 		return errors.Wrap(err, "cannot set request header")
 	}
 
-	outImgList := make([]*rpc.Image, 0)
-	for _, img := range queue.Status.ImageMissingList {
-		outImgList = append(outImgList, &rpc.Image{Repository: img.Repository, Tag: img.Tag})
-	}
-
-	rpcComps := make([]*rpc.Component, 0)
-	for _, qComp := range queue.Spec.Components {
-		rpcComps = append(rpcComps, &rpc.Component{
-			Name: qComp.Name,
-			Image: &rpc.Image{
-				Repository: qComp.Repository,
-				Tag:        qComp.Version,
-			},
-		})
-	}
-
-	comp := &rpc.ComponentUpgrade{
-		Status:               status,
-		Name:                 queue.Spec.Name,
-		TeamName:             c.teamName,
-		Components:           rpcComps,
-		IssueType:            c.getIssueType(outImgList, queue),
-		QueueHistoryName:     queue.Status.QueueHistoryName,
-		Namespace:            queue.Namespace,
-		ImageMissingList:     outImgList,
-		Runs:                 int32(queue.Spec.NoOfRetry + 1),
-		IsReverify:           queue.IsReverify(),
-		ReverificationStatus: c.getReverificationStatus(queue),
-		DeploymentIssues:     c.getDeploymentIssuesRPC(queue),
-	}
+	comp := queue.GetComponentUpgradeRPCFromQueue(status, q.Status.QueueHistoryName, c.namespace, q, nil)
 
 	if c.s2hClient != nil {
 		_, err = c.s2hClient.RunPostComponentUpgrade(ctx, comp)
 		if err != nil {
-			logger.Error(err, "cannot send component upgrade report", "queue", queue.Spec.Name)
+			logger.Error(err, "cannot send component upgrade report", "queue", q.Spec.Name)
 			return errors.Wrap(err, "cannot send component upgrade report")
 		}
 	}
 
 	return nil
-}
-
-func (c *controller) getDeploymentIssuesRPC(queue *s2hv1beta1.Queue) []*rpc.DeploymentIssue {
-	deploymentIssues := make([]*rpc.DeploymentIssue, 0)
-	for _, deploymentIssue := range queue.Status.DeploymentIssues {
-		failureComps := make([]*rpc.FailureComponent, 0)
-		for _, failureComp := range deploymentIssue.FailureComponents {
-			failureComps = append(failureComps, &rpc.FailureComponent{
-				ComponentName:             failureComp.ComponentName,
-				FirstFailureContainerName: failureComp.FirstFailureContainerName,
-				RestartCount:              failureComp.RestartCount,
-				NodeName:                  failureComp.NodeName,
-			})
-		}
-
-		deploymentIssues = append(deploymentIssues, &rpc.DeploymentIssue{
-			IssueType:         string(deploymentIssue.IssueType),
-			FailureComponents: failureComps,
-		})
-	}
-
-	return deploymentIssues
-}
-
-func (c *controller) getIssueType(imageMissingList []*rpc.Image, queue *s2hv1beta1.Queue) rpc.ComponentUpgrade_IssueType {
-	switch {
-	case len(imageMissingList) > 0:
-		return rpc.ComponentUpgrade_IssueType_IMAGE_MISSING
-	case queue.IsReverify() && queue.IsDeploySuccess() && queue.IsTestSuccess():
-		return rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED
-	case queue.IsReverify() && (!queue.IsDeploySuccess() || !queue.IsTestSuccess()):
-		return rpc.ComponentUpgrade_IssueType_ENVIRONMENT_ISSUE
-	default:
-		return rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED
-	}
-}
-
-func (c *controller) getReverificationStatus(queue *s2hv1beta1.Queue) rpc.ComponentUpgrade_ReverificationStatus {
-	if !queue.IsReverify() {
-		return rpc.ComponentUpgrade_ReverificationStatus_UNKNOWN
-	}
-
-	if queue.IsDeploySuccess() && queue.IsTestSuccess() {
-		return rpc.ComponentUpgrade_ReverificationStatus_SUCCESS
-	}
-
-	return rpc.ComponentUpgrade_ReverificationStatus_FAILURE
 }
 
 func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {

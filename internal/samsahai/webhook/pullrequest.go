@@ -11,9 +11,9 @@ import (
 )
 
 type pullRequestWebhookEventJSON struct {
-	Component         string             `json:"component"`
-	PullRequestNumber intstr.IntOrString `json:"pullRequestNumber"`
-	Tag               string             `json:"tag,omitempty"`
+	Component string             `json:"component"`
+	PRNumber  intstr.IntOrString `json:"prNumber"`
+	Tag       string             `json:"tag,omitempty"`
 }
 
 // pullRequestWebhook godoc
@@ -43,7 +43,7 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 	}
 
 	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.Component, jsonData.Tag,
-		jsonData.PullRequestNumber.String())
+		jsonData.PRNumber.String())
 	if err != nil {
 		h.error(w, http.StatusInternalServerError, err)
 	}

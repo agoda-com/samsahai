@@ -52,6 +52,7 @@ const (
 	VKActivePromotionMaxHistories     = "active-promotion-max-histories"
 	VKActivePromotionOnTeamCreation   = "active-promotion-on-team-creation"
 	VKQueueMaxHistoryDays             = "queue-max-history-days"
+	VKPRQueueConcurrences             = "pr-queue-concurrences"
 	VKPRVerificationMaxRetryCounts    = "pr-verification-max-retry-counts"
 	VKPRTriggerMaxRetryCounts         = "pr-trigger-max-retry-counts"
 	VKPRTriggerPollingTime            = "pr-trigger-polling-time"

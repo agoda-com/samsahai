@@ -163,6 +163,61 @@ var _ = Describe("send rest message", func() {
 			g.Expect(err).To(BeNil(), "request should not thrown any error")
 		})
 
+		It("should correctly send pull request queue", func() {
+			img1 := &rpc.Image{Repository: "image-1", Tag: "1.1.0"}
+			img2 := &rpc.Image{Repository: "image-2", Tag: "1.1.2"}
+			rpcComp := &rpc.ComponentUpgrade{
+				Name:   "group",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "comp1",
+						Image: img1,
+					},
+					{
+						Name:  "comp2",
+						Image: img2,
+					},
+				},
+				TeamName:   "owner",
+				IssueType:  rpc.ComponentUpgrade_IssueType_IMAGE_MISSING,
+				Namespace:  "owner-staging",
+				IsReverify: true,
+				PullRequestComponent: &rpc.TeamWithPullRequest{
+					ComponentName: "pr-comp1",
+					PRNumber:      "pr1234",
+				},
+			}
+
+			buildTypeID := "Teamcity_BuildTypeID"
+			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildTypeID: buildTypeID}}
+			comp := internal.NewComponentUpgradeReporter(
+				rpcComp,
+				internal.SamsahaiConfig{},
+				internal.WithTestRunner(testRunner),
+			)
+
+			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
+				g.Expect(gjson.ValidBytes(body)).To(BeTrue(), "request body should be json")
+				g.Expect(gjson.GetBytes(body, "unixTimestamp").Exists()).To(BeTrue(),
+					"unixTimestamp keys should exist")
+				g.Expect(gjson.GetBytes(body, "teamName").String()).To(Equal(rpcComp.TeamName),
+					"teamName should be matched")
+				g.Expect(gjson.GetBytes(body, "pullRequestComponent.componentName").String()).To(Equal(rpcComp.PullRequestComponent.ComponentName),
+					"pullRequestComponent.componentName should be matched")
+				g.Expect(gjson.GetBytes(body, "pullRequestComponent.pullRequestNumber").String()).To(Equal(rpcComp.PullRequestComponent.PRNumber),
+					"pullRequestComponent.pullRequestNumber should be matched")
+			})
+
+			defer server.Close()
+			configCtrl := newMockConfigCtrl("")
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
+			err := client.SendPullRequestQueue(configCtrl, comp)
+			g.Expect(err).To(BeNil(), "request should not thrown any error")
+		})
+
 		It("should correctly send image missing", func() {
 			img := s2hv1beta1.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
 			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
@@ -191,13 +246,13 @@ var _ = Describe("send rest message", func() {
 			timeNow := metav1.Now()
 			noOfRetry := 2
 			status := s2hv1beta1.PullRequestTriggerStatus{
-				Result:    s2hv1beta1.PullRequestTriggerFailure,
 				CreatedAt: &timeNow,
 				NoOfRetry: &noOfRetry,
+				Result:    "Failure",
 			}
 
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", img)
+				"owner", "comp1", "1234", "Failure", img)
 
 			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
 				g.Expect(gjson.ValidBytes(body)).To(BeTrue(), "request body should be json")

@@ -178,14 +178,15 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	// successfully get component version from image registry
+	prTrigger.Status.SetResult(s2hv1beta1.PullRequestTriggerSuccess)
+
 	imgRepo := prTrigger.Spec.Image.Repository
-	prNumber := prTrigger.Spec.PullRequestNumber
+	prNumber := prTrigger.Spec.PRNumber
 	err = c.createPullRequestQueue(req.Namespace, prTrigger.Spec.Component, imgRepo, version.Version, prNumber.String())
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	prTrigger.Status.SetResult(s2hv1beta1.PullRequestTriggerSuccess)
 	if err := c.deleteAndSendPullRequestTriggerResult(ctx, prTrigger); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -228,9 +229,9 @@ func (c *controller) fillEmptyData(prTrigger *s2hv1beta1.PullRequestTrigger, prC
 func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger *s2hv1beta1.PullRequestTrigger) (*samsahairpc.ComponentSource, error) {
 	compName := prTrigger.Spec.Component
 	prCompSource, err := c.s2hClient.GetPullRequestComponentSource(ctx, &samsahairpc.TeamWithPullRequest{
-		TeamName:          c.teamName,
-		ComponentName:     compName,
-		PullRequestNumber: prTrigger.Spec.PullRequestNumber.String(),
+		TeamName:      c.teamName,
+		ComponentName: compName,
+		PRNumber:      prTrigger.Spec.PRNumber.String(),
 	})
 	if err != nil {
 		return &samsahairpc.ComponentSource{}, err
@@ -282,11 +283,12 @@ func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context, 
 		Name:      prTrigger.Name,
 		Namespace: prTrigger.Namespace,
 		TeamName:  c.teamName,
+		Result:    string(prTrigger.Status.Result),
 	}
 	if _, err := c.s2hClient.RunPostPullRequestTrigger(ctx, prTriggerRPC); err != nil {
 		return errors.Wrapf(err,
 			"cannot send pull request trigger result report, team: %s, component: %s, prNumber: %s",
-			c.teamName, prTrigger.Spec.Component, prTrigger.Spec.PullRequestNumber)
+			c.teamName, prTrigger.Spec.Component, prTrigger.Spec.PRNumber)
 	}
 
 	if err := c.client.Delete(context.TODO(), prTrigger); err != nil && !k8serrors.IsNotFound(err) {

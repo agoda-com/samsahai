@@ -66,6 +66,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(err).Should(BeNil())
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Component Upgrade"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
 			// Should contain information
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("#2"))
@@ -183,6 +184,63 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("comp2"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("1.1.2"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("image-2"))
+		})
+	})
+
+	Describe("send pull request queue", func() {
+		It("should correctly send pull request queue failure", func() {
+			configCtrl := newMockConfigCtrl("", "", "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			rpcComp := &rpc.ComponentUpgrade{
+				Name:   "comp1",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "comp1",
+						Image: &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
+					},
+				},
+				TeamName:         "owner",
+				IssueType:        rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED,
+				Namespace:        "owner-staging",
+				QueueHistoryName: "comp1-1234",
+				IsReverify:       true,
+				Runs:             3,
+				DeploymentIssues: []*rpc.DeploymentIssue{
+					{
+						IssueType: string(s2hv1beta1.DeploymentIssueCrashLoopBackOff),
+						FailureComponents: []*rpc.FailureComponent{
+							{ComponentName: "comp1"},
+						},
+					},
+				},
+				PullRequestComponent: &rpc.TeamWithPullRequest{
+					ComponentName: "pr-comp1",
+					PRNumber:      "pr1234",
+				},
+			}
+			mockSlackCli := &mockSlack{}
+			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
+			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url", BuildNumber: "teamcity-build-number"}}
+			comp := internal.NewComponentUpgradeReporter(
+				rpcComp,
+				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
+				internal.WithTestRunner(testRunner),
+				internal.WithQueueHistoryName("comp1-5678"),
+			)
+			err := r.SendPullRequestQueue(configCtrl, comp)
+			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
+			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Pull Request Queue"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("pr1234"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("pr-comp1"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("#3"))
+			// TODO: pohfy, update here
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/queue/histories/comp1-5678/log|Download here>"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/queue/histories/comp1-5678|Click here>"))
+
 		})
 	})
 
@@ -404,18 +462,17 @@ var _ = Describe("send slack message", func() {
 			noOfRetry := 2
 			img := &s2hv1beta1.Image{Repository: "registry/comp-1", Tag: "1.0.0"}
 			status := s2hv1beta1.PullRequestTriggerStatus{
-				Result:    s2hv1beta1.PullRequestTriggerFailure,
 				CreatedAt: &timeNow,
 				NoOfRetry: &noOfRetry,
 			}
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", img)
+				"owner", "comp1", "pr1234", "Failure", img)
 			err := r.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("comp1"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring("1234"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("pr1234"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("registry/comp-1:1.0.0"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("*NO of Retry:* 2"))
@@ -432,12 +489,11 @@ var _ = Describe("send slack message", func() {
 			timeNow := metav1.Now()
 			img := &s2hv1beta1.Image{Repository: "registry/comp-1", Tag: "1.0.0"}
 			status := s2hv1beta1.PullRequestTriggerStatus{
-				Result:    s2hv1beta1.PullRequestTriggerSuccess,
 				CreatedAt: &timeNow,
 				NoOfRetry: nil,
 			}
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", img)
+				"owner", "comp1", "pr1234", "Success", img)
 			err := r.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))

@@ -78,9 +78,7 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 		if err := r.checkMatchingInterval(msTeamsConfig.ComponentUpgrade.Interval, comp.IsReverify); err != nil {
 			return nil
 		}
-	}
 
-	if msTeamsConfig.ComponentUpgrade != nil {
 		if err := r.checkMatchingCriteria(msTeamsConfig.ComponentUpgrade.Criteria, string(comp.StatusStr)); err != nil {
 			return nil
 		}
@@ -95,34 +93,30 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	return r.post(msTeamsConfig, message, internal.ComponentUpgradeType)
 }
 
-func (r *reporter) checkMatchingInterval(interval s2hv1beta1.ReporterInterval, isReverify bool) error {
-	switch interval {
-	case s2hv1beta1.IntervalEveryTime:
-	default:
-		if !isReverify {
-			return s2herrors.New("interval was not matched")
+// SendPullRequestQueue implements the reporter SendPullRequestQueue function
+func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
+	msTeamsConfig, err := r.getMSTeamsConfig(comp.TeamName, configCtrl)
+	if err != nil {
+		return nil
+	}
+
+	if msTeamsConfig.PullRequestQueue != nil {
+		if err := r.checkMatchingInterval(msTeamsConfig.PullRequestQueue.Interval, comp.IsReverify); err != nil {
+			return nil
+		}
+
+		if err := r.checkMatchingCriteria(msTeamsConfig.PullRequestQueue.Criteria, string(comp.StatusStr)); err != nil {
+			return nil
 		}
 	}
 
-	return nil
-}
-
-func (r *reporter) checkMatchingCriteria(criteria s2hv1beta1.ReporterCriteria, result string) error {
-	lowerCaseResult := strings.ToLower(result)
-
-	switch criteria {
-	case s2hv1beta1.CriteriaBoth:
-	case s2hv1beta1.CriteriaSuccess:
-		if lowerCaseResult != statusSuccess {
-			return s2herrors.New("criteria was not matched")
-		}
-	default:
-		if lowerCaseResult != statusFailure {
-			return s2herrors.New("criteria was not matched")
-		}
+	message := r.makePullRequestQueueReport(comp)
+	if len(comp.ImageMissingList) > 0 {
+		message += "\n"
+		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList))
 	}
 
-	return nil
+	return r.post(msTeamsConfig, message, internal.PullRequestQueueType)
 }
 
 // SendActivePromotionStatus implements the reporter SendActivePromotionStatus function
@@ -201,7 +195,7 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 		return nil
 	}
 
-	if msTeamsConfig.PullRequestTrigger != nil && msTeamsConfig.PullRequestTrigger.Criteria != "" {
+	if msTeamsConfig.PullRequestTrigger != nil {
 		err := r.checkMatchingCriteria(msTeamsConfig.PullRequestTrigger.Criteria, string(prTriggerRpt.Result))
 		if err != nil {
 			return nil
@@ -216,10 +210,27 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
 	message := `
 <b>Component Upgrade:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure{{ end }}</span>
+` + r.makeDeploymentQueueReport(comp)
+	return strings.TrimSpace(template.TextRender("MSTeamsComponentUpgrade", message, comp))
+}
+
+func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeReporter) string {
+	message := `
+<b>Pull Request Queue:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure{{ end }}</span>
+{{- if .PullRequestComponent }}
+<br/><b>Component:</b> {{ .PullRequestComponent.ComponentName }}
+<br/><b>PR Number:</b> {{ .PullRequestComponent.PRNumber }}
+{{- end }}
+` + r.makeDeploymentQueueReport(comp)
+	return strings.TrimSpace(template.TextRender("MSTeamsPullRequestQueue", message, comp))
+}
+
+func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeReporter) string {
+	message := `
 {{- if eq .Status 0 }}
 <br/><b>Issue type:</b> {{ .IssueTypeStr }}
 {{- end }}
-<br/><b>Run:</b>{{ if .IsReverify }} Reverify {{ else }} #{{ .Runs }} {{ end }}
+<br/><b>Run:</b>{{ if .PullRequestComponent }} #{{ .Runs }}{{ else if .IsReverify }} Reverify {{ else }} #{{ .Runs }}{{ end }}
 <br/><b>Queue:</b> {{ .Name }}
 <br/><b>Components</b>
 {{- range .Components }}
@@ -247,7 +258,7 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 <br/><b>Deployment History:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}">Click here</a>
 {{- end}}
 `
-	return strings.TrimSpace(template.TextRender("MSTeamsComponentUpgradeFailure", message, comp))
+	return strings.TrimSpace(template.TextRender("MSTeamsDeploymentQueue", message, comp))
 }
 
 func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotionReporter) string {
@@ -356,6 +367,36 @@ func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.Pul
 `
 
 	return strings.TrimSpace(template.TextRender("SlackPullRequestTriggerResult", message, prTriggerRpt))
+}
+
+func (r *reporter) checkMatchingInterval(interval s2hv1beta1.ReporterInterval, isReverify bool) error {
+	switch interval {
+	case s2hv1beta1.IntervalEveryTime:
+	default:
+		if !isReverify {
+			return s2herrors.New("interval was not matched")
+		}
+	}
+
+	return nil
+}
+
+func (r *reporter) checkMatchingCriteria(criteria s2hv1beta1.ReporterCriteria, result string) error {
+	lowerCaseResult := strings.ToLower(result)
+
+	switch criteria {
+	case s2hv1beta1.CriteriaBoth:
+	case s2hv1beta1.CriteriaSuccess:
+		if lowerCaseResult != statusSuccess {
+			return s2herrors.New("criteria was not matched")
+		}
+	default:
+		if lowerCaseResult != statusFailure {
+			return s2herrors.New("criteria was not matched")
+		}
+	}
+
+	return nil
 }
 
 func (r *reporter) post(msTeamsConfig *s2hv1beta1.MSTeams, message string, event internal.EventType) error {

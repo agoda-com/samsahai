@@ -34,9 +34,9 @@ func (c *controller) TriggerPullRequestDeployment(teamName, component, tag, prNu
 					Labels:    getPullRequestTriggerLabels(teamName, component, prNumber),
 				},
 				Spec: s2hv1beta1.PullRequestTriggerSpec{
-					Component:         component,
-					PullRequestNumber: intstr.FromString(prNumber),
-					Image:             &s2hv1beta1.Image{Tag: tag},
+					Component: component,
+					PRNumber:  intstr.FromString(prNumber),
+					Image:     &s2hv1beta1.Image{Tag: tag},
 				},
 			}
 

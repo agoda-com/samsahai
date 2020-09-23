@@ -24,8 +24,8 @@ import (
 
 // PullRequestTriggerSpec defines the desired state of PullRequestTrigger
 type PullRequestTriggerSpec struct {
-	Component         string             `json:"component"`
-	PullRequestNumber intstr.IntOrString `json:"pullRequestNumber"`
+	Component string             `json:"component"`
+	PRNumber  intstr.IntOrString `json:"prNumber"`
 	// +optional
 	Image *Image `json:"image,omitempty"`
 	// +optional

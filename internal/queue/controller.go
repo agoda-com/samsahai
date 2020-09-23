@@ -16,6 +16,7 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 var logger = s2hlog.Log.WithName(CtrlName)
@@ -568,8 +569,8 @@ func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace strin
 }
 
 // EnsurePullRequestComponents ensures that pull request components were deployed with `pull-request` config and tested
-func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName string, comps s2hv1beta1.QueueComponents) (
-	q *s2hv1beta1.Queue, err error) {
+func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName string, comps s2hv1beta1.QueueComponents,
+	noOfRetry int) (q *s2hv1beta1.Queue, err error) {
 
 	q = &s2hv1beta1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
@@ -581,6 +582,7 @@ func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName
 			Type:       s2hv1beta1.QueueTypePullRequest,
 			TeamName:   teamName,
 			Components: comps,
+			NoOfRetry:  noOfRetry,
 		},
 	}
 
@@ -641,4 +643,99 @@ func getQueueLabels(teamName, component string) map[string]string {
 	qLabels["component"] = component
 
 	return qLabels
+}
+
+func GetComponentUpgradeRPCFromQueue(
+	comStatus samsahairpc.ComponentUpgrade_UpgradeStatus,
+	queueHistName string,
+	queueHistNamespace string,
+	queue *s2hv1beta1.Queue,
+	prQueueRPC *samsahairpc.TeamWithPullRequest,
+) *samsahairpc.ComponentUpgrade {
+
+	outImgList := make([]*samsahairpc.Image, 0)
+	for _, img := range queue.Status.ImageMissingList {
+		outImgList = append(outImgList, &samsahairpc.Image{Repository: img.Repository, Tag: img.Tag})
+	}
+
+	rpcComps := make([]*samsahairpc.Component, 0)
+	for _, qComp := range queue.Spec.Components {
+		rpcComps = append(rpcComps, &samsahairpc.Component{
+			Name: qComp.Name,
+			Image: &samsahairpc.Image{
+				Repository: qComp.Repository,
+				Tag:        qComp.Version,
+			},
+		})
+	}
+
+	isReverify := queue.IsReverify()
+	if prQueueRPC != nil && prQueueRPC.PRNumber != "" {
+		isReverify = int(prQueueRPC.MaxRetryQueue) >= queue.Spec.NoOfRetry
+	}
+
+	comp := &samsahairpc.ComponentUpgrade{
+		Status:               comStatus,
+		Name:                 queue.Spec.Name,
+		TeamName:             queue.Spec.TeamName,
+		Components:           rpcComps,
+		IssueType:            getIssueTypeRPC(outImgList, queue),
+		QueueHistoryName:     queueHistName,
+		Namespace:            queueHistNamespace,
+		ImageMissingList:     outImgList,
+		Runs:                 int32(queue.Spec.NoOfRetry + 1),
+		IsReverify:           isReverify,
+		ReverificationStatus: getReverificationStatusRPC(queue),
+		DeploymentIssues:     getDeploymentIssuesRPC(queue),
+		PullRequestComponent: prQueueRPC,
+	}
+
+	return comp
+}
+
+func getIssueTypeRPC(imageMissingList []*samsahairpc.Image, queue *s2hv1beta1.Queue) samsahairpc.ComponentUpgrade_IssueType {
+	switch {
+	case len(imageMissingList) > 0:
+		return samsahairpc.ComponentUpgrade_IssueType_IMAGE_MISSING
+	case queue.IsReverify() && queue.IsDeploySuccess() && queue.IsTestSuccess():
+		return samsahairpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED
+	case queue.IsReverify() && (!queue.IsDeploySuccess() || !queue.IsTestSuccess()):
+		return samsahairpc.ComponentUpgrade_IssueType_ENVIRONMENT_ISSUE
+	default:
+		return samsahairpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED
+	}
+}
+
+func getReverificationStatusRPC(queue *s2hv1beta1.Queue) samsahairpc.ComponentUpgrade_ReverificationStatus {
+	if !queue.IsReverify() {
+		return samsahairpc.ComponentUpgrade_ReverificationStatus_UNKNOWN
+	}
+
+	if queue.IsDeploySuccess() && queue.IsTestSuccess() {
+		return samsahairpc.ComponentUpgrade_ReverificationStatus_SUCCESS
+	}
+
+	return samsahairpc.ComponentUpgrade_ReverificationStatus_FAILURE
+}
+
+func getDeploymentIssuesRPC(queue *s2hv1beta1.Queue) []*samsahairpc.DeploymentIssue {
+	deploymentIssues := make([]*samsahairpc.DeploymentIssue, 0)
+	for _, deploymentIssue := range queue.Status.DeploymentIssues {
+		failureComps := make([]*samsahairpc.FailureComponent, 0)
+		for _, failureComp := range deploymentIssue.FailureComponents {
+			failureComps = append(failureComps, &samsahairpc.FailureComponent{
+				ComponentName:             failureComp.ComponentName,
+				FirstFailureContainerName: failureComp.FirstFailureContainerName,
+				RestartCount:              failureComp.RestartCount,
+				NodeName:                  failureComp.NodeName,
+			})
+		}
+
+		deploymentIssues = append(deploymentIssues, &samsahairpc.DeploymentIssue{
+			IssueType:         string(deploymentIssue.IssueType),
+			FailureComponents: failureComps,
+		})
+	}
+
+	return deploymentIssues
 }

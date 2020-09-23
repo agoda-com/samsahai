@@ -28,8 +28,8 @@ type PullRequestQueueSpec struct {
 	// ComponentName represents a pull request Component name
 	ComponentName string `json:"componentName"`
 
-	// PullRequestNumber represents a pull request number
-	PullRequestNumber string `json:"pullRequestNumber"`
+	// PRNumber represents a pull request number
+	PRNumber string `json:"prNumber"`
 
 	// Components represents a list of components which are deployed
 	// +optional
@@ -140,7 +140,7 @@ type PullRequestQueueStatus struct {
 	// +patchStrategy=merge
 	Conditions []PullRequestQueueCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 
-	// DeploymentQueue defines a deployed pull request queue
+	// ComponentUpgrade defines a deployed pull request queue
 	// +optional
 	DeploymentQueue *Queue `json:"deploymentQueue,omitempty"`
 }

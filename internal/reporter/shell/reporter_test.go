@@ -42,7 +42,31 @@ var _ = Describe("shell command reporter", func() {
 			g.Expect(testCmdObj.Args).To(Equal([]string{"echo executing\n echo upgraded component Success"}))
 		})
 
-		It("should correctly execute active promotion", func() {
+		It("should correctly execute pull request queue", func() {
+			testCmdObj := &s2hv1beta1.CommandAndArgs{}
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
+				testCmdObj = cmdObj
+				return []byte{}, nil
+			}
+
+			r := shell.New(shell.WithExecCommand(mockExecCommand))
+			configCtrl := newMockConfigCtrl("")
+
+			comp := internal.NewComponentUpgradeReporter(&rpc.ComponentUpgrade{
+				Status: 1,
+				PullRequestComponent: &rpc.TeamWithPullRequest{
+					ComponentName: "pr-comp1",
+					PRNumber:      "pr1234",
+				},
+			}, internal.SamsahaiConfig{})
+			err := r.SendPullRequestQueue(configCtrl, comp)
+			g.Expect(err).NotTo(HaveOccurred())
+
+			g.Expect(testCmdObj.Command).To(Equal([]string{"/bin/sh", "-c"}))
+			g.Expect(testCmdObj.Args).To(Equal([]string{"echo executing\n echo pull request #pr1234: Success"}))
+		})
+
+		It("should correctly execute active promotion status", func() {
 			testCmdObj := &s2hv1beta1.CommandAndArgs{}
 			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error) {
 				testCmdObj = cmdObj
@@ -93,11 +117,9 @@ var _ = Describe("shell command reporter", func() {
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
 			configCtrl := newMockConfigCtrl("")
 
-			status := s2hv1beta1.PullRequestTriggerStatus{
-				Result: s2hv1beta1.PullRequestTriggerFailure,
-			}
+			status := s2hv1beta1.PullRequestTriggerStatus{}
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", nil)
+				"owner", "comp1", "1234", "Failure", nil)
 			err := r.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
 			g.Expect(err).NotTo(HaveOccurred())
 
@@ -203,6 +225,10 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
 							Command: []string{"/bin/sh", "-c"},
 							Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
+						},
+						PullRequestQueue: &s2hv1beta1.CommandAndArgs{
+							Command: []string{"/bin/sh", "-c"},
+							Args:    []string{"echo executing\n echo pull request #{{ .PullRequestComponent.PRNumber }}: {{ .StatusStr }}"},
 						},
 						ActivePromotion: &s2hv1beta1.CommandAndArgs{
 							Command: []string{"echo active promotion status {{ .Result }}"},

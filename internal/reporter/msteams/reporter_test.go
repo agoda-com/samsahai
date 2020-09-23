@@ -70,6 +70,7 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.channels).Should(Equal([]string{"chan1-1", "chan1-2", "chan2-1"}))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Component Upgrade"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Failure"))
 			// Should contain information
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("#2"))
@@ -195,6 +196,67 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("comp2"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("1.1.2"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("image-2"))
+		})
+	})
+
+	Describe("send pull request queue", func() {
+		It("should correctly send pull request queue failure", func() {
+			configCtrl := newMockConfigCtrl("", s2hv1beta1.IntervalEveryTime, "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			rpcComp := &rpc.ComponentUpgrade{
+				Name:   "comp1",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "comp1",
+						Image: &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
+					},
+				},
+				TeamName:         "owner",
+				IssueType:        rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED,
+				Namespace:        "owner-staging",
+				QueueHistoryName: "comp1-1234",
+				IsReverify:       false,
+				Runs:             2,
+				DeploymentIssues: []*rpc.DeploymentIssue{
+					{
+						IssueType: string(s2hv1beta1.DeploymentIssueCrashLoopBackOff),
+						FailureComponents: []*rpc.FailureComponent{
+							{ComponentName: "comp1"},
+						},
+					},
+				},
+				PullRequestComponent: &rpc.TeamWithPullRequest{
+					ComponentName: "pr-comp1",
+					PRNumber:      "pr1234",
+				},
+			}
+			mockMSTeamsCli := &mockMSTeams{}
+			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
+				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
+			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildURL: "teamcity-url", BuildNumber: "teamcity-build-number"}}
+			comp := internal.NewComponentUpgradeReporter(
+				rpcComp,
+				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
+				internal.WithTestRunner(testRunner),
+				internal.WithQueueHistoryName("comp1-5678"),
+			)
+			err := r.SendPullRequestQueue(configCtrl, comp)
+			g.Expect(err).Should(BeNil())
+			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
+			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
+			g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(3))
+			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
+			g.Expect(mockMSTeamsCli.channels).Should(Equal([]string{"chan1-1", "chan1-2", "chan2-1"}))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Pull Request Queue"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("pr-comp1"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("pr1234"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Failure"))
+			// Should contain information
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("#2"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/queue/histories/comp1-5678/log">Download here</a>`))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/queue/histories/comp1-5678">Click here</a>`))
 		})
 	})
 
@@ -439,12 +501,11 @@ var _ = Describe("send ms teams message", func() {
 			noOfRetry := 2
 			img := &s2hv1beta1.Image{Repository: "registry/comp-1", Tag: "1.0.0"}
 			status := s2hv1beta1.PullRequestTriggerStatus{
-				Result:    s2hv1beta1.PullRequestTriggerFailure,
 				CreatedAt: &timeNow,
 				NoOfRetry: &noOfRetry,
 			}
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", img)
+				"owner", "comp1", "1234", "Failure", img)
 			err := r.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
 			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
 			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
@@ -472,12 +533,11 @@ var _ = Describe("send ms teams message", func() {
 			timeNow := metav1.Now()
 			img := &s2hv1beta1.Image{Repository: "registry/comp-1", Tag: "1.0.0"}
 			status := s2hv1beta1.PullRequestTriggerStatus{
-				Result:    s2hv1beta1.PullRequestTriggerSuccess,
 				CreatedAt: &timeNow,
 				NoOfRetry: nil,
 			}
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", img)
+				"owner", "comp1", "1234", "Success", img)
 			err := r.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
 			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
 			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))

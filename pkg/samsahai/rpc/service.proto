@@ -5,6 +5,7 @@ option go_package = "pkg/samsahai/rpc";
 
 service RPC {
     rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
+    rpc RunPostPullRequestQueue (ComponentUpgrade) returns (Empty);
     rpc RunPostPullRequestTrigger (PullRequestTrigger) returns (Empty);
     rpc GetMissingVersions (TeamWithCurrentComponent) returns (ImageList);
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
@@ -72,6 +73,7 @@ message ComponentUpgrade {
     bool isReverify = 11;
     ReverificationStatus reverificationStatus = 12;
     repeated DeploymentIssue deploymentIssues = 13;
+    TeamWithPullRequest pullRequestComponent = 14;
 }
 
 message Component {
@@ -113,12 +115,13 @@ message TeamWithNamespace {
 message TeamWithPullRequest {
     string teamName = 1;
     string componentName = 2;
-    string pullRequestNumber = 3;
+    string PRNumber = 3;
     string namespace = 4;
+    int32 maxRetryQueue = 5;
 }
 
 message PullRequestConfig {
-    int32 parallel = 1;
+    int32 concurrences = 1;
     int32 maxRetry = 2;
     int32 maxHistoryDays = 3;
     PullRequestTriggerConfig trigger = 4;
@@ -144,4 +147,5 @@ message PullRequestTrigger {
     string name = 1;
     string namespace = 2;
     string teamName = 3;
+    string result = 4;
 }

@@ -16,6 +16,7 @@ const (
 	ActivePromotionType    EventType = "ActivePromotion"
 	ImageMissingType       EventType = "ImageMissing"
 	PullRequestTriggerType EventType = "PullRequestTrigger"
+	PullRequestQueueType   EventType = "PullRequestQueue"
 )
 
 // ComponentUpgradeOption allows specifying various configuration
@@ -153,6 +154,7 @@ type PullRequestTriggerReporter struct {
 	TeamName      string            `json:"teamName,omitempty"`
 	ComponentName string            `json:"componentName,omitempty"`
 	PRNumber      string            `json:"prNumber,omitempty"`
+	Result        string            `json:"result,omitempty"`
 	Image         *s2hv1beta1.Image `json:"image,omitempty"`
 	s2hv1beta1.PullRequestTriggerStatus
 	SamsahaiConfig
@@ -160,13 +162,14 @@ type PullRequestTriggerReporter struct {
 
 // NewPullRequestTriggerResultReporter creates pull request trigger result reporter object
 func NewPullRequestTriggerResultReporter(status s2hv1beta1.PullRequestTriggerStatus, s2hConfig SamsahaiConfig,
-	teamName, compName, prNumber string, image *s2hv1beta1.Image) *PullRequestTriggerReporter {
+	teamName, compName, prNumber, result string, image *s2hv1beta1.Image) *PullRequestTriggerReporter {
 
 	c := &PullRequestTriggerReporter{
 		PullRequestTriggerStatus: status,
 		TeamName:                 teamName,
 		ComponentName:            compName,
 		PRNumber:                 prNumber,
+		Result:                   result,
 		Image:                    image,
 		SamsahaiConfig:           s2hConfig,
 	}
@@ -213,6 +216,9 @@ type Reporter interface {
 
 	// SendComponentUpgrade sends details of component upgrade
 	SendComponentUpgrade(configCtrl ConfigController, comp *ComponentUpgradeReporter) error
+
+	// SendPullRequestQueue sends details of pull request deployment queue
+	SendPullRequestQueue(configCtrl ConfigController, comp *ComponentUpgradeReporter) error
 
 	// SendActivePromotionStatus sends active promotion status
 	SendActivePromotionStatus(configCtrl ConfigController, atpRpt *ActivePromotionReporter) error
