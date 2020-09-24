@@ -53,7 +53,8 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 	default: // upgrade, reverify of staging or pull request queue
 		var err error
 		configCtrl := c.getConfigController()
-		comps := make(map[string]*s2hv1beta1.Component)
+
+		var comps map[string]*s2hv1beta1.Component
 		if queue.IsPullRequestQueue() {
 			comps, err = configCtrl.GetPullRequestComponents(c.teamName)
 			if err != nil {

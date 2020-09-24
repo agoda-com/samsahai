@@ -400,10 +400,6 @@ func (r *reporter) checkMatchingCriteria(criteria s2hv1beta1.ReporterCriteria, r
 	return nil
 }
 
-func (r *reporter) isPullRequestQueue(comp *internal.ComponentUpgradeReporter) bool {
-	return comp.PullRequestComponent != nil && comp.PullRequestComponent.PRNumber != ""
-}
-
 func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event internal.EventType) error {
 	logger.Debug("start sending message to slack channels",
 		"event", event, "channels", slackConfig.Channels)

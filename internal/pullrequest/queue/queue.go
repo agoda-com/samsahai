@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -177,14 +176,14 @@ func (c *controller) addQueue(ctx context.Context, prQueue *s2hv1beta1.PullReque
 func (c *controller) resetQueueOrderWithRunningQueue(ctx context.Context, currentPRQueue *s2hv1beta1.PullRequestQueue) {
 	allPRQueues, err := c.listPullRequestQueues(nil, currentPRQueue.Namespace)
 	if err != nil {
-		err = errors.Wrap(err, "cannot list pull request queues")
+		logger.Error(err, "cannot list pull request queues")
 		return
 	}
 
 	listOpts := &client.ListOptions{LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateRunning))}
 	runningPRQueues, err := c.listPullRequestQueues(listOpts, currentPRQueue.Namespace)
 	if err != nil {
-		err = errors.Wrap(err, "cannot list running pull request queues")
+		logger.Error(err, "cannot list running pull request queues")
 		return
 	}
 
@@ -235,6 +234,4 @@ func (c *controller) resetQueueOrderWithRunningQueue(ctx context.Context, curren
 			logger.Error(err, "cannot update pull request queue order", "queue", updateList[i].Name)
 		}
 	}
-
-	return
 }

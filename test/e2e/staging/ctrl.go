@@ -410,9 +410,11 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Creating 2 Queue")
 		redisQueue := queue.NewQueue(teamName, namespace, bundleName, bundleName,
 			s2hv1beta1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
+			s2hv1beta1.QueueTypeUpgrade,
 		)
 		mariaDBQueue := queue.NewQueue(teamName, namespace, bundleName, bundleName,
 			s2hv1beta1.QueueComponents{{Name: mariaDBCompName, Repository: "bitnami/mariadb", Version: "10.3.18-debian-9-r32"}},
+			s2hv1beta1.QueueTypeUpgrade,
 		)
 		Expect(queueCtrl.Add(redisQueue, nil)).To(BeNil())
 		Expect(queueCtrl.Add(mariaDBQueue, nil)).To(BeNil())
@@ -583,6 +585,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		redis := queue.NewQueue(teamName, namespace, redisCompName, "",
 			s2hv1beta1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
+			s2hv1beta1.QueueTypeUpgrade,
 		)
 		Expect(client.Create(context.TODO(), redis)).To(BeNil())
 

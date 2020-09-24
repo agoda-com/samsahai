@@ -228,6 +228,10 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	return comps, nil
 }
 
+func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
 func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
 	return s2hv1beta1.ConfigBundles{}, nil
 }
@@ -237,6 +241,10 @@ func (c *mockConfigCtrl) GetPriorityQueues(configName string) ([]string, error) 
 }
 
 func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1beta1.ConfigPullRequest, error) {
+	return nil, nil
+}
+
+func (c *mockConfigCtrl) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
 	return nil, nil
 }
 

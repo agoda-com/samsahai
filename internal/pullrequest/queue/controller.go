@@ -40,7 +40,6 @@ const (
 
 type controller struct {
 	teamName  string
-	queueCtrl internal.QueueController
 	client    client.Client
 	namespace string
 	authToken string
@@ -365,16 +364,6 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 	prQueue.SetState(s2hv1beta1.PullRequestQueueFinished)
 
 	return
-}
-
-func (c *controller) getDeploymentQueue(ctx context.Context, queueName, prNamespace string) (*s2hv1beta1.Queue, error) {
-	deployedQueue := &s2hv1beta1.Queue{}
-	err := c.client.Get(ctx, types.NamespacedName{
-		Namespace: prNamespace,
-		Name:      queueName,
-	}, deployedQueue)
-
-	return deployedQueue, err
 }
 
 func (c *controller) updatePullRequestComponentDependenciesVersion(ctx context.Context, teamName, prCompName string,
