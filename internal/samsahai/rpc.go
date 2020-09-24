@@ -243,19 +243,23 @@ func (c *controller) GetPullRequestComponentDependencies(
 	}
 
 	compDeps := make([]*rpc.Component, 0)
-	if len(teamComp.Status.ActiveComponents) > 0 {
-		for _, dep := range deps {
-			if activeComp, ok := teamComp.Status.ActiveComponents[dep]; ok {
-				compDeps = append(compDeps, &rpc.Component{
-					Name: dep,
-					Image: &rpc.Image{
-						Repository: activeComp.Spec.Repository,
-						Tag:        activeComp.Spec.Version,
-					},
-				})
-			}
-
+	for _, dep := range deps {
+		compDep := &rpc.Component{
+			Name:  dep,
+			Image: &rpc.Image{},
 		}
+		if len(teamComp.Status.ActiveComponents) > 0 {
+			if activeComp, ok := teamComp.Status.ActiveComponents[dep]; ok {
+				if activeComp.Spec.Repository != "" {
+					compDep.Image.Repository = activeComp.Spec.Repository
+				}
+				if activeComp.Spec.Version != "" {
+					compDep.Image.Tag = activeComp.Spec.Version
+				}
+			}
+		}
+
+		compDeps = append(compDeps, compDep)
 	}
 
 	return &rpc.PullRequestDependencies{Dependencies: compDeps}, nil

@@ -102,8 +102,22 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 	// Deploy
 	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueDeployStarted) {
 		isDeployed, err := c.deployComponents(deployEngine, queue, queueComps, queueParentComps, deployTimeout.Duration)
-		if err != nil && !isDeployed {
-			return err
+		if err != nil {
+			if !isDeployed {
+				return err
+			}
+
+			queue.Status.SetCondition(
+				s2hv1beta1.QueueDeployStarted,
+				corev1.ConditionTrue,
+				"queue started to deploy")
+
+			queue.Status.SetCondition(
+				s2hv1beta1.QueueDeployed,
+				corev1.ConditionFalse,
+				fmt.Sprintf("release deployment failed: %s", err.Error()))
+
+			logger.Error(s2herrors.ErrReleaseFailed, fmt.Sprintf("queue: %s release failed", queue.Name))
 		}
 
 		queue.Status.SetCondition(
@@ -121,13 +135,11 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 		return err
 	}
 
-	if len(releases) == 0 {
-		if !deployEngine.IsMocked() {
-			return nil
-		}
+	if len(releases) == 0 && !deployEngine.IsMocked() {
+		return nil
 	}
 
-	if queue.IsPullRequestQueue() {
+	if len(releases) != 0 && queue.IsPullRequestQueue() {
 		if err := c.deployActiveServicesIntoPullRequestEnvironment(); err != nil {
 			return err
 		}

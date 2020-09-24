@@ -231,6 +231,7 @@ func (c *controller) GetPullRequestComponentDependencies(configName, prCompName 
 		for _, prComp := range config.Spec.PullRequest.Components {
 			if prComp.Name == prCompName {
 				prDeps = prComp.Dependencies
+				break
 			}
 		}
 	}

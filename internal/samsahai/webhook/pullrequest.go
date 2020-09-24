@@ -59,8 +59,7 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
-	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.Component, jsonData.Tag,
-		jsonData.PRNumber.String())
+	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.Component, jsonData.Tag, jsonData.PRNumber.String())
 	if err != nil {
 		h.error(w, http.StatusInternalServerError, err)
 	}
