@@ -149,7 +149,7 @@ func startCtrlCmd() *cobra.Command {
 			tcPassword := viper.GetString(s2h.VKTeamcityPassword)
 			maxQueueHistDays := viper.GetInt(s2h.VKQueueMaxHistoryDays)
 			stagingCtrl := stagingctrl.NewController(teamName, namespace, authToken, samsahaiClient, mgr,
-				queueCtrl, configCtrl, tcBaseURL, tcUsername, tcPassword,
+				runtimeClient, queueCtrl, configCtrl, tcBaseURL, tcUsername, tcPassword,
 				s2h.StagingConfig{MaxHistoryDays: maxQueueHistDays})
 
 			prQueueCtrl := prqueuectrl.New(teamName, namespace, mgr, runtimeClient, authToken, samsahaiClient)

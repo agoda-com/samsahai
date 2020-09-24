@@ -4,6 +4,7 @@ package samsahai.io.samsahai;
 option go_package = "pkg/samsahai/rpc";
 
 service RPC {
+    rpc GetTeamActiveNamespace (TeamName) returns (TeamWithNamespace);
     rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
     rpc RunPostPullRequestQueue (ComponentUpgrade) returns (Empty);
     rpc RunPostPullRequestTrigger (PullRequestTrigger) returns (Empty);

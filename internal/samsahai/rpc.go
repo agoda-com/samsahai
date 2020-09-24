@@ -34,6 +34,22 @@ func (c *controller) authenticateRPC(ctx context.Context) error {
 	return nil
 }
 
+func (c *controller) GetTeamActiveNamespace(ctx context.Context, teamName *rpc.TeamName) (*rpc.TeamWithNamespace, error) {
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	teamComp := &s2hv1beta1.Team{}
+	if err := c.getTeam(teamName.Name, teamComp); err != nil {
+		return nil, errors.Wrapf(err, "cannot get of team %s", teamComp.Name)
+	}
+
+	return &rpc.TeamWithNamespace{
+		TeamName:  teamName.Name,
+		Namespace: teamComp.Status.Namespace.Active,
+	}, nil
+}
+
 func (c *controller) GetMissingVersions(ctx context.Context, teamInfo *rpc.TeamWithCurrentComponent) (*rpc.ImageList, error) {
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
@@ -151,8 +167,7 @@ func (c *controller) RunPostPullRequestQueue(ctx context.Context, comp *rpc.Comp
 		Namespace: prQueueHistNamespace,
 	}, prQueueHist)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot get pull request queue history, name: %s, namespace: %s",
-			prQueueHistName, prQueueHistNamespace)
+		return nil, err
 	}
 
 	if prQueueHist.Spec.PullRequestQueue != nil {
@@ -178,8 +193,7 @@ func (c *controller) RunPostPullRequestTrigger(ctx context.Context, prTriggerRPC
 		Namespace: prTriggerNamespace,
 	}, prTrigger)
 	if err != nil {
-		return nil, errors.Wrapf(err,
-			"cannot get pull request trigger, name: %s, namespace: %s", prTriggerName, prTriggerNamespace)
+		return nil, err
 	}
 
 	c.sendPullRequestTriggerReport(prTrigger, prTriggerRPC)
@@ -322,8 +336,7 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.Tea
 	configCtrl := c.GetConfigController()
 	prConfig, err := configCtrl.GetPullRequestConfig(teamName.Name)
 	if err != nil {
-		return &rpc.PullRequestConfig{},
-			errors.Wrapf(err, "cannot get pull request configuration of team: %s", teamName)
+		return &rpc.PullRequestConfig{}, err
 	}
 
 	maxRetryTrigger := &c.configs.PullRequest.MaxTriggerRetryCounts
@@ -379,7 +392,7 @@ func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWith
 	teamName := teamWithPR.TeamName
 	prConfig, err := configCtrl.GetPullRequestConfig(teamWithPR.TeamName)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot get pull request configuration of team: %s", teamName)
+		return nil, err
 	}
 
 	compSource := &rpc.ComponentSource{Image: &rpc.Image{}}
@@ -455,7 +468,9 @@ func (c *controller) DeployActiveServicesIntoPullRequestEnvironment(ctx context.
 
 	diffSvcs := c.getDifferentServices(prSvcList, activeSvcList)
 	for _, svc := range diffSvcs {
-		svcName := c.replaceServiceFromReleaseName(svc.Name, prNamespace, activeNs)
+		srcSvcName := svc.Name
+		srcNamespace := svc.Namespace
+		svcName := c.replaceServiceFromReleaseName(srcSvcName, prNamespace, activeNs)
 		newSvc := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      svcName,
@@ -463,7 +478,7 @@ func (c *controller) DeployActiveServicesIntoPullRequestEnvironment(ctx context.
 			},
 			Spec: corev1.ServiceSpec{
 				Type:         corev1.ServiceTypeExternalName,
-				ExternalName: fmt.Sprintf("%s.%s.svc.%s", svcName, svc.Namespace, c.configs.ClusterDomain),
+				ExternalName: fmt.Sprintf("%s.%s.svc.%s", srcSvcName, srcNamespace, c.configs.ClusterDomain),
 			},
 		}
 		if err := c.client.Create(ctx, newSvc); err != nil && !k8serrors.IsAlreadyExists(err) {
@@ -484,7 +499,7 @@ func (c *controller) CreatePullRequestEnvironment(ctx context.Context, teamWithP
 	configCtrl := c.GetConfigController()
 	prConfig, err := configCtrl.GetPullRequestConfig(teamName)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot get pull request configuration of team: %s", teamName)
+		return nil, err
 	}
 
 	resources := prConfig.Resources
@@ -527,16 +542,18 @@ func (c *controller) detectAndAddImageMissing(source s2hv1beta1.UpdatingSource, 
 		return
 	}
 
-	if err := checker.EnsureVersion(repo, name, version); err != nil {
-		if s2herrors.IsImageNotFound(err) || s2herrors.IsErrRequestTimeout(err) {
-			imgList.Images = append(imgList.Images, &rpc.Image{
-				Repository: repo,
-				Tag:        version,
-			})
-			return
+	if repo != "" {
+		if err := checker.EnsureVersion(repo, name, version); err != nil {
+			if s2herrors.IsImageNotFound(err) || s2herrors.IsErrRequestTimeout(err) {
+				imgList.Images = append(imgList.Images, &rpc.Image{
+					Repository: repo,
+					Tag:        version,
+				})
+				return
+			}
+			logger.Error(err, "cannot ensure version",
+				"name", name, "source", source, "repository", repo, "version", version)
 		}
-		logger.Error(err, "cannot ensure version",
-			"name", name, "source", source, "repository", repo, "version", version)
 	}
 }
 

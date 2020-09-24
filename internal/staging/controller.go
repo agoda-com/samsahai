@@ -40,13 +40,14 @@ type controller struct {
 	deployEngines map[string]internal.DeployEngine
 	testRunners   map[string]internal.StagingTestRunner
 
-	teamName   string
-	namespace  string
-	authToken  string
-	queueCtrl  internal.QueueController
-	configCtrl internal.ConfigController
-	client     client.Client
-	scheme     *apiruntime.Scheme
+	teamName      string
+	namespace     string
+	authToken     string
+	queueCtrl     internal.QueueController
+	configCtrl    internal.ConfigController
+	clusterClient client.Client
+	client        client.Client
+	scheme        *apiruntime.Scheme
 
 	internalStop    <-chan struct{}
 	internalStopper chan<- struct{}
@@ -72,6 +73,7 @@ func NewController(
 	authToken string,
 	s2hClient samsahairpc.RPC,
 	mgr manager.Manager,
+	clusterClient client.Client,
 	queueCtrl internal.QueueController,
 	configCtrl internal.ConfigController,
 	teamcityBaseURL string,
@@ -94,6 +96,7 @@ func NewController(
 		s2hClient:               s2hClient,
 		queueCtrl:               queueCtrl,
 		configCtrl:              configCtrl,
+		clusterClient:           clusterClient,
 		client:                  mgr.GetClient(),
 		scheme:                  mgr.GetScheme(),
 		internalStop:            stopper,

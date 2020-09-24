@@ -124,6 +124,7 @@ func (c *controller) ensurePullRequestComponentsDeploying(ctx context.Context, p
 			prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondDeployed, corev1.ConditionTrue,
 				"Components have been deployed successfully")
 			prQueue.SetState(s2hv1beta1.PullRequestQueueTesting)
+			return nil
 		}
 
 		// in case failure deployment
@@ -149,8 +150,7 @@ func (c *controller) ensurePullRequestComponentsTesting(ctx context.Context, prQ
 		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
 	}
 
-	if deployedQueue.Status.State == s2hv1beta1.Finished || // in case of queue state was finished without deploying
-		(deployedQueue.Status.StartDeployTime != nil && deployedQueue.Status.State != s2hv1beta1.Creating) {
+	if deployedQueue.Status.State == s2hv1beta1.Finished {
 		if deployedQueue.IsTestSuccess() {
 			// in case successful test
 			logger.Debug("components have been tested successfully",
@@ -159,12 +159,13 @@ func (c *controller) ensurePullRequestComponentsTesting(ctx context.Context, prQ
 			prQueue.Status.SetResult(s2hv1beta1.PullRequestQueueSuccess)
 			prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondTested, corev1.ConditionTrue,
 				"Components have been tested successfully")
+		} else {
+			// in case failure test
+			prQueue.Status.SetResult(s2hv1beta1.PullRequestQueueFailure)
+			prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondTested, corev1.ConditionFalse,
+				"Test failed")
 		}
 
-		// in case failure test
-		prQueue.Status.SetResult(s2hv1beta1.PullRequestQueueFailure)
-		prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondTested, corev1.ConditionFalse,
-			"Test failed")
 		prQueue.SetState(s2hv1beta1.PullRequestQueueCollecting)
 
 		return nil
