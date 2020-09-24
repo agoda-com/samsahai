@@ -2,9 +2,7 @@ package queue
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -25,7 +23,6 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
-	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
@@ -227,7 +224,7 @@ func (c *controller) getStateLabel(state string) map[string]string {
 	return map[string]string{"state": state}
 }
 
-func (c *controller) manageQueue(ctx context.Context, currentPRQueue *s2hv1beta1.PullRequestQueue) (
+func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue *s2hv1beta1.PullRequestQueue) (
 	skipReconcile bool, err error) {
 
 	listOpts := client.ListOptions{LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateRunning))}
@@ -284,343 +281,6 @@ func (c *controller) manageQueue(ctx context.Context, currentPRQueue *s2hv1beta1
 	return
 }
 
-func (c *controller) ensurePullRequestNamespaceReady(ctx context.Context, ns string) error {
-	prNamespace := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: ns,
-		},
-	}
-
-	if err := c.client.Get(ctx, types.NamespacedName{Name: ns}, prNamespace); err != nil {
-		return errors.Wrapf(err, "cannot get namespace %s", ns)
-	}
-
-	return nil
-}
-
-func (c *controller) createPullRequestEnvironment(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
-	prNamespace := fmt.Sprintf("%s%s-%s", internal.AppPrefix, c.teamName, prQueue.Name)
-	_, err := c.s2hClient.CreatePullRequestEnvironment(ctx, &samsahairpc.TeamWithPullRequest{
-		TeamName:      c.teamName,
-		Namespace:     prNamespace,
-		ComponentName: prQueue.Spec.ComponentName,
-	})
-	if err != nil {
-		return err
-	}
-
-	if err := c.ensurePullRequestNamespaceReady(ctx, prNamespace); err != nil {
-		logger.Warn("cannot ensure pull request namespace created", "error", err.Error())
-		return s2herrors.ErrTeamNamespaceStillCreating
-	}
-
-	prQueue.Status.SetPullRequestNamespace(prNamespace)
-	prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondEnvCreated, corev1.ConditionTrue,
-		"Pull request environment has been created")
-	prQueue.SetState(s2hv1beta1.PullRequestQueueDeploying)
-
-	return nil
-}
-
-func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) (
-	skipReconcile bool, err error) {
-
-	prNamespace := prQueue.Status.PullRequestNamespace
-	if err = queue.DeletePullRequestQueue(c.client, prNamespace, prQueue.Name); err != nil {
-		return
-	}
-
-	_, err = c.s2hClient.DestroyPullRequestEnvironment(ctx, &samsahairpc.TeamWithNamespace{
-		TeamName:  c.teamName,
-		Namespace: prNamespace,
-	})
-	if err != nil {
-		return
-	}
-
-	prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondEnvDestroyed, corev1.ConditionTrue,
-		"Pull request environment has been destroyed")
-
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
-	if err != nil {
-		return
-	}
-
-	if prQueue.Status.Result == s2hv1beta1.PullRequestQueueFailure {
-		maxRetryQueue := int(prConfig.MaxRetry)
-		if prQueue.Spec.NoOfRetry < maxRetryQueue {
-			prQueue.Spec.NoOfRetry++
-			if err = c.SetRetryQueue(prQueue, prQueue.Spec.NoOfRetry, time.Now()); err != nil {
-				err = errors.Wrapf(err, "cannot set retry pull request queue")
-				return
-			}
-
-			c.resetQueueOrderWithRunningQueue(ctx, prQueue)
-			skipReconcile = true
-			return
-		}
-	}
-
-	prQueue.SetState(s2hv1beta1.PullRequestQueueFinished)
-
-	return
-}
-
-func (c *controller) updatePullRequestComponentDependenciesVersion(ctx context.Context, teamName, prCompName string,
-	prComps *s2hv1beta1.QueueComponents) error {
-
-	if prComps == nil {
-		return nil
-	}
-
-	prDependencies, err := c.s2hClient.GetPullRequestComponentDependencies(ctx, &samsahairpc.TeamWithComponentName{
-		TeamName:      teamName,
-		ComponentName: prCompName,
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, prDep := range prDependencies.Dependencies {
-		imgRepo := prDep.Image.Repository
-		imgTag := prDep.Image.Tag
-		depFound := false
-		for i := range *prComps {
-			if (*prComps)[i].Name == prDep.Name {
-				depFound = true
-				(*prComps)[i].Repository = imgRepo
-				(*prComps)[i].Version = imgTag
-			}
-		}
-
-		if !depFound {
-			*prComps = append(*prComps, &s2hv1beta1.QueueComponent{
-				Name:       prDep.Name,
-				Repository: imgRepo,
-				Version:    imgTag,
-			})
-		}
-	}
-
-	return nil
-}
-
-func (c *controller) ensurePullRequestComponentsDeploying(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
-	prComps := prQueue.Spec.Components
-	prNamespace := prQueue.Status.PullRequestNamespace
-
-	err := c.updatePullRequestComponentDependenciesVersion(ctx, c.teamName, prQueue.Spec.ComponentName, &prComps)
-	if err != nil {
-		return err
-	}
-
-	deployedQueue, err := queue.EnsurePullRequestComponents(c.client, c.teamName, prNamespace, prQueue.Name, prComps,
-		prQueue.Spec.NoOfRetry)
-	if err != nil {
-		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
-	}
-
-	if deployedQueue.Status.State == s2hv1beta1.Finished || // in case of queue state was finished without deploying
-		(deployedQueue.Status.StartDeployTime != nil && deployedQueue.Status.State != s2hv1beta1.Creating) {
-		if deployedQueue.IsDeploySuccess() {
-			// in case successful deployment
-			logger.Debug("components has been deployed successfully",
-				"team", c.teamName, "component", prQueue.Spec.ComponentName,
-				"prNumber", prQueue.Spec.PRNumber)
-			prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondDeployed, corev1.ConditionTrue,
-				"Components have been deployed successfully")
-			prQueue.SetState(s2hv1beta1.PullRequestQueueTesting)
-		}
-
-		// in case failure deployment
-		prQueue.Status.SetResult(s2hv1beta1.PullRequestQueueFailure)
-		prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondDeployed, corev1.ConditionFalse,
-			"Deployment failed")
-		prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondTested, corev1.ConditionTrue,
-			"Skipped running test due to deployment failed")
-		prQueue.SetState(s2hv1beta1.PullRequestQueueCollecting)
-
-		return nil
-	}
-
-	return s2herrors.ErrEnsureComponentDeployed
-}
-
-func (c *controller) ensurePullRequestComponentsTesting(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
-	prComps := prQueue.Spec.Components
-	prNamespace := prQueue.Status.PullRequestNamespace
-	deployedQueue, err := queue.EnsurePullRequestComponents(c.client, c.teamName, prNamespace, prQueue.Name, prComps,
-		prQueue.Spec.NoOfRetry)
-	if err != nil {
-		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
-	}
-
-	if deployedQueue.Status.State == s2hv1beta1.Finished || // in case of queue state was finished without deploying
-		(deployedQueue.Status.StartDeployTime != nil && deployedQueue.Status.State != s2hv1beta1.Creating) {
-		if deployedQueue.IsTestSuccess() {
-			// in case successful test
-			logger.Debug("components have been tested successfully",
-				"team", c.teamName, "component", prQueue.Spec.ComponentName,
-				"prNumber", prQueue.Spec.PRNumber)
-			prQueue.Status.SetResult(s2hv1beta1.PullRequestQueueSuccess)
-			prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondTested, corev1.ConditionTrue,
-				"Components have been tested successfully")
-		}
-
-		// in case failure test
-		prQueue.Status.SetResult(s2hv1beta1.PullRequestQueueFailure)
-		prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondTested, corev1.ConditionFalse,
-			"Test failed")
-		prQueue.SetState(s2hv1beta1.PullRequestQueueCollecting)
-
-		return nil
-	}
-
-	return s2herrors.ErrEnsureComponentTested
-}
-
-func (c *controller) collectPullRequestQueueResult(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
-	prComps := prQueue.Spec.Components
-	prNamespace := prQueue.Status.PullRequestNamespace
-	deployedQueue, err := queue.EnsurePullRequestComponents(c.client, c.teamName, prNamespace, prQueue.Name, prComps,
-		prQueue.Spec.NoOfRetry)
-	if err != nil {
-		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
-	}
-
-	prQueue.SetState(s2hv1beta1.PullRequestQueueEnvDestroying)
-	prQueue.Status.SetDeploymentQueue(deployedQueue)
-	prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondResultCollected, corev1.ConditionTrue,
-		"Pull request queue result has been collected")
-
-	prQueueHistName := generateHistoryName(prQueue.Name, prQueue.CreationTimestamp, prQueue.Spec.NoOfRetry)
-	if prQueue.Status.PullRequestQueueHistoryName == "" {
-		if err := c.createPullRequestQueueHistory(ctx, prQueue); err != nil && !k8serrors.IsAlreadyExists(err) {
-			return err
-		}
-
-		prQueue.Status.SetPullRequestQueueHistoryName(prQueueHistName)
-		if err := c.sendPullRequestQueueReport(ctx, prQueue); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	return nil
-}
-
-func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
-	deploymentQueue := prQueue.Status.DeploymentQueue
-	if deploymentQueue != nil {
-		isDeploySuccess, isTestSuccess := deploymentQueue.IsDeploySuccess(), deploymentQueue.IsTestSuccess()
-
-		compUpgradeStatus := samsahairpc.ComponentUpgrade_UpgradeStatus_FAILURE
-		if isDeploySuccess && isTestSuccess {
-			compUpgradeStatus = samsahairpc.ComponentUpgrade_UpgradeStatus_SUCCESS
-		}
-
-		prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
-		if err != nil {
-			return err
-		}
-
-		prQueueRPC := &samsahairpc.TeamWithPullRequest{
-			TeamName:      c.teamName,
-			ComponentName: prQueue.Spec.ComponentName,
-			PRNumber:      prQueue.Spec.PRNumber,
-			Namespace:     prQueue.Status.PullRequestNamespace,
-			MaxRetryQueue: prConfig.MaxRetry,
-		}
-
-		prQueueHistName, prQueueHistNamespace := prQueue.Status.PullRequestQueueHistoryName, c.namespace
-		comp := queue.GetComponentUpgradeRPCFromQueue(compUpgradeStatus, prQueueHistName,
-			prQueueHistNamespace, deploymentQueue, prQueueRPC)
-		if _, err := c.s2hClient.RunPostPullRequestQueue(ctx, comp); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (c *controller) createPullRequestQueueHistory(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
-	prQueueLabels := getPullRequestQueueLabels(c.teamName, prQueue.Spec.ComponentName, prQueue.Spec.PRNumber)
-
-	if err := c.deletePullRequestQueueHistoryOutOfRange(ctx); err != nil {
-		return err
-	}
-
-	history := &s2hv1beta1.PullRequestQueueHistory{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      generateHistoryName(prQueue.Name, prQueue.CreationTimestamp, prQueue.Spec.NoOfRetry),
-			Namespace: c.namespace,
-			Labels:    prQueueLabels,
-		},
-		Spec: s2hv1beta1.PullRequestQueueHistorySpec{
-			PullRequestQueue: &s2hv1beta1.PullRequestQueue{
-				Spec:   prQueue.Spec,
-				Status: prQueue.Status,
-			},
-		},
-	}
-
-	if err := c.client.Create(ctx, history); err != nil && !k8serrors.IsAlreadyExists(err) {
-		return errors.Wrapf(err,
-			"cannot create pull request queue history of %s", prQueue.Name)
-	}
-
-	return nil
-}
-
-func (c *controller) deletePullRequestQueueHistoryOutOfRange(ctx context.Context) error {
-	prQueueHists := s2hv1beta1.PullRequestQueueHistoryList{}
-	if err := c.client.List(ctx, &prQueueHists, &client.ListOptions{Namespace: c.namespace}); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil
-		}
-
-		return errors.Wrapf(err, "cannot list pull request queue histories of namespace: %s", c.namespace)
-	}
-
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
-	if err != nil {
-		return err
-	}
-
-	// parse max stored pull request queue histories in day to time duration
-	maxHistDays := int(prConfig.MaxHistoryDays)
-	maxHistDuration, err := time.ParseDuration(strconv.Itoa(maxHistDays*24) + "h")
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("cannot parse time duration of %d", maxHistDays))
-		return nil
-	}
-
-	prQueueHists.SortDESC()
-	now := metav1.Now()
-	for i := len(prQueueHists.Items) - 1; i > 0; i-- {
-		if now.Sub(prQueueHists.Items[i].CreationTimestamp.Time) >= maxHistDuration {
-			if err := c.client.Delete(ctx, &prQueueHists.Items[i]); err != nil {
-				if k8serrors.IsNotFound(err) {
-					continue
-				}
-
-				logger.Error(err, fmt.Sprintf("cannot delete pull request queue histories %s", prQueueHists.Items[i].Name))
-				return errors.Wrapf(err, "cannot delete pull request queue histories %s", prQueueHists.Items[i].Name)
-			}
-			continue
-		}
-
-		break
-	}
-
-	return nil
-}
-
-func generateHistoryName(prQueueName string, startTime metav1.Time, retryCount int) string {
-	return fmt.Sprintf("%s-%s-%d", prQueueName, startTime.Format("20060102-150405"), retryCount)
-}
-
 // Reconcile reads that state of the cluster for a PullRequestQueue object and makes changes based on the state read
 // and what is in the PullRequestQueue.Spec
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=pullrequestqueues,verbs=get;list;watch;create;update;patch;delete
@@ -656,7 +316,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
-	if skipReconcile, err := c.manageQueue(ctx, prQueue); err != nil || skipReconcile {
+	if skipReconcile, err := c.managePullRequestQueue(ctx, prQueue); err != nil || skipReconcile {
 		if err != nil {
 			return reconcile.Result{}, err
 		}
