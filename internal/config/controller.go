@@ -3,10 +3,12 @@ package config
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
+	"github.com/google/uuid"
 	"github.com/imdario/mergo"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
@@ -488,6 +490,24 @@ func (c *controller) ensureConfigChanged(teamName, namespace string) error {
 	return nil
 }
 
+func (c *controller) ensureConfigTemplateChanged(config *s2hv1beta1.Config, template string) error {
+	templateObj, err := c.getConfig(template)
+	if err != nil {
+		logger.Error(err, "config template not found", "template", template)
+		return err
+	}
+
+	if !reflect.DeepEqual(config.Status.TemplateConfig, templateObj.Spec) {
+		config.Status.TemplateConfig = templateObj.Spec
+	}
+
+	if err = applyConfigTemplate(config, templateObj); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *controller) detectSchedulerChanged(comps map[string]*s2hv1beta1.Component, teamName, namespace string) error {
 	ctx := context.TODO()
 	for _, comp := range comps {
@@ -650,8 +670,41 @@ func (c *controller) getCronJobSuffix(schedule string) string {
 	return suffix
 }
 
+func (c *controller) ensureTriggerChildrenConfig(name string) error {
+	ctx := context.TODO()
+	configs := &s2hv1beta1.ConfigList{}
+	if err := c.client.List(ctx, configs, &client.ListOptions{}); err != nil {
+		logger.Error(err, "cannot list Configs ")
+		return err
+	}
+	for _, conf := range configs.Items {
+		if conf.Spec.Template.Name == name {
+			if err := c.updateConfigTemplateID(conf); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *controller) updateConfigTemplateID(conf s2hv1beta1.Config) error {
+	conf.Spec.Template.UpdatedID = uuid.New().String()
+	if err := c.Update(&conf); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateRequiredField(config *s2hv1beta1.Config) error {
+	if len(config.Status.Used.Components) == 0 || config.Status.Used.Staging == nil {
+		return errors.ErrConfigurationRequiredField
+	}
+	return nil
+}
+
 func applyConfigTemplate(config, configTemplate *s2hv1beta1.Config) error {
-	if err := mergo.Merge(&config.Spec, configTemplate.Spec); err != nil {
+	config.Status.Used = config.Spec
+	if err := mergo.Merge(&config.Status.Used, configTemplate.Spec); err != nil {
 		return err
 	}
 
@@ -677,28 +730,44 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		return cr.Result{}, nil
 	}
 
-	if configComp.Spec.Template != "" && !configComp.Status.IsConditionTrue(s2hv1beta1.ConfigApplyTemplate) {
-		configTemplate, err := c.getConfig(configComp.Spec.Template)
-		if err != nil {
-			if k8serrors.IsNotFound(err) {
-				logger.Error(err, "template not found", "config", configComp.Spec.Template)
-			}
-			return reconcile.Result{}, err
+	if configComp.Spec.Template.Name != "" && configComp.Spec.Template.Name != configComp.Name {
+		//configTemplate, err := c.getConfig(configComp.Spec.Template)
+		//if err != nil {
+		//	if k8serrors.IsNotFound(err) {
+		//		logger.Error(err, "template not found", "config", configComp.Spec.Template)
+		//	}
+		//	return reconcile.Result{}, err
+		//}
+		//
+		//err = applyConfigTemplate(configComp, configTemplate)
+		//if err != nil {
+		//	return reconcile.Result{}, err
+		//}
+
+		if err := c.ensureConfigTemplateChanged(configComp, configComp.Spec.Template.Name); err != nil {
+			return cr.Result{}, err
 		}
 
-		err = applyConfigTemplate(configComp, configTemplate)
-		if err != nil {
-			return reconcile.Result{}, err
+		if !configComp.Status.IsConditionTrue(s2hv1beta1.ConfigApplyTemplate) {
+			configComp.Status.SetCondition(
+				s2hv1beta1.ConfigApplyTemplate,
+				corev1.ConditionTrue,
+				"applied config template successfully")
 		}
+	} else {
+		configComp.Status.Used = configComp.Spec
+	}
 
-		configComp.Status.SetCondition(
-			s2hv1beta1.ConfigApplyTemplate,
-			corev1.ConditionTrue,
-			"applied config template successfully")
+	if err := c.Update(configComp); err != nil {
+		return reconcile.Result{}, err
+	}
 
-		if err := c.Update(configComp); err != nil {
-			return reconcile.Result{}, err
-		}
+	if err := c.ensureTriggerChildrenConfig(configComp.Name); err != nil {
+		return cr.Result{}, err
+	}
+
+	if err := validateRequiredField(configComp); err != nil {
+		return cr.Result{}, err
 	}
 
 	teamComp := s2hv1beta1.Team{}

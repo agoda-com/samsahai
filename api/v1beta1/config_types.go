@@ -271,6 +271,13 @@ type Endpoint struct {
 	// TODO: auth
 }
 
+type Template struct {
+	// +optional
+	Name string `json:"name,omitempty"`
+	// +optional
+	UpdatedID string `json:"updatedID,omitempty"`
+}
+
 type EnvType string
 
 const (
@@ -287,7 +294,8 @@ type ChartValuesURLs map[string][]string
 // ConfigSpec defines the desired state of Config
 type ConfigSpec struct {
 	// Components represents all components that are managed
-	Components []*Component `json:"components"`
+	// +optional
+	Components []*Component `json:"components,omitempty"`
 
 	// Bundles represents a group of component for each bundle
 	// +optional
@@ -299,7 +307,8 @@ type ConfigSpec struct {
 	PriorityQueues []string `json:"priorityQueues,omitempty"`
 
 	// Staging represents configuration about staging
-	Staging *ConfigStaging `json:"staging"`
+	// +optional
+	Staging *ConfigStaging `json:"staging,omitempty"`
 
 	// ActivePromotion represents configuration about active promotion
 	// +optional
@@ -314,13 +323,19 @@ type ConfigSpec struct {
 	// +optional
 	Reporter *ConfigReporter `json:"report,omitempty"`
 
-	// Template
+	// Template represents configuration's template
 	// +optional
-	Template string `json:"template,omitempty"`
+	Template Template `json:"template,omitempty"`
 }
 
 // ConfigStatus defines the observed state of Config
 type ConfigStatus struct {
+	// UsedTemplate contains override configuration spec
+	// +optional
+	Used ConfigSpec `json:"used,omitempty"`
+	// TemplateConfig contains template configuration spec
+	// +optional
+	TemplateConfig ConfigSpec `json:"templateConfig,omitempty"`
 	// Conditions contains observations of the state
 	// +optional
 	Conditions []ConfigCondition `json:"conditions,omitempty"`

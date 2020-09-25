@@ -6,10 +6,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/imdario/mergo"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1266,8 +1268,49 @@ func (c *controller) ensureAndUpdateConfig(teamComp *s2hv1beta1.Team) error {
 	return nil
 }
 
+func (c *controller) ensureTeamTemplateChanged(teamComp *s2hv1beta1.Team, template string) error {
+	templateObj := &s2hv1beta1.Team{}
+	err := c.getTeam(template, templateObj)
+	if err != nil {
+		logger.Error(err, "team template not found", "template", template)
+		return err
+	}
+	if !reflect.DeepEqual(teamComp.Status.TemplateTeam, templateObj.Spec) {
+		teamComp.Status.TemplateTeam = templateObj.Spec
+	}
+
+	if err = applyTeamTemplate(teamComp, templateObj); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *controller) ensureTriggerChildrenTeam(name string) error {
+	ctx := context.TODO()
+	configs := &s2hv1beta1.ConfigList{}
+	if err := c.client.List(ctx, configs, &client.ListOptions{}); err != nil {
+		logger.Error(err, "cannot list Configs ")
+		return err
+	}
+	for _, conf := range configs.Items {
+		if conf.Spec.Template.Name == name {
+			team := &s2hv1beta1.Team{}
+			if err := c.getTeam(conf.Name, team); err != nil {
+				return err
+			}
+			team.Spec.TemplateUpdatedID = uuid.New().String()
+			if err := c.updateTeam(team); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func applyTeamTemplate(teamComp, teamTemplate *s2hv1beta1.Team) error {
-	if err := mergo.Merge(&teamComp.Spec, teamTemplate.Spec); err != nil {
+	teamComp.Status.Used = teamComp.Spec
+	if err := mergo.Merge(&teamComp.Status.Used, teamTemplate.Spec); err != nil {
 		return err
 	}
 
@@ -1328,31 +1371,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	c.addFinalizer(teamComp)
 
-	// if team use template apply values from template
-	if teamComp.Spec.Template != "" && !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamApplyTemplate) {
-		teamTemplate := &s2hv1beta1.Team{}
-		err := c.getTeam(teamComp.Spec.Template, teamTemplate)
-		if err != nil {
-			if k8serrors.IsNotFound(err) {
-				logger.Error(err, "template not found", "team", teamComp.Spec.Template)
-			}
-			return reconcile.Result{}, err
-		}
-
-		err = applyTeamTemplate(teamComp, teamTemplate)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamApplyTemplate,
-			corev1.ConditionTrue,
-			"applied team template successfully")
-
-		if err := c.updateTeam(teamComp); err != nil {
-			return reconcile.Result{}, err
-		}
-	}
 
 	if err := c.ensureAndUpdateConfig(teamComp); err != nil {
 		teamComp.Status.SetCondition(
@@ -1378,6 +1396,36 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when config exists")
 		}
 	}
+
+	configComp, err := c.configCtrl.Get(teamComp.Name)
+	if err != nil {
+		logger.Error(err, "cannot get config", "name", teamComp.Name)
+		return reconcile.Result{}, err
+	}
+
+	if configComp.Spec.Template.Name != "" && configComp.Spec.Template.Name != teamComp.Name {
+		if err := c.ensureTeamTemplateChanged(teamComp, configComp.Spec.Template.Name); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamApplyTemplate) {
+			teamComp.Status.SetCondition(
+				s2hv1beta1.TeamApplyTemplate,
+				corev1.ConditionTrue,
+				"applied team template successfully")
+		}
+	} else {
+		teamComp.Status.Used = teamComp.Spec
+	}
+
+	if err := c.updateTeam(teamComp); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if err := c.ensureTriggerChildrenTeam(teamComp.Name); err != nil {
+		return reconcile.Result{}, err
+	}
+
 
 	teamName := teamComp.GetName()
 	if err := c.CreateStagingEnvironment(teamName, internal.GenStagingNamespace(teamName)); err != nil {

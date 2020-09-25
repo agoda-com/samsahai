@@ -45,6 +45,7 @@ const (
 	ErrCannotMarshalYAML = Error("cannot marshal to yaml")
 
 	ErrTestConfigurationNotFound = Error("test configuration not found")
+	ErrConfigurationRequiredField = Error("required filed cannot be empty")
 
 	ErrEnsureConfigDestroyed = Error("config been being destroyed")
 )

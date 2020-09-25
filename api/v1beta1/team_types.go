@@ -47,9 +47,9 @@ type TeamSpec struct {
 	// +optional
 	Credential Credential `json:"credential,omitempty"`
 
-	// Template
+	// TemplateUpdatedId
 	// +optional
-	Template string `json:"template,omitempty"`
+	TemplateUpdatedID string `json:"templateUpdatedID,omitempty"`
 }
 
 type StagingCtrl struct {
@@ -114,6 +114,12 @@ type TeamStatus struct {
 	// ActivePromotedBy represents a person who promoted the ActivePromotion
 	// +optional
 	ActivePromotedBy string `json:"activePromotedBy,omitempty"`
+
+	// +optional
+	Used TeamSpec `json:"used,omitempty"`
+
+	// +optional
+	TemplateTeam TeamSpec `json:"templateTeam,omitempty"`
 }
 
 func (ts *TeamStatus) GetStableComponent(stableCompName string) StableComponent {
