@@ -55,6 +55,8 @@ const (
 	PullRequestQueueCondStarted PullRequestQueueConditionType = "PullRequestQueueStarted"
 	// PullRequestQueueCondEnvCreated means the pull request queue environment has been created
 	PullRequestQueueCondEnvCreated PullRequestQueueConditionType = "PullRequestQueueEnvCreated"
+	// PullRequestQueueCondDependenciesUpdated means the pull request component dependencies have been updated
+	PullRequestQueueCondDependenciesUpdated PullRequestQueueConditionType = "PullRequestQueueDependenciesUpdated"
 	// PullRequestQueueCondDeployed means the pull request components have been deployed into pull request namespace
 	PullRequestQueueCondDeployed PullRequestQueueConditionType = "PullRequestQueueComponentsDeployed"
 	// PullRequestQueueCondTested means the pull request components have been tested
@@ -162,6 +164,15 @@ func (prqs *PullRequestQueueStatus) SetDeploymentQueue(q *Queue) {
 		Spec:   q.Spec,
 		Status: q.Status,
 	}
+}
+
+func (prqs *PullRequestQueueStatus) IsConditionTrue(cond PullRequestQueueConditionType) bool {
+	for i, c := range prqs.Conditions {
+		if c.Type == cond {
+			return prqs.Conditions[i].Status == corev1.ConditionTrue
+		}
+	}
+	return false
 }
 
 func (prqs *PullRequestQueueStatus) SetCondition(cond PullRequestQueueConditionType, status corev1.ConditionStatus, message string) {

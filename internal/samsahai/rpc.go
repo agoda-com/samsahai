@@ -350,7 +350,7 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.Tea
 	}
 
 	queueConcurrences := c.configs.PullRequest.QueueConcurrences
-	if prConfig != nil {
+	if prConfig.Concurrences != 0 {
 		queueConcurrences = prConfig.Concurrences
 	}
 

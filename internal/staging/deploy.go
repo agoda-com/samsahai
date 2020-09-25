@@ -397,6 +397,7 @@ func (c *controller) deployComponents(
 	queueParentComps map[string]*s2hv1beta1.Component,
 	deployTimeout time.Duration,
 ) (isDeployed bool, err error) {
+	isDeployed = true
 	stableMap, err := c.getStableComponentsMapFromQueueType(queue)
 	if err != nil {
 		return false, err
@@ -442,7 +443,6 @@ func (c *controller) deployComponents(
 		errCh <- err
 	}()
 
-	isDeployed = true
 	for i := 0; i < 2; i++ {
 		select {
 		case <-ctx.Done():

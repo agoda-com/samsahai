@@ -70,7 +70,6 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 		if prQueue.Spec.NoOfRetry < maxRetryQueue {
 			prQueue.Spec.NoOfRetry++
 			if err = c.SetRetryQueue(prQueue, prQueue.Spec.NoOfRetry, time.Now()); err != nil {
-				err = errors.Wrapf(err, "cannot set retry pull request queue")
 				return
 			}
 
@@ -106,6 +105,12 @@ func (c *controller) ensurePullRequestComponentsDeploying(ctx context.Context, p
 	err := c.updatePullRequestComponentDependenciesVersion(ctx, c.teamName, prQueue.Spec.ComponentName, &prComps)
 	if err != nil {
 		return err
+	}
+
+	if !prQueue.Status.IsConditionTrue(s2hv1beta1.PullRequestQueueCondDependenciesUpdated) {
+		prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondDependenciesUpdated, corev1.ConditionTrue,
+			"Pull request dependencies have been updated into queue successfully")
+		return nil
 	}
 
 	deployedQueue, err := queue.EnsurePullRequestComponents(c.client, c.teamName, prNamespace, prQueue.Name, prComps,

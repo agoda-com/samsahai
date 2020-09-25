@@ -152,8 +152,9 @@ func startCtrlCmd() *cobra.Command {
 				runtimeClient, queueCtrl, configCtrl, tcBaseURL, tcUsername, tcPassword,
 				s2h.StagingConfig{MaxHistoryDays: maxQueueHistDays})
 
-			prQueueCtrl := prqueuectrl.New(teamName, namespace, mgr, runtimeClient, authToken, samsahaiClient)
-			prtriggerctrl.New(teamName, mgr, prQueueCtrl, authToken, samsahaiClient)
+			prQueueCtrl := prqueuectrl.New(teamName, namespace, mgr, authToken, samsahaiClient,
+				prqueuectrl.WithClient(runtimeClient))
+			_ = prtriggerctrl.New(teamName, mgr, prQueueCtrl, authToken, samsahaiClient)
 
 			logger.Info("setup signal handler")
 			stop := signals.SetupSignalHandler()

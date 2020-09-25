@@ -718,6 +718,13 @@ func getAllTeamNamespaces(teamComp *s2hv1beta1.Team, isDelete bool) []TeamNamesp
 		teamNsOpts = append(teamNsOpts, withTeamActiveNamespaceStatus(activeNs, "", isDelete))
 	}
 
+	pullRequestNs := teamComp.Status.Namespace.PullRequests
+	if len(pullRequestNs) > 0 {
+		for _, ns := range pullRequestNs {
+			teamNsOpts = append(teamNsOpts, withTeamPullRequestNamespaceStatus(ns, nil, isDelete))
+		}
+	}
+
 	return teamNsOpts
 }
 

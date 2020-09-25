@@ -46,6 +46,14 @@ type controller struct {
 var _ internal.QueueController = &controller{}
 var _ reconcile.Reconciler = &controller{}
 
+type Option func(*controller)
+
+func WithClient(client client.Client) Option {
+	return func(c *controller) {
+		c.client = client
+	}
+}
+
 func NewPullRequestQueue(teamName, namespace, componentName, prNumber string, comps []*s2hv1beta1.QueueComponent) *s2hv1beta1.PullRequestQueue {
 	qLabels := getPullRequestQueueLabels(teamName, componentName, prNumber)
 	prQueueName := internal.GenPullRequestComponentName(componentName, prNumber)
@@ -71,21 +79,27 @@ func New(
 	teamName string,
 	ns string,
 	mgr manager.Manager,
-	client client.Client,
 	authToken string,
 	s2hClient samsahairpc.RPC,
+	options ...Option,
 ) internal.QueueController {
 
 	c := &controller{
 		teamName:  teamName,
 		namespace: ns,
-		client:    client,
 		authToken: authToken,
 		s2hClient: s2hClient,
 	}
 
-	if err := add(mgr, c); err != nil {
-		logger.Error(err, "cannot add new controller to manager")
+	if mgr != nil {
+		c.client = mgr.GetClient()
+		if err := add(mgr, c); err != nil {
+			logger.Error(err, "cannot add new controller to manager")
+		}
+	}
+
+	for _, opt := range options {
+		opt(c)
 	}
 
 	return c
@@ -173,6 +187,15 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, prQueue *s
 	if !prQueue.ObjectMeta.DeletionTimestamp.IsZero() {
 		// The object is being deleted
 		if stringutils.ContainsString(prQueue.ObjectMeta.Finalizers, pullRequestQueueFinalizer) {
+			nsObj := &corev1.Namespace{}
+			err = c.client.Get(ctx, types.NamespacedName{Name: c.namespace}, nsObj)
+			if err != nil && k8serrors.IsNotFound(err) || nsObj.Status.Phase == corev1.NamespaceTerminating {
+				if err = c.removeFinalizerObject(ctx, prQueue); err != nil {
+					return
+				}
+				return true, nil
+			}
+
 			if prQueue.Status.State == "" ||
 				prQueue.Status.State == s2hv1beta1.PullRequestQueueWaiting ||
 				prQueue.Status.State == s2hv1beta1.PullRequestQueueFinished {
@@ -343,7 +366,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 				}, nil
 			}
 
-			return reconcile.Result{}, err
+			return reconcile.Result{}, errors.Wrapf(err, "cannot create pull request environment")
 		}
 
 	case s2hv1beta1.PullRequestQueueDeploying:
@@ -372,7 +395,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	case s2hv1beta1.PullRequestQueueCollecting:
 		if err := c.collectPullRequestQueueResult(ctx, prQueue); err != nil {
-			return reconcile.Result{}, err
+			return reconcile.Result{}, errors.Wrapf(err, "cannot collect pull request queue result")
 		}
 
 	case s2hv1beta1.PullRequestQueueEnvDestroying:
@@ -385,7 +408,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 					}, nil
 				}
 
-				return reconcile.Result{}, err
+				return reconcile.Result{}, errors.Wrapf(err, "cannot destroy pull request environment")
 			}
 			return reconcile.Result{}, nil
 		}
