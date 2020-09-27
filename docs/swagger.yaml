@@ -1755,6 +1755,11 @@ paths:
       - application/json
       description: Endpoint for manually triggering pull request deployment
       parameters:
+      - description: Team name
+        in: path
+        name: team
+        required: true
+        type: string
       - description: Pull Request
         in: body
         name: pullRequestWebhookEventJSON

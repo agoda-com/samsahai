@@ -11,6 +11,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	apiruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crctrl "sigs.k8s.io/controller-runtime/pkg/controller"
@@ -38,6 +39,7 @@ const (
 type controller struct {
 	teamName  string
 	client    client.Client
+	scheme    *apiruntime.Scheme
 	namespace string
 	authToken string
 	s2hClient samsahairpc.RPC
@@ -93,6 +95,7 @@ func New(
 
 	if mgr != nil {
 		c.client = mgr.GetClient()
+		c.scheme = mgr.GetScheme()
 		if err := add(mgr, c); err != nil {
 			logger.Error(err, "cannot add new controller to manager")
 		}
@@ -250,10 +253,14 @@ func (c *controller) getStateLabel(state string) map[string]string {
 func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue *s2hv1beta1.PullRequestQueue) (
 	skipReconcile bool, err error) {
 
-	listOpts := client.ListOptions{LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateRunning))}
+	listOpts := client.ListOptions{
+		Namespace:     currentPRQueue.Namespace,
+		LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateRunning)),
+	}
 	runningPRQueues, err := c.listPullRequestQueues(&listOpts, currentPRQueue.Namespace)
 	if err != nil {
-		err = errors.Wrap(err, "cannot list pull request queues")
+		err = errors.Wrapf(err, "cannot list pull request queues, team: %s, namespace: %s",
+			c.teamName, c.namespace)
 		return
 	}
 
@@ -267,10 +274,14 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 		return
 	}
 
-	listOpts = client.ListOptions{LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateWaiting))}
+	listOpts = client.ListOptions{
+		Namespace:     currentPRQueue.Namespace,
+		LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateWaiting)),
+	}
 	waitingPRQueues, err := c.listPullRequestQueues(&listOpts, currentPRQueue.Namespace)
 	if err != nil {
-		err = errors.Wrap(err, "cannot list pull request queues")
+		err = errors.Wrapf(err, "cannot list pull request queues, team: %s, namespace: %s",
+			c.teamName, c.namespace)
 		return
 	}
 

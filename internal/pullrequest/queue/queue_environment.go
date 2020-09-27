@@ -7,8 +7,6 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -26,11 +24,6 @@ func (c *controller) createPullRequestEnvironment(ctx context.Context, prQueue *
 	})
 	if err != nil {
 		return err
-	}
-
-	if err := c.ensurePullRequestNamespaceReady(ctx, prNamespace); err != nil {
-		logger.Warn("cannot ensure pull request namespace created", "error", err.Error())
-		return s2herrors.ErrTeamNamespaceStillCreating
 	}
 
 	prQueue.Status.SetPullRequestNamespace(prNamespace)
@@ -73,7 +66,7 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 				return
 			}
 
-			c.resetQueueOrderWithRunningQueue(ctx, prQueue)
+			c.resetQueueOrder(ctx)
 			skipReconcile = true
 			return
 		}
@@ -82,20 +75,6 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 	prQueue.SetState(s2hv1beta1.PullRequestQueueFinished)
 
 	return
-}
-
-func (c *controller) ensurePullRequestNamespaceReady(ctx context.Context, ns string) error {
-	prNamespace := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: ns,
-		},
-	}
-
-	if err := c.client.Get(ctx, types.NamespacedName{Name: ns}, prNamespace); err != nil {
-		return errors.Wrapf(err, "cannot get namespace %s", ns)
-	}
-
-	return nil
 }
 
 func (c *controller) ensurePullRequestComponentsDeploying(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
@@ -113,10 +92,9 @@ func (c *controller) ensurePullRequestComponentsDeploying(ctx context.Context, p
 		return nil
 	}
 
-	deployedQueue, err := queue.EnsurePullRequestComponents(c.client, c.teamName, prNamespace, prQueue.Name, prComps,
-		prQueue.Spec.NoOfRetry)
+	deployedQueue, err := c.ensurePullRequestComponents(prQueue, prComps)
 	if err != nil {
-		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
+		return errors.Wrapf(err, "cannot ensure pull request components deployed, namespace %s", prNamespace)
 	}
 
 	if deployedQueue.Status.State == s2hv1beta1.Finished || // in case of queue state was finished without deploying
@@ -149,10 +127,9 @@ func (c *controller) ensurePullRequestComponentsDeploying(ctx context.Context, p
 func (c *controller) ensurePullRequestComponentsTesting(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
 	prComps := prQueue.Spec.Components
 	prNamespace := prQueue.Status.PullRequestNamespace
-	deployedQueue, err := queue.EnsurePullRequestComponents(c.client, c.teamName, prNamespace, prQueue.Name, prComps,
-		prQueue.Spec.NoOfRetry)
+	deployedQueue, err := c.ensurePullRequestComponents(prQueue, prComps)
 	if err != nil {
-		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
+		return errors.Wrapf(err, "cannot ensure pull request components tested, namespace %s", prNamespace)
 	}
 
 	if deployedQueue.Status.State == s2hv1beta1.Finished {
@@ -216,4 +193,20 @@ func (c *controller) updatePullRequestComponentDependenciesVersion(ctx context.C
 	}
 
 	return nil
+}
+
+func (c *controller) ensurePullRequestComponents(prQueue *s2hv1beta1.PullRequestQueue, prComps s2hv1beta1.QueueComponents) (*s2hv1beta1.Queue, error) {
+	runtimeClient, err := c.getRuntimeClient()
+	if err != nil {
+		return nil, err
+	}
+
+	prNamespace := prQueue.Status.PullRequestNamespace
+	deployedQueue, err := queue.EnsurePullRequestComponents(runtimeClient, c.teamName, prNamespace, prQueue.Name,
+		prComps, prQueue.Spec.NoOfRetry)
+	if err != nil {
+		return nil, err
+	}
+
+	return deployedQueue, nil
 }

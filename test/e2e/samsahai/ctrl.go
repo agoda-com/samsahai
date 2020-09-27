@@ -385,7 +385,7 @@ var _ = Describe("[e2e] Main controller", func() {
 			stagingCfgCtrl := configctrl.New(stagingMgr)
 			qctrl := queue.New(preActiveNs, client)
 			stagingPreActiveCtrl := staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient,
-				stagingMgr, client, qctrl, stagingCfgCtrl, "", "", "",
+				stagingMgr, qctrl, stagingCfgCtrl, "", "", "",
 				internal.StagingConfig{})
 			go func() {
 				defer GinkgoRecover()
@@ -1475,7 +1475,7 @@ var _ = Describe("[e2e] Main controller", func() {
 			stagingCfgCtrl := configctrl.New(stagingMgr)
 			qCtrl := queue.New(preActiveNs, client)
 			stagingPreActiveCtrl := staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient,
-				stagingMgr, client, qCtrl, stagingCfgCtrl, "", "", "",
+				stagingMgr, qCtrl, stagingCfgCtrl, "", "", "",
 				internal.StagingConfig{})
 			go func() {
 				defer GinkgoRecover()

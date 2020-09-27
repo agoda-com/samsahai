@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -308,7 +309,13 @@ func (c *controller) getStableComponentsMapFromQueueType(q *s2hv1beta1.Queue) (
 	}
 
 	// create StableComponentMap
-	stableMap, err = valuesutil.GetStableComponentsMap(c.clusterClient, namespace)
+	runtimeClient, err := c.getRuntimeClient()
+	if err != nil {
+		logger.Error(err, "cannot get runtime client")
+		return
+	}
+
+	stableMap, err = valuesutil.GetStableComponentsMap(runtimeClient, namespace)
 	if err != nil {
 		logger.Error(err, "cannot list StableComponents")
 		return
@@ -840,4 +847,20 @@ func (c *controller) deployActiveServicesIntoPullRequestEnvironment() error {
 	}
 
 	return nil
+}
+
+func (c *controller) getRuntimeClient() (client.Client, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		logger.Error(err, "unable to set up client config")
+		return nil, err
+	}
+
+	runtimeClient, err := client.New(cfg, client.Options{Scheme: c.scheme})
+	if err != nil {
+		logger.Error(err, "cannot create unversioned restclient")
+		return nil, err
+	}
+
+	return runtimeClient, nil
 }

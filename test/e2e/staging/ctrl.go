@@ -457,7 +457,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		authToken := "12345"
 		stagingCfgCtrl := configctrl.New(mgr)
-		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, client, queueCtrl,
+		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl,
 			stagingCfgCtrl, "", "", "", internal.StagingConfig{})
 
 		go stagingCtrl.Start(chStop)
@@ -632,7 +632,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		samsahaiClient := samsahairpc.NewRPCProtobufClient(server.URL, &http.Client{})
 
 		stagingCfgCtrl := configctrl.New(mgr)
-		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, client, queueCtrl,
+		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl,
 			stagingCfgCtrl, "", "", "", internal.StagingConfig{})
 		go stagingCtrl.Start(chStop)
 
@@ -731,7 +731,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		samsahaiClient := samsahairpc.NewRPCProtobufClient(server.URL, &http.Client{})
 
 		stagingCfgCtrl := configctrl.New(mgr)
-		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, client, queueCtrl,
+		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl,
 			stagingCfgCtrl, "", "", "", internal.StagingConfig{})
 		go stagingCtrl.Start(chStop)
 
@@ -769,7 +769,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 	It("should successfully get health check", func(done Done) {
 		defer close(done)
 
-		stagingCtrl = staging.NewController(teamName, namespace, "", nil, mgr, client, queueCtrl,
+		stagingCtrl = staging.NewController(teamName, namespace, "", nil, mgr, queueCtrl,
 			nil, "", "", "", internal.StagingConfig{})
 
 		server := httptest.NewServer(stagingCtrl)

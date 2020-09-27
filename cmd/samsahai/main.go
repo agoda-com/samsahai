@@ -267,7 +267,7 @@ func startCtrlCmd() *cobra.Command {
 		"Promote active environment when team creation")
 	cmd.Flags().Int(s2h.VKPRQueueConcurrences, 2, "Concurrent pull request queue deployment.")
 	cmd.Flags().Int(s2h.VKPRTriggerMaxRetryCounts, 30, "Max pull request trigger retry counts.")
-	cmd.Flags().Int(s2h.VKPRVerificationMaxRetryCounts, 30, "Max pull request verification retry counts.")
+	cmd.Flags().Int(s2h.VKPRVerificationMaxRetryCounts, 0, "Max pull request verification retry counts.")
 	cmd.Flags().Duration(s2h.VKPRTriggerPollingTime, 5*time.Minute,
 		"Waiting duration time to re-check pull request image in the registry.")
 	cmd.Flags().Int(s2h.VKPullRequestQueueMaxHistoryDays, 7,

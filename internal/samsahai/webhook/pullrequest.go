@@ -37,6 +37,7 @@ type teamPRQueueJSON struct {
 // @Summary Webhook For Pull Request Deployment
 // @Description Endpoint for manually triggering pull request deployment
 // @Tags POST
+// @Param team path string true "Team name"
 // @Accept  json
 // @Produce  json
 // @Param pullRequestWebhookEventJSON body webhook.pullRequestWebhookEventJSON true "Pull Request"

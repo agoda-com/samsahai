@@ -36,7 +36,8 @@ func (c *controller) AddTop(obj runtime.Object) error {
 func (c *controller) Size(namespace string) int {
 	list, err := c.listPullRequestQueues(nil, namespace)
 	if err != nil {
-		logger.Error(err, "cannot list pull request queues")
+		logger.Error(err, "cannot list pull request queues", "team", c.teamName,
+			"namespace", namespace)
 		return 0
 	}
 	return len(list.Items)
@@ -45,7 +46,8 @@ func (c *controller) Size(namespace string) int {
 func (c *controller) First(namespace string) (runtime.Object, error) {
 	list, err := c.listPullRequestQueues(nil, namespace)
 	if err != nil {
-		logger.Error(err, "cannot list pull request queues")
+		logger.Error(err, "cannot list pull request queues", "team", c.teamName,
+			"namespace", namespace)
 		return nil, err
 	}
 
@@ -68,7 +70,8 @@ func (c *controller) SetLastOrder(obj runtime.Object) error {
 
 	queueList, err := c.listPullRequestQueues(nil, prQueue.Namespace)
 	if err != nil {
-		logger.Error(err, "cannot list pull request queues")
+		logger.Error(err, "cannot list pull request queues", "team", c.teamName,
+			"namespace", prQueue.Namespace)
 		return err
 	}
 
@@ -91,7 +94,8 @@ func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
 
 	list, err := c.listPullRequestQueues(nil, prQueue.Namespace)
 	if err != nil {
-		logger.Error(err, "cannot list pull request queues")
+		logger.Error(err, "cannot list pull request queues", "team", c.teamName,
+			"namespace", prQueue.Namespace)
 		return err
 	}
 
@@ -114,7 +118,8 @@ func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt tim
 
 	list, err := c.listPullRequestQueues(nil, prQueue.Namespace)
 	if err != nil {
-		logger.Error(err, "cannot list pull request queues")
+		logger.Error(err, "cannot list pull request queues", "team", c.teamName,
+			"namespace", prQueue.Namespace)
 		return err
 	}
 
@@ -130,11 +135,12 @@ func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt tim
 }
 
 func (c *controller) addQueue(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue, atTop bool) error {
-	c.resetQueueOrderWithRunningQueue(ctx, prQueue)
+	c.resetQueueOrder(ctx)
 
 	prQueueList, err := c.listPullRequestQueues(nil, prQueue.Namespace)
 	if err != nil {
-		logger.Error(err, "cannot list pull request queues")
+		logger.Error(err, "cannot list pull request queues", "team", c.teamName,
+			"namespace", prQueue.Namespace)
 		return err
 	}
 
@@ -172,18 +178,23 @@ func (c *controller) addQueue(ctx context.Context, prQueue *s2hv1beta1.PullReque
 	return nil
 }
 
-// resetQueueOrderWithRunningQueue resets order of all queues to start with 1 respectively
-func (c *controller) resetQueueOrderWithRunningQueue(ctx context.Context, currentPRQueue *s2hv1beta1.PullRequestQueue) {
-	allPRQueues, err := c.listPullRequestQueues(nil, currentPRQueue.Namespace)
+// resetQueueOrder resets order of all queues to start with 1 respectively
+func (c *controller) resetQueueOrder(ctx context.Context) {
+	allPRQueues, err := c.listPullRequestQueues(nil, c.namespace)
 	if err != nil {
-		logger.Error(err, "cannot list pull request queues")
+		logger.Error(err, "cannot list pull request queues", "team", c.teamName,
+			"namespace", c.namespace)
 		return
 	}
 
-	listOpts := &client.ListOptions{LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateRunning))}
-	runningPRQueues, err := c.listPullRequestQueues(listOpts, currentPRQueue.Namespace)
+	listOpts := &client.ListOptions{
+		Namespace:     c.namespace,
+		LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateRunning)),
+	}
+	runningPRQueues, err := c.listPullRequestQueues(listOpts, c.namespace)
 	if err != nil {
-		logger.Error(err, "cannot list running pull request queues")
+		logger.Error(err, "cannot list running pull request queues", "team", c.teamName,
+			"namespace", c.namespace)
 		return
 	}
 

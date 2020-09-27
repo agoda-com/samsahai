@@ -15,8 +15,7 @@ import (
 func (c *controller) collectPullRequestQueueResult(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
 	prComps := prQueue.Spec.Components
 	prNamespace := prQueue.Status.PullRequestNamespace
-	deployedQueue, err := queue.EnsurePullRequestComponents(c.client, c.teamName, prNamespace, prQueue.Name, prComps,
-		prQueue.Spec.NoOfRetry)
+	deployedQueue, err := c.ensurePullRequestComponents(prQueue, prComps)
 	if err != nil {
 		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
 	}

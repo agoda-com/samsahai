@@ -6,9 +6,26 @@ import (
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 )
+
+func (c *controller) getRuntimeClient() (client.Client, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		logger.Error(err, "unable to set up client config")
+		return nil, err
+	}
+
+	runtimeClient, err := client.New(cfg, client.Options{Scheme: c.scheme})
+	if err != nil {
+		logger.Error(err, "cannot create unversioned restclient")
+		return nil, err
+	}
+
+	return runtimeClient, nil
+}
 
 func (c *controller) listPullRequestQueues(opts *client.ListOptions, namespace string) (list *s2hv1beta1.PullRequestQueueList, err error) {
 	list = &s2hv1beta1.PullRequestQueueList{}
