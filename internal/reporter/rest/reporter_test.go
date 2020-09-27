@@ -205,7 +205,7 @@ var _ = Describe("send rest message", func() {
 					"teamName should be matched")
 				g.Expect(gjson.GetBytes(body, "pullRequestComponent.componentName").String()).To(Equal(rpcComp.PullRequestComponent.ComponentName),
 					"pullRequestComponent.componentName should be matched")
-				g.Expect(gjson.GetBytes(body, "pullRequestComponent.pullRequestNumber").String()).To(Equal(rpcComp.PullRequestComponent.PRNumber),
+				g.Expect(gjson.GetBytes(body, "pullRequestComponent.PRNumber").String()).To(Equal(rpcComp.PullRequestComponent.PRNumber),
 					"pullRequestComponent.pullRequestNumber should be matched")
 			})
 
@@ -295,11 +295,17 @@ var _ = Describe("send rest message", func() {
 			err := client.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
 			g.Expect(err).NotTo(BeNil(), "component upgrade request should thrown an error")
 
+			err = client.SendPullRequestQueue(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
+			g.Expect(err).NotTo(BeNil(), "pull request queue's request should thrown an error")
+
 			err = client.SendActivePromotionStatus(configCtrl, &internal.ActivePromotionReporter{})
 			g.Expect(err).NotTo(BeNil(), "active promotion request should thrown an error")
 
 			err = client.SendImageMissing(configCtrl, &internal.ImageMissingReporter{})
 			g.Expect(err).NotTo(BeNil(), "image missing request should thrown an error")
+
+			err = client.SendPullRequestTriggerResult(configCtrl, &internal.PullRequestTriggerReporter{})
+			g.Expect(err).NotTo(BeNil(), "pull request trigger's request should thrown an error")
 		})
 
 		It("should not send message if not define rest reporter configuration", func() {
@@ -319,6 +325,10 @@ var _ = Describe("send rest message", func() {
 			configCtrl := newMockConfigCtrl("empty")
 
 			err := client.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(calls).To(Equal(0))
+
+			err = client.SendPullRequestQueue(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
@@ -359,6 +369,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 						ActivePromotion:    &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
 						ImageMissing:       &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
 						PullRequestTrigger: &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+						PullRequestQueue:   &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
 					},
 				},
 			},

@@ -42,7 +42,6 @@ import (
 
 const (
 	verifyTime1s           = 1 * time.Second
-	verifyTime5s           = 5 * time.Second
 	verifyTime10s          = 10 * time.Second
 	verifyTime15s          = 15 * time.Second
 	verifyTime30s          = 30 * time.Second
@@ -814,6 +813,10 @@ var (
 		},
 	}
 
+	configReporter = &s2hv1beta1.ConfigReporter{
+		ReportMock: true,
+	}
+
 	prImage = s2hv1beta1.ComponentImage{
 		Repository: "bitnami/wordpress",
 		Pattern:    "5.2.4-debian-9-r{{ .PRNumber }}",
@@ -863,6 +866,7 @@ var (
 				Concurrences: 1,
 				MaxRetry:     &prMaxRetry,
 			},
+			Reporter: configReporter,
 		},
 	}
 )

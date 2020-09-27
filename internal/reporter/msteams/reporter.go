@@ -7,6 +7,7 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	"github.com/agoda-com/samsahai/internal/reporter/util"
 	"github.com/agoda-com/samsahai/internal/util/msteams"
 	"github.com/agoda-com/samsahai/internal/util/template"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
@@ -16,9 +17,6 @@ var logger = s2hlog.Log.WithName(ReporterName)
 
 const (
 	ReporterName = "msteams"
-
-	statusSuccess = "success"
-	statusFailure = "failure"
 
 	styleDanger  = `style="color:#EE2828"`
 	styleWarning = `style="color:#EEA328"`
@@ -75,11 +73,11 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	}
 
 	if msTeamsConfig.ComponentUpgrade != nil {
-		if err := r.checkMatchingInterval(msTeamsConfig.ComponentUpgrade.Interval, comp.IsReverify); err != nil {
+		if err := util.CheckMatchingInterval(msTeamsConfig.ComponentUpgrade.Interval, comp.IsReverify); err != nil {
 			return nil
 		}
 
-		if err := r.checkMatchingCriteria(msTeamsConfig.ComponentUpgrade.Criteria, string(comp.StatusStr)); err != nil {
+		if err := util.CheckMatchingCriteria(msTeamsConfig.ComponentUpgrade.Criteria, string(comp.StatusStr)); err != nil {
 			return nil
 		}
 	}
@@ -101,11 +99,11 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 	}
 
 	if msTeamsConfig.PullRequestQueue != nil {
-		if err := r.checkMatchingInterval(msTeamsConfig.PullRequestQueue.Interval, comp.IsReverify); err != nil {
+		if err := util.CheckMatchingInterval(msTeamsConfig.PullRequestQueue.Interval, comp.IsReverify); err != nil {
 			return nil
 		}
 
-		if err := r.checkMatchingCriteria(msTeamsConfig.PullRequestQueue.Criteria, string(comp.StatusStr)); err != nil {
+		if err := util.CheckMatchingCriteria(msTeamsConfig.PullRequestQueue.Criteria, string(comp.StatusStr)); err != nil {
 			return nil
 		}
 	}
@@ -196,7 +194,7 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	}
 
 	if msTeamsConfig.PullRequestTrigger != nil {
-		err := r.checkMatchingCriteria(msTeamsConfig.PullRequestTrigger.Criteria, string(prTriggerRpt.Result))
+		err := util.CheckMatchingCriteria(msTeamsConfig.PullRequestTrigger.Criteria, string(prTriggerRpt.Result))
 		if err != nil {
 			return nil
 		}
@@ -373,36 +371,6 @@ func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.Pul
 `
 
 	return strings.TrimSpace(template.TextRender("SlackPullRequestTriggerResult", message, prTriggerRpt))
-}
-
-func (r *reporter) checkMatchingInterval(interval s2hv1beta1.ReporterInterval, isReverify bool) error {
-	switch interval {
-	case s2hv1beta1.IntervalEveryTime:
-	default:
-		if !isReverify {
-			return s2herrors.New("interval was not matched")
-		}
-	}
-
-	return nil
-}
-
-func (r *reporter) checkMatchingCriteria(criteria s2hv1beta1.ReporterCriteria, result string) error {
-	lowerCaseResult := strings.ToLower(result)
-
-	switch criteria {
-	case s2hv1beta1.CriteriaBoth:
-	case s2hv1beta1.CriteriaSuccess:
-		if lowerCaseResult != statusSuccess {
-			return s2herrors.New("criteria was not matched")
-		}
-	default:
-		if lowerCaseResult != statusFailure {
-			return s2herrors.New("criteria was not matched")
-		}
-	}
-
-	return nil
 }
 
 func (r *reporter) post(msTeamsConfig *s2hv1beta1.MSTeams, message string, event internal.EventType) error {

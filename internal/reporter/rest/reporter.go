@@ -148,6 +148,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 			return err
 		}
 	}
+
 	return nil
 }
 

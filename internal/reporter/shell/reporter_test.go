@@ -170,11 +170,19 @@ var _ = Describe("shell command reporter", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
+			err = r.SendPullRequestQueue(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(calls).To(Equal(0))
+
 			err = r.SendActivePromotionStatus(configCtrl, &internal.ActivePromotionReporter{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
 			err = r.SendImageMissing(configCtrl, &internal.ImageMissingReporter{})
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(calls).To(Equal(0))
+
+			err = r.SendPullRequestTriggerResult(configCtrl, &internal.PullRequestTriggerReporter{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 		})

@@ -9,6 +9,7 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	"github.com/agoda-com/samsahai/internal/reporter/util"
 	slackutil "github.com/agoda-com/samsahai/internal/util/slack"
 	"github.com/agoda-com/samsahai/internal/util/template"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
@@ -19,9 +20,6 @@ var logger = s2hlog.Log.WithName(ReporterName)
 const (
 	ReporterName = "slack"
 	username     = "Samsahai Notification"
-
-	statusSuccess = "success"
-	statusFailure = "failure"
 )
 
 type reporter struct {
@@ -74,11 +72,11 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	}
 
 	if slackConfig.ComponentUpgrade != nil {
-		if err := r.checkMatchingInterval(slackConfig.ComponentUpgrade.Interval, comp.IsReverify); err != nil {
+		if err := util.CheckMatchingInterval(slackConfig.ComponentUpgrade.Interval, comp.IsReverify); err != nil {
 			return nil
 		}
 
-		if err := r.checkMatchingCriteria(slackConfig.ComponentUpgrade.Criteria, string(comp.StatusStr)); err != nil {
+		if err := util.CheckMatchingCriteria(slackConfig.ComponentUpgrade.Criteria, string(comp.StatusStr)); err != nil {
 			return nil
 		}
 	}
@@ -100,11 +98,11 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 	}
 
 	if slackConfig.PullRequestQueue != nil {
-		if err := r.checkMatchingInterval(slackConfig.PullRequestQueue.Interval, comp.IsReverify); err != nil {
+		if err := util.CheckMatchingInterval(slackConfig.PullRequestQueue.Interval, comp.IsReverify); err != nil {
 			return nil
 		}
 
-		if err := r.checkMatchingCriteria(slackConfig.PullRequestQueue.Criteria, string(comp.StatusStr)); err != nil {
+		if err := util.CheckMatchingCriteria(slackConfig.PullRequestQueue.Criteria, string(comp.StatusStr)); err != nil {
 			return nil
 		}
 	}
@@ -180,7 +178,7 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	}
 
 	if slackConfig.PullRequestTrigger != nil {
-		err := r.checkMatchingCriteria(slackConfig.PullRequestTrigger.Criteria, string(prTriggerRpt.Result))
+		err := util.CheckMatchingCriteria(slackConfig.PullRequestTrigger.Criteria, string(prTriggerRpt.Result))
 		if err != nil {
 			return nil
 		}
@@ -368,36 +366,6 @@ func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.Pul
 `
 
 	return strings.TrimSpace(template.TextRender("SlackPullRequestTriggerResult", message, prTriggerRpt))
-}
-
-func (r *reporter) checkMatchingInterval(interval s2hv1beta1.ReporterInterval, isReverify bool) error {
-	switch interval {
-	case s2hv1beta1.IntervalEveryTime:
-	default:
-		if !isReverify {
-			return s2herrors.New("interval was not matched")
-		}
-	}
-
-	return nil
-}
-
-func (r *reporter) checkMatchingCriteria(criteria s2hv1beta1.ReporterCriteria, result string) error {
-	lowerCaseResult := strings.ToLower(result)
-
-	switch criteria {
-	case s2hv1beta1.CriteriaBoth:
-	case s2hv1beta1.CriteriaSuccess:
-		if lowerCaseResult != statusSuccess {
-			return s2herrors.New("criteria was not matched")
-		}
-	default:
-		if lowerCaseResult != statusFailure {
-			return s2herrors.New("criteria was not matched")
-		}
-	}
-
-	return nil
 }
 
 func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event internal.EventType) error {
