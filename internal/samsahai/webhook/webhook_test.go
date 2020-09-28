@@ -406,3 +406,7 @@ func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
 func (c *mockConfigCtrl) Delete(configName string) error {
 	return nil
 }
+
+func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1beta1.Config, template string) error {
+	return nil
+}
