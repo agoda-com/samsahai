@@ -1017,7 +1017,7 @@
                     "$ref": "#/definitions/v1beta1.ConfigBundles"
                 },
                 "components": {
-                    "description": "Components represents all components that are managed",
+                    "description": "Components represents all components that are managed\n+optional",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v1beta1.Component"
@@ -1040,13 +1040,14 @@
                     "$ref": "#/definitions/v1beta1.ConfigReporter"
                 },
                 "staging": {
-                    "description": "Staging represents configuration about staging",
+                    "description": "Staging represents configuration about staging\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.ConfigStaging"
                 },
                 "template": {
-                    "description": "Template\n+optional",
-                    "type": "string"
+                    "description": "Template represents configuration's template\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.Template"
                 }
             }
         },
@@ -1671,8 +1672,8 @@
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.StagingCtrl"
                 },
-                "template": {
-                    "description": "Template\n+optional",
+                "templateUpdatedID": {
+                    "description": "TemplateUpdatedId\n+optional",
                     "type": "string"
                 }
             }
@@ -1707,6 +1708,16 @@
                 "stableComponents": {
                     "description": "StableComponentList represents a list of stable components\n+optional",
                     "type": "object"
+                },
+                "templateTeam": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.TeamSpec"
+                },
+                "used": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.TeamSpec"
                 }
             }
         },
@@ -1723,6 +1734,19 @@
                     "type": "string"
                 },
                 "buildURL": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1beta1.Template": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "updatedID": {
+                    "description": "+optional",
                     "type": "string"
                 }
             }

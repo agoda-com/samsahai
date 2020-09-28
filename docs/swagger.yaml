@@ -350,7 +350,9 @@ definitions:
           +optional
         type: object
       components:
-        description: Components represents all components that are managed
+        description: |-
+          Components represents all components that are managed
+          +optional
         items:
           $ref: '#/definitions/v1beta1.Component'
         type: array
@@ -376,13 +378,16 @@ definitions:
         type: object
       staging:
         $ref: '#/definitions/v1beta1.ConfigStaging'
-        description: Staging represents configuration about staging
+        description: |-
+          Staging represents configuration about staging
+          +optional
         type: object
       template:
+        $ref: '#/definitions/v1beta1.Template'
         description: |-
-          Template
+          Template represents configuration's template
           +optional
-        type: string
+        type: object
     type: object
   v1beta1.ConfigStaging:
     properties:
@@ -862,9 +867,9 @@ definitions:
           For easier for developing, debugging and testing purposes
           +optional
         type: object
-      template:
+      templateUpdatedID:
         description: |-
-          Template
+          TemplateUpdatedId
           +optional
         type: string
     type: object
@@ -905,6 +910,14 @@ definitions:
           StableComponentList represents a list of stable components
           +optional
         type: object
+      templateTeam:
+        $ref: '#/definitions/v1beta1.TeamSpec'
+        description: +optional
+        type: object
+      used:
+        $ref: '#/definitions/v1beta1.TeamSpec'
+        description: +optional
+        type: object
     type: object
   v1beta1.Teamcity:
     properties:
@@ -915,6 +928,15 @@ definitions:
       buildTypeID:
         type: string
       buildURL:
+        type: string
+    type: object
+  v1beta1.Template:
+    properties:
+      name:
+        description: +optional
+        type: string
+      updatedID:
+        description: +optional
         type: string
     type: object
   v1beta1.TestRunner:

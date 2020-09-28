@@ -25,4 +25,7 @@ type ConfigController interface {
 
 	// Delete deletes Config CRD
 	Delete(configName string) error
+
+	//EnsureConfigTemplateChanged updates config if template changed
+	EnsureConfigTemplateChanged(config *s2hv1beta1.Config, template string) error
 }

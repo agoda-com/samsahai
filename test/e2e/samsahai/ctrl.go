@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"sync"
 	"time"
 
@@ -1808,6 +1809,45 @@ var _ = Describe("[e2e] Main controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Config should be deleted")
 	}, 90)
+
+	It("should successfully apply team/update template", func(done Done) {
+		defer close(done)
+		setupSamsahai(true)
+		ctx := context.TODO()
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Config using template")
+		configUsingTemplate := mockConfigUsingTemplate
+		Expect(client.Create(ctx, &configUsingTemplate)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(client.Create(ctx, &team)).To(BeNil())
+
+		By("Creating Team using template")
+		teamUsingTemplate := mockTeam2
+		Expect(client.Create(ctx, &teamUsingTemplate)).To(BeNil())
+
+		By("Apply team template")
+		Expect(samsahaiCtrl.EnsureTeamTemplateChanged(&teamUsingTemplate, teamName))
+		Expect(teamUsingTemplate.Status.Used).NotTo(BeNil())
+		Expect(teamUsingTemplate.Status.Used.Owners).NotTo(BeNil())
+		Expect(teamUsingTemplate.Status.Used.Credential).NotTo(BeNil())
+		Expect(teamUsingTemplate.Status.Used.StagingCtrl).NotTo(BeNil())
+		Expect(reflect.DeepEqual(teamUsingTemplate.Status.TemplateTeam, team.Spec))
+
+		By("Update team template")
+		Expect(samsahaiCtrl.GetTeam(teamName, &team)).To(BeNil())
+		team.Spec.StagingCtrl.Endpoint = "http://127.0.0.1"
+		Expect(samsahaiCtrl.UpdateTeam(&team)).To(BeNil())
+		Expect(samsahaiCtrl.EnsureTeamTemplateChanged(&teamUsingTemplate, teamName)).To(BeNil())
+		Expect(teamUsingTemplate.Status.TemplateTeam.StagingCtrl.Endpoint).To(Equal("http://127.0.0.1"))
+		Expect(teamUsingTemplate.Status.Used.StagingCtrl.Endpoint).To(Equal("http://127.0.0.1"))
+
+	}, 75)
 })
 
 var (
@@ -1829,6 +1869,7 @@ var (
 	}
 
 	teamName  = "teamtest"
+	teamName2 = "teamtest2"
 	teamForQ1 = teamName + "-q1"
 	teamForQ2 = teamName + "-q2"
 	teamForQ3 = teamName + "-q3"
@@ -1886,6 +1927,13 @@ var (
 					},
 				},
 			},
+		},
+	}
+
+	mockTeam2 = s2hv1beta1.Team{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   teamName2,
+			Labels: testLabels,
 		},
 	}
 
@@ -2091,6 +2139,18 @@ var (
 			Components: []*s2hv1beta1.Component{
 				&configCompRedis,
 				&configCompWordpress,
+			},
+		},
+	}
+
+	mockConfigUsingTemplate = s2hv1beta1.Config{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   teamName2,
+			Labels: testLabels,
+		},
+		Spec: s2hv1beta1.ConfigSpec{
+			Template: s2hv1beta1.Template{
+				Name: teamName,
 			},
 		},
 	}
