@@ -551,7 +551,7 @@ func (c *controller) runPostNamespaceCreation(ns string, team *s2hv1beta1.Team) 
 	creationObj := internal.PostNamespaceCreation{
 		Namespace: ns,
 		Team: s2hv1beta1.Team{
-			Spec:   team.Spec,
+			Spec:   team.Status.Used,
 			Status: team.Status,
 		},
 		SamsahaiConfig: c.configs,
@@ -597,14 +597,14 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 		k8sobject.GetSecret(c.scheme, teamComp, namespace, secretKVs...),
 	}
 
-	if teamComp.Spec.StagingCtrl != nil && !(*teamComp.Spec.StagingCtrl).IsDeploy {
+	if teamComp.Status.Used.StagingCtrl != nil && !(*teamComp.Status.Used.StagingCtrl).IsDeploy {
 		logger.Warn("skip deploying the staging controller deployment")
 	} else {
 		deploymentObj := k8sobject.GetDeployment(c.scheme, teamComp, namespace, &c.configs)
 		k8sObjects = append(k8sObjects, deploymentObj)
 	}
 
-	if len(teamComp.Spec.Resources) > 0 {
+	if len(teamComp.Status.Used.Resources) > 0 {
 		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace)
 		k8sObjects = append(k8sObjects, quotaObj)
 	}
@@ -830,12 +830,12 @@ func (c *controller) updateTeamNamespacesStatus(teamComp *s2hv1beta1.Team, teamN
 		teamNsOpt(teamComp)
 	}
 
-	return c.updateTeam(teamComp)
+	return c.UpdateTeam(teamComp)
 }
 
 func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
 	s2hSecret := corev1.Secret{}
-	secretName := teamComp.Spec.Credential.SecretName
+	secretName := teamComp.Status.Used.Credential.SecretName
 	if secretName == "" {
 		return nil
 	}
@@ -845,13 +845,13 @@ func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
 		return errors.Wrapf(err, "cannot find %s secret in %s namespace", secretName, c.namespace)
 	}
 
-	tcCred := teamComp.Spec.Credential.Teamcity
+	tcCred := teamComp.Status.Used.Credential.Teamcity
 	if tcCred != nil {
 		tcUsername := tcCred.UsernameRef
-		teamComp.Spec.Credential.Teamcity.Username = string(s2hSecret.Data[tcUsername.Key])
+		teamComp.Status.Used.Credential.Teamcity.Username = string(s2hSecret.Data[tcUsername.Key])
 
 		tcPassword := tcCred.PasswordRef
-		teamComp.Spec.Credential.Teamcity.Password = string(s2hSecret.Data[tcPassword.Key])
+		teamComp.Status.Used.Credential.Teamcity.Password = string(s2hSecret.Data[tcPassword.Key])
 	}
 
 	return nil
@@ -982,7 +982,7 @@ func (c *controller) GetStableValues(team *s2hv1beta1.Team, comp *s2hv1beta1.Com
 		return nil, err
 	}
 
-	values, err := configctrl.GetEnvComponentValues(&config.Spec, comp.Name, s2hv1beta1.EnvBase)
+	values, err := configctrl.GetEnvComponentValues(&config.Status.Used, comp.Name, s2hv1beta1.EnvBase)
 	if err != nil {
 		logger.Error(err, "cannot get values file",
 			"env", s2hv1beta1.EnvBase, "component", comp.Name, "team", team.Name)
@@ -1180,7 +1180,7 @@ func (c *controller) getTeam(teamName string, teamComp *s2hv1beta1.Team) (err er
 	return c.client.Get(context.TODO(), types.NamespacedName{Name: teamName}, teamComp)
 }
 
-func (c *controller) updateTeam(teamComp *s2hv1beta1.Team) error {
+func (c *controller) UpdateTeam(teamComp *s2hv1beta1.Team) error {
 	if err := c.client.Update(context.TODO(), teamComp); err != nil {
 		return errors.Wrap(err, "cannot update team")
 	}
@@ -1213,7 +1213,7 @@ func (c *controller) deleteFinalizer(teamComp *s2hv1beta1.Team) error {
 
 		// remove our finalizer from the list and update it.
 		teamComp.ObjectMeta.Finalizers = stringutils.RemoveString(teamComp.ObjectMeta.Finalizers, teamFinalizerName)
-		if err := c.updateTeam(teamComp); err != nil {
+		if err := c.UpdateTeam(teamComp); err != nil {
 			return err
 		}
 
@@ -1268,7 +1268,7 @@ func (c *controller) ensureAndUpdateConfig(teamComp *s2hv1beta1.Team) error {
 	return nil
 }
 
-func (c *controller) ensureTeamTemplateChanged(teamComp *s2hv1beta1.Team, template string) error {
+func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team, template string) error {
 	templateObj := &s2hv1beta1.Team{}
 	err := c.getTeam(template, templateObj)
 	if err != nil {
@@ -1300,7 +1300,7 @@ func (c *controller) ensureTriggerChildrenTeam(name string) error {
 				return err
 			}
 			team.Spec.TemplateUpdatedID = uuid.New().String()
-			if err := c.updateTeam(team); err != nil {
+			if err := c.UpdateTeam(team); err != nil {
 				return err
 			}
 		}
@@ -1371,14 +1371,13 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	c.addFinalizer(teamComp)
 
-
 	if err := c.ensureAndUpdateConfig(teamComp); err != nil {
 		teamComp.Status.SetCondition(
 			s2hv1beta1.TeamConfigExisted,
 			corev1.ConditionFalse,
 			err.Error())
 
-		if err := c.updateTeam(teamComp); err != nil {
+		if err := c.UpdateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err,
 				"cannot update team conditions when config does not exist")
 		}
@@ -1392,7 +1391,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			corev1.ConditionTrue,
 			"Config exists")
 
-		if err := c.updateTeam(teamComp); err != nil {
+		if err := c.UpdateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when config exists")
 		}
 	}
@@ -1404,7 +1403,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if configComp.Spec.Template.Name != "" && configComp.Spec.Template.Name != teamComp.Name {
-		if err := c.ensureTeamTemplateChanged(teamComp, configComp.Spec.Template.Name); err != nil {
+		if err := c.EnsureTeamTemplateChanged(teamComp, configComp.Spec.Template.Name); err != nil {
 			return reconcile.Result{}, err
 		}
 
@@ -1418,14 +1417,13 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		teamComp.Status.Used = teamComp.Spec
 	}
 
-	if err := c.updateTeam(teamComp); err != nil {
+	if err := c.UpdateTeam(teamComp); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	if err := c.ensureTriggerChildrenTeam(teamComp.Name); err != nil {
 		return reconcile.Result{}, err
 	}
-
 
 	teamName := teamComp.GetName()
 	if err := c.CreateStagingEnvironment(teamName, internal.GenStagingNamespace(teamName)); err != nil {

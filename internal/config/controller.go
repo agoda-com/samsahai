@@ -105,14 +105,14 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Co
 		return map[string]*s2hv1beta1.Component{}, err
 	}
 
-	c.assignParent(&config.Spec)
+	c.assignParent(&config.Status.Used)
 
 	filteredComps := map[string]*s2hv1beta1.Component{}
 
 	var comps []*s2hv1beta1.Component
 	var comp *s2hv1beta1.Component
 
-	comps = append(comps, config.Spec.Components...)
+	comps = append(comps, config.Status.Used.Components...)
 
 	for len(comps) > 0 {
 		comp, comps = comps[0], comps[1:]
@@ -490,7 +490,7 @@ func (c *controller) ensureConfigChanged(teamName, namespace string) error {
 	return nil
 }
 
-func (c *controller) ensureConfigTemplateChanged(config *s2hv1beta1.Config, template string) error {
+func (c *controller) EnsureConfigTemplateChanged(config *s2hv1beta1.Config, template string) error {
 	templateObj, err := c.getConfig(template)
 	if err != nil {
 		logger.Error(err, "config template not found", "template", template)
@@ -744,7 +744,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		//	return reconcile.Result{}, err
 		//}
 
-		if err := c.ensureConfigTemplateChanged(configComp, configComp.Spec.Template.Name); err != nil {
+		if err := c.EnsureConfigTemplateChanged(configComp, configComp.Spec.Template.Name); err != nil {
 			return cr.Result{}, err
 		}
 

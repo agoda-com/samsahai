@@ -370,9 +370,9 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 	config, _ := c.Get(configName)
 
 	comps := map[string]*s2hv1beta1.Component{
-		"redis":     config.Spec.Components[0],
-		"wordpress": config.Spec.Components[1],
-		"mariadb":   config.Spec.Components[1].Dependencies[0],
+		"redis":     config.Status.Used.Components[0],
+		"wordpress": config.Status.Used.Components[1],
+		"mariadb":   config.Status.Used.Components[1].Dependencies[0],
 	}
 
 	comps["mariadb"].Parent = "wordpress"
@@ -384,8 +384,8 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	config, _ := c.Get(configName)
 
 	comps := map[string]*s2hv1beta1.Component{
-		"redis":     config.Spec.Components[0],
-		"wordpress": config.Spec.Components[1],
+		"redis":     config.Status.Used.Components[0],
+		"wordpress": config.Status.Used.Components[1],
 	}
 
 	return comps, nil

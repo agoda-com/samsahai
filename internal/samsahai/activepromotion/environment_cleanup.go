@@ -203,7 +203,7 @@ func (c *controller) getComponentCleanupTimeout(teamName string, configCtrl inte
 		return cleanupTimeout
 	}
 
-	atpConfig := config.Spec.ActivePromotion
+	atpConfig := config.Status.Used.ActivePromotion
 
 	if atpConfig == nil || atpConfig.Deployment == nil {
 		return cleanupTimeout
@@ -219,12 +219,12 @@ func (c *controller) getDeployEngine(teamName, ns string, configCtrl internal.Co
 		return mock.New()
 	}
 
-	atpConfig := config.Spec.ActivePromotion
+	atpConfig := config.Status.Used.ActivePromotion
 
 	if atpConfig == nil || atpConfig.Deployment == nil || atpConfig.Deployment.Engine == nil || *atpConfig.Deployment.Engine == "" {
 		e = mock.EngineName
 	} else {
-		e = *config.Spec.ActivePromotion.Deployment.Engine
+		e = *config.Status.Used.ActivePromotion.Deployment.Engine
 	}
 
 	var engine internal.DeployEngine

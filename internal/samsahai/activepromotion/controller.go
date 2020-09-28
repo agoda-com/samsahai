@@ -92,8 +92,8 @@ func (c *controller) setup(ctx context.Context, atpComp *s2hv1beta1.ActivePromot
 			return err
 		}
 
-		if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.TearDownDuration.Duration != 0 {
-			duration = config.Spec.ActivePromotion.TearDownDuration
+		if config.Status.Used.ActivePromotion != nil && config.Status.Used.ActivePromotion.TearDownDuration.Duration != 0 {
+			duration = config.Status.Used.ActivePromotion.TearDownDuration
 		}
 
 		atpComp.Spec.SetTearDownDuration(duration)

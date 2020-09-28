@@ -32,11 +32,7 @@ var _ = Describe("S2H Controller", func() {
 				},
 			},
 		}
-		mockTeamUsingTemplate := s2hv1beta1.Team{
-			Spec: s2hv1beta1.TeamSpec{
-				Template: "teamTest",
-			},
-		}
+		mockTeamUsingTemplate := s2hv1beta1.Team{}
 
 		It("should successfully load plugins", func() {
 			ctrl.loadPlugins("plugin")
@@ -55,9 +51,8 @@ var _ = Describe("S2H Controller", func() {
 
 			err := applyTeamTemplate(&mockTeamUsingTemplate, &mockTeam)
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(mockTeamUsingTemplate.Spec.Owners).To(Equal(mockTeam.Spec.Owners))
-			g.Expect(mockTeamUsingTemplate.Spec.StagingCtrl).To(Equal(mockTeam.Spec.StagingCtrl))
-
+			g.Expect(mockTeamUsingTemplate.Status.Used.Owners).To(Equal(mockTeam.Spec.Owners))
+			g.Expect(mockTeamUsingTemplate.Status.Used.StagingCtrl).To(Equal(mockTeam.Spec.StagingCtrl))
 		})
 
 		Specify("Non-existing plugin", func(done Done) {

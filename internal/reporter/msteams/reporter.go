@@ -378,9 +378,9 @@ func (r *reporter) getMSTeamsConfig(teamName string, configCtrl internal.ConfigC
 	}
 
 	// no Microsoft Teams configuration
-	if config.Spec.Reporter == nil || config.Spec.Reporter.MSTeams == nil {
+	if config.Status.Used.Reporter == nil || config.Status.Used.Reporter.MSTeams == nil {
 		return nil, s2herrors.New("msTeams configuration not found")
 	}
 
-	return config.Spec.Reporter.MSTeams, nil
+	return config.Status.Used.Reporter.MSTeams, nil
 }

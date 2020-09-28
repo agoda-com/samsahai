@@ -54,8 +54,8 @@ func (c *controller) getActiveDemotionTimeout(teamName string, configCtrl intern
 		return timeout
 	}
 
-	if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.DemotionTimeout.Duration != 0 {
-		timeout = config.Spec.ActivePromotion.DemotionTimeout
+	if config.Status.Used.ActivePromotion != nil && config.Status.Used.ActivePromotion.DemotionTimeout.Duration != 0 {
+		timeout = config.Status.Used.ActivePromotion.DemotionTimeout
 	}
 
 	return timeout
@@ -68,8 +68,8 @@ func (c *controller) getActivePromotionTimeout(teamName string, configCtrl inter
 		return timeout
 	}
 
-	if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.Timeout.Duration != 0 {
-		timeout = config.Spec.ActivePromotion.Timeout
+	if config.Status.Used.ActivePromotion != nil && config.Status.Used.ActivePromotion.Timeout.Duration != 0 {
+		timeout = config.Status.Used.ActivePromotion.Timeout
 	}
 
 	return timeout
@@ -82,8 +82,8 @@ func (c *controller) getActivePromotionRollbackTimeout(teamName string, configCt
 		return timeout
 	}
 
-	if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.RollbackTimeout.Duration != 0 {
-		timeout = config.Spec.ActivePromotion.RollbackTimeout
+	if config.Status.Used.ActivePromotion != nil && config.Status.Used.ActivePromotion.RollbackTimeout.Duration != 0 {
+		timeout = config.Status.Used.ActivePromotion.RollbackTimeout
 	}
 
 	return timeout

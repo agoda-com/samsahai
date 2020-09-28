@@ -346,9 +346,9 @@ func (r *reporter) getSlackConfig(teamName string, configCtrl internal.ConfigCon
 	}
 
 	// no slack configuration
-	if config.Spec.Reporter == nil || config.Spec.Reporter.Slack == nil {
+	if config.Status.Used.Reporter == nil || config.Status.Used.Reporter.Slack == nil {
 		return nil, s2herrors.New("slack configuration not found")
 	}
 
-	return config.Spec.Reporter.Slack, nil
+	return config.Status.Used.Reporter.Slack, nil
 }

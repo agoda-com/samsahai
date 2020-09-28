@@ -1052,7 +1052,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				"repository": "bitnami/rediss",
 			},
 		}
-		config.Spec.Components = []*s2hv1beta1.Component{&redisComp}
+		config.Status.Used.Components = []*s2hv1beta1.Component{&redisComp}
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
@@ -1234,7 +1234,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Updating components config")
 		configComp := s2hv1beta1.Config{}
 		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &configComp)).To(BeNil())
-		configComp.Spec.Components = []*s2hv1beta1.Component{{Name: redisCompName}}
+		configComp.Status.Used.Components = []*s2hv1beta1.Component{{Name: redisCompName}}
 		Expect(client.Update(ctx, &configComp)).To(BeNil())
 
 		time.Sleep(verifyTime1s)

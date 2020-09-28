@@ -74,7 +74,9 @@ var _ = Describe("Config Controller", func() {
 
 	mockConfigUsingTemplate := s2hv1beta1.Config{
 		Spec: s2hv1beta1.ConfigSpec{
-			Template: teamTest,
+			Template: s2hv1beta1.Template{
+				Name: teamTest,
+			},
 		}}
 
 	It("should get env values by the env type correctly", func() {
@@ -119,10 +121,28 @@ var _ = Describe("Config Controller", func() {
 		}
 		err := applyConfigTemplate(&mockConfigUsingTemplate, &configTemplate)
 		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(mockConfigUsingTemplate.Spec.Envs).To(Equal(configTemplate.Spec.Envs))
-		g.Expect(mockConfigUsingTemplate.Spec.Components).To(Equal(configTemplate.Spec.Components))
-
+		g.Expect(mockConfigUsingTemplate.Status.Used.Envs).To(Equal(configTemplate.Spec.Envs))
+		g.Expect(mockConfigUsingTemplate.Status.Used.Components).To(Equal(configTemplate.Spec.Components))
 	})
+	//
+	//	It("should update config template correctly", func() {
+	//		g := NewWithT(GinkgoT())
+	//
+	//		mockConfig
+	//		err := ctrl.ensureConfigTemplateChanged(&mockConfigUsingTemplate, teamTest)
+	//		g.Expect(err).NotTo(HaveOccurred())
+	//	})
+	//
+	//	It("should trigger children config correctly", func() {
+	//		g := NewWithT(GinkgoT())
+	//
+	////updated mom
+	//
+	//		err := ctrl.ensureTriggerChildrenConfig(teamTest)
+	//		g.Expect(err).NotTo(HaveOccurred())
+	//
+	//	})
+	//
 
 	Describe("Component scheduler", func() {
 		mockController := controller{

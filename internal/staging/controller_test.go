@@ -40,7 +40,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypeUpgrade, comps["redis"])
+			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypeUpgrade, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -51,7 +51,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypePreActive, comps["redis"])
+			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypePreActive, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -62,7 +62,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypePromoteToActive, comps["redis"])
+			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypePromoteToActive, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -73,7 +73,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Spec, values, s2hv1beta1.QueueTypeDemoteFromActive, comps["redis"])
+			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypeDemoteFromActive, comps["redis"])
 			val, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(val).To(BeNil())
@@ -88,7 +88,7 @@ var _ = Describe("Apply Env Based Config", func() {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		wordpress := comps["wordpress"]
-		envValues, err := configctrl.GetEnvComponentValues(&config.Spec, "wordpress", s2hv1beta1.EnvBase)
+		envValues, err := configctrl.GetEnvComponentValues(&config.Status.Used, "wordpress", s2hv1beta1.EnvBase)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		values := valuesutil.GenStableComponentValues(wordpress, nil, envValues)
@@ -207,9 +207,9 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 	config, _ := c.Get(configName)
 
 	comps := map[string]*s2hv1beta1.Component{
-		"redis":     config.Spec.Components[0],
-		"wordpress": config.Spec.Components[1],
-		"mariadb":   config.Spec.Components[1].Dependencies[0],
+		"redis":     config.Status.Used.Components[0],
+		"wordpress": config.Status.Used.Components[1],
+		"mariadb":   config.Status.Used.Components[1].Dependencies[0],
 	}
 
 	comps["mariadb"].Parent = "wordpress"
@@ -221,8 +221,8 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	config, _ := c.Get(configName)
 
 	comps := map[string]*s2hv1beta1.Component{
-		"redis":     config.Spec.Components[0],
-		"wordpress": config.Spec.Components[1],
+		"redis":     config.Status.Used.Components[0],
+		"wordpress": config.Status.Used.Components[1],
 	}
 
 	return comps, nil
