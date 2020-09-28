@@ -24,13 +24,9 @@ func (c *controller) Add(obj runtime.Object, priorityQueues []string) error {
 	return c.addQueue(context.TODO(), prQueue, false)
 }
 
+// does not support add top
 func (c *controller) AddTop(obj runtime.Object) error {
-	prQueue, ok := obj.(*s2hv1beta1.PullRequestQueue)
-	if !ok {
-		return s2herrors.ErrParsingRuntimeObject
-	}
-
-	return c.addQueue(context.TODO(), prQueue, true)
+	return nil
 }
 
 func (c *controller) Size(namespace string) int {
@@ -43,15 +39,9 @@ func (c *controller) Size(namespace string) int {
 	return len(list.Items)
 }
 
+// does not support first queue
 func (c *controller) First(namespace string) (runtime.Object, error) {
-	list, err := c.listPullRequestQueues(nil, namespace)
-	if err != nil {
-		logger.Error(err, "cannot list pull request queues", "team", c.teamName,
-			"namespace", namespace)
-		return nil, err
-	}
-
-	return list.First(), nil
+	return &s2hv1beta1.PullRequestQueue{}, nil
 }
 
 func (c *controller) Remove(obj runtime.Object) error {
@@ -86,28 +76,9 @@ func (c *controller) SetLastOrder(obj runtime.Object) error {
 	return c.client.Update(context.TODO(), prQueue)
 }
 
+// does not support reverify type
 func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
-	prQueue, ok := obj.(*s2hv1beta1.PullRequestQueue)
-	if !ok {
-		return s2herrors.ErrParsingRuntimeObject
-	}
-
-	list, err := c.listPullRequestQueues(nil, prQueue.Namespace)
-	if err != nil {
-		logger.Error(err, "cannot list pull request queues", "team", c.teamName,
-			"namespace", prQueue.Namespace)
-		return err
-	}
-
-	prQueue.Labels = c.getStateLabel(stateWaiting)
-	prQueue.Spec.NoOfOrder = list.TopQueueOrder()
-
-	createdAt := prQueue.Status.CreatedAt
-	prQueue.Status = s2hv1beta1.PullRequestQueueStatus{
-		CreatedAt: createdAt,
-	}
-
-	return c.client.Update(context.TODO(), prQueue)
+	return nil
 }
 
 func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time) error {

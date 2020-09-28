@@ -38,6 +38,15 @@ func WithQueueHistoryName(qHist string) ComponentUpgradeOption {
 	}
 }
 
+// WithNamespace specifies namespace to override when creating component upgrade reporter object
+func WithNamespace(ns string) ComponentUpgradeOption {
+	return func(c *ComponentUpgradeReporter) {
+		if ns != "" {
+			c.Namespace = ns
+		}
+	}
+}
+
 // ComponentUpgradeReporter manages component upgrade report
 type ComponentUpgradeReporter struct {
 	IssueTypeStr IssueType             `json:"issueTypeStr,omitempty"`

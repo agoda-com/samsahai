@@ -223,15 +223,6 @@ type PullRequestQueueList struct {
 	Items           []PullRequestQueue `json:"items"`
 }
 
-// TopQueueOrder returns no of order to be first on the pull request queue
-func (prql *PullRequestQueueList) TopQueueOrder() int {
-	if len(prql.Items) == 0 {
-		return 1
-	}
-	sort.Sort(PullRequestQueueByNoOfOrder(prql.Items))
-	return prql.Items[0].Spec.NoOfOrder - 1
-}
-
 // LastQueueOrder returns no of order to be last on the pull request queue
 func (prql *PullRequestQueueList) LastQueueOrder() int {
 	if len(prql.Items) == 0 {
@@ -239,39 +230,6 @@ func (prql *PullRequestQueueList) LastQueueOrder() int {
 	}
 	sort.Sort(PullRequestQueueByNoOfOrder(prql.Items))
 	return prql.Items[len(prql.Items)-1].Spec.NoOfOrder + 1
-}
-
-// First returns the first order of pull request queues
-func (prql *PullRequestQueueList) First() *PullRequestQueue {
-	if len(prql.Items) == 0 {
-		return nil
-	}
-
-	prql.Sort()
-
-	// return non-waiting PullRequestQueue, if any
-	for i, prq := range prql.Items {
-		if prq.Status.State != PullRequestQueueWaiting {
-			return &prql.Items[i]
-		}
-	}
-
-	// return the first PullRequestQueue
-	return &prql.Items[0]
-}
-
-func (prq *PullRequestQueue) IsDeploySuccess() bool {
-	if prq.Status.DeploymentQueue == nil {
-		return false
-	}
-	return prq.Status.DeploymentQueue.Status.IsConditionTrue(QueueDeployed)
-}
-
-func (prq *PullRequestQueue) IsTestSuccess() bool {
-	if prq.Status.DeploymentQueue == nil {
-		return false
-	}
-	return prq.Status.DeploymentQueue.Status.IsConditionTrue(QueueTested)
 }
 
 func (prq *PullRequestQueue) IsCanceled() bool {

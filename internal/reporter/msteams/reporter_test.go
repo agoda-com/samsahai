@@ -243,6 +243,7 @@ var _ = Describe("send ms teams message", func() {
 				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
 				internal.WithTestRunner(testRunner),
 				internal.WithQueueHistoryName("comp1-5678"),
+				internal.WithNamespace("pr-namespace"),
 			)
 			err := r.SendPullRequestQueue(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
@@ -252,11 +253,12 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.channels).Should(Equal([]string{"chan1-1", "chan1-2", "chan2-1"}))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Pull Request Queue"))
-			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("pr-comp1"))
-			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("pr1234"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Failure"))
 			// Should contain information
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("pr-comp1"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("pr1234"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("#2"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("pr-namespace"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(
 				`<a href="http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log">Download here</a>`))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(

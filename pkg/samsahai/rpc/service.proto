@@ -75,6 +75,7 @@ message ComponentUpgrade {
     ReverificationStatus reverificationStatus = 12;
     repeated DeploymentIssue deploymentIssues = 13;
     TeamWithPullRequest pullRequestComponent = 14;
+    string pullRequestNamespace = 15;
 }
 
 message Component {

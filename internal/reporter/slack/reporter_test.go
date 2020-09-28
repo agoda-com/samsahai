@@ -230,15 +230,19 @@ var _ = Describe("send slack message", func() {
 				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
 				internal.WithTestRunner(testRunner),
 				internal.WithQueueHistoryName("comp1-5678"),
+				internal.WithNamespace("pr-namespace"),
 			)
 			err := r.SendPullRequestQueue(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Pull Request Queue"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
+			// Should contain information
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("pr1234"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("pr-comp1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("#3"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("pr-namespace"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring(
 				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log|Download here>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring(

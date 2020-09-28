@@ -674,6 +674,11 @@ func GetComponentUpgradeRPCFromQueue(
 		isReverify = int(prQueueRPC.MaxRetryQueue) >= queue.Spec.NoOfRetry
 	}
 
+	prNamespace := ""
+	if prQueueRPC != nil {
+		prNamespace = prQueueRPC.Namespace
+	}
+
 	comp := &samsahairpc.ComponentUpgrade{
 		Status:               comStatus,
 		Name:                 queue.Spec.Name,
@@ -688,6 +693,7 @@ func GetComponentUpgradeRPCFromQueue(
 		ReverificationStatus: getReverificationStatusRPC(queue),
 		DeploymentIssues:     getDeploymentIssuesRPC(queue),
 		PullRequestComponent: prQueueRPC,
+		PullRequestNamespace: prNamespace,
 	}
 
 	return comp

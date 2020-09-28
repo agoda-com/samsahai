@@ -588,6 +588,7 @@ func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv
 			c.configs,
 			s2h.WithTestRunner(testRunner),
 			s2h.WithQueueHistoryName(queueHistName),
+			s2h.WithNamespace(comp.PullRequestNamespace),
 		)
 
 		if comp.PullRequestComponent != nil && comp.PullRequestComponent.PRNumber != "" {

@@ -81,7 +81,7 @@ func setupSamsahai() {
 	samsahaiClient = samsahairpc.NewRPCProtobufClient(samsahaiServer.URL, &http.Client{})
 }
 
-func setupStaging(namespace string) internal.StagingController {
+func setupStaging(namespace string) (internal.StagingController, internal.QueueController) {
 	// create mgr from config
 	stagingCfg := rest.CopyConfig(restCfg)
 	stagingMgr, err := manager.New(stagingCfg, manager.Options{
@@ -105,7 +105,7 @@ func setupStaging(namespace string) internal.StagingController {
 		Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())
 	}()
 
-	return stagingCtrl
+	return stagingCtrl, prQueueCtrl
 }
 
 var _ = Describe("[e2e] Pull request controller", func() {
@@ -224,7 +224,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			go samsahaiCtrl.Start(chStop)
 
 			By("Starting Staging internal process")
-			stagingCtrl := setupStaging(stgNamespace)
+			stagingCtrl, _ := setupStaging(stgNamespace)
 			go stagingCtrl.Start(chStop)
 
 			ctx := context.TODO()
@@ -413,7 +413,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			go samsahaiCtrl.Start(chStop)
 
 			By("Starting Staging internal process")
-			stagingCtrl := setupStaging(stgNamespace)
+			stagingCtrl, prQueueCtrl := setupStaging(stgNamespace)
 			go stagingCtrl.Start(chStop)
 
 			ctx := context.TODO()
@@ -447,6 +447,9 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
+			Expect(prQueueCtrl.Size(stgNamespace)).To(Equal(0),
+				"should start with empty queue")
+
 			By("Creating 2 mock PullRequestQueues")
 			prQueue := s2hv1beta1.PullRequestQueue{
 				ObjectMeta: metav1.ObjectMeta{
@@ -459,7 +462,8 @@ var _ = Describe("[e2e] Pull request controller", func() {
 					Components:    prComps,
 				},
 			}
-			Expect(client.Create(ctx, &prQueue)).NotTo(HaveOccurred(), "Mock queue created error")
+			Expect(prQueueCtrl.Add(&prQueue, nil)).NotTo(HaveOccurred(),
+				"add pull request queue #1")
 			prQueueName2 := prTriggerName + "-2"
 			prQueue2 := s2hv1beta1.PullRequestQueue{
 				ObjectMeta: metav1.ObjectMeta{
@@ -472,7 +476,8 @@ var _ = Describe("[e2e] Pull request controller", func() {
 					Components:    prComps,
 				},
 			}
-			Expect(client.Create(ctx, &prQueue2)).NotTo(HaveOccurred(), "Mock queue created error")
+			Expect(prQueueCtrl.Add(&prQueue2, nil)).NotTo(HaveOccurred(),
+				"add pull request queue #2")
 
 			By("Verifying one PullRequestQueue has been running and another has been waiting")
 			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
@@ -538,7 +543,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			go samsahaiCtrl.Start(chStop)
 
 			By("Starting Staging internal process")
-			stagingCtrl := setupStaging(stgNamespace)
+			stagingCtrl, _ := setupStaging(stgNamespace)
 			go stagingCtrl.Start(chStop)
 
 			ctx := context.TODO()
@@ -622,7 +627,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			go samsahaiCtrl.Start(chStop)
 
 			By("Starting Staging internal process")
-			stagingCtrl := setupStaging(stgNamespace)
+			stagingCtrl, _ := setupStaging(stgNamespace)
 			go stagingCtrl.Start(chStop)
 
 			ctx := context.TODO()
