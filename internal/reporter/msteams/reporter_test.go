@@ -543,6 +543,24 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 					},
 				},
 			},
+			Status: s2hv1beta1.ConfigStatus{
+				Used: s2hv1beta1.ConfigSpec{
+					Reporter: &s2hv1beta1.ConfigReporter{
+						MSTeams: &s2hv1beta1.MSTeams{
+							Groups: []s2hv1beta1.MSTeamsGroup{
+								{
+									GroupNameOrID:    "group-1",
+									ChannelNameOrIDs: []string{"msg-error", "chan-error"},
+								},
+								{
+									GroupNameOrID:    "group-error",
+									ChannelNameOrIDs: []string{"chan-1"},
+								},
+							},
+						},
+					},
+				},
+			},
 		}, nil
 	default:
 		return &s2hv1beta1.Config{
@@ -562,6 +580,28 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 						ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgrade{
 							Interval: c.interval,
 							Criteria: c.criteria,
+						},
+					},
+				},
+			},
+			Status: s2hv1beta1.ConfigStatus{
+				Used: s2hv1beta1.ConfigSpec{
+					Reporter: &s2hv1beta1.ConfigReporter{
+						MSTeams: &s2hv1beta1.MSTeams{
+							Groups: []s2hv1beta1.MSTeamsGroup{
+								{
+									GroupNameOrID:    "group1",
+									ChannelNameOrIDs: []string{"chan1-1", "chan1-2"},
+								},
+								{
+									GroupNameOrID:    "group2",
+									ChannelNameOrIDs: []string{"chan2-1"},
+								},
+							},
+							ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgrade{
+								Interval: c.interval,
+								Criteria: c.criteria,
+							},
 						},
 					},
 				},

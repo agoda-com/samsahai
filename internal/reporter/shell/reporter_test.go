@@ -160,6 +160,17 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 					},
 				},
 			},
+			Status: s2hv1beta1.ConfigStatus{
+				Used: s2hv1beta1.ConfigSpec{
+					Reporter: &s2hv1beta1.ConfigReporter{
+						Shell: &s2hv1beta1.Shell{
+							ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"echo {{ .Envs.TEST_ENV }}"},
+							},
+						},
+					},
+				},
+			},
 		}, nil
 	case "failure":
 		return &s2hv1beta1.Config{
@@ -168,6 +179,17 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 					Shell: &s2hv1beta1.Shell{
 						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
 							Command: []string{"/bin/sleep", "5"},
+						},
+					},
+				},
+			},
+			Status: s2hv1beta1.ConfigStatus{
+				Used: s2hv1beta1.ConfigSpec{
+					Reporter: &s2hv1beta1.ConfigReporter{
+						Shell: &s2hv1beta1.Shell{
+							ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"/bin/sleep", "5"},
+							},
 						},
 					},
 				},
@@ -188,6 +210,25 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 						ImageMissing: &s2hv1beta1.CommandAndArgs{
 							Command: []string{"/bin/sh", "-c"},
 							Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }} of {{ .ComponentName }}"},
+						},
+					},
+				},
+			},
+			Status: s2hv1beta1.ConfigStatus{
+				Used: s2hv1beta1.ConfigSpec{
+					Reporter: &s2hv1beta1.ConfigReporter{
+						Shell: &s2hv1beta1.Shell{
+							ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"/bin/sh", "-c"},
+								Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
+							},
+							ActivePromotion: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"echo active promotion status {{ .Result }}"},
+							},
+							ImageMissing: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"/bin/sh", "-c"},
+								Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }} of {{ .ComponentName }}"},
+							},
 						},
 					},
 				},

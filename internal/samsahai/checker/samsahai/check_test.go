@@ -236,6 +236,23 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 				&wordpressConfigComp,
 			},
 		},
+		Status: s2hv1beta1.ConfigStatus{
+			Used: s2hv1beta1.ConfigSpec{
+				Staging: &s2hv1beta1.ConfigStaging{
+					MaxRetry:   3,
+					Deployment: &deployConfig,
+				},
+				ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+					Timeout:          metav1.Duration{Duration: 10 * time.Minute},
+					TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+					Deployment:       &deployConfig,
+				},
+				Components: []*s2hv1beta1.Component{
+					&redisConfigComp,
+					&wordpressConfigComp,
+				},
+			},
+		},
 	}
 
 	return mockConfig, nil

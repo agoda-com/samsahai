@@ -198,6 +198,37 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 				&wordpressConfigComp,
 			},
 		},
+		Status: s2hv1beta1.ConfigStatus{
+			Used: s2hv1beta1.ConfigSpec{
+				Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
+					"staging": map[string][]string{
+						"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
+					},
+					"pre-active": map[string][]string{
+						"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml"},
+					},
+					"active": map[string][]string{
+						"redis": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
+					},
+					"base": map[string][]string{
+						"wordpress": {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/base/wordpress.yaml"},
+					},
+				},
+				Staging: &s2hv1beta1.ConfigStaging{
+					MaxRetry:   3,
+					Deployment: &deployConfig,
+				},
+				ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+					Timeout:          metav1.Duration{Duration: 10 * time.Minute},
+					TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+					Deployment:       &deployConfig,
+				},
+				Components: []*s2hv1beta1.Component{
+					&redisConfigComp,
+					&wordpressConfigComp,
+				},
+			},
+		},
 	}
 
 	return mockConfig, nil
