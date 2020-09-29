@@ -731,19 +731,6 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	}
 
 	if configComp.Spec.Template.Name != "" && configComp.Spec.Template.Name != configComp.Name {
-		//configTemplate, err := c.getConfig(configComp.Spec.Template)
-		//if err != nil {
-		//	if k8serrors.IsNotFound(err) {
-		//		logger.Error(err, "template not found", "config", configComp.Spec.Template)
-		//	}
-		//	return reconcile.Result{}, err
-		//}
-		//
-		//err = applyConfigTemplate(configComp, configTemplate)
-		//if err != nil {
-		//	return reconcile.Result{}, err
-		//}
-
 		if err := c.EnsureConfigTemplateChanged(configComp, configComp.Spec.Template.Name); err != nil {
 			return cr.Result{}, err
 		}

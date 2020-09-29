@@ -124,25 +124,6 @@ var _ = Describe("Config Controller", func() {
 		g.Expect(mockConfigUsingTemplate.Status.Used.Envs).To(Equal(configTemplate.Spec.Envs))
 		g.Expect(mockConfigUsingTemplate.Status.Used.Components).To(Equal(configTemplate.Spec.Components))
 	})
-	//
-	//	It("should update config template correctly", func() {
-	//		g := NewWithT(GinkgoT())
-	//
-	//		mockConfig
-	//		err := ctrl.ensureConfigTemplateChanged(&mockConfigUsingTemplate, teamTest)
-	//		g.Expect(err).NotTo(HaveOccurred())
-	//	})
-	//
-	//	It("should trigger children config correctly", func() {
-	//		g := NewWithT(GinkgoT())
-	//
-	////updated mom
-	//
-	//		err := ctrl.ensureTriggerChildrenConfig(teamTest)
-	//		g.Expect(err).NotTo(HaveOccurred())
-	//
-	//	})
-	//
 
 	Describe("Component scheduler", func() {
 		mockController := controller{
