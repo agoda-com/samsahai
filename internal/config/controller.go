@@ -154,6 +154,48 @@ func (c *controller) GetParentComponents(configName string) (map[string]*s2hv1be
 	return filteredComps, nil
 }
 
+// GetPullRequestComponents returns all pull request components from `Configuration` that has valid `Source`
+func (c *controller) GetPullRequestComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	config, err := c.Get(configName)
+	if err != nil {
+		logger.Error(err, "cannot get Config", "name", configName)
+		return map[string]*s2hv1beta1.Component{}, err
+	}
+
+	if config.Spec.PullRequest == nil || config.Spec.PullRequest.Components == nil {
+		return map[string]*s2hv1beta1.Component{}, nil
+	}
+
+	filteredComps, err := c.GetComponents(configName)
+	if err != nil {
+		return map[string]*s2hv1beta1.Component{}, err
+	}
+
+	filteredPRComps := map[string]*s2hv1beta1.Component{}
+	prComps := config.Spec.PullRequest.Components
+	for compName, comp := range filteredComps {
+		for _, prComp := range prComps {
+			if prComp.Name == compName {
+				filteredPRComps[compName] = &s2hv1beta1.Component{
+					Parent: comp.Parent,
+					Name:   prComp.Name,
+					Chart:  comp.Chart,
+					Image:  prComp.Image,
+					Source: prComp.Source,
+				}
+			}
+
+			for _, prDepCompName := range prComp.Dependencies {
+				if prDepCompName == compName {
+					filteredPRComps[compName] = comp
+				}
+			}
+		}
+	}
+
+	return filteredPRComps, nil
+}
+
 // GetBundles returns all component bundles
 func (c *controller) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
 	config, err := c.Get(configName)
@@ -174,6 +216,43 @@ func (c *controller) GetPriorityQueues(configName string) ([]string, error) {
 	}
 
 	return config.Spec.PriorityQueues, nil
+}
+
+// GetPullRequestComponentDependencies returns a pull request component dependencies from configuration
+func (c *controller) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
+	config, err := c.Get(configName)
+	if err != nil {
+		logger.Error(err, "cannot get Config", "name", configName)
+		return []string{}, err
+	}
+
+	prDeps := make([]string, 0)
+	if config.Spec.PullRequest != nil {
+		for _, prComp := range config.Spec.PullRequest.Components {
+			if prComp.Name == prCompName {
+				prDeps = prComp.Dependencies
+				break
+			}
+		}
+	}
+
+	return prDeps, nil
+}
+
+// GetPullRequestConfig returns a configuration of pull request
+func (c *controller) GetPullRequestConfig(configName string) (*s2hv1beta1.ConfigPullRequest, error) {
+	config, err := c.Get(configName)
+	if err != nil {
+		logger.Error(err, "cannot get Config", "name", configName)
+		return &s2hv1beta1.ConfigPullRequest{}, err
+	}
+
+	prConfig := config.Spec.PullRequest
+	if prConfig == nil {
+		prConfig = &s2hv1beta1.ConfigPullRequest{}
+	}
+
+	return prConfig, nil
 }
 
 // Update updates Config CRD

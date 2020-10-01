@@ -222,6 +222,9 @@ type TeamNamespace struct {
 
 	// +optional
 	Active string `json:"active,omitempty"`
+
+	// +optional
+	PullRequests []string `json:"pullRequests,omitempty"`
 }
 
 type TeamCondition struct {
@@ -242,6 +245,7 @@ const (
 	TeamNamespacePreActiveCreated         TeamConditionType = "TeamNamespacePreActiveCreated"
 	TeamNamespacePreviousActiveCreated    TeamConditionType = "TeamNamespacePreviousActiveCreated"
 	TeamNamespaceActiveCreated            TeamConditionType = "TeamNamespaceActiveCreated"
+	TeamNamespacePullRequestCreated       TeamConditionType = "TeamNamespacePullRequestCreated"
 	TeamConfigExisted                     TeamConditionType = "TeamConfigExist"
 	TeamPostStagingNamespaceCreationRun   TeamConditionType = "TeamPostStagingNamespaceCreationRun"
 	TeamPostPreActiveNamespaceCreationRun TeamConditionType = "TeamPostPreActiveNamespaceCreationRun"

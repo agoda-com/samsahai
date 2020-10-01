@@ -1,0 +1,10 @@
+image:
+  repository: bitnami/redis
+  tag: latest
+  pullPolicy: IfNotPresent
+cluster:
+  enabled: false
+usePassword: false
+master:
+  persistence:
+    enabled: false

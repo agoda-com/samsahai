@@ -16,6 +16,9 @@ rules:
       - queues
       - queuehistories
       - stablecomponents
+      - pullrequesttriggers
+      - pullrequestqueues
+      - pullrequestqueuehistories
     verbs:
       - "*"
   - apiGroups:

@@ -26,8 +26,8 @@ import (
 // QueueHistorySpec defines the desired state of QueueHistory
 type QueueHistorySpec struct {
 	Queue            *Queue            `json:"queue,omitempty"`
-	AppliedValues    Values            `json:"appliedValues,omitempty"`
 	StableComponents []StableComponent `json:"stableComponents,omitempty"`
+	AppliedValues    Values            `json:"appliedValues,omitempty"`
 	IsDeploySuccess  bool              `json:"isDeploySuccess"`
 	IsTestSuccess    bool              `json:"isTestSuccess"`
 	IsReverify       bool              `json:"isReverify,omitempty"`

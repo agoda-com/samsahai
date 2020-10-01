@@ -4,7 +4,7 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 )
 
-func (c *controller) NotifyActivePromotion(atpRpt *internal.ActivePromotionReporter) {
+func (c *controller) NotifyActivePromotionReport(atpRpt *internal.ActivePromotionReporter) {
 	configCtrl := c.GetConfigController()
 
 	for _, reporter := range c.reporters {

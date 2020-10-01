@@ -66,9 +66,9 @@ var (
 	err            error
 )
 
-func setupSamsahai(isDisabledPromoteOnTeamCreation bool) {
+func setupSamsahai(isPromoteOnTeamCreationDisabled bool) {
 	s2hConfig := samsahaiConfig
-	if isDisabledPromoteOnTeamCreation {
+	if isPromoteOnTeamCreationDisabled {
 		s2hConfig.ActivePromotion.PromoteOnTeamCreation = false
 	}
 

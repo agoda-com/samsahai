@@ -147,7 +147,7 @@ func (h *handler) getTeamComponent(w http.ResponseWriter, r *http.Request, param
 	var err error
 	data, err = configCtrl.GetComponents(teamName)
 	if err != nil {
-		h.error(w, http.StatusInternalServerError, fmt.Errorf("cannot get conponents of team: %+v", err))
+		h.error(w, http.StatusInternalServerError, fmt.Errorf("cannot get components of team: %+v", err))
 		return
 	}
 
