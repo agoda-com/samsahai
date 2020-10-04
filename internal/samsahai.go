@@ -269,3 +269,9 @@ func GenStagingNamespace(teamName string) string {
 func GenPullRequestComponentName(component, prNumber string) string {
 	return fmt.Sprintf("%s-%s", component, prNumber)
 }
+
+// PullRequestData defines a pull request data for template rendering
+type PullRequestData struct {
+	// PRNumber defines a pull request number
+	PRNumber string
+}

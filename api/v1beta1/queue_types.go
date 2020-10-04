@@ -113,6 +113,10 @@ type QueueSpec struct {
 	// TeamName represents team owner of the queue
 	TeamName string `json:"teamName"`
 
+	// PRNumber represents a pull request number
+	// +optional
+	PRNumber string `json:"prNumber,omitempty"`
+
 	// SkipTestRunner represents a flag for skipping running test
 	// +optional
 	SkipTestRunner bool `json:"skipTestRunner,omitempty"`

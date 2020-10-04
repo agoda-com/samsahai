@@ -203,7 +203,7 @@ func (c *controller) ensurePullRequestComponents(prQueue *s2hv1beta1.PullRequest
 
 	prNamespace := prQueue.Status.PullRequestNamespace
 	deployedQueue, err := queue.EnsurePullRequestComponents(runtimeClient, c.teamName, prNamespace, prQueue.Name,
-		prComps, prQueue.Spec.NoOfRetry)
+		prQueue.Spec.PRNumber, prComps, prQueue.Spec.NoOfRetry)
 	if err != nil {
 		return nil, err
 	}

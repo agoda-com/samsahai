@@ -377,11 +377,6 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.Tea
 	return rpcPRConfig, nil
 }
 
-// PullRequestData defines a pull request data for template rendering
-type PullRequestData struct {
-	PRNumber string
-}
-
 func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWithPR *rpc.TeamWithPullRequest) (*rpc.ComponentSource, error) {
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
@@ -434,7 +429,7 @@ func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWith
 		}
 	}
 
-	prData := PullRequestData{PRNumber: teamWithPR.PRNumber}
+	prData := s2h.PullRequestData{PRNumber: teamWithPR.PRNumber}
 	compSource.Pattern = template.TextRender("PullRequestTagPattern", compSource.Pattern, prData)
 	compSource.ComponentName = teamWithPR.ComponentName
 

@@ -16,6 +16,7 @@ import (
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/http"
+	"github.com/agoda-com/samsahai/internal/util/template"
 )
 
 var logger = s2hlog.Log.WithName(TestRunnerName)
@@ -115,6 +116,16 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
 	}
 
+	branchName := testConfig.Teamcity.Branch
+	prData := internal.PullRequestData{PRNumber: currentQueue.Spec.PRNumber}
+	if prData.PRNumber != "" {
+		branchName = template.TextRender("PullRequestBranchName", branchName, prData)
+	}
+
+	if branchName == "" {
+		branchName = testConfig.Teamcity.Branch
+	}
+
 	errCh := make(chan error, 1)
 	ctx, cancelFn := context.WithTimeout(context.Background(), maxRunnerTimeout)
 	defer cancelFn()
@@ -127,7 +138,7 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 			compVersion = currentQueue.Spec.Components[0].Version
 		}
 		reqJSON := &triggerBuildReq{
-			BranchName: testConfig.Teamcity.Branch,
+			BranchName: branchName,
 			BuildType: buildTypeJSON{
 				ID: testConfig.Teamcity.BuildTypeID,
 			},
