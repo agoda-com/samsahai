@@ -19,13 +19,12 @@ package v1beta1
 import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // PullRequestTriggerSpec defines the desired state of PullRequestTrigger
 type PullRequestTriggerSpec struct {
-	Component string             `json:"component"`
-	PRNumber  intstr.IntOrString `json:"prNumber"`
+	Component string `json:"component"`
+	PRNumber  string `json:"prNumber"`
 	// +optional
 	Image *Image `json:"image,omitempty"`
 	// +optional
