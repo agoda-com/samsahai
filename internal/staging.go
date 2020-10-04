@@ -22,7 +22,8 @@ type StagingTestRunner interface {
 
 	// GetResult makes http request to get result of test build [FAILURE/SUCCESS/UNKNOWN]
 	// It returns bool results of is build success and is build finished
-	GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) (bool, bool, error)
+	GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) (
+		isResultSuccess bool, isBuildFinished bool, err error)
 }
 
 type StagingController interface {

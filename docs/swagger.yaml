@@ -839,6 +839,11 @@ definitions:
           NoOfRetry defines how many times this component has been tested
           +optional
         type: integer
+      prNumber:
+        description: |-
+          PRNumber represents a pull request number
+          +optional
+        type: string
       skipTestRunner:
         description: |-
           SkipTestRunner represents a flag for skipping running test
@@ -1148,6 +1153,8 @@ definitions:
     type: object
   v1beta1.Teamcity:
     properties:
+      branch:
+        type: string
       buildID:
         type: string
       buildNumber:

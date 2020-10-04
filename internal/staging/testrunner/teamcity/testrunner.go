@@ -200,11 +200,14 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 
 		// update build id / build type id / build url to queue status
 		buildTypeID := testConfig.Teamcity.BuildTypeID
-		buildURL := fmt.Sprintf("%s/viewLog.html?buildId=%s&buildTypeId=%s", t.baseURL, out.BuildID, testConfig.Teamcity.BuildTypeID)
-		currentQueue.Status.TestRunner.Teamcity.SetTeamcity(out.BuildID, buildTypeID, buildURL)
-		if err := t.client.Update(ctx, currentQueue); err != nil {
-			errCh <- err
-			return
+		buildURL := fmt.Sprintf("%s/viewLog.html?buildId=%s&buildTypeId=%s",
+			t.baseURL, out.BuildID, testConfig.Teamcity.BuildTypeID)
+		currentQueue.Status.TestRunner.Teamcity.SetTeamcity(branchName, out.BuildID, buildTypeID, buildURL)
+		if t.client != nil {
+			if err := t.client.Update(ctx, currentQueue); err != nil {
+				errCh <- err
+				return
+			}
 		}
 
 		errCh <- nil
@@ -220,7 +223,9 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 }
 
 // GetResult implements the staging testRunner GetResult function
-func (t *testRunner) GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) (isResultSuccess bool, isBuildFinished bool, err error) {
+func (t *testRunner) GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) (
+	isResultSuccess bool, isBuildFinished bool, err error) {
+
 	if testConfig == nil {
 		return false, false, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
@@ -240,7 +245,7 @@ func (t *testRunner) GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueu
 		return false, false, err
 	}
 
-	var byteData = []byte(resp)
+	var byteData = resp
 	var response ResultResponse
 	err = xml.Unmarshal(byteData, &response)
 	if err != nil {
