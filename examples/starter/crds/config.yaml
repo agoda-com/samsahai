@@ -227,7 +227,8 @@ spec:
             buildTypeID: <your_regression_teamcity_build_type_id>
 
             # build branch which wants to run against desired components
-            branch: <default>
+            # support {{ .PRNumber }} parameter
+            branch: 'pull/{{ .PRNumber }}'
 
           # how long all testing flows in teamcity should take?
           # support units are either <number>s, <number>m or <number>h
@@ -241,6 +242,7 @@ spec:
 
       # what components do you want to verify per pull request?
       components:
+        # the service name must be defined in "components" configuration
         - name: <pr_service_name>
           # how many resources for pull request namespace?
           resources: null
@@ -248,6 +250,7 @@ spec:
           # memory: 4Gi
 
           # [optional] image repository and image tag pattern of the pull request component
+          # if not define, will use the image from "components" configuration matching with component name
           image:
             repository: <service_image_repository>
             # [optional] samsahai will retrieve the latest image version matching with a defined pattern
@@ -261,6 +264,7 @@ spec:
           source: public-registry
 
           # dependencies of pull request component
+          # the dependency name must be defined in "components" configuration
           dependencies:
             - <pull_request_dependencies_service_name>
 
