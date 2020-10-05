@@ -275,6 +275,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
  {{- end }}
 {{- end }}
 {{- end }}
+<br/><b>Run:</b> #{{ .Runs }}
 <br/><b>Current Active Namespace:</b> {{ .CurrentActiveNamespace }}
 <br/><b>Owner:</b> {{ .TeamName }}
 {{- if eq .Result "Failure" }}
