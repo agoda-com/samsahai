@@ -718,6 +718,69 @@ var _ = Describe("[e2e] Main controller", func() {
 
 	}, 60)
 
+	It("should do retry if active promotion fail", func(done Done) {
+		defer close(done)
+		setupSamsahai(true)
+		ctx := context.TODO()
+
+		By("Creating Config")
+		config := mockConfig
+		maxRetry := 2
+		config.Spec.ActivePromotion.MaxRetry = &maxRetry
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(client.Create(ctx, &team)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1beta1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Creating ActivePromotion with `Finished` state")
+		atp := activePromotion
+		atp.Spec.NoOfRetry = 1
+		atp.Status.State = s2hv1beta1.ActivePromotionFinished
+		atp.Status.Result = s2hv1beta1.ActivePromotionFailure
+		Expect(client.Create(ctx, &atp)).To(BeNil())
+
+		By("Waiting ActivePromotion state to be ready for doing retry")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			atpComp := s2hv1beta1.ActivePromotion{}
+			if err := client.Get(ctx, types.NamespacedName{Name: teamName}, &atpComp); err != nil {
+				return false, nil
+			}
+
+			if atpComp.Status.State == s2hv1beta1.ActivePromotionWaiting ||
+				atpComp.Status.State == s2hv1beta1.ActivePromotionCreatingPreActive ||
+				atpComp.Status.State == s2hv1beta1.ActivePromotionDeployingComponents {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(),
+			"Waiting active promotion state to be ready for doing retrys error")
+
+		By("Verifying ActivePromotion status")
+		atpComp := s2hv1beta1.ActivePromotion{}
+		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &atpComp)).To(BeNil())
+		Expect(atpComp.Spec.NoOfRetry).To(Equal(2))
+	}, 45)
+
 	It("should successfully rollback and delete active promotion", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
@@ -807,7 +870,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete pre-active namespace error")
 
 		By("ActivePromotion should be deleted")
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
 			err = client.Get(ctx, types.NamespacedName{Name: atp.Name}, &atpTemp)
 			if err != nil && errors.IsNotFound(err) {
