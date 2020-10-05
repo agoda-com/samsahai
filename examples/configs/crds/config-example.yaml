@@ -16,6 +16,9 @@ spec:
     active:
       redis:
         - https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/envs/active/redis.yaml
+    pull-request:
+      redis:
+        - https://raw.githubusercontent.com/agoda-com/samsahai/master/envs/pull-request/redis.yaml
 
   staging:
     maxRetry: 3
@@ -43,7 +46,7 @@ spec:
 
   report:
     reportMock: true
-    
+
   bundles:
     db:
       - redis

@@ -6,7 +6,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -35,7 +34,7 @@ func (c *controller) TriggerPullRequestDeployment(teamName, component, tag, prNu
 				},
 				Spec: s2hv1beta1.PullRequestTriggerSpec{
 					Component: component,
-					PRNumber:  intstr.FromString(prNumber),
+					PRNumber:  prNumber,
 					Image:     &s2hv1beta1.Image{Tag: tag},
 				},
 			}

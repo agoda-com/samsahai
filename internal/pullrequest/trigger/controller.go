@@ -182,7 +182,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	imgRepo := prTrigger.Spec.Image.Repository
 	prNumber := prTrigger.Spec.PRNumber
-	err = c.createPullRequestQueue(req.Namespace, prTrigger.Spec.Component, imgRepo, version.Version, prNumber.String())
+	err = c.createPullRequestQueue(req.Namespace, prTrigger.Spec.Component, imgRepo, version.Version, prNumber)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -231,7 +231,7 @@ func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger
 	prCompSource, err := c.s2hClient.GetPullRequestComponentSource(ctx, &samsahairpc.TeamWithPullRequest{
 		TeamName:      c.teamName,
 		ComponentName: compName,
-		PRNumber:      prTrigger.Spec.PRNumber.String(),
+		PRNumber:      prTrigger.Spec.PRNumber,
 	})
 	if err != nil {
 		return &samsahairpc.ComponentSource{}, err
