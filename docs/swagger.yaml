@@ -50,6 +50,11 @@ definitions:
     type: object
   v1beta1.ActivePromotionSpec:
     properties:
+      noOfRetry:
+        description: |-
+          NoOfRetry represents how many times this active promotion process has been run
+          +optional
+        type: integer
       promotedBy:
         description: |-
           PromotedBy represents a person who promoted the ActivePromotion
@@ -242,6 +247,11 @@ definitions:
       maxHistories:
         description: |-
           MaxHistories defines maximum length of ActivePromotionHistory stored per team
+          +optional
+        type: integer
+      maxRetry:
+        description: |-
+          MaxRetry defines max retry counts of active promotion process in case failure
           +optional
         type: integer
       outdatedNotification:
