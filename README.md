@@ -341,17 +341,14 @@ To save the cluster resources once every upgrade component verification has fini
    ```
    NAME                                                    READY   STATUS    RESTARTS   AGE
    s2h-example-redis-56-redis-master-0                     1/1     Running   0          65s
-   s2h-example-redis-56-redis-slave-0                      1/1     Running   0          65s
-   s2h-example-redis-56-redis-slave-1                      1/1     Running   0          16s
    s2h-staging-ctrl-55c757978f-jx6lj                       1/1     Running   0          89s
    ```
 
    - `kubectl get services` (in s2h-example-redis-56 namespace, you will see services which link to the components in active namespace)
    ```
    NAME                                     TYPE           CLUSTER-IP      EXTERNAL-IP                                                                 PORT(S)    AGE
-   s2h-example-redis-56-redis-headless      ClusterIP      None            <none>                                                                      6379/TCP   61s
    s2h-example-redis-56-redis-master        ClusterIP      10.97.174.107   <none>                                                                      6379/TCP   61s
-   s2h-example-redis-56-redis-slave         ClusterIP      10.105.12.92    <none>                                                                      6379/TCP   61s
+   s2h-example-redis-56-redis-headless      ClusterIP      None            <none>                                                                      6379/TCP   61s
    s2h-example-redis-56-wordpress           ExternalName   <none>          s2h-example-8ncrwx-wordpress.s2h-example-8ncrwx.svc.cluster.local           <none>     6s
    s2h-example-redis-56-wordpress-mariadb   ExternalName   <none>          s2h-example-8ncrwx-wordpress-mariadb.s2h-example-8ncrwx.svc.cluster.local   <none>     6s
    s2h-staging-ctrl                         ClusterIP      10.96.174.13    <none>                                                                      8090/TCP   90s

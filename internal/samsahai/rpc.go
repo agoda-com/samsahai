@@ -702,7 +702,7 @@ func (c *controller) sendPullRequestTriggerReport(prTrigger *s2hv1beta1.PullRequ
 	prNumber := prTrigger.Spec.PRNumber
 	for _, reporter := range c.reporters {
 		prTriggerRpt := s2h.NewPullRequestTriggerResultReporter(prTrigger.Status, c.configs, prTriggerRPC.TeamName,
-			compName, prTrigger.Spec.PRNumber.String(), prTriggerRPC.Result, prTrigger.Spec.Image)
+			compName, prTrigger.Spec.PRNumber, prTriggerRPC.Result, prTrigger.Spec.Image)
 
 		if err := reporter.SendPullRequestTriggerResult(configCtrl, prTriggerRpt); err != nil {
 			logger.Error(err, "cannot send pull request trigger result report",
