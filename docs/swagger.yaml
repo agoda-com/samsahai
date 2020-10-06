@@ -383,11 +383,10 @@ definitions:
           +optional
         type: object
       template:
-        $ref: '#/definitions/v1beta1.Template'
         description: |-
           Template represents configuration's template
           +optional
-        type: object
+        type: string
     type: object
   v1beta1.ConfigStaging:
     properties:
@@ -867,11 +866,6 @@ definitions:
           For easier for developing, debugging and testing purposes
           +optional
         type: object
-      templateUpdatedID:
-        description: |-
-          TemplateUpdatedId
-          +optional
-        type: string
     type: object
   v1beta1.TeamStatus:
     properties:
@@ -910,10 +904,12 @@ definitions:
           StableComponentList represents a list of stable components
           +optional
         type: object
-      templateTeam:
-        $ref: '#/definitions/v1beta1.TeamSpec'
+      syncTemplate:
         description: +optional
-        type: object
+        type: boolean
+      templateUpdatedID:
+        description: +optional
+        type: string
       used:
         $ref: '#/definitions/v1beta1.TeamSpec'
         description: +optional
@@ -928,15 +924,6 @@ definitions:
       buildTypeID:
         type: string
       buildURL:
-        type: string
-    type: object
-  v1beta1.Template:
-    properties:
-      name:
-        description: +optional
-        type: string
-      updatedID:
-        description: +optional
         type: string
     type: object
   v1beta1.TestRunner:
