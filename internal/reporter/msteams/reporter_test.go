@@ -730,7 +730,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 									ChannelNameOrIDs: []string{"chan2-1"},
 								},
 							},
-							ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgrade{
+							ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgradeReport{
 								Interval: c.interval,
 								Criteria: c.criteria,
 							},

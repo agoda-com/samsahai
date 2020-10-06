@@ -615,7 +615,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 					Reporter: &s2hv1beta1.ConfigReporter{
 						Slack: &s2hv1beta1.Slack{
 							Channels: []string{"chan1", "chan2"},
-							ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgrade{
+							ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgradeReport{
 								Interval: c.interval,
 								Criteria: c.criteria,
 							},

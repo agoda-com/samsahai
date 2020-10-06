@@ -285,7 +285,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 			Components:     []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
 			PullRequest:    &configPR,
 		},
-    Status: s2hv1beta1.ConfigStatus{
+		Status: s2hv1beta1.ConfigStatus{
 			Used: s2hv1beta1.ConfigSpec{
 				Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
 					"base": map[string][]string{
