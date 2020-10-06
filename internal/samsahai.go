@@ -129,7 +129,7 @@ type SamsahaiController interface {
 	UpdateTeam(teamComp *s2hv1beta1.Team) error
 
 	// EnsureTeamTemplateChanged  updates team if template changed
-	EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team, template string) error
+	EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error
 
 	// LoadTeamSecret loads team secret from main namespace
 	LoadTeamSecret(teamComp *s2hv1beta1.Team) error

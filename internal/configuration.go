@@ -27,5 +27,5 @@ type ConfigController interface {
 	Delete(configName string) error
 
 	//EnsureConfigTemplateChanged updates config if template changed
-	EnsureConfigTemplateChanged(config *s2hv1beta1.Config, template string) error
+	EnsureConfigTemplateChanged(config *s2hv1beta1.Config) error
 }
