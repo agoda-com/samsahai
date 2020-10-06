@@ -32,6 +32,7 @@ spec:
           result: true
 
   activePromotion:
+    maxRetry: 1
     timeout: 10m
     maxHistories: 5
     tearDownDuration: 10s
