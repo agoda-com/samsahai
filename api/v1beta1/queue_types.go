@@ -47,6 +47,9 @@ const (
 	// QueueTypeDemoteFromActive components will deploy with latest stable + `tmp` env config
 	QueueTypeDemoteFromActive QueueType = "demote-from-active"
 
+	// QueueTypePullRequest
+	QueueTypePullRequest QueueType = "pull-request"
+
 	// QueueState
 	//
 	// Waiting waiting in queues
@@ -110,6 +113,10 @@ type QueueSpec struct {
 	// TeamName represents team owner of the queue
 	TeamName string `json:"teamName"`
 
+	// PRNumber represents a pull request number
+	// +optional
+	PRNumber string `json:"prNumber,omitempty"`
+
 	// SkipTestRunner represents a flag for skipping running test
 	// +optional
 	SkipTestRunner bool `json:"skipTestRunner,omitempty"`
@@ -149,13 +156,15 @@ type TestRunner struct {
 }
 
 type Teamcity struct {
+	Branch      string `json:"branch,omitempty"`
 	BuildID     string `json:"buildID,omitempty"`
 	BuildNumber string `json:"buildNumber,omitempty"`
 	BuildTypeID string `json:"buildTypeID,omitempty"`
 	BuildURL    string `json:"buildURL,omitempty"`
 }
 
-func (t *Teamcity) SetTeamcity(buildID, buildTypeID, buildURL string) {
+func (t *Teamcity) SetTeamcity(branch, buildID, buildTypeID, buildURL string) {
+	t.Branch = branch
 	t.BuildID = buildID
 	t.BuildTypeID = buildTypeID
 	t.BuildURL = buildURL
@@ -374,6 +383,10 @@ func (q *Queue) IsActivePromotionQueue() bool {
 		q.Spec.Type == QueueTypeDemoteFromActive
 }
 
+func (q *Queue) IsPullRequestQueue() bool {
+	return q.Spec.Type == QueueTypePullRequest
+}
+
 // GetEnvType returns environment type for connection based on Queue.Spec.Type
 func (q *Queue) GetEnvType() string {
 	switch q.Spec.Type {
@@ -381,6 +394,8 @@ func (q *Queue) GetEnvType() string {
 		return "pre-active"
 	case QueueTypePromoteToActive:
 		return "active"
+	case QueueTypePullRequest:
+		return "pull-request"
 	default:
 		return "staging"
 	}
@@ -425,7 +440,7 @@ func (ql *QueueList) LastQueueOrder() int {
 	return ql.Items[len(ql.Items)-1].Spec.NoOfOrder + 1
 }
 
-// Sort sorts items
+// First returns the first order of queues
 func (ql *QueueList) First() *Queue {
 	if len(ql.Items) == 0 {
 		return nil

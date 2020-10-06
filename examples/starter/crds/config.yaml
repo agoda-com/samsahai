@@ -19,7 +19,7 @@ spec:
   # the first one has the highest priority and the last one has the lowest priority
   priorityQueues:
     - <service_name_or_dependencies_service_or_bundle_name>
-      
+
   # what components do you want to verify?
   components:
     # name must consist of lower case alphanumeric characters, '-' or '.',
@@ -128,7 +128,7 @@ spec:
       # support units are either <number>s, <number>m or <number>h
       # default value is 30m
       timeout: 60m
-      
+
       # how long components cleanup should take?
       # support units are either <number>s, <number>m or <number>h
       # default value is 15m
@@ -172,6 +172,102 @@ spec:
       # calculate outdated duration by excluding weekend (Sat. and Sun.) periods
       excludeWeekendCalculation: true
 
+  # pull request deployment flow configuration
+  pullRequest:
+    # how many concurrences of pull request queue running?
+    # default value is 2
+    concurrences: 2
+
+    # how many times the pull request component should be tested?
+    # default value is 0
+    maxRetry: 2
+
+    # [optional] what is the maximum pull request queue histories in days to store?
+    # default value is 7
+    maxHistoryDays: 7
+
+    # how many resources for pull request namespace?
+    resources: null
+    # cpu: '4'
+    # memory: 4Gi
+
+    # pull request trigger configuration for checking pull request image version in the registry
+    trigger:
+      # polling time to verify the image version
+      # support units are either <number>s, <number>m or <number>h
+      # default value is 5m
+      pollingTime: 10m
+
+      # how many times the image version should be checked ?
+      # default value is 30
+      maxRetry: 10
+
+      # deployment flow of active environment configuration
+      deployment:
+        # how long the active environment should be ready?
+        # support units are either <number>s, <number>m or <number>h
+        # default value is 30m
+        timeout: 60m
+
+        # how long components cleanup should take?
+        # support units are either <number>s, <number>m or <number>h
+        # default value is 15m
+        componentCleanupTimeout: 20m
+
+        # deployment engine which is used for deploying releases
+        # use 'helm3' for using helm v3 find more details in https://helm.sh/docs/
+        # use 'mock' for fake deploying release into a namespace, all releases will be stamped as success
+        engine: helm3
+
+        # [optional] testing flow configuration for running against active environment
+        testRunner:
+          # your teamcity build configuration
+          teamcity:
+            # build configuration type id which wants to run against desired components
+            buildTypeID: <your_regression_teamcity_build_type_id>
+
+            # build branch which wants to run against desired components
+            # support {{ .PRNumber }} parameter
+            branch: 'pull/{{ .PRNumber }}'
+
+          # how long all testing flows in teamcity should take?
+          # support units are either <number>s, <number>m or <number>h
+          # default value is 30m
+          timeout: 1h
+
+          # [optional] polling time to verify finished status in teamcity
+          # support units are either <number>s, <number>m or <number>h
+          # default value is 5s
+          pollingTime: 10s
+
+      # what components do you want to verify per pull request?
+      components:
+        # the service name must be defined in "components" configuration
+        - name: <pr_service_name>
+          # how many resources for pull request namespace?
+          resources: null
+          # cpu: '4'
+          # memory: 4Gi
+
+          # [optional] image repository and image tag pattern of the pull request component
+          # if not define, will use the image from "components" configuration matching with component name
+          image:
+            repository: <service_image_repository>
+            # [optional] samsahai will retrieve the latest image version matching with a defined pattern
+            # support {{ .PRNumber }} parameter
+            pattern: <service_image_tag_pattern>
+
+          # image source for checking desired version of components
+          # use 'public-registry' for retrieving latest version from public registry e.g. hub.docker.com
+          # use 'harbor' for retrieving latest version from harbor
+          # use 'samsahai-stable' for retrieving version from stable component version of other teams in samsahai itself
+          source: public-registry
+
+          # dependencies of pull request component
+          # the dependency name must be defined in "components" configuration
+          dependencies:
+            - <pull_request_dependencies_service_name>
+
   # reporting flow configuration
   report:
     # sending notification via slack
@@ -191,7 +287,19 @@ spec:
         # use 'failure' for sending slack notification when component upgrade is failure only <default>
         # use 'both' for sending slack notification whether component upgrade is success or failure
         criteria: failure
-  
+
+      pullRequestQueue:
+        # how often of sending pull request queue notification within a retry cycle
+        # use 'everytime' for sending slack notification in every pull request queue runs
+        # use 'retry' for sending slack notification after retry only <default>
+        interval: retry
+
+        # a criteria of sending pull request queue notification
+        # use 'success' for sending slack notification when pull request queue is success only
+        # use 'failure' for sending slack notification when pull request queue is failure only <default>
+        # use 'both' for sending slack notification whether pull request queue is success or failure
+        criteria: failure
+
     # sending notification via Microsoft Teams
     msTeams:
       groups:
@@ -200,8 +308,8 @@ spec:
         - groupNameOrID: Samsahai
           # support both channel name and channel id
           channelNameOrIDs:
-            - Samsahai Dev 
-        componentUpgrade:  
+            - Samsahai Dev
+        componentUpgrade:
           # how often of sending component upgrade notification within a retry cycle
           # use 'everytime' for sending ms teams notification in every component upgrade runs
           # use 'retry' for sending ms teams notification after retry only <default>
@@ -211,6 +319,25 @@ spec:
           # use 'success' for sending ms teams notification when component upgrade is success only
           # use 'failure' for sending ms teams notification when component upgrade is failure only <default>
           # use 'both' for sending ms teams notification whether component upgrade is success or failure
+          criteria: failure
+
+        pullRequestQueue:
+          # how often of sending pull request queue notification within a retry cycle
+          # use 'everytime' for sending slack notification in every pull request queue runs
+          # use 'retry' for sending slack notification after retry only <default>
+          interval: retry
+
+          # a criteria of sending pull request queue notification
+          # use 'success' for sending slack notification when pull request queue is success only
+          # use 'failure' for sending slack notification when pull request queue is failure only <default>
+          # use 'both' for sending slack notification whether pull request queue is success or failure
+          criteria: failure
+
+        pullRequestTrigger:
+          # a criteria of sending pull request trigger notification
+          # use 'success' for sending slack notification when pull request trigger is success only
+          # use 'failure' for sending slack notification when pull request trigger is failure only <default>
+          # use 'both' for sending slack notification whether pull request trigger is success or failure
           criteria: failure
 
     cmd:
@@ -241,9 +368,27 @@ spec:
           - |
             echo "image missing: {{ .Repository }}:{{ .Tag }}, component: {{ .ComponentName }}"
 
+      # pull request queue external command line
+      # check support values format from
+      # https://raw.githubusercontent.com/agoda-com/samsahai/master/internal/reporter.go#ComponentUpgradeReporter
+      pullRequestQueue:
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "pr queue name: {{ .Name }} of {{ .TeamName }}"
+
+      # pull request queue external command line
+      # check support values format from
+      # https://raw.githubusercontent.com/agoda-com/samsahai/master/internal/reporter.go#PullRequestTriggerReporter
+      pullRequestTrigger:
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            "echo pull request trigger of {{ .PRNumber }}: {{ .Result }}"
+
   # values file urls of parent component per environment
   envs:
-    # base environment will be applied every running
+    # base environment will be applied every running except pull-request queue type
     base:
       # component name must consist of lower case alphanumeric characters, '-' or '.',
       # and must start and end with an alphanumeric character
@@ -263,9 +408,16 @@ spec:
       # and must start and end with an alphanumeric character
       <component_name>:
         - <values_file_url>
-        
+
     # active environment will be applied when active promotion passed
     active:
+      # component name must consist of lower case alphanumeric characters, '-' or '.',
+      # and must start and end with an alphanumeric character
+      <component_name>:
+        - <values_file_url>
+
+    # pull request environment will be applied when running pull request queue
+    pull-request:
       # component name must consist of lower case alphanumeric characters, '-' or '.',
       # and must start and end with an alphanumeric character
       <component_name>:

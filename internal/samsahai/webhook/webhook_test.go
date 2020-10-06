@@ -68,6 +68,7 @@ var _ = Describe("Samsahai Webhook", func() {
 	teamName := "example"
 	athName := "activepromotion-history"
 	qhName := "test-history"
+	prQueueHistName := "pr-history"
 	namespace := "default"
 	g := NewWithT(GinkgoT())
 
@@ -117,9 +118,25 @@ var _ = Describe("Samsahai Webhook", func() {
 				},
 			},
 		}
+		prQueueHist := &s2hv1beta1.PullRequestQueueHistory{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      prQueueHistName,
+				Namespace: namespace,
+			},
+			Spec: s2hv1beta1.PullRequestQueueHistorySpec{
+				PullRequestQueue: &s2hv1beta1.PullRequestQueue{
+					Status: s2hv1beta1.PullRequestQueueStatus{
+						DeploymentQueue: &s2hv1beta1.Queue{
+							Status: qh.Spec.Queue.Status,
+						},
+					},
+				},
+			},
+		}
 
 		Expect(c.Create(context.TODO(), qh)).NotTo(HaveOccurred())
 		Expect(c.Create(context.TODO(), ath)).NotTo(HaveOccurred())
+		Expect(c.Create(context.TODO(), prQueueHist)).NotTo(HaveOccurred())
 
 		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "test", "data", "team", "team.yaml"))
 		g.Expect(err).NotTo(HaveOccurred())
@@ -135,6 +152,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		team := &s2hv1beta1.Team{}
 		qh := &s2hv1beta1.QueueHistory{}
 		ath := &s2hv1beta1.ActivePromotionHistory{}
+		prQueueHist := &s2hv1beta1.PullRequestQueueHistory{}
 		ctx := context.TODO()
 		_ = c.Get(ctx, client.ObjectKey{Name: teamName, Namespace: namespace}, team)
 		_ = c.Delete(ctx, team)
@@ -142,6 +160,8 @@ var _ = Describe("Samsahai Webhook", func() {
 		_ = c.Delete(ctx, qh)
 		_ = c.Get(ctx, client.ObjectKey{Name: athName}, ath)
 		_ = c.Delete(ctx, ath)
+		_ = c.Get(ctx, client.ObjectKey{Name: prQueueHistName, Namespace: namespace}, prQueueHist)
+		_ = c.Delete(ctx, prQueueHist)
 		server.Close()
 	}, timeout)
 
@@ -233,13 +253,38 @@ var _ = Describe("Samsahai Webhook", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
+	})
 
-		It("should successfully get zip log from active promotion history", func(done Done) {
+	Describe("PullRequest", func() {
+		It("should successfully get pull request queues", func(done Done) {
 			defer close(done)
 
-			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions/histories/activepromotion-history/log")
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/pullrequest/queue")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
+		}, timeout)
+
+		It("should successfully pull request queue history", func(done Done) {
+			defer close(done)
+
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/pullrequest/queue/histories/pr-history")
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(data).NotTo(BeNil())
+		}, timeout)
+
+		It("should successfully get zip log from pull request queue history", func(done Done) {
+			defer close(done)
+
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/pullrequest/queue/histories/pr-history/log")
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(data).NotTo(BeNil())
+		}, timeout)
+
+		Specify("Pull request queue of unknown team", func(done Done) {
+			defer close(done)
+
+			_, _, err := http.Get(server.URL + "/teams/unknown/pullrequest/queue")
+			g.Expect(err).To(HaveOccurred())
 		}, timeout)
 	})
 
@@ -265,6 +310,14 @@ var _ = Describe("Samsahai Webhook", func() {
 			defer close(done)
 
 			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions/histories")
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(data).NotTo(BeNil())
+		}, timeout)
+
+		It("should successfully get zip log from active promotion history", func(done Done) {
+			defer close(done)
+
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions/histories/activepromotion-history/log")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -408,11 +461,23 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	return comps, nil
 }
 
+func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
 func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
 	return s2hv1beta1.ConfigBundles{}, nil
 }
 
 func (c *mockConfigCtrl) GetPriorityQueues(configName string) ([]string, error) {
+	return nil, nil
+}
+
+func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1beta1.ConfigPullRequest, error) {
+	return nil, nil
+}
+
+func (c *mockConfigCtrl) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
 	return nil, nil
 }
 

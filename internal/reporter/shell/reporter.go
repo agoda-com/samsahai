@@ -85,6 +85,28 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	return nil
 }
 
+// SendPullRequestQueue implements the reporter SendPullRequestQueue function
+func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
+	config, err := configCtrl.Get(comp.TeamName)
+	if err != nil {
+		return err
+	}
+
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Shell == nil ||
+		config.Spec.Reporter.Shell.PullRequestQueue == nil {
+		return nil
+	}
+
+	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.PullRequestQueue.Command,
+		config.Spec.Reporter.Shell.PullRequestQueue.Args, comp)
+	if err := r.execute(cmdObj, internal.PullRequestQueueType); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SendActivePromotionStatus implements the reporter SendActivePromotionStatus function
 func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigController, atpRpt *internal.ActivePromotionReporter) error {
 	config, err := configCtrl.Get(atpRpt.TeamName)
@@ -124,6 +146,28 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.ImageMissing.Command,
 		config.Status.Used.Reporter.Shell.ImageMissing.Args, imageMissingRpt)
 	if err := r.execute(cmdObj, internal.ImageMissingType); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SendPullRequestTriggerResult implements the reporter SendPullRequestTriggerResult function
+func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
+	config, err := configCtrl.Get(prTriggerRpt.TeamName)
+	if err != nil {
+		return err
+	}
+
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Shell == nil ||
+		config.Spec.Reporter.Shell.PullRequestTrigger == nil {
+		return nil
+	}
+
+	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.PullRequestTrigger.Command,
+		config.Spec.Reporter.Shell.PullRequestTrigger.Args, prTriggerRpt)
+	if err := r.execute(cmdObj, internal.PullRequestTriggerType); err != nil {
 		return err
 	}
 

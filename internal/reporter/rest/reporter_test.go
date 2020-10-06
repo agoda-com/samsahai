@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
@@ -40,11 +41,11 @@ var _ = Describe("send rest message", func() {
 	g := NewGomegaWithT(GinkgoT())
 
 	Describe("success path", func() {
-		It("should correctly send active promotion", func() {
+		It("should correctly send active promotion status", func() {
 			var comp1, repoComp1, comp2, repoComp2 = "comp1", "repo/comp1", "comp2", "repo/comp2"
 			var v110, v112, v201811 = "1.1.0", "1.1.2", "2018.1.1"
 
-			status := &s2hv1beta1.ActivePromotionStatus{
+			status := s2hv1beta1.ActivePromotionStatus{
 				Result:               s2hv1beta1.ActivePromotionSuccess,
 				HasOutdatedComponent: true,
 				OutdatedComponents: map[string]s2hv1beta1.OutdatedComponent{
@@ -162,8 +163,63 @@ var _ = Describe("send rest message", func() {
 			g.Expect(err).To(BeNil(), "request should not thrown any error")
 		})
 
+		It("should correctly send pull request queue", func() {
+			img1 := &rpc.Image{Repository: "image-1", Tag: "1.1.0"}
+			img2 := &rpc.Image{Repository: "image-2", Tag: "1.1.2"}
+			rpcComp := &rpc.ComponentUpgrade{
+				Name:   "group",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "comp1",
+						Image: img1,
+					},
+					{
+						Name:  "comp2",
+						Image: img2,
+					},
+				},
+				TeamName:   "owner",
+				IssueType:  rpc.ComponentUpgrade_IssueType_IMAGE_MISSING,
+				Namespace:  "owner-staging",
+				IsReverify: true,
+				PullRequestComponent: &rpc.TeamWithPullRequest{
+					ComponentName: "pr-comp1",
+					PRNumber:      "pr1234",
+				},
+			}
+
+			buildTypeID := "Teamcity_BuildTypeID"
+			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildTypeID: buildTypeID}}
+			comp := internal.NewComponentUpgradeReporter(
+				rpcComp,
+				internal.SamsahaiConfig{},
+				internal.WithTestRunner(testRunner),
+			)
+
+			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
+				g.Expect(gjson.ValidBytes(body)).To(BeTrue(), "request body should be json")
+				g.Expect(gjson.GetBytes(body, "unixTimestamp").Exists()).To(BeTrue(),
+					"unixTimestamp keys should exist")
+				g.Expect(gjson.GetBytes(body, "teamName").String()).To(Equal(rpcComp.TeamName),
+					"teamName should be matched")
+				g.Expect(gjson.GetBytes(body, "pullRequestComponent.componentName").String()).To(Equal(rpcComp.PullRequestComponent.ComponentName),
+					"pullRequestComponent.componentName should be matched")
+				g.Expect(gjson.GetBytes(body, "pullRequestComponent.PRNumber").String()).To(Equal(rpcComp.PullRequestComponent.PRNumber),
+					"pullRequestComponent.pullRequestNumber should be matched")
+			})
+
+			defer server.Close()
+			configCtrl := newMockConfigCtrl("")
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
+			err := client.SendPullRequestQueue(configCtrl, comp)
+			g.Expect(err).To(BeNil(), "request should not thrown any error")
+		})
+
 		It("should correctly send image missing", func() {
-			img := &rpc.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
+			img := s2hv1beta1.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
 			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
 				g.Expect(gjson.ValidBytes(body)).To(BeTrue(), "request body should be json")
 				g.Expect(gjson.GetBytes(body, "unixTimestamp").Exists()).To(BeTrue(),
@@ -184,6 +240,46 @@ var _ = Describe("send rest message", func() {
 			err := client.SendImageMissing(configCtrl, imageMissingRpt)
 			g.Expect(err).To(BeNil(), "request should not thrown any error")
 		})
+
+		It("should correctly send pull request trigger result", func() {
+			img := &s2hv1beta1.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
+			timeNow := metav1.Now()
+			noOfRetry := 2
+			status := s2hv1beta1.PullRequestTriggerStatus{
+				CreatedAt: &timeNow,
+				NoOfRetry: &noOfRetry,
+				Result:    "Failure",
+			}
+
+			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
+				"owner", "comp1", "1234", "Failure", img)
+
+			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
+				g.Expect(gjson.ValidBytes(body)).To(BeTrue(), "request body should be json")
+				g.Expect(gjson.GetBytes(body, "unixTimestamp").Exists()).To(BeTrue(),
+					"unixTimestamp keys should exist")
+				g.Expect(gjson.GetBytes(body, "result").String()).To(Equal(string(status.Result)),
+					"result should be matched")
+				g.Expect(gjson.GetBytes(body, "teamName").String()).To(Equal(prTriggerRpt.TeamName),
+					"teamName should be matched")
+				g.Expect(gjson.GetBytes(body, "componentName").String()).To(Equal(prTriggerRpt.ComponentName),
+					"componentName should be matched")
+				g.Expect(gjson.GetBytes(body, "prNumber").String()).To(Equal(prTriggerRpt.PRNumber),
+					"prNumber should be matched")
+				g.Expect(gjson.GetBytes(body, "image.repository").String()).To(Equal(prTriggerRpt.Image.Repository),
+					"image.repository should be matched")
+				g.Expect(gjson.GetBytes(body, "image.tag").String()).To(Equal(prTriggerRpt.Image.Tag),
+					"image.tag should be matched")
+			})
+
+			defer server.Close()
+			configCtrl := newMockConfigCtrl("")
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
+			err := client.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
+			g.Expect(err).To(BeNil(), "request should not thrown any error")
+		})
 	})
 
 	Describe("failure path", func() {
@@ -199,11 +295,17 @@ var _ = Describe("send rest message", func() {
 			err := client.SendComponentUpgrade(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
 			g.Expect(err).NotTo(BeNil(), "component upgrade request should thrown an error")
 
+			err = client.SendPullRequestQueue(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
+			g.Expect(err).NotTo(BeNil(), "pull request queue's request should thrown an error")
+
 			err = client.SendActivePromotionStatus(configCtrl, &internal.ActivePromotionReporter{})
 			g.Expect(err).NotTo(BeNil(), "active promotion request should thrown an error")
 
 			err = client.SendImageMissing(configCtrl, &internal.ImageMissingReporter{})
 			g.Expect(err).NotTo(BeNil(), "image missing request should thrown an error")
+
+			err = client.SendPullRequestTriggerResult(configCtrl, &internal.PullRequestTriggerReporter{})
+			g.Expect(err).NotTo(BeNil(), "pull request trigger's request should thrown an error")
 		})
 
 		It("should not send message if not define rest reporter configuration", func() {
@@ -226,11 +328,19 @@ var _ = Describe("send rest message", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
+			err = client.SendPullRequestQueue(configCtrl, &internal.ComponentUpgradeReporter{ComponentUpgrade: &rpc.ComponentUpgrade{}})
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(calls).To(Equal(0))
+
 			err = client.SendActivePromotionStatus(configCtrl, &internal.ActivePromotionReporter{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 
 			err = client.SendImageMissing(configCtrl, &internal.ImageMissingReporter{})
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(calls).To(Equal(0))
+
+			err = client.SendPullRequestTriggerResult(configCtrl, &internal.PullRequestTriggerReporter{})
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(calls).To(Equal(0))
 		})
@@ -255,9 +365,11 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 			Spec: s2hv1beta1.ConfigSpec{
 				Reporter: &s2hv1beta1.ConfigReporter{
 					Rest: &s2hv1beta1.Rest{
-						ComponentUpgrade: &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-						ActivePromotion:  &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-						ImageMissing:     &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+						ComponentUpgrade:   &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+						ActivePromotion:    &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+						ImageMissing:       &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+						PullRequestTrigger: &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+						PullRequestQueue:   &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
 					},
 				},
 			},
@@ -284,11 +396,23 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	return map[string]*s2hv1beta1.Component{}, nil
 }
 
+func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+	return map[string]*s2hv1beta1.Component{}, nil
+}
+
 func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
 	return s2hv1beta1.ConfigBundles{}, nil
 }
 
 func (c *mockConfigCtrl) GetPriorityQueues(configName string) ([]string, error) {
+	return nil, nil
+}
+
+func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1beta1.ConfigPullRequest, error) {
+	return nil, nil
+}
+
+func (c *mockConfigCtrl) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
 	return nil, nil
 }
 
