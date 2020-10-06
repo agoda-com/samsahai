@@ -113,6 +113,10 @@ type QueueSpec struct {
 	// TeamName represents team owner of the queue
 	TeamName string `json:"teamName"`
 
+	// PRNumber represents a pull request number
+	// +optional
+	PRNumber string `json:"prNumber,omitempty"`
+
 	// SkipTestRunner represents a flag for skipping running test
 	// +optional
 	SkipTestRunner bool `json:"skipTestRunner,omitempty"`
@@ -152,13 +156,15 @@ type TestRunner struct {
 }
 
 type Teamcity struct {
+	Branch      string `json:"branch,omitempty"`
 	BuildID     string `json:"buildID,omitempty"`
 	BuildNumber string `json:"buildNumber,omitempty"`
 	BuildTypeID string `json:"buildTypeID,omitempty"`
 	BuildURL    string `json:"buildURL,omitempty"`
 }
 
-func (t *Teamcity) SetTeamcity(buildID, buildTypeID, buildURL string) {
+func (t *Teamcity) SetTeamcity(branch, buildID, buildTypeID, buildURL string) {
+	t.Branch = branch
 	t.BuildID = buildID
 	t.BuildTypeID = buildTypeID
 	t.BuildURL = buildURL
