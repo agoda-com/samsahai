@@ -46,10 +46,6 @@ type TeamSpec struct {
 	// Credential
 	// +optional
 	Credential Credential `json:"credential,omitempty"`
-
-	// TemplateUpdatedId
-	// +optional
-	TemplateUpdatedID string `json:"templateUpdatedID,omitempty"`
 }
 
 type StagingCtrl struct {
@@ -119,7 +115,10 @@ type TeamStatus struct {
 	Used TeamSpec `json:"used,omitempty"`
 
 	// +optional
-	TemplateTeam TeamSpec `json:"templateTeam,omitempty"`
+	TemplateUID string `json:"templateUpdatedID,omitempty"`
+
+	// +optional
+	SyncTemplate bool `json:"syncTemplate,omitempty"`
 }
 
 func (ts *TeamStatus) GetStableComponent(stableCompName string) StableComponent {
@@ -257,7 +256,8 @@ const (
 	TeamPostPreActiveNamespaceCreationRun TeamConditionType = "TeamPostPreActiveNamespaceCreationRun"
 	TeamFirstNotifyComponentChanged       TeamConditionType = "TeamFirstNotifyComponentChanged"
 	TeamFirstActivePromotionRun           TeamConditionType = "TeamFirstActivePromotionRun"
-	TeamApplyTemplate                     TeamConditionType = "TeamApplyTemplate"
+	TeamUsedUpdated                       TeamConditionType = "TeamUsedUpdated"
+	TeamValidatedRequireField             TeamConditionType = "TeamValidatedRequireField"
 )
 
 func (ts *TeamStatus) IsConditionTrue(cond TeamConditionType) bool {

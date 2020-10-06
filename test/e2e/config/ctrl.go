@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"reflect"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -70,12 +69,14 @@ var _ = Describe("[e2e] Config controller", func() {
 		cfg, err := controller.Get(teamTest)
 		Expect(err).To(BeNil())
 		Expect(cfg.Status.Used).NotTo(BeNil())
-		Expect(len(cfg.Status.Used.Components)).To(Equal(2))
-		Expect(len(cfg.Status.Used.Envs)).To(Equal(4))
-		Expect(cfg.Status.Used.Staging).NotTo(BeNil())
-		Expect(cfg.Status.Used.ActivePromotion).NotTo(BeNil())
+		Expect(len(cfg.Spec.Components)).To(Equal(2))
+		Expect(len(cfg.Spec.Envs)).To(Equal(4))
+		Expect(cfg.Spec.Staging).NotTo(BeNil())
+		Expect(cfg.Spec.ActivePromotion).NotTo(BeNil())
 
 		By("Get components")
+		Expect(controller.EnsureConfigTemplateChanged(config)).To(BeNil())
+		Expect(controller.Update(config)).To(BeNil())
 		comps, err := controller.GetComponents(teamTest)
 		Expect(err).To(BeNil())
 		Expect(len(comps)).To(Equal(3))
@@ -129,13 +130,12 @@ var _ = Describe("[e2e] Config controller", func() {
 		Expect(client.Create(ctx, configUsingTemplate)).To(BeNil())
 
 		By("Apply config template")
-		Expect(controller.EnsureConfigTemplateChanged(configUsingTemplate, teamTest)).To(BeNil())
+		Expect(controller.EnsureConfigTemplateChanged(configUsingTemplate)).To(BeNil())
 		Expect(configUsingTemplate.Status.Used).NotTo(BeNil())
 		Expect(len(configUsingTemplate.Status.Used.Components)).To(Equal(2))
 		Expect(len(configUsingTemplate.Status.Used.Envs)).To(Equal(4))
 		Expect(configUsingTemplate.Status.Used.Staging).NotTo(BeNil())
 		Expect(configUsingTemplate.Status.Used.ActivePromotion).NotTo(BeNil())
-		Expect(reflect.DeepEqual(configUsingTemplate.Status.TemplateConfig, config.Spec))
 		mockEngine := "mock"
 		Expect(configUsingTemplate.Status.Used.Staging.Deployment.Engine).To(Equal(&mockEngine))
 
@@ -145,8 +145,7 @@ var _ = Describe("[e2e] Config controller", func() {
 
 		config.Spec.ActivePromotion.Deployment.Engine = &mockEngine
 		Expect(controller.Update(config)).To(BeNil())
-		Expect(controller.EnsureConfigTemplateChanged(configUsingTemplate, teamTest)).To(BeNil())
-		Expect(configUsingTemplate.Status.TemplateConfig.ActivePromotion.Deployment.Engine).To(Equal(&mockEngine))
+		Expect(controller.EnsureConfigTemplateChanged(configUsingTemplate)).To(BeNil())
 		Expect(configUsingTemplate.Status.Used.ActivePromotion.Deployment.Engine).To(Equal(&mockEngine))
 
 		By("Delete Config")

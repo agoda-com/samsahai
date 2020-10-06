@@ -202,8 +202,10 @@ const (
 	CriteriaFailure ReporterCriteria = "failure"
 	// CriteriaBoth means sending slack notification whether component upgrade is success or failure
 	CriteriaBoth ReporterCriteria = "both"
-	// ConfigApplyTemplate means the template configuration has been applied
-	ConfigApplyTemplate ConfigConditionType = "ConfigApplyTemplate"
+	// ConfigUsedUpdated the configuration has been updated
+	ConfigUsedUpdated ConfigConditionType = "ConfigUsedUpdated"
+	// ConfigValidatedRequireField mean required fields is valid
+	ConfigValidatedRequireField ConfigConditionType = "ConfigValidatedRequireField"
 )
 
 // Slack defines a configuration of slack
@@ -271,13 +273,6 @@ type Endpoint struct {
 	// TODO: auth
 }
 
-type Template struct {
-	// +optional
-	Name string `json:"name,omitempty"`
-	// +optional
-	UpdatedID string `json:"updatedID,omitempty"`
-}
-
 type EnvType string
 
 const (
@@ -325,7 +320,9 @@ type ConfigSpec struct {
 
 	// Template represents configuration's template
 	// +optional
-	Template Template `json:"template,omitempty"`
+	Template string `json:"template,omitempty"`
+
+	// sync
 }
 
 // ConfigStatus defines the observed state of Config
@@ -333,9 +330,15 @@ type ConfigStatus struct {
 	// UsedTemplate contains override configuration spec
 	// +optional
 	Used ConfigSpec `json:"used,omitempty"`
-	// TemplateConfig contains template configuration spec
+
+	// TemplateUID
 	// +optional
-	TemplateConfig ConfigSpec `json:"templateConfig,omitempty"`
+	TemplateUID string `json:"templateUpdatedID,omitempty"`
+
+	// syncTemplate
+	// +optional
+	SyncTemplate bool `json:"syncTemplate,omitempty"`
+
 	// Conditions contains observations of the state
 	// +optional
 	Conditions []ConfigCondition `json:"conditions,omitempty"`
