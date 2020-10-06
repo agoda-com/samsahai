@@ -3,8 +3,7 @@ kind: Config
 metadata:
   name: teamtest2
 spec:
-  template:
-    name: teamtest
+  template: teamtest
   staging:
     deployment:
       engine: mock
