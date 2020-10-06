@@ -204,11 +204,11 @@ Find more configuration information in [examples](https://www.github.com/agoda-c
     ```
 10. Apply configuration
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/config-example.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/config-example.yaml
     ```
 11. Apply team
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/team-example.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/team-example.yaml
     ```
     > Now, `s2h-example` staging namespace should be created.
 
@@ -264,7 +264,7 @@ To save the cluster resources once every upgrade component verification has fini
 ##### Promote New Active
 1. Apply active-promotion
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/active-promotion-example.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/active-promotion-example.yaml
     ```
     > Now, `s2h-example-abcdzx` active namespace should be created, the active namespace will have last 6 characters randomly.
 2. If you would like to see what is going on in active promotion flow
@@ -391,11 +391,11 @@ To save the cluster resources once every upgrade component verification has fini
     ```
 6. Apply configuration
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/config-example.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/config-example.yaml
     ```
 7. Apply team
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/team-example-local.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/team-example-local.yaml
     ```
     > Now, `s2h-example` staging namespace should be created.
 
@@ -423,7 +423,7 @@ After this step, you can see the result following [minikube upgrade component](#
 ##### Promote New Active
 1. Apply active-promotion
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/active-promotion-example.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/active-promotion-example.yaml
     ```
     > Now, `s2h-example-abcdzx` active namespace should be created, the active namespace will have last 6 characters randomly.
 2. Switch to run another `staging controller` by modifying `--pod-namespace` to point to an active namespace
