@@ -1360,45 +1360,17 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error 
 			return err
 		}
 
-		if !teamComp.Status.SyncTemplate {
-			teamComp.Status.SyncTemplate = true
-		}
-		//bytesTeamComp, _ := json.Marshal(&teamComp.Status.Used)
-		//bytesHashID := md5.Sum(bytesTeamComp)
-		//hashID := fmt.Sprintf("%x", bytesHashID)
-
-		//if teamComp.Status.TemplateUID != hashID { //| !teamComp.Status.SyncTemplate {
-		//
-		//	teamComp.Status.SyncTemplate = true
-		//
-		//}
-
 	} else {
-		//team := &s2hv1beta1.Team{}
-		//err := c.getTeam(teamComp.Name, team)
-		//if err != nil {
-		//	logger.Error(err, "team not found", "team", )
-		//	return err
-		////}
-		//bytesTeamComp, _ := json.Marshal(teamComp.Spec)
-		//bytesHashID := md5.Sum(bytesTeamComp)
-		//hashID := string(bytesHashID[:])
-
 		teamComp.Status.Used = teamComp.Spec
-
-		//bytesTeamComp, _ := json.Marshal(&teamComp.Spec)
-		//bytesHashID := md5.Sum(bytesTeamComp)
-		//hashID := fmt.Sprintf("%x", bytesHashID)
-
-		if !teamComp.Status.SyncTemplate {
-			teamComp.Status.SyncTemplate = true
-
-		}
 	}
 
 	bytesTeamComp, _ := json.Marshal(&teamComp.Status.Used)
 	bytesHashID := md5.Sum(bytesTeamComp)
 	hashID := fmt.Sprintf("%x", bytesHashID)
+
+	if !teamComp.Status.SyncTemplate {
+		teamComp.Status.SyncTemplate = true
+	}
 
 	if teamComp.Status.TemplateUID != hashID {
 

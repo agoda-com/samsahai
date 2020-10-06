@@ -1809,7 +1809,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Config should be deleted")
 	}, 90)
 
-	It("should successfully apply/update team template", func(done Done) {
+	FIt("should successfully apply/update team template", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
 		ctx := context.TODO()

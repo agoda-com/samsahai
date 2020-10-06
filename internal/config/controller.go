@@ -104,10 +104,6 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Co
 		logger.Error(err, "cannot get Config", "name", configName)
 		return map[string]*s2hv1beta1.Component{}, err
 	}
-	//
-	//if err := c.ValidateAndUpdateConfigUsed(config); err != nil {
-	//	return map[string]*s2hv1beta1.Component{}, err
-	//}
 
 	c.assignParent(&config.Status.Used)
 
@@ -586,47 +582,54 @@ func (c *controller) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) erro
 			return err
 		}
 
-		bytesConfigComp, _ := json.Marshal(&config.Status.Used)
-		bytesHashID := md5.Sum(bytesConfigComp)
-		hashID := fmt.Sprintf("%x", bytesHashID)
-
-		if config.Status.TemplateUID != hashID {
-			// if || !config.Status.SyncTemplate
-			config.Status.TemplateUID = hashID //templateObj.Status.TemplateUID
-			config.Status.SyncTemplate = true
-
-			config.Status.SetCondition(
-				s2hv1beta1.ConfigUsedUpdated,
-				corev1.ConditionFalse,
-				"need update config")
-		}
+		//bytesConfigComp, _ := json.Marshal(&config.Status.Used)
+		//bytesHashID := md5.Sum(bytesConfigComp)
+		//hashID := fmt.Sprintf("%x", bytesHashID)
+		//
+		//if config.Status.TemplateUID != hashID {
+		//	config.Status.TemplateUID = hashID
+		//	config.Status.SyncTemplate = true
+		//
+		//	config.Status.SetCondition(
+		//		s2hv1beta1.ConfigUsedUpdated,
+		//		corev1.ConditionFalse,
+		//		"need update config")
+		//}
 	} else {
-		bytesConfigComp, _ := json.Marshal(&config.Spec)
-		bytesHashID := md5.Sum(bytesConfigComp)
-		hashID := fmt.Sprintf("%x", bytesHashID)
+		config.Status.Used = config.Spec
 
-		//fmt.Println(bytesHashID)
-		//b := bytesHashID[:]
-		//var hid bytes.Buffer
-		//_ = gob.NewEncoder(&hid).Encode(config.Spec)
-		//hash, _ := hashstructure.Hash(&config.Spec, nil)
-		//hashID := fmt.Sprint(h.Sum(nil))
-
-		if config.Status.TemplateUID != hashID {
-			config.Status.Used = config.Spec
-			config.Status.TemplateUID = hashID
-			config.Status.SyncTemplate = true
-
-			config.Status.SetCondition(
-				s2hv1beta1.ConfigUsedUpdated,
-				corev1.ConditionFalse,
-				"need update config")
-		}
-
-		//config.Status.Used = config.Spec
-		//config.Spec.TemplateUID = hashID
-		//config.Spec.SyncTemplate = true
+		//bytesConfigComp, _ := json.Marshal(&config.Spec)
+		//bytesHashID := md5.Sum(bytesConfigComp)
+		//hashID := fmt.Sprintf("%x", bytesHashID)
+		//
+		//if config.Status.TemplateUID != hashID {
+		//	config.Status.TemplateUID = hashID
+		//	config.Status.SyncTemplate = true
+		//
+		//	config.Status.SetCondition(
+		//		s2hv1beta1.ConfigUsedUpdated,
+		//		corev1.ConditionFalse,
+		//		"need update config")
+		//}
 	}
+	bytesConfigComp, _ := json.Marshal(&config.Status.Used)
+	bytesHashID := md5.Sum(bytesConfigComp)
+	hashID := fmt.Sprintf("%x", bytesHashID)
+
+	if !config.Status.SyncTemplate {
+		config.Status.SyncTemplate = true
+	}
+
+	if config.Status.TemplateUID != hashID {
+		config.Status.TemplateUID = hashID
+		config.Status.SyncTemplate = true
+
+		config.Status.SetCondition(
+			s2hv1beta1.ConfigUsedUpdated,
+			corev1.ConditionFalse,
+			"need update config")
+	}
+
 	return nil
 }
 
