@@ -74,9 +74,7 @@ var _ = Describe("Config Controller", func() {
 
 	mockConfigUsingTemplate := s2hv1beta1.Config{
 		Spec: s2hv1beta1.ConfigSpec{
-			Template: s2hv1beta1.Template{
-				Name: teamTest,
-			},
+			Template: teamTest,
 		}}
 
 	It("should get env values by the env type correctly", func() {

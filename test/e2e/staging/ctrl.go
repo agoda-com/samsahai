@@ -136,6 +136,13 @@ var _ = Describe("[e2e] Staging controller", func() {
 			Namespace: s2hv1beta1.TeamNamespace{
 				Staging: "s2h-teamtest",
 			},
+			Used: s2hv1beta1.TeamSpec{
+				Description: "team for testing",
+				Owners:      []string{"samsahai@samsahai.io"},
+				StagingCtrl: &s2hv1beta1.StagingCtrl{
+					IsDeploy: false,
+				},
+			},
 		},
 	}
 
@@ -258,6 +265,40 @@ var _ = Describe("[e2e] Staging controller", func() {
 			},
 			PriorityQueues: []string{wordpressCompName, redisCompName},
 			Components:     []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
+		},
+		Status: s2hv1beta1.ConfigStatus{
+			Used: s2hv1beta1.ConfigSpec{
+				Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
+					"base": map[string][]string{
+						wordpressCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/base/wordpress.yaml"},
+					},
+					"staging": map[string][]string{
+						redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
+					},
+					"pre-active": map[string][]string{
+						redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml"},
+					},
+					"active": map[string][]string{
+						redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
+					},
+				},
+				Staging: &s2hv1beta1.ConfigStaging{
+					Deployment: &deployConfig,
+				},
+				ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+					Timeout:          metav1.Duration{Duration: 5 * time.Minute},
+					TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+					Deployment:       &deployConfig,
+				},
+				Reporter: &s2hv1beta1.ConfigReporter{
+					ReportMock: true,
+				},
+				Bundles: s2hv1beta1.ConfigBundles{
+					bundleName: []string{redisCompName, mariaDBCompName},
+				},
+				PriorityQueues: []string{wordpressCompName, redisCompName},
+				Components:     []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
+			},
 		},
 	}
 

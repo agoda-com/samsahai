@@ -2,13 +2,13 @@ package config
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/json"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/google/uuid"
 	"github.com/imdario/mergo"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
@@ -104,6 +104,10 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Co
 		logger.Error(err, "cannot get Config", "name", configName)
 		return map[string]*s2hv1beta1.Component{}, err
 	}
+	//
+	//if err := c.ValidateAndUpdateConfigUsed(config); err != nil {
+	//	return map[string]*s2hv1beta1.Component{}, err
+	//}
 
 	c.assignParent(&config.Status.Used)
 
@@ -490,21 +494,60 @@ func (c *controller) ensureConfigChanged(teamName, namespace string) error {
 	return nil
 }
 
-func (c *controller) EnsureConfigTemplateChanged(config *s2hv1beta1.Config, template string) error {
-	templateObj, err := c.getConfig(template)
-	if err != nil {
-		logger.Error(err, "config template not found", "template", template)
-		return err
-	}
+func (c *controller) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) error {
+	template := config.Spec.Template
+	if template != "" && template != config.Name {
+		templateObj, err := c.getConfig(template)
+		if err != nil {
+			logger.Error(err, "config template not found", "template", template)
+			return err
+		}
 
-	if !reflect.DeepEqual(config.Status.TemplateConfig, templateObj.Spec) {
-		config.Status.TemplateConfig = templateObj.Spec
-	}
+		if err = applyConfigTemplate(config, templateObj); err != nil {
+			return err
+		}
 
-	if err = applyConfigTemplate(config, templateObj); err != nil {
-		return err
-	}
+		bytesConfigComp, _ := json.Marshal(&config.Status.Used)
+		bytesHashID := md5.Sum(bytesConfigComp)
+		hashID := fmt.Sprintf("%x", bytesHashID)
 
+		if config.Status.TemplateUID != hashID {
+			// if || !config.Status.SyncTemplate
+			config.Status.TemplateUID = hashID //templateObj.Status.TemplateUID
+			config.Status.SyncTemplate = true
+
+			config.Status.SetCondition(
+				s2hv1beta1.ConfigUsedUpdated,
+				corev1.ConditionFalse,
+				"need update config")
+		}
+	} else {
+		bytesConfigComp, _ := json.Marshal(&config.Spec)
+		bytesHashID := md5.Sum(bytesConfigComp)
+		hashID := fmt.Sprintf("%x", bytesHashID)
+
+		//fmt.Println(bytesHashID)
+		//b := bytesHashID[:]
+		//var hid bytes.Buffer
+		//_ = gob.NewEncoder(&hid).Encode(config.Spec)
+		//hash, _ := hashstructure.Hash(&config.Spec, nil)
+		//hashID := fmt.Sprint(h.Sum(nil))
+
+		if config.Status.TemplateUID != hashID {
+			config.Status.Used = config.Spec
+			config.Status.TemplateUID = hashID
+			config.Status.SyncTemplate = true
+
+			config.Status.SetCondition(
+				s2hv1beta1.ConfigUsedUpdated,
+				corev1.ConditionFalse,
+				"need update config")
+		}
+
+		//config.Status.Used = config.Spec
+		//config.Spec.TemplateUID = hashID
+		//config.Spec.SyncTemplate = true
+	}
 	return nil
 }
 
@@ -670,6 +713,13 @@ func (c *controller) getCronJobSuffix(schedule string) string {
 	return suffix
 }
 
+func (c *controller) updateChildrenConfig(config s2hv1beta1.Config) error {
+	if err := c.Update(&config); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *controller) ensureTriggerChildrenConfig(name string) error {
 	ctx := context.TODO()
 	configs := &s2hv1beta1.ConfigList{}
@@ -678,8 +728,9 @@ func (c *controller) ensureTriggerChildrenConfig(name string) error {
 		return err
 	}
 	for _, conf := range configs.Items {
-		if conf.Spec.Template.Name == name {
-			if err := c.updateConfigTemplateID(conf); err != nil {
+		if conf.Spec.Template == name {
+			conf.Status.SyncTemplate = false
+			if err := c.updateChildrenConfig(conf); err != nil {
 				return err
 			}
 		}
@@ -687,15 +738,7 @@ func (c *controller) ensureTriggerChildrenConfig(name string) error {
 	return nil
 }
 
-func (c *controller) updateConfigTemplateID(conf s2hv1beta1.Config) error {
-	conf.Spec.Template.UpdatedID = uuid.New().String()
-	if err := c.Update(&conf); err != nil {
-		return err
-	}
-	return nil
-}
-
-func validateRequiredField(config *s2hv1beta1.Config) error {
+func ValidateConfigRequiredField(config *s2hv1beta1.Config) error {
 	if len(config.Status.Used.Components) == 0 || config.Status.Used.Staging == nil {
 		return errors.ErrConfigurationRequiredField
 	}
@@ -729,32 +772,46 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		logger.Debug("no s2h ctrl, skip detect changed component", "team", req.Name)
 		return cr.Result{}, nil
 	}
-
-	if configComp.Spec.Template.Name != "" && configComp.Spec.Template.Name != configComp.Name {
-		if err := c.EnsureConfigTemplateChanged(configComp, configComp.Spec.Template.Name); err != nil {
-			return cr.Result{}, err
-		}
-
-		if !configComp.Status.IsConditionTrue(s2hv1beta1.ConfigApplyTemplate) {
-			configComp.Status.SetCondition(
-				s2hv1beta1.ConfigApplyTemplate,
-				corev1.ConditionTrue,
-				"applied config template successfully")
-		}
-	} else {
-		configComp.Status.Used = configComp.Spec
+	if err := c.EnsureConfigTemplateChanged(configComp); err != nil {
+		return cr.Result{}, err
 	}
 
-	if err := c.Update(configComp); err != nil {
-		return reconcile.Result{}, err
+	if !configComp.Status.IsConditionTrue(s2hv1beta1.ConfigUsedUpdated) {
+		configComp.Status.SetCondition(
+			s2hv1beta1.ConfigUsedUpdated,
+			corev1.ConditionTrue,
+			"updated config template successfully")
+
+		if err := c.Update(configComp); err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	if err := c.ensureTriggerChildrenConfig(configComp.Name); err != nil {
 		return cr.Result{}, err
 	}
 
-	if err := validateRequiredField(configComp); err != nil {
+	if err := ValidateConfigRequiredField(configComp); err != nil {
+		configComp.Status.SetCondition(
+			s2hv1beta1.ConfigValidatedRequireField,
+			corev1.ConditionFalse,
+			"invalid required fields")
+
+		if err := c.Update(configComp); err != nil {
+			return reconcile.Result{}, errors.Wrap(err, "cannot update config conditions when require fields is invalid")
+		}
 		return cr.Result{}, err
+	}
+
+	if !configComp.Status.IsConditionTrue(s2hv1beta1.ConfigValidatedRequireField) {
+		configComp.Status.SetCondition(
+			s2hv1beta1.ConfigValidatedRequireField,
+			corev1.ConditionTrue,
+			"validate required fields successfully")
+
+		if err := c.Update(configComp); err != nil {
+			return reconcile.Result{}, errors.Wrap(err, "cannot update config conditions when require fields is valid")
+		}
 	}
 
 	teamComp := s2hv1beta1.Team{}

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"reflect"
 	"sync"
 	"time"
 
@@ -1832,22 +1831,34 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(client.Create(ctx, &teamUsingTemplate)).To(BeNil())
 
 		By("Apply team template")
-		Expect(samsahaiCtrl.EnsureTeamTemplateChanged(&teamUsingTemplate, teamName))
+		Expect(samsahaiCtrl.EnsureTeamTemplateChanged(&teamUsingTemplate))
 		Expect(teamUsingTemplate.Status.Used).NotTo(BeNil())
 		Expect(teamUsingTemplate.Status.Used.Owners).NotTo(BeNil())
 		Expect(teamUsingTemplate.Status.Used.Credential).NotTo(BeNil())
 		Expect(teamUsingTemplate.Status.Used.StagingCtrl).NotTo(BeNil())
-		Expect(reflect.DeepEqual(teamUsingTemplate.Status.TemplateTeam, team.Spec))
 
 		By("Update team template")
-		Expect(samsahaiCtrl.GetTeam(teamName, &team)).To(BeNil())
-		team.Spec.StagingCtrl.Endpoint = "http://127.0.0.1"
-		Expect(samsahaiCtrl.UpdateTeam(&team)).To(BeNil())
-		Expect(samsahaiCtrl.EnsureTeamTemplateChanged(&teamUsingTemplate, teamName)).To(BeNil())
-		Expect(teamUsingTemplate.Status.TemplateTeam.StagingCtrl.Endpoint).To(Equal("http://127.0.0.1"))
-		Expect(teamUsingTemplate.Status.Used.StagingCtrl.Endpoint).To(Equal("http://127.0.0.1"))
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
+			if err = samsahaiCtrl.GetTeam(teamName, &team); err != nil {
+				return false, nil
+			}
+			team.Spec.StagingCtrl.Endpoint = "http://127.0.0.1"
+			if err = samsahaiCtrl.UpdateTeam(&team); err != nil {
+				return false, nil
+			}
+			if err = samsahaiCtrl.EnsureTeamTemplateChanged(&teamUsingTemplate); err != nil {
+				return false, nil
+			}
+			if teamUsingTemplate.Status.Used.StagingCtrl.Endpoint == "http://127.0.0.1" &&
+				teamUsingTemplate.Status.TemplateUID == team.Status.TemplateUID {
+				return true, nil
+			}
 
-	}, 75)
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Update team template error")
+
+	}, 20)
 })
 
 var (
@@ -1925,6 +1936,16 @@ var (
 						Image:       &s2hv1beta1.Image{Repository: "bitnami/wordpress", Tag: "5.2.4-debian-9-r18"},
 						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 					},
+				},
+			},
+			Used: s2hv1beta1.TeamSpec{
+				Description: "team for testing",
+				Owners:      []string{"samsahai@samsahai.io"},
+				Credential: s2hv1beta1.Credential{
+					SecretName: s2hobject.GetTeamSecretName(teamName),
+				},
+				StagingCtrl: &s2hv1beta1.StagingCtrl{
+					IsDeploy: false,
 				},
 			},
 		},
@@ -2141,6 +2162,17 @@ var (
 				&configCompWordpress,
 			},
 		},
+		Status: s2hv1beta1.ConfigStatus{
+			Used: s2hv1beta1.ConfigSpec{
+				Staging:         configStg,
+				ActivePromotion: configAtp,
+				Reporter:        configReporter,
+				Components: []*s2hv1beta1.Component{
+					&configCompRedis,
+					&configCompWordpress,
+				},
+			},
+		},
 	}
 
 	mockConfigUsingTemplate = s2hv1beta1.Config{
@@ -2149,9 +2181,7 @@ var (
 			Labels: testLabels,
 		},
 		Spec: s2hv1beta1.ConfigSpec{
-			Template: s2hv1beta1.Template{
-				Name: teamName,
-			},
+			Template: teamName,
 		},
 	}
 
@@ -2166,6 +2196,16 @@ var (
 			Reporter:        configReporter,
 			Components: []*s2hv1beta1.Component{
 				&configCompRedis,
+			},
+		},
+		Status: s2hv1beta1.ConfigStatus{
+			Used: s2hv1beta1.ConfigSpec{
+				Staging:         configStg,
+				ActivePromotion: configAtp,
+				Reporter:        configReporter,
+				Components: []*s2hv1beta1.Component{
+					&configCompRedis,
+				},
 			},
 		},
 	}

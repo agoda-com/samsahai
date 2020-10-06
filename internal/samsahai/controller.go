@@ -2,16 +2,16 @@ package samsahai
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/imdario/mergo"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1268,21 +1268,74 @@ func (c *controller) ensureAndUpdateConfig(teamComp *s2hv1beta1.Team) error {
 	return nil
 }
 
-func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team, template string) error {
-	templateObj := &s2hv1beta1.Team{}
-	err := c.getTeam(template, templateObj)
+func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error {
+	configComp, err := c.configCtrl.Get(teamComp.Name)
 	if err != nil {
-		logger.Error(err, "team template not found", "template", template)
-		return err
-	}
-	if !reflect.DeepEqual(teamComp.Status.TemplateTeam, templateObj.Spec) {
-		teamComp.Status.TemplateTeam = templateObj.Spec
-	}
-
-	if err = applyTeamTemplate(teamComp, templateObj); err != nil {
+		logger.Error(err, "cannot get config", "name", teamComp.Name)
 		return err
 	}
 
+	template := configComp.Spec.Template
+	if template != "" && template != teamComp.Name {
+		templateObj := &s2hv1beta1.Team{}
+		err := c.getTeam(template, templateObj)
+		if err != nil {
+			logger.Error(err, "team template not found", "template", template)
+			return err
+		}
+
+		if err = applyTeamTemplate(teamComp, templateObj); err != nil {
+			return err
+		}
+
+		if !teamComp.Status.SyncTemplate {
+			teamComp.Status.SyncTemplate = true
+		}
+		//bytesTeamComp, _ := json.Marshal(&teamComp.Status.Used)
+		//bytesHashID := md5.Sum(bytesTeamComp)
+		//hashID := fmt.Sprintf("%x", bytesHashID)
+
+		//if teamComp.Status.TemplateUID != hashID { //| !teamComp.Status.SyncTemplate {
+		//
+		//	teamComp.Status.SyncTemplate = true
+		//
+		//}
+
+	} else {
+		//team := &s2hv1beta1.Team{}
+		//err := c.getTeam(teamComp.Name, team)
+		//if err != nil {
+		//	logger.Error(err, "team not found", "team", )
+		//	return err
+		////}
+		//bytesTeamComp, _ := json.Marshal(teamComp.Spec)
+		//bytesHashID := md5.Sum(bytesTeamComp)
+		//hashID := string(bytesHashID[:])
+
+		teamComp.Status.Used = teamComp.Spec
+
+		//bytesTeamComp, _ := json.Marshal(&teamComp.Spec)
+		//bytesHashID := md5.Sum(bytesTeamComp)
+		//hashID := fmt.Sprintf("%x", bytesHashID)
+
+		if !teamComp.Status.SyncTemplate {
+			teamComp.Status.SyncTemplate = true
+
+		}
+	}
+
+	bytesTeamComp, _ := json.Marshal(&teamComp.Status.Used)
+	bytesHashID := md5.Sum(bytesTeamComp)
+	hashID := fmt.Sprintf("%x", bytesHashID)
+
+	if teamComp.Status.TemplateUID != hashID {
+
+		teamComp.Status.TemplateUID = hashID
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamUsedUpdated,
+			corev1.ConditionFalse,
+			"need update team")
+	}
 	return nil
 }
 
@@ -1294,16 +1347,26 @@ func (c *controller) ensureTriggerChildrenTeam(name string) error {
 		return err
 	}
 	for _, conf := range configs.Items {
-		if conf.Spec.Template.Name == name {
+		if conf.Spec.Template == name {
 			team := &s2hv1beta1.Team{}
 			if err := c.getTeam(conf.Name, team); err != nil {
 				return err
 			}
-			team.Spec.TemplateUpdatedID = uuid.New().String()
+			team.Status.SyncTemplate = false
 			if err := c.UpdateTeam(team); err != nil {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func (c *controller) ValidateTeamRequiredField(teamComp *s2hv1beta1.Team) error {
+	emptyStagingCtrl := s2hv1beta1.StagingCtrl{}
+	if teamComp.Status.Used.StagingCtrl == &emptyStagingCtrl ||
+		len(teamComp.Status.Used.Owners) == 0 {
+
+		return errors.New("team used cannot be empty")
 	}
 	return nil
 }
@@ -1396,33 +1459,48 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		}
 	}
 
-	configComp, err := c.configCtrl.Get(teamComp.Name)
-	if err != nil {
-		logger.Error(err, "cannot get config", "name", teamComp.Name)
+	if err := c.EnsureTeamTemplateChanged(teamComp); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	if configComp.Spec.Template.Name != "" && configComp.Spec.Template.Name != teamComp.Name {
-		if err := c.EnsureTeamTemplateChanged(teamComp, configComp.Spec.Template.Name); err != nil {
+	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamUsedUpdated) {
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamUsedUpdated,
+			corev1.ConditionTrue,
+			"update team template successfully")
+
+		if err := c.UpdateTeam(teamComp); err != nil {
 			return reconcile.Result{}, err
 		}
-
-		if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamApplyTemplate) {
-			teamComp.Status.SetCondition(
-				s2hv1beta1.TeamApplyTemplate,
-				corev1.ConditionTrue,
-				"applied team template successfully")
-		}
-	} else {
-		teamComp.Status.Used = teamComp.Spec
-	}
-
-	if err := c.UpdateTeam(teamComp); err != nil {
-		return reconcile.Result{}, err
 	}
 
 	if err := c.ensureTriggerChildrenTeam(teamComp.Name); err != nil {
 		return reconcile.Result{}, err
+	}
+
+	if err := c.ValidateTeamRequiredField(teamComp); err != nil {
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamValidatedRequireField,
+			corev1.ConditionFalse,
+			"invalid required fields")
+
+		if err := c.UpdateTeam(teamComp); err != nil {
+			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is invalid")
+		}
+
+		return reconcile.Result{}, err
+	}
+
+	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamValidatedRequireField) {
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamValidatedRequireField,
+			corev1.ConditionTrue,
+			"validate required fields successfully")
+
+		if err := c.UpdateTeam(teamComp); err != nil {
+			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is valid")
+		}
+
 	}
 
 	teamName := teamComp.GetName()
