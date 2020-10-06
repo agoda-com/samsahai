@@ -41,6 +41,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 	const (
 		verifyTime1s  = 1 * time.Second
 		verifyTime10s = 10 * time.Second
+		verifyTime30s = 30 * time.Second
 	)
 
 	var (
@@ -357,22 +358,10 @@ var _ = Describe("[e2e] Staging controller", func() {
 		svc := &mockService
 		_ = client.Delete(ctx, svc)
 
-		By("Deleting active namespace")
-		atvNs := activeNamespace
-		_ = client.Delete(context.TODO(), &atvNs)
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-			namespace := corev1.Namespace{}
-			err = client.Get(ctx, types.NamespacedName{Name: atvNamespace}, &namespace)
-			if err != nil && errors.IsNotFound(err) {
-				return true, nil
-			}
-			return false, nil
-		})
-
 		By("Deleting all teams")
 		err = client.DeleteAllOf(ctx, &s2hv1beta1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 			teamList := s2hv1beta1.TeamList{}
 			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = client.List(ctx, &teamList, listOpt)
@@ -390,7 +379,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Deleting all Configs")
 		err = client.DeleteAllOf(ctx, &s2hv1beta1.Config{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 			configList := s2hv1beta1.ConfigList{}
 			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = client.List(ctx, &configList, listOpt)
@@ -404,6 +393,18 @@ var _ = Describe("[e2e] Staging controller", func() {
 			return false, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Deleting all configs error")
+
+		By("Deleting active namespace")
+		atvNs := activeNamespace
+		_ = client.Delete(context.TODO(), &atvNs)
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			err = client.Get(ctx, types.NamespacedName{Name: atvNamespace}, &namespace)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, nil
+		})
 
 		By("Deleting all StableComponents")
 		err = client.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, rclient.InNamespace(namespace))
@@ -433,7 +434,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		close(chStop)
 		wgStop.Wait()
-	}, 10)
+	}, 90)
 
 	It("should successfully start and stop", func(done Done) {
 		defer close(done)
@@ -622,7 +623,9 @@ var _ = Describe("[e2e] Staging controller", func() {
 		ctx := context.Background()
 
 		authToken := "12345"
-		s2hConfig := internal.SamsahaiConfig{SamsahaiCredential: internal.SamsahaiCredential{InternalAuthToken: authToken}}
+		s2hConfig := internal.SamsahaiConfig{
+			SamsahaiCredential: internal.SamsahaiCredential{InternalAuthToken: authToken},
+		}
 		samsahaiCtrl := samsahai.New(mgr, namespace, s2hConfig,
 			samsahai.WithClient(client),
 			samsahai.WithDisableLoaders(true, true, true))
@@ -753,8 +756,10 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Create queue history error")
 
 		Expect(qhl.Items[0].Spec.Queue.IsDeploySuccess()).To(BeFalse(), "Should deploy failed")
-		Expect(qhl.Items[0].Spec.Queue.Status.KubeZipLog).NotTo(BeEmpty(), "KubeZipLog should not be empty")
-		Expect(qhl.Items[0].Spec.Queue.Status.DeploymentIssues).NotTo(HaveLen(0), "Should have deployment issue defined")
+		Expect(qhl.Items[0].Spec.Queue.Status.KubeZipLog).NotTo(BeEmpty(),
+			"KubeZipLog should not be empty")
+		Expect(qhl.Items[0].Spec.Queue.Status.DeploymentIssues).NotTo(HaveLen(0),
+			"Should have deployment issue defined")
 
 		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
 			q := &s2hv1beta1.Queue{}
