@@ -582,35 +582,9 @@ func (c *controller) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) erro
 			return err
 		}
 
-		//bytesConfigComp, _ := json.Marshal(&config.Status.Used)
-		//bytesHashID := md5.Sum(bytesConfigComp)
-		//hashID := fmt.Sprintf("%x", bytesHashID)
-		//
-		//if config.Status.TemplateUID != hashID {
-		//	config.Status.TemplateUID = hashID
-		//	config.Status.SyncTemplate = true
-		//
-		//	config.Status.SetCondition(
-		//		s2hv1beta1.ConfigUsedUpdated,
-		//		corev1.ConditionFalse,
-		//		"need update config")
-		//}
 	} else {
 		config.Status.Used = config.Spec
 
-		//bytesConfigComp, _ := json.Marshal(&config.Spec)
-		//bytesHashID := md5.Sum(bytesConfigComp)
-		//hashID := fmt.Sprintf("%x", bytesHashID)
-		//
-		//if config.Status.TemplateUID != hashID {
-		//	config.Status.TemplateUID = hashID
-		//	config.Status.SyncTemplate = true
-		//
-		//	config.Status.SetCondition(
-		//		s2hv1beta1.ConfigUsedUpdated,
-		//		corev1.ConditionFalse,
-		//		"need update config")
-		//}
 	}
 	bytesConfigComp, _ := json.Marshal(&config.Status.Used)
 	bytesHashID := md5.Sum(bytesConfigComp)
