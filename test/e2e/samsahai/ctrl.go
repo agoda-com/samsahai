@@ -1877,7 +1877,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Config should be deleted")
 	}, 90)
 
-	It("should successfully apply/update team template", func(done Done) {
+	FIt("should successfully apply/update team template", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
 		ctx := context.TODO()
@@ -1886,42 +1886,59 @@ var _ = Describe("[e2e] Main controller", func() {
 		config := mockConfig
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
-		By("Creating Config using template")
-		configUsingTemplate := mockConfigUsingTemplate
-		Expect(client.Create(ctx, &configUsingTemplate)).To(BeNil())
-
 		By("Creating Team")
 		team := mockTeam
 		Expect(client.Create(ctx, &team)).To(BeNil())
 
+		By("Creating Config using template")
+		config2 := mockConfigUsingTemplate
+		Expect(client.Create(ctx, &config2)).To(BeNil())
+
 		By("Creating Team using template")
-		teamUsingTemplate := mockTeam2
-		Expect(client.Create(ctx, &teamUsingTemplate)).To(BeNil())
+		team2 := mockTeam2
+		Expect(client.Create(ctx, &team2)).To(BeNil())
 
 		By("Apply team template")
-		Expect(samsahaiCtrl.EnsureTeamTemplateChanged(&teamUsingTemplate))
-		Expect(teamUsingTemplate.Status.Used).NotTo(BeNil())
-		Expect(teamUsingTemplate.Status.Used.Owners).NotTo(BeNil())
-		Expect(teamUsingTemplate.Status.Used.Credential).NotTo(BeNil())
-		Expect(teamUsingTemplate.Status.Used.StagingCtrl).NotTo(BeNil())
+		err = wait.PollImmediate(verifyTime1s, 10 * time.Second, func() (ok bool, err error) {
+			team := s2hv1beta1.Team{}
+			teamUsingTemplate := s2hv1beta1.Team{}
+			if err = samsahaiCtrl.GetTeam(mockTeam.Name, &team); err!= nil {
+				return false, nil
+			}
+			if err = samsahaiCtrl.GetTeam(mockTeam2.Name, &teamUsingTemplate); err!= nil {
+				return false, nil
+			}
+			if teamUsingTemplate.Status.Used.Credential == team.Status.Used.Credential {
+				return true, nil
+			}
+			if teamUsingTemplate.Status.Used.StagingCtrl == team.Status.Used.StagingCtrl {
+				return true, nil
+			}
+			if len(teamUsingTemplate.Status.Used.Owners) == len(team.Status.Used.Owners) {
+				return true, nil
+			}
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Apply team template error")
 
 		By("Update team template")
-		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, 10 * time.Second, func() (ok bool, err error) {
+			team := s2hv1beta1.Team{}
+			teamUsingTemplate := s2hv1beta1.Team{}
 			if err = samsahaiCtrl.GetTeam(teamName, &team); err != nil {
 				return false, nil
 			}
 			team.Spec.StagingCtrl.Endpoint = "http://127.0.0.1"
-			if err = samsahaiCtrl.UpdateTeam(&team); err != nil {
+			if err = client.Update(context.TODO(), &team); err != nil {
 				return false, nil
 			}
-			if err = samsahaiCtrl.EnsureTeamTemplateChanged(&teamUsingTemplate); err != nil {
+			if err = samsahaiCtrl.GetTeam(mockTeam2.Name, &teamUsingTemplate); err != nil {
 				return false, nil
 			}
 			if teamUsingTemplate.Status.Used.StagingCtrl.Endpoint == "http://127.0.0.1" &&
 				teamUsingTemplate.Status.TemplateUID == team.Status.TemplateUID {
 				return true, nil
 			}
-
 			return false, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Update team template error")
