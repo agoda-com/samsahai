@@ -284,7 +284,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 								Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
 							},
 							ActivePromotion: &s2hv1beta1.CommandAndArgs{
-								Command: []string{"echo active promotion status {{ .Result }}"},
+								Command: []string{"echo active promotion status {{ .Result }} #{{ .Runs }}"},
 							},
 							ImageMissing: &s2hv1beta1.CommandAndArgs{
 								Command: []string{"/bin/sh", "-c"},
