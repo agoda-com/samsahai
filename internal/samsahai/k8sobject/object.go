@@ -38,9 +38,19 @@ func getDefaultLabelsWithVersion(teamName string) map[string]string {
 	return defaultLabelsWithVersion
 }
 
-func GetResourceQuota(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
+func GetResourceQuota(teamComp *s2hv1beta1.Team, namespaceName string, resources corev1.ResourceList) runtime.Object {
 	cpuResource := teamComp.Spec.Resources.Cpu()
 	memoryResource := teamComp.Spec.Resources.Memory()
+
+	if resources != nil {
+		if resources.Cpu() != nil {
+			cpuResource = resources.Cpu()
+		}
+		if resources.Memory() != nil {
+			memoryResource = resources.Memory()
+		}
+	}
+
 	resourceQuota := corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namespaceName + "-resources",
@@ -111,7 +121,7 @@ func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceN
 						{
 							Name:                     internal.StagingCtrlName,
 							Image:                    samsahaiImage,
-							ImagePullPolicy:          "IfNotPresent",
+							ImagePullPolicy:          "Always",
 							Command:                  []string{"staging"},
 							Args:                     []string{"start"},
 							TerminationMessagePath:   "/dev/termination-log",
@@ -243,6 +253,9 @@ func GetRole(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
 					"queues",
 					"queuehistories",
 					"stablecomponents",
+					"pullrequesttriggers",
+					"pullrequestqueues",
+					"pullrequestqueuehistories",
 				},
 				Verbs: []string{"*"},
 			},
@@ -332,6 +345,7 @@ func GetRole(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
 				},
 				Resources: []string{
 					"networkpolicies",
+					"ingresses",
 				},
 				Verbs: []string{"*"},
 			},
@@ -404,8 +418,18 @@ func GetClusterRole(teamComp *s2hv1beta1.Team, namespace string) runtime.Object 
 				},
 				Resources: []string{
 					"configs",
+					"stablecomponents",
 				},
 				Verbs: []string{"get", "list", "watch"},
+			},
+			{
+				APIGroups: []string{
+					"env.samsahai.io",
+				},
+				Resources: []string{
+					"queues",
+				},
+				Verbs: []string{"*"},
 			},
 		},
 	}

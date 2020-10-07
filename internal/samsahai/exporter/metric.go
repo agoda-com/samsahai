@@ -69,6 +69,11 @@ func SetHealthStatusMetric(version, gitCommit string, ts float64) {
 }
 
 func SetQueueMetric(queue *s2hv1beta1.Queue) {
+	// ignore pull request queue
+	if queue.IsPullRequestQueue() {
+		return
+	}
+
 	var queueState QueueMetricState
 	switch queue.Status.State {
 	case s2hv1beta1.Waiting:

@@ -138,11 +138,23 @@ func (c *controller) process() bool {
 	if c.getCurrentQueue() == nil {
 		c.mtQueue.Lock()
 		// pick new queue
-		if c.currentQueue, err = c.queueCtrl.First(); err != nil {
+		obj, err := c.queueCtrl.First(c.namespace)
+		if err != nil {
 			logger.Error(err, "cannot pick the first component of queue")
 			c.mtQueue.Unlock()
 			return false
 		}
+
+		if obj != nil {
+			var ok bool
+			c.currentQueue, ok = obj.(*s2hv1beta1.Queue)
+			if !ok {
+				logger.Error(err, "cannot parse runtime object into queue object")
+				c.mtQueue.Unlock()
+				return false
+			}
+		}
+
 		c.mtQueue.Unlock()
 	}
 

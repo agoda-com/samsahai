@@ -62,13 +62,13 @@ func (c *controller) testPreActiveEnvironment(atpComp *s2hv1beta1.ActivePromotio
 	}
 
 	if q.IsTestSuccess() {
-		// in case of successful test
-		logger.Debug("components has been tested successfully",
+		// in case successful test
+		logger.Debug("components have been tested successfully",
 			"team", atpComp.Name, "namespace", targetNs)
 		atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondVerified, corev1.ConditionTrue,
 			"Pre-active environment has been verified successfully")
 	} else {
-		// in case of failure test
+		// in case failure test
 		atpComp.Status.SetResult(s2hv1beta1.ActivePromotionFailure)
 		atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondVerified, corev1.ConditionTrue,
 			"Test failed")

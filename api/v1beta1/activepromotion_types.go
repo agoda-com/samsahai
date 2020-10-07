@@ -119,6 +119,10 @@ type ActivePromotionSpec struct {
 	// +optional
 	TearDownDuration *metav1.Duration `json:"tearDownDuration,omitempty"`
 
+	// NoOfRetry represents how many times this active promotion process has been run
+	// +optional
+	NoOfRetry int `json:"noOfRetry"`
+
 	// SkipTestRunner represents a flag for skipping running pre-active test
 	// +optional
 	SkipTestRunner bool `json:"skipTestRunner,omitempty"`
@@ -317,19 +321,29 @@ func (a *ActivePromotion) IsActivePromotionCanceled() bool {
 
 // sort ActivePromotion by timestamp ASC
 func (al *ActivePromotionList) SortASC() {
-	sort.Sort(ActivePromotionByCreatedTimeASC(al.Items))
+	sort.Sort(ActivePromotionByStartedAtASC(al.Items))
 }
 
 // +k8s:deepcopy-gen=false
 
-type ActivePromotionByCreatedTimeASC []ActivePromotion
+type ActivePromotionByStartedAtASC []ActivePromotion
 
-func (a ActivePromotionByCreatedTimeASC) Len() int { return len(a) }
-func (a ActivePromotionByCreatedTimeASC) Less(i, j int) bool {
-	return a[i].CreationTimestamp.Time.Before(a[j].CreationTimestamp.Time)
+func (a ActivePromotionByStartedAtASC) Len() int { return len(a) }
+func (a ActivePromotionByStartedAtASC) Less(i, j int) bool {
+	startedAtOfI := a[i].CreationTimestamp.Time
+	startedAtOfJ := a[j].CreationTimestamp.Time
+	if a[i].Status.StartedAt != nil {
+		startedAtOfI = a[i].Status.StartedAt.Time
+	}
+
+	if a[j].Status.StartedAt != nil {
+		startedAtOfJ = a[j].Status.StartedAt.Time
+	}
+
+	return startedAtOfI.Before(startedAtOfJ)
 }
 
-func (a ActivePromotionByCreatedTimeASC) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a ActivePromotionByStartedAtASC) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
 // OutdatedComponent defines properties of outdated component
 type OutdatedComponent struct {

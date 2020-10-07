@@ -88,3 +88,19 @@ func (c *controller) getActivePromotionRollbackTimeout(teamName string, configCt
 
 	return timeout
 }
+
+func (c *controller) getMaxActivePromotionRetry(teamName string) int {
+	configCtrl := c.s2hCtrl.GetConfigController()
+
+	maxRetry := c.configs.ActivePromotion.MaxRetry
+	config, err := configCtrl.Get(teamName)
+	if err != nil {
+		return *maxRetry
+	}
+
+	if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.MaxRetry != nil {
+		maxRetry = config.Spec.ActivePromotion.MaxRetry
+	}
+
+	return *maxRetry
+}

@@ -42,7 +42,7 @@ func (c *controller) detectImageMissing(queue *s2hv1beta1.Queue) error {
 			Components: rpcComps,
 		}
 		if c.s2hClient != nil {
-			imgList, err = c.s2hClient.GetMissingVersion(ctx, comp)
+			imgList, err = c.s2hClient.GetMissingVersions(ctx, comp)
 			if err != nil {
 				return errors.Wrap(err, "cannot get image missing list")
 			}

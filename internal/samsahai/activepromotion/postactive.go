@@ -65,14 +65,16 @@ func (c *controller) sendReport(ctx context.Context, atpComp *s2hv1beta1.ActiveP
 		return err
 	}
 
+	runs := atpComp.Spec.NoOfRetry + 1
 	atpRpt := internal.NewActivePromotionReporter(
-		&atpComp.Status,
+		atpComp.Status,
 		c.configs,
 		atpComp.Name,
 		currentNs,
+		runs,
 		internal.WithCredential(teamComp.Spec.Credential),
 	)
-	c.s2hCtrl.NotifyActivePromotion(atpRpt)
+	c.s2hCtrl.NotifyActivePromotionReport(atpRpt)
 
 	return nil
 }

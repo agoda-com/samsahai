@@ -16,6 +16,7 @@ import (
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/http"
+	"github.com/agoda-com/samsahai/internal/util/template"
 )
 
 var logger = s2hlog.Log.WithName(TestRunnerName)
@@ -115,6 +116,16 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
 	}
 
+	branchName := testConfig.Teamcity.Branch
+	prData := internal.PullRequestData{PRNumber: currentQueue.Spec.PRNumber}
+	if prData.PRNumber != "" {
+		branchName = template.TextRender("PullRequestBranchName", branchName, prData)
+	}
+
+	if branchName == "" {
+		branchName = testConfig.Teamcity.Branch
+	}
+
 	errCh := make(chan error, 1)
 	ctx, cancelFn := context.WithTimeout(context.Background(), maxRunnerTimeout)
 	defer cancelFn()
@@ -127,7 +138,7 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 			compVersion = currentQueue.Spec.Components[0].Version
 		}
 		reqJSON := &triggerBuildReq{
-			BranchName: testConfig.Teamcity.Branch,
+			BranchName: branchName,
 			BuildType: buildTypeJSON{
 				ID: testConfig.Teamcity.BuildTypeID,
 			},
@@ -189,11 +200,14 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 
 		// update build id / build type id / build url to queue status
 		buildTypeID := testConfig.Teamcity.BuildTypeID
-		buildURL := fmt.Sprintf("%s/viewLog.html?buildId=%s&buildTypeId=%s", t.baseURL, out.BuildID, testConfig.Teamcity.BuildTypeID)
-		currentQueue.Status.TestRunner.Teamcity.SetTeamcity(out.BuildID, buildTypeID, buildURL)
-		if err := t.client.Update(ctx, currentQueue); err != nil {
-			errCh <- err
-			return
+		buildURL := fmt.Sprintf("%s/viewLog.html?buildId=%s&buildTypeId=%s",
+			t.baseURL, out.BuildID, testConfig.Teamcity.BuildTypeID)
+		currentQueue.Status.TestRunner.Teamcity.SetTeamcity(branchName, out.BuildID, buildTypeID, buildURL)
+		if t.client != nil {
+			if err := t.client.Update(ctx, currentQueue); err != nil {
+				errCh <- err
+				return
+			}
 		}
 
 		errCh <- nil
@@ -209,7 +223,9 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 }
 
 // GetResult implements the staging testRunner GetResult function
-func (t *testRunner) GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) (isResultSuccess bool, isBuildFinished bool, err error) {
+func (t *testRunner) GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) (
+	isResultSuccess bool, isBuildFinished bool, err error) {
+
 	if testConfig == nil {
 		return false, false, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
@@ -229,7 +245,7 @@ func (t *testRunner) GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueu
 		return false, false, err
 	}
 
-	var byteData = []byte(resp)
+	var byteData = resp
 	var response ResultResponse
 	err = xml.Unmarshal(byteData, &response)
 	if err != nil {

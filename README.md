@@ -98,6 +98,40 @@ and there are 2 different processes between testing passes and fails.
 1. **Destroying pre-active environment:** destroying pre-active namespace.
 2. **Finished** the active promotion process has been finished without switching active namespace.
 
+### Pull Request Deployment Workflow
+![](docs/images/flow-pr-deployment.png)
+
+This flow is for verifying components per pull request.
+
+  - The pull request component will be deployed into a new namespace along with its dependencies which is required for updating, the version of pull request dependencies will be retrieved from an active namespace.
+  - The pull request component will connect to other shared dependencies in the active namespace.
+  - The verification flow is the same as staging flow except reverification i.e., there is no reverification type for pull request deployment.
+
+> Notes: 
+> - The pull request components can be verified in parallel in a different namespace.  
+> - Additional services will be created in the pull request namespace to connect to services in the active namespace, which implies that the pull request deployment requires the active namespace.
+
+#### Pull Request Queue States
+These are the meaning of verification states which happen in particular pull request queue.
+
+![](docs/images/flow-pr-deployment-verification.png)
+
+1. **Waiting:** the pull request queue is waiting for the verification process.
+2. **Creating:** creating pull request namespace.
+4. **Deploying:** deploying the component's desired version with required dependencies.
+4. **Testing:** testing the ready pull request namespace against CI pipeline.
+5. **Collecting:** collecting the result from CI pipeline. 
+6. **Destroying:** destroying pull request namespace.
+7. **Finished:** the verification process has been finished.
+
+#### Pull Request Trigger Workflow
+
+![](docs/images/flow-pr-trigger.png)
+
+This flow is for checking pull request image in a registry.
+
+  - The pull request webhook will keep finding the image in the registry until the image was found or reached the retry counts which are defined in a configuration
+
 ## Installation
 ### Prerequisites
 1. Install and setup [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), please use the version below v1.16.0.
@@ -170,11 +204,11 @@ Find more configuration information in [examples](https://www.github.com/agoda-c
     ```
 10. Apply configuration
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/config-example.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/config-example.yaml
     ```
 11. Apply team
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/team-example.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/team-example.yaml
     ```
     > Now, `s2h-example` staging namespace should be created.
 
@@ -230,7 +264,7 @@ To save the cluster resources once every upgrade component verification has fini
 ##### Promote New Active
 1. Apply active-promotion
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/active-promotion-example.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/active-promotion-example.yaml
     ```
     > Now, `s2h-example-abcdzx` active namespace should be created, the active namespace will have last 6 characters randomly.
 2. If you would like to see what is going on in active promotion flow
@@ -250,6 +284,87 @@ To save the cluster resources once every upgrade component verification has fini
     example-s2h-example-gdthjh-wordpress-mariadb-0          1/1     Running   0          2m28s
     s2h-staging-ctrl-c566b7f66-5q9bh                        1/1     Running   0          2m43s
     ```
+   
+##### Deploy Pull Request Components
+1. Deploying `redis` components by using Swagger `http://<minikube_ip>:<node_port>/swagger/index.html#`
+    - `POST /teams/example/pullrequest/trigger`
+    ```
+    {
+      "component": "redis",
+      "prNumber": 56
+    }
+    ```
+    or
+    ```
+    {
+      "component": "redis",
+      "prNumber": "any",
+      "tag": "5.0.7-debian-9-r56"
+    } 
+    ```
+     
+2. Switch to `s2h-example` namespace
+   ```
+   kubectl config set-context --current --namespace=s2h-example
+   ```
+
+   - `kubectl get pullrequesttriggers` (see pull request triggers)
+   ```
+   NAME      AGE
+   redis-56  10s
+   ```
+   
+   - waiting until `kubectl get pullrequesttriggers` no resources found
+   ```
+      No resources found.
+   ```
+
+   - `kubectl get pullrequestqueues` (see pull request queues created by pull request trigger)
+   ```
+   NAME      AGE
+   redis-56  30s
+   ```
+   
+   - `kubectl get namespaces` (you will see a pull request namespace has been created)
+   ``` 
+   NAME                   STATUS   AGE
+   s2h-example-redis-56   Active   49s
+   ...
+   ```
+
+3. Switch to `s2h-example-redis-56` namespace
+   ```
+   kubectl config set-context --current --namespace=s2h-example-redis-56
+   ```
+
+   - `kubectl get pods` (in s2h-example-redis-56 namespace, you will see all pull request components that you specify in config are running)
+   ```
+   NAME                                                    READY   STATUS    RESTARTS   AGE
+   s2h-example-redis-56-redis-master-0                     1/1     Running   0          65s
+   s2h-staging-ctrl-55c757978f-jx6lj                       1/1     Running   0          89s
+   ```
+
+   - `kubectl get services` (in s2h-example-redis-56 namespace, you will see services which link to the components in active namespace)
+   ```
+   NAME                                     TYPE           CLUSTER-IP      EXTERNAL-IP                                                                 PORT(S)    AGE
+   s2h-example-redis-56-redis-master        ClusterIP      10.97.174.107   <none>                                                                      6379/TCP   61s
+   s2h-example-redis-56-redis-headless      ClusterIP      None            <none>                                                                      6379/TCP   61s
+   s2h-example-redis-56-wordpress           ExternalName   <none>          s2h-example-8ncrwx-wordpress.s2h-example-8ncrwx.svc.cluster.local           <none>     6s
+   s2h-example-redis-56-wordpress-mariadb   ExternalName   <none>          s2h-example-8ncrwx-wordpress-mariadb.s2h-example-8ncrwx.svc.cluster.local   <none>     6s
+   s2h-staging-ctrl                         ClusterIP      10.96.174.13    <none>                                                                      8090/TCP   90s
+   ```
+
+4. Switch back to `s2h-example` namespace
+   ```
+   kubectl config set-context --current --namespace=s2h-example
+   ```
+   
+   - `kubectl get pullrequestqueuehistories.env.samsahai.io -o=custom-columns=NAME:.metadata.name,RESULT:spec.pullRequestQueue.status.result` (in s2h-example namespace, you will see the result of the previous pull request queue)
+   ```
+   NAME                         RESULT
+   redis-56-20200927-103006-0   Success
+   ```
+
 
 #### Run/Debug Locally
 1. Create and access into samsahai directory in go path
@@ -276,11 +391,11 @@ To save the cluster resources once every upgrade component verification has fini
     ```
 6. Apply configuration
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/config-example.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/config-example.yaml
     ```
 7. Apply team
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/team-example-local.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/team-example-local.yaml
     ```
     > Now, `s2h-example` staging namespace should be created.
 
@@ -308,7 +423,7 @@ After this step, you can see the result following [minikube upgrade component](#
 ##### Promote New Active
 1. Apply active-promotion
     ```
-    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai-example/master/configs/crds/active-promotion-example.yaml
+    kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/active-promotion-example.yaml
     ```
     > Now, `s2h-example-abcdzx` active namespace should be created, the active namespace will have last 6 characters randomly.
 2. Switch to run another `staging controller` by modifying `--pod-namespace` to point to an active namespace
@@ -316,6 +431,26 @@ After this step, you can see the result following [minikube upgrade component](#
     --pod-namespace s2h-example-abcdzx
     ```
 After this step, you can see the result following [minikube promote new active](#promote-new-active) part.
+
+##### Deploy Pull Request Components
+1. Deploying `redis` components by using Swagger `http://<minikube_ip>:<node_port>/swagger/index.html#`
+   - `POST /teams/example/pullrequest/trigger`
+   ```
+   {
+     "component": "redis",
+     "prNumber": 56
+   }
+   ```
+   or
+   ```
+   {
+     "component": "redis",
+     "prNumber": "any",
+     "tag": "5.0.7-debian-9-r56"
+   } 
+   ```
+        
+After this step, you can see the result following [minikube deploy pull request components](#deploy-pull-request-components) part.
 
 ## Contribution Policy
 Samsahai is an open source project, and depends on its users to improve it. We are more than happy to find you are interested in taking the project forward.
