@@ -2176,15 +2176,15 @@
                     "type": "object"
                 },
                 "syncTemplate": {
-                    "description": "+optional",
+                    "description": "SyncTemplate represents whether the team has been synced to the template or not\n+optional",
                     "type": "boolean"
                 },
-                "templateUpdatedID": {
-                    "description": "+optional",
+                "templateUID": {
+                    "description": "TemplateUID represents the template update ID\n+optional",
                     "type": "string"
                 },
                 "used": {
-                    "description": "+optional",
+                    "description": "Used represents overridden team specification\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.TeamSpec"
                 }

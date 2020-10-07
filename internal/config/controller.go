@@ -875,7 +875,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 
 	if err := ValidateConfigRequiredField(configComp); err != nil {
 		configComp.Status.SetCondition(
-			s2hv1beta1.ConfigValidatedRequireField,
+			s2hv1beta1.ConfigRequiredFieldsValidated,
 			corev1.ConditionFalse,
 			"invalid required fields")
 
@@ -885,9 +885,9 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		return cr.Result{}, err
 	}
 
-	if !configComp.Status.IsConditionTrue(s2hv1beta1.ConfigValidatedRequireField) {
+	if !configComp.Status.IsConditionTrue(s2hv1beta1.ConfigRequiredFieldsValidated) {
 		configComp.Status.SetCondition(
-			s2hv1beta1.ConfigValidatedRequireField,
+			s2hv1beta1.ConfigRequiredFieldsValidated,
 			corev1.ConditionTrue,
 			"validate required fields successfully")
 

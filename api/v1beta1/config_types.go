@@ -202,10 +202,10 @@ const (
 	CriteriaFailure ReporterCriteria = "failure"
 	// CriteriaBoth means sending slack notification whether component upgrade is success or failure
 	CriteriaBoth ReporterCriteria = "both"
-	// ConfigUsedUpdated the configuration has been updated
+	// ConfigUsedUpdated means the configuration used has been updated
 	ConfigUsedUpdated ConfigConditionType = "ConfigUsedUpdated"
-	// ConfigValidatedRequireField mean required fields is valid
-	ConfigValidatedRequireField ConfigConditionType = "ConfigValidatedRequireField"
+	// ConfigRequiredFieldsValidated means the required fields have been validated
+	ConfigRequiredFieldsValidated ConfigConditionType = "ConfigRequiredFieldsValidated"
 )
 
 // Slack defines a configuration of slack
@@ -409,21 +409,19 @@ type ConfigSpec struct {
 	// Template represents configuration's template
 	// +optional
 	Template string `json:"template,omitempty"`
-
-	// sync
 }
 
 // ConfigStatus defines the observed state of Config
 type ConfigStatus struct {
-	// UsedTemplate contains override configuration spec
+	// Used represents overridden configuration specification
 	// +optional
 	Used ConfigSpec `json:"used,omitempty"`
 
-	// TemplateUID
+	// TemplateUID represents the template update ID
 	// +optional
-	TemplateUID string `json:"templateUpdatedID,omitempty"`
+	TemplateUID string `json:"templateUID,omitempty"`
 
-	// syncTemplate
+	// SyncTemplate represents whether the configuration has been synced to the template or not
 	// +optional
 	SyncTemplate bool `json:"syncTemplate,omitempty"`
 

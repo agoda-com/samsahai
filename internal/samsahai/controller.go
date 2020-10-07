@@ -1524,7 +1524,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	if err := c.ValidateTeamRequiredField(teamComp); err != nil {
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamValidatedRequireField,
+			s2hv1beta1.TeamRequiredFieldsValidated,
 			corev1.ConditionFalse,
 			"invalid required fields")
 
@@ -1535,9 +1535,9 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
-	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamValidatedRequireField) {
+	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamRequiredFieldsValidated) {
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamValidatedRequireField,
+			s2hv1beta1.TeamRequiredFieldsValidated,
 			corev1.ConditionTrue,
 			"validate required fields successfully")
 

@@ -1160,14 +1160,20 @@ definitions:
           +optional
         type: object
       syncTemplate:
-        description: +optional
+        description: |-
+          SyncTemplate represents whether the team has been synced to the template or not
+          +optional
         type: boolean
-      templateUpdatedID:
-        description: +optional
+      templateUID:
+        description: |-
+          TemplateUID represents the template update ID
+          +optional
         type: string
       used:
         $ref: '#/definitions/v1beta1.TeamSpec'
-        description: +optional
+        description: |-
+          Used represents overridden team specification
+          +optional
         type: object
     type: object
   v1beta1.Teamcity:
