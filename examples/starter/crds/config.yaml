@@ -426,3 +426,7 @@ spec:
       # and must start and end with an alphanumeric character
       <component_name>:
         - <values_file_url>
+
+  # [optional] configuration and team values from <your_template_name> will be applied to your configuration and team
+  # and values in spec will be override in your configuration and team
+  template: <your_template_name>
