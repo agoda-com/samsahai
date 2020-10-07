@@ -135,6 +135,7 @@ func startCtrlCmd() *cobra.Command {
 				logger.Debug("auth token not provided, generate new one", "auth-token", authToken)
 			}
 
+			atpMaxRetry := viper.GetInt(s2h.VKActivePromotionMaxRetry)
 			configs := s2h.SamsahaiConfig{
 				// TODO: move to credential
 				TeamcityURL: viper.GetString(s2h.VKTeamcityURL),
@@ -152,13 +153,14 @@ func startCtrlCmd() *cobra.Command {
 					DemotionTimeout:       metav1.Duration{Duration: viper.GetDuration(s2h.VKActivePromotionDemotionTimeout)},
 					RollbackTimeout:       metav1.Duration{Duration: viper.GetDuration(s2h.VKActivePromotionRollbackTimeout)},
 					TearDownDuration:      metav1.Duration{Duration: viper.GetDuration(s2h.VKActivePromotionTearDownDuration)},
+					MaxRetry:              &atpMaxRetry,
 					MaxHistories:          viper.GetInt(s2h.VKActivePromotionMaxHistories),
 					PromoteOnTeamCreation: viper.GetBool(s2h.VKActivePromotionOnTeamCreation),
 				},
 				PullRequest: s2h.PullRequestConfig{
 					QueueConcurrences:          viper.GetInt(s2h.VKPRQueueConcurrences),
-					MaxVerificationRetryCounts: viper.GetInt(s2h.VKPRVerificationMaxRetryCounts),
-					MaxTriggerRetryCounts:      viper.GetInt(s2h.VKPRTriggerMaxRetryCounts),
+					MaxVerificationRetryCounts: viper.GetInt(s2h.VKPRVerificationMaxRetry),
+					MaxTriggerRetryCounts:      viper.GetInt(s2h.VKPRTriggerMaxRetry),
 					TriggerPollingTime:         metav1.Duration{Duration: viper.GetDuration(s2h.VKPRTriggerPollingTime)},
 					MaxHistoryDays:             viper.GetInt(s2h.VKPullRequestQueueMaxHistoryDays),
 				},
@@ -246,14 +248,22 @@ func startCtrlCmd() *cobra.Command {
 	cmd.Flags().String(s2h.VKS2HServiceScheme, "http", "Scheme to use for connecting to Samsahai.")
 	cmd.Flags().String(s2h.VKS2HServiceName, "samsahai", "Service name for connecting to Samsahai.")
 	cmd.Flags().String(s2h.VKS2HExternalURL, "http://localhost:8080", "External url for Samsahai.")
-	cmd.Flags().String(s2h.VKTeamcityURL, "", "Teamcity base URL used for initializing Teamcity test runner.")
-	cmd.Flags().String(s2h.VKTeamcityUsername, "", "Teamcity username used for initializing Teamcity test runner.")
-	cmd.Flags().String(s2h.VKTeamcityPassword, "", "Teamcity password used for initializing Teamcity test runner.")
-	cmd.Flags().String(s2h.VKMSTeamsTenantID, "", "Microsoft Teams tenant ID used for initializing Microsoft Teams reporter.")
-	cmd.Flags().String(s2h.VKMSTeamsClientID, "", "Microsoft Teams client ID used for initializing Microsoft Teams reporter.")
-	cmd.Flags().String(s2h.VKMSTeamsClientSecret, "", "Microsoft Teams client secret used for initializing Microsoft Teams reporter.")
-	cmd.Flags().String(s2h.VKMSTeamsUsername, "", "Microsoft Teams username used for initializing Microsoft Teams reporter.")
-	cmd.Flags().String(s2h.VKMSTeamsPassword, "", "Microsoft Teams password used for initializing Microsoft Teams reporter.")
+	cmd.Flags().String(s2h.VKTeamcityURL, "",
+		"Teamcity base URL used for initializing Teamcity test runner.")
+	cmd.Flags().String(s2h.VKTeamcityUsername, "",
+		"Teamcity username used for initializing Teamcity test runner.")
+	cmd.Flags().String(s2h.VKTeamcityPassword, "",
+		"Teamcity password used for initializing Teamcity test runner.")
+	cmd.Flags().String(s2h.VKMSTeamsTenantID, "",
+		"Microsoft Teams tenant ID used for initializing Microsoft Teams reporter.")
+	cmd.Flags().String(s2h.VKMSTeamsClientID, "",
+		"Microsoft Teams client ID used for initializing Microsoft Teams reporter.")
+	cmd.Flags().String(s2h.VKMSTeamsClientSecret, "",
+		"Microsoft Teams client secret used for initializing Microsoft Teams reporter.")
+	cmd.Flags().String(s2h.VKMSTeamsUsername, "",
+		"Microsoft Teams username used for initializing Microsoft Teams reporter.")
+	cmd.Flags().String(s2h.VKMSTeamsPassword, "",
+		"Microsoft Teams password used for initializing Microsoft Teams reporter.")
 	cmd.Flags().Int(s2h.VKActivePromotionConcurrences, 1, "Concurrent active promotions.")
 	cmd.Flags().Duration(s2h.VKActivePromotionTimeout, 60*time.Minute, "Active promotion timeout.")
 	cmd.Flags().Duration(s2h.VKActivePromotionDemotionTimeout, 3*time.Minute, "Active demotion timeout.")
@@ -261,13 +271,13 @@ func startCtrlCmd() *cobra.Command {
 		"Active promotion rollback timeout.")
 	cmd.Flags().Duration(s2h.VKActivePromotionTearDownDuration, 20*time.Minute,
 		"Previous active environment teardown duration.")
-	cmd.Flags().Int(s2h.VKActivePromotionMaxHistories, 7,
-		"Max stored active promotion histories per team.")
+	cmd.Flags().Int(s2h.VKActivePromotionMaxRetry, 0, "Max stored active promotion histories per team.")
+	cmd.Flags().Int(s2h.VKActivePromotionMaxHistories, 7, "active promotion process retry counts")
 	cmd.Flags().Bool(s2h.VKActivePromotionOnTeamCreation, true,
 		"Promote active environment when team creation")
 	cmd.Flags().Int(s2h.VKPRQueueConcurrences, 2, "Concurrent pull request queue deployment.")
-	cmd.Flags().Int(s2h.VKPRTriggerMaxRetryCounts, 30, "Max pull request trigger retry counts.")
-	cmd.Flags().Int(s2h.VKPRVerificationMaxRetryCounts, 0, "Max pull request verification retry counts.")
+	cmd.Flags().Int(s2h.VKPRTriggerMaxRetry, 30, "Max pull request trigger retry counts.")
+	cmd.Flags().Int(s2h.VKPRVerificationMaxRetry, 0, "Max pull request verification retry counts.")
 	cmd.Flags().Duration(s2h.VKPRTriggerPollingTime, 5*time.Minute,
 		"Waiting duration time to re-check pull request image in the registry.")
 	cmd.Flags().Int(s2h.VKPullRequestQueueMaxHistoryDays, 7,

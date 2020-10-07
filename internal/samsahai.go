@@ -117,6 +117,9 @@ type ActivePromotionConfig struct {
 	// TearDownDuration defines tear down duration of previous active environment
 	TearDownDuration metav1.Duration `json:"teardownDuration" yaml:"teardownDuration"`
 
+	// MaxRetry defines max retry counts of active promotion process in case failure
+	MaxRetry *int `json:"maxRetry"`
+
 	// MaxHistories defines max stored histories of active promotion
 	MaxHistories int `json:"maxHistories" yaml:"maxHistories"`
 

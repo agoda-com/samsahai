@@ -113,6 +113,10 @@ spec:
     # default value is 20m
     tearDownDuration: 30m
 
+    # how many times the active promotion should be processed?
+    # default value is 0
+    maxRetry: 1
+
     # how long the whole flow of active promotion should take?
     # support units are either <number>s, <number>m or <number>h
     # default value is 1h

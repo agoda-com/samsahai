@@ -136,6 +136,10 @@ type ConfigActivePromotion struct {
 	// +optional
 	RollbackTimeout metav1.Duration `json:"rollbackTimeout,omitempty"`
 
+	// MaxRetry defines max retry counts of active promotion process in case failure
+	// +optional
+	MaxRetry *int `json:"maxRetry,omitempty"`
+
 	// MaxHistories defines maximum length of ActivePromotionHistory stored per team
 	// +optional
 	MaxHistories int `json:"maxHistories,omitempty"`

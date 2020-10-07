@@ -295,7 +295,8 @@ var _ = Describe("send ms teams message", func() {
 					},
 				},
 			}
-			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner", "owner-123456")
+			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner",
+				"owner-123456", 2)
 
 			mockMSTeamsCli := &mockMSTeams{}
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
@@ -307,6 +308,7 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.channels).Should(Equal([]string{"chan1-1", "chan1-2", "chan2-1"}))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Success"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("#2"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner-123456"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="teamcity-url">#teamcity-build-number</a>`))
@@ -331,7 +333,9 @@ var _ = Describe("send ms teams message", func() {
 				PreviousActiveNamespace:    "owner-prevns",
 				DestroyedTime:              &timeNow,
 			}
-			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner", "owner-123456")
+			atpRpt := internal.NewActivePromotionReporter(status,
+				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
+				"owner", "owner-123456", 1)
 
 			mockMSTeamsCli := &mockMSTeams{}
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
@@ -390,7 +394,9 @@ var _ = Describe("send ms teams message", func() {
 					},
 					ActivePromotionHistoryName: "owner-12345",
 				}
-				atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner", "owner-123456")
+				atpRpt := internal.NewActivePromotionReporter(status,
+					internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
+					"owner", "owner-123456", 2)
 
 				mockMSTeamsCli := &mockMSTeams{}
 				r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
@@ -402,6 +408,7 @@ var _ = Describe("send ms teams message", func() {
 				g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 				g.Expect(mockMSTeamsCli.channels).Should(Equal([]string{"chan1-1", "chan1-2", "chan2-1"}))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Failure"))
+				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("#2"))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner"))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner-123456"))
 				g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="http://localhost:8080/teams/owner/activepromotions/histories/owner-12345/log">Download here</a>`))
@@ -429,7 +436,8 @@ var _ = Describe("send ms teams message", func() {
 				Result:               s2hv1beta1.ActivePromotionFailure,
 				HasOutdatedComponent: false,
 			}
-			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner", "owner-123456")
+			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner",
+				"owner-123456", 1)
 
 			mockMSTeamsCli := &mockMSTeams{}
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
@@ -453,7 +461,8 @@ var _ = Describe("send ms teams message", func() {
 				RollbackStatus: s2hv1beta1.ActivePromotionRollbackFailure,
 				DemotionStatus: s2hv1beta1.ActivePromotionDemotionFailure,
 			}
-			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner", "owner-123456")
+			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner",
+				"owner-123456", 1)
 
 			mockMSTeamsCli := &mockMSTeams{}
 			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",

@@ -112,6 +112,7 @@ func WithCredential(creds s2hv1beta1.Credential) ActivePromotionOption {
 type ActivePromotionReporter struct {
 	TeamName               string                `json:"teamName,omitempty"`
 	CurrentActiveNamespace string                `json:"currentActiveNamespace,omitempty"`
+	Runs                   int                   `json:"runs,omitempty"`
 	Credential             s2hv1beta1.Credential `json:"credential,omitempty"`
 	Envs                   map[string]string
 	s2hv1beta1.ActivePromotionStatus
@@ -119,11 +120,13 @@ type ActivePromotionReporter struct {
 }
 
 // NewActivePromotionReporter creates active promotion reporter object
-func NewActivePromotionReporter(status s2hv1beta1.ActivePromotionStatus, s2hConfig SamsahaiConfig, teamName, currentNs string, opts ...ActivePromotionOption) *ActivePromotionReporter {
+func NewActivePromotionReporter(status s2hv1beta1.ActivePromotionStatus, s2hConfig SamsahaiConfig,
+	teamName, currentNs string, runs int, opts ...ActivePromotionOption) *ActivePromotionReporter {
 	c := &ActivePromotionReporter{
 		SamsahaiConfig:         s2hConfig,
 		TeamName:               teamName,
 		CurrentActiveNamespace: currentNs,
+		Runs:                   runs,
 		ActivePromotionStatus:  status,
 		Envs:                   listEnv(),
 	}
