@@ -49,6 +49,9 @@ fileConfigs:
     # how many active promotions can run in parallel?
     concurrences: 3
 
+    # how many times the active promotion should be processed?
+    maxRetry: 0
+
     # how long for active promotion flow?
     timeout: "30m"
 
@@ -96,8 +99,8 @@ exporter:
 ingress:
   enabled: false
   annotations: {}
-#    kubernetes.io/ingress.class: nginx
-#    kubernetes.io/tls-acme: "true"
+  #    kubernetes.io/ingress.class: nginx
+  #    kubernetes.io/tls-acme: "true"
   hosts:
     - host: chart-example.local
       paths: []

@@ -61,7 +61,8 @@ var _ = Describe("send rest message", func() {
 					},
 				},
 			}
-			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner", "owner-123456")
+			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{},
+				"owner", "owner-123456", 2)
 
 			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
 				g.Expect(gjson.ValidBytes(body)).To(BeTrue(), "request body should be json")
@@ -73,7 +74,9 @@ var _ = Describe("send rest message", func() {
 				g.Expect(gjson.GetBytes(body, "result").String()).To(Equal(string(atpRpt.Result)),
 					"status should be matched")
 				g.Expect(gjson.GetBytes(body, "currentActiveNamespace").String()).To(Equal(atpRpt.CurrentActiveNamespace),
-					"active_namespace should be match")
+					"active_namespace should be matched")
+				g.Expect(gjson.GetBytes(body, "runs").Int()).To(Equal(int64(atpRpt.Runs)),
+					"runs should be matched")
 
 				_outdated := gjson.GetBytes(body, "outdatedComponents")
 				g.Expect(_outdated.Exists()).To(BeTrue(), "outdatedComponents keys should exist")

@@ -470,6 +470,11 @@ func (in *ConfigActivePromotion) DeepCopyInto(out *ConfigActivePromotion) {
 	out.Timeout = in.Timeout
 	out.DemotionTimeout = in.DemotionTimeout
 	out.RollbackTimeout = in.RollbackTimeout
+	if in.MaxRetry != nil {
+		in, out := &in.MaxRetry, &out.MaxRetry
+		*out = new(int)
+		**out = **in
+	}
 	out.TearDownDuration = in.TearDownDuration
 	if in.OutdatedNotification != nil {
 		in, out := &in.OutdatedNotification, &out.OutdatedNotification

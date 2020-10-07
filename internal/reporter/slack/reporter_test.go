@@ -280,7 +280,8 @@ var _ = Describe("send slack message", func() {
 					},
 				},
 			}
-			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner", "owner-123456")
+			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner",
+				"owner-123456", 2)
 
 			mockSlackCli := &mockSlack{}
 			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
@@ -288,6 +289,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Success"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("#2"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner-123456"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("<teamcity-url|teamcity-build-number"))
@@ -311,7 +313,7 @@ var _ = Describe("send slack message", func() {
 				PreviousActiveNamespace:    "owner-prevns",
 				DestroyedTime:              &timeNow,
 			}
-			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner", "owner-123456")
+			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner", "owner-123456", 1)
 
 			mockSlackCli := &mockSlack{}
 			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
@@ -366,7 +368,9 @@ var _ = Describe("send slack message", func() {
 					},
 					ActivePromotionHistoryName: "owner-12345",
 				}
-				atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner", "owner-123456")
+				atpRpt := internal.NewActivePromotionReporter(status,
+					internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner",
+					"owner-123456", 2)
 
 				mockSlackCli := &mockSlack{}
 				r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
@@ -374,6 +378,7 @@ var _ = Describe("send slack message", func() {
 				g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 				g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring("#2"))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("owner-123456"))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/activepromotions/histories/owner-12345/log|Download here>"))
@@ -400,7 +405,8 @@ var _ = Describe("send slack message", func() {
 				Result:               s2hv1beta1.ActivePromotionFailure,
 				HasOutdatedComponent: false,
 			}
-			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner", "owner-123456")
+			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner",
+				"owner-123456", 1)
 
 			mockSlackCli := &mockSlack{}
 			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
@@ -423,7 +429,8 @@ var _ = Describe("send slack message", func() {
 				RollbackStatus: s2hv1beta1.ActivePromotionRollbackFailure,
 				DemotionStatus: s2hv1beta1.ActivePromotionDemotionFailure,
 			}
-			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner", "owner-123456")
+			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "owner",
+				"owner-123456", 1)
 
 			mockSlackCli := &mockSlack{}
 			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))

@@ -79,12 +79,13 @@ var _ = Describe("shell command reporter", func() {
 			status := s2hv1beta1.ActivePromotionStatus{
 				Result: s2hv1beta1.ActivePromotionSuccess,
 			}
-			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "", "")
+			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{}, "", "",
+				2)
 
 			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
 			g.Expect(err).NotTo(HaveOccurred())
 
-			g.Expect(testCmdObj.Command).To(Equal([]string{"echo active promotion status Success"}))
+			g.Expect(testCmdObj.Command).To(Equal([]string{"echo active promotion status Success #2"}))
 			g.Expect(testCmdObj.Args).To(BeNil())
 		})
 
@@ -261,7 +262,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 							Args:    []string{"echo executing\n echo pull request #{{ .PullRequestComponent.PRNumber }}: {{ .StatusStr }}"},
 						},
 						ActivePromotion: &s2hv1beta1.CommandAndArgs{
-							Command: []string{"echo active promotion status {{ .Result }}"},
+							Command: []string{"echo active promotion status {{ .Result }} #{{ .Runs }}"},
 						},
 						ImageMissing: &s2hv1beta1.CommandAndArgs{
 							Command: []string{"/bin/sh", "-c"},

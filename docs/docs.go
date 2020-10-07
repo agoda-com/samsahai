@@ -904,6 +904,10 @@ var doc = `{
         "v1beta1.ActivePromotionSpec": {
             "type": "object",
             "properties": {
+                "noOfRetry": {
+                    "description": "NoOfRetry represents how many times this active promotion process has been run\n+optional",
+                    "type": "integer"
+                },
                 "promotedBy": {
                     "description": "PromotedBy represents a person who promoted the ActivePromotion\n+optional",
                     "type": "string"
@@ -1107,6 +1111,10 @@ var doc = `{
                 },
                 "maxHistories": {
                     "description": "MaxHistories defines maximum length of ActivePromotionHistory stored per team\n+optional",
+                    "type": "integer"
+                },
+                "maxRetry": {
+                    "description": "MaxRetry defines max retry counts of active promotion process in case failure\n+optional",
                     "type": "integer"
                 },
                 "outdatedNotification": {
