@@ -875,7 +875,7 @@ func (c *controller) updateTeamNamespacesStatus(teamComp *s2hv1beta1.Team, teamN
 		teamNsOpt(teamComp)
 	}
 
-	return c.UpdateTeam(teamComp)
+	return c.updateTeam(teamComp)
 }
 
 func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
@@ -1252,7 +1252,7 @@ func (c *controller) getTeam(teamName string, teamComp *s2hv1beta1.Team) (err er
 	return c.client.Get(context.TODO(), types.NamespacedName{Name: teamName}, teamComp)
 }
 
-func (c *controller) UpdateTeam(teamComp *s2hv1beta1.Team) error {
+func (c *controller) updateTeam(teamComp *s2hv1beta1.Team) error {
 	if err := c.client.Update(context.TODO(), teamComp); err != nil {
 		return errors.Wrap(err, "cannot update team")
 	}
@@ -1285,7 +1285,7 @@ func (c *controller) deleteFinalizer(teamComp *s2hv1beta1.Team) error {
 
 		// remove our finalizer from the list and update it.
 		teamComp.ObjectMeta.Finalizers = stringutils.RemoveString(teamComp.ObjectMeta.Finalizers, teamFinalizerName)
-		if err := c.UpdateTeam(teamComp); err != nil {
+		if err := c.updateTeam(teamComp); err != nil {
 			return err
 		}
 
@@ -1397,7 +1397,7 @@ func (c *controller) ensureTriggerChildrenTeam(name string) error {
 				return err
 			}
 			team.Status.SyncTemplate = false
-			if err := c.UpdateTeam(team); err != nil {
+			if err := c.updateTeam(team); err != nil {
 				return err
 			}
 		}
@@ -1484,7 +1484,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			corev1.ConditionFalse,
 			err.Error())
 
-		if err := c.UpdateTeam(teamComp); err != nil {
+		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err,
 				"cannot update team conditions when config does not exist")
 		}
@@ -1498,7 +1498,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			corev1.ConditionTrue,
 			"Config exists")
 
-		if err := c.UpdateTeam(teamComp); err != nil {
+		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when config exists")
 		}
 	}
@@ -1513,7 +1513,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			corev1.ConditionTrue,
 			"update team template successfully")
 
-		if err := c.UpdateTeam(teamComp); err != nil {
+		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -1528,7 +1528,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			corev1.ConditionFalse,
 			"invalid required fields")
 
-		if err := c.UpdateTeam(teamComp); err != nil {
+		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is invalid")
 		}
 
@@ -1541,7 +1541,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			corev1.ConditionTrue,
 			"validate required fields successfully")
 
-		if err := c.UpdateTeam(teamComp); err != nil {
+		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is valid")
 		}
 

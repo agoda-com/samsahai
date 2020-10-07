@@ -150,9 +150,6 @@ type SamsahaiController interface {
 	// GetPlugins returns samsahai plugins
 	GetPlugins() map[string]Plugin
 
-	// UpdateTeam updates Team CRD
-	UpdateTeam(teamComp *s2hv1beta1.Team) error
-
 	// EnsureTeamTemplateChanged  updates team if template changed
 	EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error
 

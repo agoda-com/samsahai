@@ -226,7 +226,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	// update desired component version created time mapping
 	team.Status.UpdateDesiredComponentImageCreatedTime(updateInfo.ComponentName, desiredImage, desiredImageTime)
 	deleteDesiredMappingOutOfRange(team, maxDesiredMappingPerComp)
-	if err := c.UpdateTeam(team); err != nil {
+	if err := c.updateTeam(team); err != nil {
 		return err
 	}
 
