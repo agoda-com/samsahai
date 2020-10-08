@@ -535,7 +535,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			Expect(err).NotTo(HaveOccurred(), "Verify running PullRequestQueue deleted error")
 		}, 45)
 
-		FIt("should do pull request retry trigger if image not found", func(done Done) {
+		It("should do pull request retry trigger if image not found", func(done Done) {
 			defer close(done)
 
 			By("Starting Samsahai internal process")
