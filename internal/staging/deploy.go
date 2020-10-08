@@ -575,7 +575,7 @@ func (c *controller) deployQueueComponent(
 				envType = s2hv1beta1.EnvPullRequest
 			}
 
-			baseValues, err := configctrl.GetEnvComponentValues(cfg, name, envType)
+			baseValues, err := configctrl.GetEnvComponentValues(cfg, name, c.teamName, envType)
 			if err != nil {
 				errCh <- err
 				return
