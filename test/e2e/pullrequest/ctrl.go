@@ -535,7 +535,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			Expect(err).NotTo(HaveOccurred(), "Verify running PullRequestQueue deleted error")
 		}, 45)
 
-		It("should do pull request retry trigger if image not found", func(done Done) {
+		FIt("should do pull request retry trigger if image not found", func(done Done) {
 			defer close(done)
 
 			By("Starting Samsahai internal process")
@@ -607,7 +607,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger created error")
 
 			By("Verifying PullRequestTrigger has been deleted")
-			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
 				prTrigger := s2hv1beta1.PullRequestTrigger{}
 				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prTrigger)
 				if err != nil && k8serrors.IsNotFound(err) {
