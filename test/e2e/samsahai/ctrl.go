@@ -1902,19 +1902,15 @@ var _ = Describe("[e2e] Main controller", func() {
 		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
 			team := s2hv1beta1.Team{}
 			teamUsingTemplate := s2hv1beta1.Team{}
-			if err = samsahaiCtrl.GetTeam(mockTeam.Name, &team); err!= nil {
+			if err = client.Get(context.TODO(),types.NamespacedName{Name: mockTeam.Name}, &team); err!= nil {
 				return false, nil
 			}
-			if err = samsahaiCtrl.GetTeam(mockTeam2.Name, &teamUsingTemplate); err!= nil {
+			if err = client.Get(context.TODO(),types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err!= nil {
 				return false, nil
 			}
-			if teamUsingTemplate.Status.Used.Credential == team.Status.Used.Credential {
-				return true, nil
-			}
-			if teamUsingTemplate.Status.Used.StagingCtrl == team.Status.Used.StagingCtrl {
-				return true, nil
-			}
-			if len(teamUsingTemplate.Status.Used.Owners) == len(team.Status.Used.Owners) {
+			if teamUsingTemplate.Status.Used.Credential == team.Status.Used.Credential ||
+				teamUsingTemplate.Status.Used.StagingCtrl == team.Status.Used.StagingCtrl ||
+				len(teamUsingTemplate.Status.Used.Owners) == len(team.Status.Used.Owners){
 				return true, nil
 			}
 			return false, nil
@@ -1925,14 +1921,14 @@ var _ = Describe("[e2e] Main controller", func() {
 		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
 			team := s2hv1beta1.Team{}
 			teamUsingTemplate := s2hv1beta1.Team{}
-			if err = samsahaiCtrl.GetTeam(teamName, &team); err != nil {
+			if err = client.Get(context.TODO(),types.NamespacedName{Name: mockTeam.Name}, &team); err != nil {
 				return false, nil
 			}
 			team.Spec.StagingCtrl.Endpoint = "http://127.0.0.1"
 			if err = client.Update(context.TODO(), &team); err != nil {
 				return false, nil
 			}
-			if err = samsahaiCtrl.GetTeam(mockTeam2.Name, &teamUsingTemplate); err != nil {
+			if err = client.Get(context.TODO(),types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err != nil {
 				return false, nil
 			}
 			if teamUsingTemplate.Status.Used.StagingCtrl.Endpoint == "http://127.0.0.1" &&
