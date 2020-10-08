@@ -166,7 +166,7 @@ func (c *controller) GetPullRequestComponents(configName string) (map[string]*s2
 		return map[string]*s2hv1beta1.Component{}, err
 	}
 
-	if config.Spec.PullRequest == nil || config.Spec.PullRequest.Components == nil {
+	if config.Status.Used.PullRequest == nil || config.Status.Used.PullRequest.Components == nil {
 		return map[string]*s2hv1beta1.Component{}, nil
 	}
 
@@ -176,7 +176,7 @@ func (c *controller) GetPullRequestComponents(configName string) (map[string]*s2
 	}
 
 	filteredPRComps := map[string]*s2hv1beta1.Component{}
-	prComps := config.Spec.PullRequest.Components
+	prComps := config.Status.Used.PullRequest.Components
 	for compName, comp := range filteredComps {
 		for _, prComp := range prComps {
 			if prComp.Name == compName {
@@ -208,7 +208,7 @@ func (c *controller) GetBundles(configName string) (s2hv1beta1.ConfigBundles, er
 		return s2hv1beta1.ConfigBundles{}, err
 	}
 
-	return config.Spec.Bundles, nil
+	return config.Status.Used.Bundles, nil
 }
 
 // GetPriorityQueues returns a list of priority queues which defined in Config
@@ -219,7 +219,7 @@ func (c *controller) GetPriorityQueues(configName string) ([]string, error) {
 		return []string{}, err
 	}
 
-	return config.Spec.PriorityQueues, nil
+	return config.Status.Used.PriorityQueues, nil
 }
 
 // GetPullRequestComponentDependencies returns a pull request component dependencies from configuration
@@ -231,8 +231,8 @@ func (c *controller) GetPullRequestComponentDependencies(configName, prCompName 
 	}
 
 	prDeps := make([]string, 0)
-	if config.Spec.PullRequest != nil {
-		for _, prComp := range config.Spec.PullRequest.Components {
+	if config.Status.Used.PullRequest != nil {
+		for _, prComp := range config.Status.Used.PullRequest.Components {
 			if prComp.Name == prCompName {
 				prDeps = prComp.Dependencies
 				break
@@ -251,7 +251,7 @@ func (c *controller) GetPullRequestConfig(configName string) (*s2hv1beta1.Config
 		return &s2hv1beta1.ConfigPullRequest{}, err
 	}
 
-	prConfig := config.Spec.PullRequest
+	prConfig := config.Status.Used.PullRequest
 	if prConfig == nil {
 		prConfig = &s2hv1beta1.ConfigPullRequest{}
 	}

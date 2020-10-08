@@ -550,7 +550,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 			By("Creating Config")
 			config := mockConfig
-			config.Spec.PullRequest.Components[0].Image.Repository = "missing"
+			config.Status.Used.PullRequest.Components[0].Image.Repository = "missing"
 			Expect(client.Create(ctx, &config)).To(BeNil())
 
 			By("Creating Team")

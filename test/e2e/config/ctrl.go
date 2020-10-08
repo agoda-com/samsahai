@@ -143,7 +143,7 @@ var _ = Describe("[e2e] Config controller", func() {
 		config, err = controller.Get(teamTest)
 		Expect(err).NotTo(HaveOccurred())
 
-		config.Spec.ActivePromotion.Deployment.Engine = &mockEngine
+		config.Status.Used.ActivePromotion.Deployment.Engine = &mockEngine
 		Expect(controller.Update(config)).To(BeNil())
 		Expect(controller.EnsureConfigTemplateChanged(configUsingTemplate)).To(BeNil())
 		Expect(configUsingTemplate.Status.Used.ActivePromotion.Deployment.Engine).To(Equal(&mockEngine))

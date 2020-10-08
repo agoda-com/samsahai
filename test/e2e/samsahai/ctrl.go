@@ -244,7 +244,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Creating Config")
 		config := mockConfig
-		config.Spec.ActivePromotion.MaxRetry = &maxActivePromotionRetry
+		config.Status.Used.ActivePromotion.MaxRetry = &maxActivePromotionRetry
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
@@ -731,7 +731,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Creating Config")
 		config := mockConfig
-		config.Spec.ActivePromotion.MaxRetry = &maxActivePromotionRetry
+		config.Status.Used.ActivePromotion.MaxRetry = &maxActivePromotionRetry
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")

@@ -1045,7 +1045,7 @@ func (c *controller) GetStableValues(team *s2hv1beta1.Team, comp *s2hv1beta1.Com
 		return nil, err
 	}
 
-	values, err := configctrl.GetEnvComponentValues(&config.Spec, comp.Name, team.Name, s2hv1beta1.EnvBase)
+	values, err := configctrl.GetEnvComponentValues(&config.Status.Used, comp.Name, team.Name, s2hv1beta1.EnvBase)
 	if err != nil {
 		logger.Error(err, "cannot get values file",
 			"env", s2hv1beta1.EnvBase, "component", comp.Name, "team", team.Name)

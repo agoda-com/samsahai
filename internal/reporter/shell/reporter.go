@@ -92,14 +92,14 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Shell == nil ||
-		config.Spec.Reporter.Shell.PullRequestQueue == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.PullRequestQueue == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.PullRequestQueue.Command,
-		config.Spec.Reporter.Shell.PullRequestQueue.Args, comp)
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.PullRequestQueue.Command,
+		config.Status.Used.Reporter.Shell.PullRequestQueue.Args, comp)
 	if err := r.execute(cmdObj, internal.PullRequestQueueType); err != nil {
 		return err
 	}
@@ -159,14 +159,14 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Shell == nil ||
-		config.Spec.Reporter.Shell.PullRequestTrigger == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.PullRequestTrigger == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.PullRequestTrigger.Command,
-		config.Spec.Reporter.Shell.PullRequestTrigger.Args, prTriggerRpt)
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.PullRequestTrigger.Command,
+		config.Status.Used.Reporter.Shell.PullRequestTrigger.Args, prTriggerRpt)
 	if err := r.execute(cmdObj, internal.PullRequestTriggerType); err != nil {
 		return err
 	}
