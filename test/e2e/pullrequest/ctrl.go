@@ -616,7 +616,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 				return false, nil
 			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger deleteds error")
+			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger deleted error")
 		}, 45)
 
 		It("should update pull request retry queue if deployment fail", func(done Done) {
@@ -872,6 +872,34 @@ var (
 				MaxRetry:     &prMaxRetry,
 			},
 			Reporter: configReporter,
+		},
+		Status: s2hv1beta1.ConfigStatus{
+			Used: s2hv1beta1.ConfigSpec{
+				Staging: &s2hv1beta1.ConfigStaging{
+					Deployment: &s2hv1beta1.ConfigDeploy{},
+				},
+				Components: []*s2hv1beta1.Component{
+					&configCompRedis,
+				},
+				PullRequest: &s2hv1beta1.ConfigPullRequest{
+					Trigger: s2hv1beta1.PullRequestTriggerConfig{
+						PollingTime: metav1.Duration{Duration: 1 * time.Second},
+						MaxRetry:    &prMaxRetry,
+					},
+					Deployment: &s2hv1beta1.ConfigDeploy{},
+					Components: []*s2hv1beta1.PullRequestComponent{
+						{
+							Name:         prCompName,
+							Image:        prImage,
+							Source:       &compSource,
+							Dependencies: []string{prDepCompName},
+						},
+					},
+					Concurrences: 1,
+					MaxRetry:     &prMaxRetry,
+				},
+				Reporter: configReporter,
+			},
 		},
 	}
 )
