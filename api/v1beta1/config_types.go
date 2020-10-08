@@ -206,6 +206,10 @@ const (
 	CriteriaFailure ReporterCriteria = "failure"
 	// CriteriaBoth means sending slack notification whether component upgrade is success or failure
 	CriteriaBoth ReporterCriteria = "both"
+	// ConfigUsedUpdated means the configuration used has been updated
+	ConfigUsedUpdated ConfigConditionType = "ConfigUsedUpdated"
+	// ConfigRequiredFieldsValidated means the required fields have been validated
+	ConfigRequiredFieldsValidated ConfigConditionType = "ConfigRequiredFieldsValidated"
 )
 
 // Slack defines a configuration of slack
@@ -373,7 +377,8 @@ type ConfigPullRequest struct {
 // ConfigSpec defines the desired state of Config
 type ConfigSpec struct {
 	// Components represents all components that are managed
-	Components []*Component `json:"components"`
+	// +optional
+	Components []*Component `json:"components,omitempty"`
 
 	// Bundles represents a group of component for each bundle
 	// +optional
@@ -385,7 +390,8 @@ type ConfigSpec struct {
 	PriorityQueues []string `json:"priorityQueues,omitempty"`
 
 	// Staging represents configuration about staging
-	Staging *ConfigStaging `json:"staging"`
+	// +optional
+	Staging *ConfigStaging `json:"staging,omitempty"`
 
 	// ActivePromotion represents configuration about active promotion
 	// +optional
@@ -403,11 +409,41 @@ type ConfigSpec struct {
 	// Reporter represents configuration about reporter
 	// +optional
 	Reporter *ConfigReporter `json:"report,omitempty"`
+
+	// Template represents configuration's template
+	// +optional
+	Template string `json:"template,omitempty"`
 }
 
 // ConfigStatus defines the observed state of Config
 type ConfigStatus struct {
+	// Used represents overridden configuration specification
+	// +optional
+	Used ConfigSpec `json:"used,omitempty"`
+
+	// TemplateUID represents the template update ID
+	// +optional
+	TemplateUID string `json:"templateUID,omitempty"`
+
+	// SyncTemplate represents whether the configuration has been synced to the template or not
+	// +optional
+	SyncTemplate bool `json:"syncTemplate,omitempty"`
+
+	// Conditions contains observations of the state
+	// +optional
+	Conditions []ConfigCondition `json:"conditions,omitempty"`
 }
+
+type ConfigCondition struct {
+	Type   ConfigConditionType    `json:"type"`
+	Status corev1.ConditionStatus `json:"status"`
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
+type ConfigConditionType string
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
@@ -434,6 +470,34 @@ type ConfigList struct {
 // +k8s:deepcopy-gen=false
 //ComponentValues represents values of a component chart
 type ComponentValues map[string]interface{}
+
+func (cs *ConfigStatus) IsConditionTrue(cond ConfigConditionType) bool {
+	for i, c := range cs.Conditions {
+		if c.Type == cond {
+			return cs.Conditions[i].Status == corev1.ConditionTrue
+		}
+	}
+
+	return false
+}
+
+func (cs *ConfigStatus) SetCondition(cond ConfigConditionType, status corev1.ConditionStatus, message string) {
+	for i, c := range cs.Conditions {
+		if c.Type == cond {
+			cs.Conditions[i].Status = status
+			cs.Conditions[i].LastTransitionTime = metav1.Now()
+			cs.Conditions[i].Message = message
+			return
+		}
+	}
+
+	cs.Conditions = append(cs.Conditions, ConfigCondition{
+		Type:               cond,
+		Status:             status,
+		LastTransitionTime: metav1.Now(),
+		Message:            message,
+	})
+}
 
 func (in *ComponentValues) DeepCopyInto(out *ComponentValues) {
 	if in == nil {

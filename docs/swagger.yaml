@@ -412,7 +412,9 @@ definitions:
           +optional
         type: object
       components:
-        description: Components represents all components that are managed
+        description: |-
+          Components represents all components that are managed
+          +optional
         items:
           $ref: '#/definitions/v1beta1.Component'
         type: array
@@ -444,8 +446,15 @@ definitions:
         type: object
       staging:
         $ref: '#/definitions/v1beta1.ConfigStaging'
-        description: Staging represents configuration about staging
+        description: |-
+          Staging represents configuration about staging
+          +optional
         type: object
+      template:
+        description: |-
+          Template represents configuration's template
+          +optional
+        type: string
     type: object
   v1beta1.ConfigStaging:
     properties:
@@ -1158,6 +1167,22 @@ definitions:
       stableComponents:
         description: |-
           StableComponentList represents a list of stable components
+          +optional
+        type: object
+      syncTemplate:
+        description: |-
+          SyncTemplate represents whether the team has been synced to the template or not
+          +optional
+        type: boolean
+      templateUID:
+        description: |-
+          TemplateUID represents the template update ID
+          +optional
+        type: string
+      used:
+        $ref: '#/definitions/v1beta1.TeamSpec'
+        description: |-
+          Used represents overridden team specification
           +optional
         type: object
     type: object

@@ -150,6 +150,9 @@ type SamsahaiController interface {
 	// GetPlugins returns samsahai plugins
 	GetPlugins() map[string]Plugin
 
+	// EnsureTeamTemplateChanged  updates team if template changed
+	EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error
+
 	// LoadTeamSecret loads team secret from main namespace
 	LoadTeamSecret(teamComp *s2hv1beta1.Team) error
 

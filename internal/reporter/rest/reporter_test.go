@@ -376,6 +376,17 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 					},
 				},
 			},
+			Status: s2hv1beta1.ConfigStatus{
+				Used: s2hv1beta1.ConfigSpec{
+					Reporter: &s2hv1beta1.ConfigReporter{
+						Rest: &s2hv1beta1.Rest{
+							ComponentUpgrade: &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+							ActivePromotion:  &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+							ImageMissing:     &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+						},
+					},
+				},
+			},
 		}, nil
 	}
 }
@@ -413,5 +424,9 @@ func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
 }
 
 func (c *mockConfigCtrl) Delete(configName string) error {
+	return nil
+}
+
+func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) error {
 	return nil
 }

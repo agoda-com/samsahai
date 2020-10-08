@@ -594,6 +594,15 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 					},
 				},
 			},
+			Status: s2hv1beta1.ConfigStatus{
+				Used: s2hv1beta1.ConfigSpec{
+					Reporter: &s2hv1beta1.ConfigReporter{
+						Slack: &s2hv1beta1.Slack{
+							Channels: []string{"error"},
+						},
+					},
+				},
+			},
 		}, nil
 	default:
 		return &s2hv1beta1.Config{
@@ -604,6 +613,19 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 						ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgradeReport{
 							Interval: c.interval,
 							Criteria: c.criteria,
+						},
+					},
+				},
+			},
+			Status: s2hv1beta1.ConfigStatus{
+				Used: s2hv1beta1.ConfigSpec{
+					Reporter: &s2hv1beta1.ConfigReporter{
+						Slack: &s2hv1beta1.Slack{
+							Channels: []string{"chan1", "chan2"},
+							ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgradeReport{
+								Interval: c.interval,
+								Criteria: c.criteria,
+							},
 						},
 					},
 				},
@@ -645,5 +667,9 @@ func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
 }
 
 func (c *mockConfigCtrl) Delete(configName string) error {
+	return nil
+}
+
+func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) error {
 	return nil
 }

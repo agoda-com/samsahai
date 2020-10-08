@@ -431,7 +431,7 @@ func (c *controller) getConfiguration() (*s2hv1beta1.ConfigSpec, error) {
 		return &s2hv1beta1.ConfigSpec{}, err
 	}
 
-	return &config.Spec, nil
+	return &config.Status.Used, nil
 }
 
 func (c *controller) getConfigController() internal.ConfigController {

@@ -1266,7 +1266,7 @@
                     "$ref": "#/definitions/v1beta1.ConfigBundles"
                 },
                 "components": {
-                    "description": "Components represents all components that are managed",
+                    "description": "Components represents all components that are managed\n+optional",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v1beta1.Component"
@@ -1294,9 +1294,13 @@
                     "$ref": "#/definitions/v1beta1.ConfigReporter"
                 },
                 "staging": {
-                    "description": "Staging represents configuration about staging",
+                    "description": "Staging represents configuration about staging\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.ConfigStaging"
+                },
+                "template": {
+                    "description": "Template represents configuration's template\n+optional",
+                    "type": "string"
                 }
             }
         },
@@ -2178,6 +2182,19 @@
                 "stableComponents": {
                     "description": "StableComponentList represents a list of stable components\n+optional",
                     "type": "object"
+                },
+                "syncTemplate": {
+                    "description": "SyncTemplate represents whether the team has been synced to the template or not\n+optional",
+                    "type": "boolean"
+                },
+                "templateUID": {
+                    "description": "TemplateUID represents the template update ID\n+optional",
+                    "type": "string"
+                },
+                "used": {
+                    "description": "Used represents overridden team specification\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.TeamSpec"
                 }
             }
         },

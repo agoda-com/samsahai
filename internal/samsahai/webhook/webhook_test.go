@@ -414,6 +414,23 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 				&wordpressConfigComp,
 			},
 		},
+		Status: s2hv1beta1.ConfigStatus{
+			Used: s2hv1beta1.ConfigSpec{
+				Staging: &s2hv1beta1.ConfigStaging{
+					MaxRetry:   3,
+					Deployment: &deployConfig,
+				},
+				ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+					Timeout:          metav1.Duration{Duration: 10 * time.Minute},
+					TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+					Deployment:       &deployConfig,
+				},
+				Components: []*s2hv1beta1.Component{
+					&redisConfigComp,
+					&wordpressConfigComp,
+				},
+			},
+		},
 	}
 
 	return mockConfig, nil
@@ -423,9 +440,9 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 	config, _ := c.Get(configName)
 
 	comps := map[string]*s2hv1beta1.Component{
-		"redis":     config.Spec.Components[0],
-		"wordpress": config.Spec.Components[1],
-		"mariadb":   config.Spec.Components[1].Dependencies[0],
+		"redis":     config.Status.Used.Components[0],
+		"wordpress": config.Status.Used.Components[1],
+		"mariadb":   config.Status.Used.Components[1].Dependencies[0],
 	}
 
 	comps["mariadb"].Parent = "wordpress"
@@ -437,8 +454,8 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	config, _ := c.Get(configName)
 
 	comps := map[string]*s2hv1beta1.Component{
-		"redis":     config.Spec.Components[0],
-		"wordpress": config.Spec.Components[1],
+		"redis":     config.Status.Used.Components[0],
+		"wordpress": config.Status.Used.Components[1],
 	}
 
 	return comps, nil
@@ -469,5 +486,9 @@ func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
 }
 
 func (c *mockConfigCtrl) Delete(configName string) error {
+	return nil
+}
+
+func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) error {
 	return nil
 }

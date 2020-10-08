@@ -137,6 +137,13 @@ var _ = Describe("[e2e] Staging controller", func() {
 			Namespace: s2hv1beta1.TeamNamespace{
 				Staging: "s2h-teamtest",
 			},
+			Used: s2hv1beta1.TeamSpec{
+				Description: "team for testing",
+				Owners:      []string{"samsahai@samsahai.io"},
+				StagingCtrl: &s2hv1beta1.StagingCtrl{
+					IsDeploy: false,
+				},
+			},
 		},
 	}
 
@@ -278,6 +285,40 @@ var _ = Describe("[e2e] Staging controller", func() {
 			PriorityQueues: []string{wordpressCompName, redisCompName},
 			Components:     []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
 			PullRequest:    &configPR,
+		},
+		Status: s2hv1beta1.ConfigStatus{
+			Used: s2hv1beta1.ConfigSpec{
+				Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
+					"base": map[string][]string{
+						wordpressCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/base/wordpress.yaml"},
+					},
+					"staging": map[string][]string{
+						redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
+					},
+					"pre-active": map[string][]string{
+						redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml"},
+					},
+					"active": map[string][]string{
+						redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
+					},
+				},
+				Staging: &s2hv1beta1.ConfigStaging{
+					Deployment: &deployConfig,
+				},
+				ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+					Timeout:          metav1.Duration{Duration: 5 * time.Minute},
+					TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+					Deployment:       &deployConfig,
+				},
+				Reporter: &s2hv1beta1.ConfigReporter{
+					ReportMock: true,
+				},
+				Bundles: s2hv1beta1.ConfigBundles{
+					bundleName: []string{redisCompName, mariaDBCompName},
+				},
+				PriorityQueues: []string{wordpressCompName, redisCompName},
+				Components:     []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
+			},
 		},
 	}
 
@@ -466,8 +507,8 @@ var _ = Describe("[e2e] Staging controller", func() {
 		cfg, err := cfgCtrl.Get(teamName)
 		Expect(err).NotTo(HaveOccurred())
 
-		deployTimeout := cfg.Spec.Staging.Deployment.Timeout.Duration
-		testingTimeout := cfg.Spec.Staging.Deployment.TestRunner.Timeout
+		deployTimeout := cfg.Status.Used.Staging.Deployment.Timeout.Duration
+		testingTimeout := cfg.Status.Used.Staging.Deployment.TestRunner.Timeout
 
 		swp := stableWordPress
 		Expect(client.Create(context.TODO(), &swp)).To(BeNil())
@@ -531,7 +572,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Updating Config to deploy only one component")
 		config = s2hv1beta1.Config{}
 		err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: teamName}, &config)
-		config.Spec.Components = []*s2hv1beta1.Component{&configCompRedis}
+		config.Status.Used.Components = []*s2hv1beta1.Component{&configCompRedis}
 		Expect(client.Update(context.TODO(), &config)).To(BeNil())
 
 		By("Ensure Pre Active Components")
@@ -715,9 +756,9 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Creating Config")
 		config := mockConfig
-		config.Spec.Staging.MaxRetry = 0
-		config.Spec.Staging.Deployment.Timeout = metav1.Duration{Duration: 10 * time.Second}
-		config.Spec.Components[0].Values["master"].(map[string]interface{})["command"] = "exit 1"
+		config.Status.Used.Staging.MaxRetry = 0
+		config.Status.Used.Staging.Deployment.Timeout = metav1.Duration{Duration: 10 * time.Second}
+		config.Status.Used.Components[0].Values["master"].(map[string]interface{})["command"] = "exit 1"
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")

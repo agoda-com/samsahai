@@ -70,14 +70,14 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Shell == nil ||
-		config.Spec.Reporter.Shell.ComponentUpgrade == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.ComponentUpgrade == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.ComponentUpgrade.Command,
-		config.Spec.Reporter.Shell.ComponentUpgrade.Args, comp)
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.ComponentUpgrade.Command,
+		config.Status.Used.Reporter.Shell.ComponentUpgrade.Args, comp)
 	if err := r.execute(cmdObj, internal.ComponentUpgradeType); err != nil {
 		return err
 	}
@@ -114,14 +114,14 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Shell == nil ||
-		config.Spec.Reporter.Shell.ActivePromotion == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.ActivePromotion == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.ActivePromotion.Command,
-		config.Spec.Reporter.Shell.ActivePromotion.Args, atpRpt)
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.ActivePromotion.Command,
+		config.Status.Used.Reporter.Shell.ActivePromotion.Args, atpRpt)
 	if err := r.execute(cmdObj, internal.ActivePromotionType); err != nil {
 		return err
 	}
@@ -137,14 +137,14 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Shell == nil ||
-		config.Spec.Reporter.Shell.ImageMissing == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.ImageMissing == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.ImageMissing.Command,
-		config.Spec.Reporter.Shell.ImageMissing.Args, imageMissingRpt)
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.ImageMissing.Command,
+		config.Status.Used.Reporter.Shell.ImageMissing.Args, imageMissingRpt)
 	if err := r.execute(cmdObj, internal.ImageMissingType); err != nil {
 		return err
 	}

@@ -1120,7 +1120,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				"repository": "bitnami/rediss",
 			},
 		}
-		config.Spec.Components = []*s2hv1beta1.Component{&redisComp}
+		config.Status.Used.Components = []*s2hv1beta1.Component{&redisComp}
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
@@ -1302,7 +1302,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Updating components config")
 		configComp := s2hv1beta1.Config{}
 		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &configComp)).To(BeNil())
-		configComp.Spec.Components = []*s2hv1beta1.Component{{Name: redisCompName}}
+		configComp.Status.Used.Components = []*s2hv1beta1.Component{{Name: redisCompName}}
 		Expect(client.Update(ctx, &configComp)).To(BeNil())
 
 		time.Sleep(verifyTime1s)
@@ -1876,6 +1876,70 @@ var _ = Describe("[e2e] Main controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Config should be deleted")
 	}, 90)
+
+	It("should successfully apply/update team template", func(done Done) {
+		defer close(done)
+		setupSamsahai(true)
+		ctx := context.TODO()
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(client.Create(ctx, &team)).To(BeNil())
+
+		By("Creating Config using template")
+		config2 := mockConfigUsingTemplate
+		Expect(client.Create(ctx, &config2)).To(BeNil())
+
+		By("Creating Team using template")
+		team2 := mockTeam2
+		Expect(client.Create(ctx, &team2)).To(BeNil())
+
+		By("Apply team template")
+		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
+			team := s2hv1beta1.Team{}
+			teamUsingTemplate := s2hv1beta1.Team{}
+			if err = client.Get(context.TODO(),types.NamespacedName{Name: mockTeam.Name}, &team); err!= nil {
+				return false, nil
+			}
+			if err = client.Get(context.TODO(),types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err!= nil {
+				return false, nil
+			}
+			if teamUsingTemplate.Status.Used.Credential == team.Status.Used.Credential ||
+				teamUsingTemplate.Status.Used.StagingCtrl == team.Status.Used.StagingCtrl ||
+				len(teamUsingTemplate.Status.Used.Owners) == len(team.Status.Used.Owners){
+				return true, nil
+			}
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Apply team template error")
+
+		By("Update team template")
+		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
+			team := s2hv1beta1.Team{}
+			teamUsingTemplate := s2hv1beta1.Team{}
+			if err = client.Get(context.TODO(),types.NamespacedName{Name: mockTeam.Name}, &team); err != nil {
+				return false, nil
+			}
+			team.Spec.StagingCtrl.Endpoint = "http://127.0.0.1"
+			if err = client.Update(context.TODO(), &team); err != nil {
+				return false, nil
+			}
+			if err = client.Get(context.TODO(),types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err != nil {
+				return false, nil
+			}
+			if teamUsingTemplate.Status.Used.StagingCtrl.Endpoint == "http://127.0.0.1" &&
+				teamUsingTemplate.Status.TemplateUID == team.Status.TemplateUID {
+				return true, nil
+			}
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Update team template error")
+
+	}, 10)
 })
 
 var (
@@ -1897,6 +1961,7 @@ var (
 	}
 
 	teamName  = "teamtest"
+	teamName2 = "teamtest2"
 	teamForQ1 = teamName + "-q1"
 	teamForQ2 = teamName + "-q2"
 	teamForQ3 = teamName + "-q3"
@@ -1956,6 +2021,23 @@ var (
 					},
 				},
 			},
+			Used: s2hv1beta1.TeamSpec{
+				Description: "team for testing",
+				Owners:      []string{"samsahai@samsahai.io"},
+				Credential: s2hv1beta1.Credential{
+					SecretName: s2hobject.GetTeamSecretName(teamName),
+				},
+				StagingCtrl: &s2hv1beta1.StagingCtrl{
+					IsDeploy: false,
+				},
+			},
+		},
+	}
+
+	mockTeam2 = s2hv1beta1.Team{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   teamName2,
+			Labels: testLabels,
 		},
 	}
 
@@ -2163,6 +2245,27 @@ var (
 				&configCompWordpress,
 			},
 		},
+		Status: s2hv1beta1.ConfigStatus{
+			Used: s2hv1beta1.ConfigSpec{
+				Staging:         configStg,
+				ActivePromotion: configAtp,
+				Reporter:        configReporter,
+				Components: []*s2hv1beta1.Component{
+					&configCompRedis,
+					&configCompWordpress,
+				},
+			},
+		},
+	}
+
+	mockConfigUsingTemplate = s2hv1beta1.Config{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   teamName2,
+			Labels: testLabels,
+		},
+		Spec: s2hv1beta1.ConfigSpec{
+			Template: teamName,
+		},
 	}
 
 	mockConfigOnlyRedis = s2hv1beta1.Config{
@@ -2176,6 +2279,16 @@ var (
 			Reporter:        configReporter,
 			Components: []*s2hv1beta1.Component{
 				&configCompRedis,
+			},
+		},
+		Status: s2hv1beta1.ConfigStatus{
+			Used: s2hv1beta1.ConfigSpec{
+				Staging:         configStg,
+				ActivePromotion: configAtp,
+				Reporter:        configReporter,
+				Components: []*s2hv1beta1.Component{
+					&configCompRedis,
+				},
 			},
 		},
 	}

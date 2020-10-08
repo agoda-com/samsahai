@@ -45,7 +45,8 @@ const (
 	ErrCannotMarshalJSON = Error("cannot marshal to json")
 	ErrCannotMarshalYAML = Error("cannot marshal to yaml")
 
-	ErrTestConfigurationNotFound = Error("test configuration not found")
+	ErrTestConfigurationNotFound  = Error("test configuration not found")
+	ErrConfigurationRequiredField = Error("required filed cannot be empty")
 
 	ErrEnsureConfigDestroyed = Error("config been being destroyed")
 

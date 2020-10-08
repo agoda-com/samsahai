@@ -2,6 +2,8 @@ package samsahai
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/imdario/mergo"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
@@ -581,7 +584,7 @@ func (c *controller) runPostNamespaceCreation(ns string, team *s2hv1beta1.Team) 
 	creationObj := internal.PostNamespaceCreation{
 		Namespace: ns,
 		Team: s2hv1beta1.Team{
-			Spec:   team.Spec,
+			Spec:   team.Status.Used,
 			Status: team.Status,
 		},
 		SamsahaiConfig: c.configs,
@@ -627,14 +630,14 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 		k8sobject.GetSecret(c.scheme, teamComp, namespace, secretKVs...),
 	}
 
-	if teamComp.Spec.StagingCtrl != nil && !(*teamComp.Spec.StagingCtrl).IsDeploy {
+	if teamComp.Status.Used.StagingCtrl != nil && !(*teamComp.Status.Used.StagingCtrl).IsDeploy {
 		logger.Warn("skip deploying the staging controller deployment")
 	} else {
 		deploymentObj := k8sobject.GetDeployment(c.scheme, teamComp, namespace, &c.configs)
 		k8sObjects = append(k8sObjects, deploymentObj)
 	}
 
-	if len(teamComp.Spec.Resources) > 0 {
+	if len(teamComp.Status.Used.Resources) > 0 {
 		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, nil)
 		k8sObjects = append(k8sObjects, quotaObj)
 	}
@@ -877,7 +880,7 @@ func (c *controller) updateTeamNamespacesStatus(teamComp *s2hv1beta1.Team, teamN
 
 func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
 	s2hSecret := corev1.Secret{}
-	secretName := teamComp.Spec.Credential.SecretName
+	secretName := teamComp.Status.Used.Credential.SecretName
 	if secretName == "" {
 		return nil
 	}
@@ -887,13 +890,13 @@ func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
 		return errors.Wrapf(err, "cannot find %s secret in %s namespace", secretName, c.namespace)
 	}
 
-	tcCred := teamComp.Spec.Credential.Teamcity
+	tcCred := teamComp.Status.Used.Credential.Teamcity
 	if tcCred != nil {
 		tcUsername := tcCred.UsernameRef
-		teamComp.Spec.Credential.Teamcity.Username = string(s2hSecret.Data[tcUsername.Key])
+		teamComp.Status.Used.Credential.Teamcity.Username = string(s2hSecret.Data[tcUsername.Key])
 
 		tcPassword := tcCred.PasswordRef
-		teamComp.Spec.Credential.Teamcity.Password = string(s2hSecret.Data[tcPassword.Key])
+		teamComp.Status.Used.Credential.Teamcity.Password = string(s2hSecret.Data[tcPassword.Key])
 	}
 
 	return nil
@@ -1042,7 +1045,7 @@ func (c *controller) GetStableValues(team *s2hv1beta1.Team, comp *s2hv1beta1.Com
 		return nil, err
 	}
 
-	values, err := configctrl.GetEnvComponentValues(&config.Spec, comp.Name, s2hv1beta1.EnvBase)
+	values, err := configctrl.GetEnvComponentValues(&config.Status.Used, comp.Name, s2hv1beta1.EnvBase)
 	if err != nil {
 		logger.Error(err, "cannot get values file",
 			"env", s2hv1beta1.EnvBase, "component", comp.Name, "team", team.Name)
@@ -1337,6 +1340,90 @@ func (c *controller) ensureAndUpdateConfig(teamComp *s2hv1beta1.Team) error {
 	return nil
 }
 
+func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error {
+	configComp, err := c.configCtrl.Get(teamComp.Name)
+	if err != nil {
+		logger.Error(err, "cannot get config", "name", teamComp.Name)
+		return err
+	}
+
+	template := configComp.Spec.Template
+	if template != "" && template != teamComp.Name {
+		templateObj := &s2hv1beta1.Team{}
+		err := c.getTeam(template, templateObj)
+		if err != nil {
+			logger.Error(err, "team template not found", "template", template)
+			return err
+		}
+
+		if err = applyTeamTemplate(teamComp, templateObj); err != nil {
+			return err
+		}
+
+	} else {
+		teamComp.Status.Used = teamComp.Spec
+	}
+
+	bytesTeamComp, _ := json.Marshal(&teamComp.Status.Used)
+	bytesHashID := md5.Sum(bytesTeamComp)
+	hashID := fmt.Sprintf("%x", bytesHashID)
+
+	if !teamComp.Status.SyncTemplate {
+		teamComp.Status.SyncTemplate = true
+	}
+
+	if teamComp.Status.TemplateUID != hashID {
+
+		teamComp.Status.TemplateUID = hashID
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamUsedUpdated,
+			corev1.ConditionFalse,
+			"need update team")
+	}
+	return nil
+}
+
+func (c *controller) ensureTriggerChildrenTeam(name string) error {
+	ctx := context.TODO()
+	configs := &s2hv1beta1.ConfigList{}
+	if err := c.client.List(ctx, configs, &client.ListOptions{}); err != nil {
+		logger.Error(err, "cannot list Configs ")
+		return err
+	}
+	for _, conf := range configs.Items {
+		if conf.Spec.Template == name {
+			team := &s2hv1beta1.Team{}
+			if err := c.getTeam(conf.Name, team); err != nil {
+				return err
+			}
+			team.Status.SyncTemplate = false
+			if err := c.updateTeam(team); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *controller) ValidateTeamRequiredField(teamComp *s2hv1beta1.Team) error {
+	emptyStagingCtrl := s2hv1beta1.StagingCtrl{}
+	if teamComp.Status.Used.StagingCtrl == &emptyStagingCtrl ||
+		len(teamComp.Status.Used.Owners) == 0 {
+
+		return errors.New("team used cannot be empty")
+	}
+	return nil
+}
+
+func applyTeamTemplate(teamComp, teamTemplate *s2hv1beta1.Team) error {
+	teamComp.Status.Used = teamComp.Spec
+	if err := mergo.Merge(&teamComp.Status.Used, teamTemplate.Spec); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Reconcile reads that state of the cluster for a Team object and makes changes based on the state read
 // and what is in the Team.Spec
 // +kubebuilder:rbac:groups=,resources=nodes,verbs=get;list;watch
@@ -1414,6 +1501,50 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when config exists")
 		}
+	}
+
+	if err := c.EnsureTeamTemplateChanged(teamComp); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamUsedUpdated) {
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamUsedUpdated,
+			corev1.ConditionTrue,
+			"update team template successfully")
+
+		if err := c.updateTeam(teamComp); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	if err := c.ensureTriggerChildrenTeam(teamComp.Name); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if err := c.ValidateTeamRequiredField(teamComp); err != nil {
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamRequiredFieldsValidated,
+			corev1.ConditionFalse,
+			"invalid required fields")
+
+		if err := c.updateTeam(teamComp); err != nil {
+			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is invalid")
+		}
+
+		return reconcile.Result{}, err
+	}
+
+	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamRequiredFieldsValidated) {
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamRequiredFieldsValidated,
+			corev1.ConditionTrue,
+			"validate required fields successfully")
+
+		if err := c.updateTeam(teamComp); err != nil {
+			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is valid")
+		}
+
 	}
 
 	teamName := teamComp.GetName()

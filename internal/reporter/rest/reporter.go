@@ -101,13 +101,13 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Rest == nil ||
-		config.Spec.Reporter.Rest.ComponentUpgrade == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Rest == nil ||
+		config.Status.Used.Reporter.Rest.ComponentUpgrade == nil {
 		return nil
 	}
 
-	for _, ep := range config.Spec.Reporter.Rest.ComponentUpgrade.Endpoints {
+	for _, ep := range config.Status.Used.Reporter.Rest.ComponentUpgrade.Endpoints {
 		restObj := &componentUpgradeRest{NewReporterJSON(), *comp}
 		body, err := json.Marshal(restObj)
 		if err != nil {
@@ -159,13 +159,13 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Rest == nil ||
-		config.Spec.Reporter.Rest.ActivePromotion == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Rest == nil ||
+		config.Status.Used.Reporter.Rest.ActivePromotion == nil {
 		return nil
 	}
 
-	for _, ep := range config.Spec.Reporter.Rest.ActivePromotion.Endpoints {
+	for _, ep := range config.Status.Used.Reporter.Rest.ActivePromotion.Endpoints {
 		restObj := &activePromotionRest{NewReporterJSON(), *atpRpt}
 		body, err := json.Marshal(restObj)
 		if err != nil {
@@ -188,13 +188,13 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Rest == nil ||
-		config.Spec.Reporter.Rest.ImageMissing == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Rest == nil ||
+		config.Status.Used.Reporter.Rest.ImageMissing == nil {
 		return nil
 	}
 
-	for _, ep := range config.Spec.Reporter.Rest.ImageMissing.Endpoints {
+	for _, ep := range config.Status.Used.Reporter.Rest.ImageMissing.Endpoints {
 		restObj := &imageMissingRest{NewReporterJSON(), imageMissingRpt.Image}
 		body, err := json.Marshal(restObj)
 		if err != nil {

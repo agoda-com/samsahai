@@ -213,6 +213,17 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 					},
 				},
 			},
+			Status: s2hv1beta1.ConfigStatus{
+				Used: s2hv1beta1.ConfigSpec{
+					Reporter: &s2hv1beta1.ConfigReporter{
+						Shell: &s2hv1beta1.Shell{
+							ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"echo {{ .Envs.TEST_ENV }}"},
+							},
+						},
+					},
+				},
+			},
 		}, nil
 	case "failure":
 		return &s2hv1beta1.Config{
@@ -221,6 +232,17 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 					Shell: &s2hv1beta1.Shell{
 						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
 							Command: []string{"/bin/sleep", "5"},
+						},
+					},
+				},
+			},
+			Status: s2hv1beta1.ConfigStatus{
+				Used: s2hv1beta1.ConfigSpec{
+					Reporter: &s2hv1beta1.ConfigReporter{
+						Shell: &s2hv1beta1.Shell{
+							ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"/bin/sleep", "5"},
+							},
 						},
 					},
 				},
@@ -249,6 +271,25 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 						PullRequestTrigger: &s2hv1beta1.CommandAndArgs{
 							Command: []string{"/bin/sh", "-c"},
 							Args:    []string{"echo pull request trigger of {{ .PRNumber }}: {{ .Result }}"},
+						},
+					},
+				},
+			},
+			Status: s2hv1beta1.ConfigStatus{
+				Used: s2hv1beta1.ConfigSpec{
+					Reporter: &s2hv1beta1.ConfigReporter{
+						Shell: &s2hv1beta1.Shell{
+							ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"/bin/sh", "-c"},
+								Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
+							},
+							ActivePromotion: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"echo active promotion status {{ .Result }} #{{ .Runs }}"},
+							},
+							ImageMissing: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"/bin/sh", "-c"},
+								Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }} of {{ .ComponentName }}"},
+							},
 						},
 					},
 				},
@@ -290,5 +331,9 @@ func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
 }
 
 func (c *mockConfigCtrl) Delete(configName string) error {
+	return nil
+}
+
+func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) error {
 	return nil
 }
