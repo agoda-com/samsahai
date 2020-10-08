@@ -72,6 +72,11 @@ var _ = Describe("Config Controller", func() {
 		},
 	}
 
+	mockConfigUsingTemplate := s2hv1beta1.Config{
+		Spec: s2hv1beta1.ConfigSpec{
+			Template: teamTest,
+		}}
+
 	It("should get env values by the env type correctly", func() {
 		g := NewWithT(GinkgoT())
 
@@ -122,6 +127,18 @@ var _ = Describe("Config Controller", func() {
 				hosts:
 				- wordpress.teamtest-1`,
 		))
+	})
+
+	It("should apply template to config correctly", func() {
+		g := NewWithT(GinkgoT())
+
+		configTemplate := s2hv1beta1.Config{
+			Spec: mockConfig,
+		}
+		err := applyConfigTemplate(&mockConfigUsingTemplate, &configTemplate)
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(mockConfigUsingTemplate.Status.Used.Envs).To(Equal(configTemplate.Spec.Envs))
+		g.Expect(mockConfigUsingTemplate.Status.Used.Components).To(Equal(configTemplate.Spec.Components))
 	})
 
 	Describe("Component scheduler", func() {

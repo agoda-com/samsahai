@@ -436,6 +436,188 @@
                 }
             }
         },
+        "/teams/{team}/pullrequest/queue": {
+            "get": {
+                "description": "Returns queue information of pull request deployment flow.",
+                "tags": [
+                    "GET"
+                ],
+                "summary": "Get Team's Pull Request Queues",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team name",
+                        "name": "team",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.teamPRQueueJSON"
+                        }
+                    },
+                    "404": {
+                        "description": "Team not found",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.errResp"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.errResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/teams/{team}/pullrequest/queue/histories/{queue}": {
+            "get": {
+                "description": "Return pull request queue history of team by id",
+                "tags": [
+                    "GET"
+                ],
+                "summary": "Get Team Pull Request Queue History",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team name",
+                        "name": "team",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "pull request queue history name",
+                        "name": "queue",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1beta1.PullRequestQueueHistory"
+                        }
+                    },
+                    "404": {
+                        "description": "pull request queue history not found",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.errResp"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.errResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/teams/{team}/pullrequest/queue/histories/{queue}/log": {
+            "get": {
+                "description": "Returns zip log file of the pull request queue history",
+                "tags": [
+                    "GET"
+                ],
+                "summary": "Get Team Pull Request Queue History Log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team name",
+                        "name": "team",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "pull request queue history name",
+                        "name": "queue",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/v1beta1.PullRequestQueueHistory"
+                        }
+                    },
+                    "404": {
+                        "description": "pull request queue history not found",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.errResp"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.errResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/teams/{team}/pullrequest/trigger": {
+            "post": {
+                "description": "Endpoint for manually triggering pull request deployment",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "POST"
+                ],
+                "summary": "Webhook For Pull Request Deployment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team name",
+                        "name": "team",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Pull Request",
+                        "name": "pullRequestWebhookEventJSON",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "$ref": "#/definitions/webhook.pullRequestWebhookEventJSON"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid JSON",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.errResp"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Errors",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.errResp"
+                        }
+                    }
+                }
+            }
+        },
         "/teams/{team}/queue": {
             "get": {
                 "description": "Returns queue information of new component upgrading flow.",
@@ -701,6 +883,10 @@
         "v1beta1.ActivePromotionSpec": {
             "type": "object",
             "properties": {
+                "noOfRetry": {
+                    "description": "NoOfRetry represents how many times this active promotion process has been run\n+optional",
+                    "type": "integer"
+                },
                 "promotedBy": {
                     "description": "PromotedBy represents a person who promoted the ActivePromotion\n+optional",
                     "type": "string"
@@ -906,6 +1092,10 @@
                     "description": "MaxHistories defines maximum length of ActivePromotionHistory stored per team\n+optional",
                     "type": "integer"
                 },
+                "maxRetry": {
+                    "description": "MaxRetry defines max retry counts of active promotion process in case failure\n+optional",
+                    "type": "integer"
+                },
                 "outdatedNotification": {
                     "description": "OutdatedNotification defines a configuration of outdated notification\n+optional",
                     "type": "object",
@@ -932,7 +1122,7 @@
                 "items": {}
             }
         },
-        "v1beta1.ConfigComponentUpgrade": {
+        "v1beta1.ConfigComponentUpgradeReport": {
             "type": "object",
             "properties": {
                 "criteria": {
@@ -963,6 +1153,65 @@
                 },
                 "timeout": {
                     "description": "Timeout defines maximum duration for deploying environment\n+optional",
+                    "type": "string"
+                }
+            }
+        },
+        "v1beta1.ConfigPullRequest": {
+            "type": "object",
+            "properties": {
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1beta1.PullRequestComponent"
+                    }
+                },
+                "concurrences": {
+                    "description": "Concurrences defines a parallel number of pull request queue\n+optional",
+                    "type": "integer"
+                },
+                "deployment": {
+                    "description": "Deployment represents configuration about deploy",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigDeploy"
+                },
+                "maxHistoryDays": {
+                    "description": "MaxHistoryDays defines maximum days of PullRequestQueueHistory stored\n+optional",
+                    "type": "integer"
+                },
+                "maxRetry": {
+                    "description": "MaxRetry defines max retry counts of pull request component upgrade\n+optional",
+                    "type": "integer"
+                },
+                "resources": {
+                    "description": "Resources represents how many resources of pull request namespace\n+optional",
+                    "type": "string"
+                },
+                "trigger": {
+                    "description": "Trigger represents a pull request trigger configuration\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.PullRequestTriggerConfig"
+                }
+            }
+        },
+        "v1beta1.ConfigPullRequestQueueReport": {
+            "type": "object",
+            "properties": {
+                "criteria": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "interval": {
+                    "description": "+optional",
+                    "type": "string"
+                }
+            }
+        },
+        "v1beta1.ConfigPullRequestTriggerReport": {
+            "type": "object",
+            "properties": {
+                "criteria": {
+                    "description": "+optional",
                     "type": "string"
                 }
             }
@@ -1017,7 +1266,7 @@
                     "$ref": "#/definitions/v1beta1.ConfigBundles"
                 },
                 "components": {
-                    "description": "Components represents all components that are managed",
+                    "description": "Components represents all components that are managed\n+optional",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v1beta1.Component"
@@ -1034,15 +1283,24 @@
                         "type": "string"
                     }
                 },
+                "pullRequest": {
+                    "description": "PullRequest represents configuration about pull request\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigPullRequest"
+                },
                 "report": {
                     "description": "Reporter represents configuration about reporter\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.ConfigReporter"
                 },
                 "staging": {
-                    "description": "Staging represents configuration about staging",
+                    "description": "Staging represents configuration about staging\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.ConfigStaging"
+                },
+                "template": {
+                    "description": "Template represents configuration's template\n+optional",
+                    "type": "string"
                 }
             }
         },
@@ -1182,13 +1440,23 @@
                 "componentUpgrade": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigComponentUpgrade"
+                    "$ref": "#/definitions/v1beta1.ConfigComponentUpgradeReport"
                 },
                 "groups": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v1beta1.MSTeamsGroup"
                     }
+                },
+                "pullRequestQueue": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigPullRequestQueueReport"
+                },
+                "pullRequestTrigger": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigPullRequestTriggerReport"
                 }
             }
         },
@@ -1216,6 +1484,180 @@
                 "excludeWeekendCalculation": {
                     "description": "+optional",
                     "type": "boolean"
+                }
+            }
+        },
+        "v1beta1.PullRequestComponent": {
+            "type": "object",
+            "properties": {
+                "dependencies": {
+                    "description": "Dependencies defines a list of components which are required to be deployed together with the main component\n+optional",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "image": {
+                    "description": "Image defines an image repository, tag and pattern of pull request component which is a regex of tag\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ComponentImage"
+                },
+                "name": {
+                    "description": "Name defines a main component name which is deployed per pull request",
+                    "type": "string"
+                },
+                "resources": {
+                    "description": "Resources represents how many resources of pull request namespace\n+optional",
+                    "type": "string"
+                },
+                "source": {
+                    "description": "Source defines a source for image repository\n+optional",
+                    "type": "string"
+                }
+            }
+        },
+        "v1beta1.PullRequestQueue": {
+            "type": "object",
+            "properties": {
+                "spec": {
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.PullRequestQueueSpec"
+                },
+                "status": {
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.PullRequestQueueStatus"
+                }
+            }
+        },
+        "v1beta1.PullRequestQueueCondition": {
+            "type": "object",
+            "properties": {
+                "lastTransitionTime": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1beta1.PullRequestQueueHistory": {
+            "type": "object",
+            "properties": {
+                "spec": {
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.PullRequestQueueHistorySpec"
+                },
+                "status": {
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.PullRequestQueueHistoryStatus"
+                }
+            }
+        },
+        "v1beta1.PullRequestQueueHistorySpec": {
+            "type": "object",
+            "properties": {
+                "pullRequestQueue": {
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.PullRequestQueue"
+                }
+            }
+        },
+        "v1beta1.PullRequestQueueHistoryStatus": {
+            "type": "object"
+        },
+        "v1beta1.PullRequestQueueSpec": {
+            "type": "object",
+            "properties": {
+                "componentName": {
+                    "description": "ComponentName represents a pull request Component name",
+                    "type": "string"
+                },
+                "components": {
+                    "description": "Components represents a list of components which are deployed\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.QueueComponents"
+                },
+                "noOfOrder": {
+                    "description": "NoOfOrder defines the position in queue\nlower is will be picked first",
+                    "type": "integer"
+                },
+                "noOfRetry": {
+                    "description": "NoOfRetry defines how many times this pull request component has been tested\n+optional",
+                    "type": "integer"
+                },
+                "prNumber": {
+                    "description": "PRNumber represents a pull request number",
+                    "type": "string"
+                },
+                "teamName": {
+                    "description": "TeamName represents team owner of the pull request queue",
+                    "type": "string"
+                }
+            }
+        },
+        "v1beta1.PullRequestQueueStatus": {
+            "type": "object",
+            "properties": {
+                "conditions": {
+                    "description": "Conditions contains observations of the resource's state e.g.,\nQueue deployed, being tested\n+optional\n+patchMergeKey=type\n+patchStrategy=merge",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1beta1.PullRequestQueueCondition"
+                    }
+                },
+                "createdAt": {
+                    "description": "CreatedAt represents time when the component has been added to queue",
+                    "type": "string"
+                },
+                "deploymentQueue": {
+                    "description": "ComponentUpgrade defines a deployed pull request queue\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.Queue"
+                },
+                "pullRequestNamespace": {
+                    "description": "PullRequestNamespace represents a current pull request namespace",
+                    "type": "string"
+                },
+                "pullRequestQueueHistoryName": {
+                    "description": "PullRequestQueueHistoryName represents created PullRequestQueueHistory name\n+optional",
+                    "type": "string"
+                },
+                "result": {
+                    "description": "Result represents a result of the pull request queue\n+optional",
+                    "type": "string"
+                },
+                "state": {
+                    "description": "State represents current status of this queue",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "description": "UpdatedAt represents time when the component was processed",
+                    "type": "string"
+                }
+            }
+        },
+        "v1beta1.PullRequestTriggerConfig": {
+            "type": "object",
+            "properties": {
+                "maxRetry": {
+                    "description": "MaxRetry defines max retry counts of pull request trigger if cannot find image in the registry\n+optional",
+                    "type": "integer"
+                },
+                "pollingTime": {
+                    "description": "PollingTime defines a waiting duration time to re-check the pull request image in the registry\n+optional",
+                    "type": "string"
                 }
             }
         },
@@ -1367,6 +1809,10 @@
                     "description": "NoOfRetry defines how many times this component has been tested\n+optional",
                     "type": "integer"
                 },
+                "prNumber": {
+                    "description": "PRNumber represents a pull request number\n+optional",
+                    "type": "string"
+                },
                 "skipTestRunner": {
                     "description": "SkipTestRunner represents a flag for skipping running test\n+optional",
                     "type": "boolean"
@@ -1480,6 +1926,16 @@
                     "description": "+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.RestObject"
+                },
+                "pullRequestQueue": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.RestObject"
+                },
+                "pullRequestTrigger": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.RestObject"
                 }
             }
         },
@@ -1511,6 +1967,16 @@
                     "description": "+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.CommandAndArgs"
+                },
+                "pullRequestQueue": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.CommandAndArgs"
+                },
+                "pullRequestTrigger": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.CommandAndArgs"
                 }
             }
         },
@@ -1526,7 +1992,17 @@
                 "componentUpgrade": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigComponentUpgrade"
+                    "$ref": "#/definitions/v1beta1.ConfigComponentUpgradeReport"
+                },
+                "pullRequestQueue": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigPullRequestQueueReport"
+                },
+                "pullRequestTrigger": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigPullRequestTriggerReport"
                 }
             }
         },
@@ -1633,6 +2109,13 @@
                     "description": "+optional",
                     "type": "string"
                 },
+                "pullRequests": {
+                    "description": "+optional",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "staging": {
                     "description": "+optional",
                     "type": "string"
@@ -1699,12 +2182,28 @@
                 "stableComponents": {
                     "description": "StableComponentList represents a list of stable components\n+optional",
                     "type": "object"
+                },
+                "syncTemplate": {
+                    "description": "SyncTemplate represents whether the team has been synced to the template or not\n+optional",
+                    "type": "boolean"
+                },
+                "templateUID": {
+                    "description": "TemplateUID represents the template update ID\n+optional",
+                    "type": "string"
+                },
+                "used": {
+                    "description": "Used represents overridden team specification\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.TeamSpec"
                 }
             }
         },
         "v1beta1.Teamcity": {
             "type": "object",
             "properties": {
+                "branch": {
+                    "type": "string"
+                },
                 "buildID": {
                     "type": "string"
                 },
@@ -1815,6 +2314,20 @@
                 }
             }
         },
+        "webhook.pullRequestWebhookEventJSON": {
+            "type": "object",
+            "properties": {
+                "component": {
+                    "type": "string"
+                },
+                "prNumber": {
+                    "type": "string"
+                },
+                "tag": {
+                    "type": "string"
+                }
+            }
+        },
         "webhook.teamActivePromotion": {
             "type": "object",
             "properties": {
@@ -1918,6 +2431,13 @@
                     "description": "+optional",
                     "type": "string"
                 },
+                "pullRequests": {
+                    "description": "+optional",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "spec": {
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.TeamSpec"
@@ -1932,6 +2452,33 @@
                 },
                 "teamName": {
                     "type": "string"
+                }
+            }
+        },
+        "webhook.teamPRQueueJSON": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "description": "+Optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.PullRequestQueue"
+                },
+                "historyNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "noOfQueue": {
+                    "description": "+optional",
+                    "type": "integer"
+                },
+                "queues": {
+                    "description": "+Optional",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1beta1.PullRequestQueue"
+                    }
                 }
             }
         },

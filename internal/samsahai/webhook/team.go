@@ -122,7 +122,7 @@ func (h *handler) getTeam(w http.ResponseWriter, r *http.Request, params httprou
 		TeamConnections: envConnections,
 		TeamNamespace:   team.Status.Namespace,
 		TeamStatus:      team.Status,
-		TeamSpec:        team.Spec,
+		TeamSpec:        team.Status.Used,
 	}
 	data.TeamSpec.Credential = v1beta1.Credential{}
 	h.JSON(w, http.StatusOK, &data)
@@ -147,7 +147,7 @@ func (h *handler) getTeamComponent(w http.ResponseWriter, r *http.Request, param
 	var err error
 	data, err = configCtrl.GetComponents(teamName)
 	if err != nil {
-		h.error(w, http.StatusInternalServerError, fmt.Errorf("cannot get conponents of team: %+v", err))
+		h.error(w, http.StatusInternalServerError, fmt.Errorf("cannot get components of team: %+v", err))
 		return
 	}
 
@@ -354,10 +354,10 @@ func (h *handler) getTeamConfig(w http.ResponseWriter, r *http.Request, params h
 	case "application/x-yaml":
 		fallthrough
 	case "text/yaml":
-		h.YAML(w, http.StatusOK, config.Spec)
+		h.YAML(w, http.StatusOK, config.Status.Used)
 		return
 	default:
-		h.JSON(w, http.StatusOK, config.Spec)
+		h.JSON(w, http.StatusOK, config.Status.Used)
 	}
 }
 

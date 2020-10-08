@@ -12,9 +12,11 @@ import (
 type EventType string
 
 const (
-	ComponentUpgradeType EventType = "ComponentUpgrade"
-	ActivePromotionType  EventType = "ActivePromotion"
-	ImageMissingType     EventType = "ImageMissing"
+	ComponentUpgradeType   EventType = "ComponentUpgrade"
+	ActivePromotionType    EventType = "ActivePromotion"
+	ImageMissingType       EventType = "ImageMissing"
+	PullRequestTriggerType EventType = "PullRequestTrigger"
+	PullRequestQueueType   EventType = "PullRequestQueue"
 )
 
 // ComponentUpgradeOption allows specifying various configuration
@@ -33,6 +35,15 @@ func WithTestRunner(tr s2hv1beta1.TestRunner) ComponentUpgradeOption {
 func WithQueueHistoryName(qHist string) ComponentUpgradeOption {
 	return func(c *ComponentUpgradeReporter) {
 		c.QueueHistoryName = qHist
+	}
+}
+
+// WithNamespace specifies namespace to override when creating component upgrade reporter object
+func WithNamespace(ns string) ComponentUpgradeOption {
+	return func(c *ComponentUpgradeReporter) {
+		if ns != "" {
+			c.Namespace = ns
+		}
 	}
 }
 
@@ -101,6 +112,7 @@ func WithCredential(creds s2hv1beta1.Credential) ActivePromotionOption {
 type ActivePromotionReporter struct {
 	TeamName               string                `json:"teamName,omitempty"`
 	CurrentActiveNamespace string                `json:"currentActiveNamespace,omitempty"`
+	Runs                   int                   `json:"runs,omitempty"`
 	Credential             s2hv1beta1.Credential `json:"credential,omitempty"`
 	Envs                   map[string]string
 	s2hv1beta1.ActivePromotionStatus
@@ -108,12 +120,14 @@ type ActivePromotionReporter struct {
 }
 
 // NewActivePromotionReporter creates active promotion reporter object
-func NewActivePromotionReporter(status *s2hv1beta1.ActivePromotionStatus, s2hConfig SamsahaiConfig, teamName, currentNs string, opts ...ActivePromotionOption) *ActivePromotionReporter {
+func NewActivePromotionReporter(status s2hv1beta1.ActivePromotionStatus, s2hConfig SamsahaiConfig,
+	teamName, currentNs string, runs int, opts ...ActivePromotionOption) *ActivePromotionReporter {
 	c := &ActivePromotionReporter{
 		SamsahaiConfig:         s2hConfig,
 		TeamName:               teamName,
 		CurrentActiveNamespace: currentNs,
-		ActivePromotionStatus:  *status,
+		Runs:                   runs,
+		ActivePromotionStatus:  status,
 		Envs:                   listEnv(),
 	}
 
@@ -130,13 +144,12 @@ type ImageMissingReporter struct {
 	TeamName      string `json:"teamName,omitempty"`
 	ComponentName string `json:"componentName,omitempty"`
 	Envs          map[string]string
-
-	*rpc.Image
+	s2hv1beta1.Image
 	SamsahaiConfig
 }
 
 // NewImageMissingReporter creates image missing reporter object
-func NewImageMissingReporter(image *rpc.Image, s2hConfig SamsahaiConfig, teamName, compName string) *ImageMissingReporter {
+func NewImageMissingReporter(image s2hv1beta1.Image, s2hConfig SamsahaiConfig, teamName, compName string) *ImageMissingReporter {
 	c := &ImageMissingReporter{
 		SamsahaiConfig: s2hConfig,
 		TeamName:       teamName,
@@ -148,19 +161,32 @@ func NewImageMissingReporter(image *rpc.Image, s2hConfig SamsahaiConfig, teamNam
 	return c
 }
 
-// Reporter is the interface of reporter
-type Reporter interface {
-	// GetName returns type of reporter
-	GetName() string
+// PullRequestTriggerReporter manages pull request trigger report
+type PullRequestTriggerReporter struct {
+	TeamName      string            `json:"teamName,omitempty"`
+	ComponentName string            `json:"componentName,omitempty"`
+	PRNumber      string            `json:"prNumber,omitempty"`
+	Result        string            `json:"result,omitempty"`
+	Image         *s2hv1beta1.Image `json:"image,omitempty"`
+	s2hv1beta1.PullRequestTriggerStatus
+	SamsahaiConfig
+}
 
-	// SendComponentUpgrade sends details of component upgrade
-	SendComponentUpgrade(configCtrl ConfigController, comp *ComponentUpgradeReporter) error
+// NewPullRequestTriggerResultReporter creates pull request trigger result reporter object
+func NewPullRequestTriggerResultReporter(status s2hv1beta1.PullRequestTriggerStatus, s2hConfig SamsahaiConfig,
+	teamName, compName, prNumber, result string, image *s2hv1beta1.Image) *PullRequestTriggerReporter {
 
-	// SendActivePromotionStatus sends active promotion status
-	SendActivePromotionStatus(configCtrl ConfigController, atpRpt *ActivePromotionReporter) error
+	c := &PullRequestTriggerReporter{
+		PullRequestTriggerStatus: status,
+		TeamName:                 teamName,
+		ComponentName:            compName,
+		PRNumber:                 prNumber,
+		Result:                   result,
+		Image:                    image,
+		SamsahaiConfig:           s2hConfig,
+	}
 
-	// SendImageMissing sends image missing
-	SendImageMissing(configCtrl ConfigController, imageMissingRpt *ImageMissingReporter) error
+	return c
 }
 
 func convertIssueType(issueType rpc.ComponentUpgrade_IssueType) IssueType {
@@ -193,4 +219,25 @@ func listEnv() map[string]string {
 	}
 
 	return env
+}
+
+// Reporter is the interface of reporter
+type Reporter interface {
+	// GetName returns type of reporter
+	GetName() string
+
+	// SendComponentUpgrade sends details of component upgrade
+	SendComponentUpgrade(configCtrl ConfigController, comp *ComponentUpgradeReporter) error
+
+	// SendPullRequestQueue sends details of pull request deployment queue
+	SendPullRequestQueue(configCtrl ConfigController, comp *ComponentUpgradeReporter) error
+
+	// SendActivePromotionStatus sends active promotion status
+	SendActivePromotionStatus(configCtrl ConfigController, atpRpt *ActivePromotionReporter) error
+
+	// SendImageMissing sends image missing
+	SendImageMissing(configCtrl ConfigController, imageMissingRpt *ImageMissingReporter) error
+
+	// SendPullRequestTriggerResult sends pull request trigger result information
+	SendPullRequestTriggerResult(configCtrl ConfigController, prTriggerRpt *PullRequestTriggerReporter) error
 }

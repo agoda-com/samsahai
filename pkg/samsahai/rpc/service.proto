@@ -4,11 +4,21 @@ package samsahai.io.samsahai;
 option go_package = "pkg/samsahai/rpc";
 
 service RPC {
+    rpc GetTeamActiveNamespace (TeamName) returns (TeamWithNamespace);
     rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
-    rpc GetMissingVersion (TeamWithCurrentComponent) returns (ImageList);
+    rpc RunPostPullRequestQueue (ComponentUpgrade) returns (Empty);
+    rpc RunPostPullRequestTrigger (PullRequestTrigger) returns (Empty);
+    rpc GetMissingVersions (TeamWithCurrentComponent) returns (ImageList);
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
     rpc GetBundleName (TeamWithComponentName) returns (BundleName);
     rpc GetPriorityQueues (TeamName) returns (PriorityQueues);
+    rpc GetPullRequestComponentDependencies (TeamWithComponentName) returns (PullRequestDependencies);
+    rpc GetPullRequestConfig (TeamName) returns (PullRequestConfig);
+    rpc GetPullRequestComponentSource (TeamWithPullRequest) returns (ComponentSource);
+    rpc GetComponentVersion (ComponentSource) returns (ComponentVersion);
+    rpc DeployActiveServicesIntoPullRequestEnvironment (TeamWithNamespace) returns (Empty);
+    rpc CreatePullRequestEnvironment (TeamWithPullRequest) returns (Empty);
+    rpc DestroyPullRequestEnvironment (TeamWithNamespace) returns (Empty);
 }
 
 message Empty {
@@ -29,6 +39,10 @@ message TeamName {
 
 message PriorityQueues {
     repeated string queues = 1;
+}
+
+message PullRequestDependencies {
+    repeated Component dependencies = 1;
 }
 
 message ComponentUpgrade {
@@ -60,6 +74,8 @@ message ComponentUpgrade {
     bool isReverify = 11;
     ReverificationStatus reverificationStatus = 12;
     repeated DeploymentIssue deploymentIssues = 13;
+    TeamWithPullRequest pullRequestComponent = 14;
+    string pullRequestNamespace = 15;
 }
 
 message Component {
@@ -91,4 +107,47 @@ message FailureComponent {
     string firstFailureContainerName = 2;
     int32 restartCount = 3;
     string nodeName = 4;
+}
+
+message TeamWithNamespace {
+    string teamName = 1;
+    string namespace = 2;
+}
+
+message TeamWithPullRequest {
+    string teamName = 1;
+    string componentName = 2;
+    string PRNumber = 3;
+    string namespace = 4;
+    int32 maxRetryQueue = 5;
+}
+
+message PullRequestConfig {
+    int32 concurrences = 1;
+    int32 maxRetry = 2;
+    int32 maxHistoryDays = 3;
+    PullRequestTriggerConfig trigger = 4;
+}
+
+message PullRequestTriggerConfig {
+    int32 maxRetry = 1;
+    string pollingTime = 2;
+}
+
+message ComponentSource {
+    string componentName = 1;
+    string source = 2;
+    string pattern = 3;
+    Image image = 4;
+}
+
+message ComponentVersion {
+    string version = 1;
+}
+
+message PullRequestTrigger {
+    string name = 1;
+    string namespace = 2;
+    string teamName = 3;
+    string result = 4;
 }

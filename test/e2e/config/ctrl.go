@@ -27,7 +27,8 @@ var _ = Describe("[e2e] Config controller", func() {
 		controller internal.ConfigController
 		client     rclient.Client
 		namespace  string
-		teamName   = "teamtest"
+		teamTest   = "teamtest"
+		teamTest2  = "teamtest2"
 	)
 
 	BeforeEach(func(done Done) {
@@ -48,7 +49,8 @@ var _ = Describe("[e2e] Config controller", func() {
 
 	AfterEach(func(done Done) {
 		defer close(done)
-		_ = controller.Delete(teamName)
+		_ = controller.Delete(teamTest)
+		_ = controller.Delete(teamTest2)
 	}, 5)
 
 	It("should successfully get/delete Config", func(done Done) {
@@ -64,38 +66,40 @@ var _ = Describe("[e2e] Config controller", func() {
 		Expect(client.Create(ctx, config)).To(BeNil())
 
 		By("Get Config")
-		cfg, err := controller.Get(teamName)
+		cfg, err := controller.Get(teamTest)
 		Expect(err).To(BeNil())
-		Expect(cfg.Spec).NotTo(BeNil())
+		Expect(cfg.Status.Used).NotTo(BeNil())
 		Expect(len(cfg.Spec.Components)).To(Equal(2))
 		Expect(len(cfg.Spec.Envs)).To(Equal(4))
 		Expect(cfg.Spec.Staging).NotTo(BeNil())
 		Expect(cfg.Spec.ActivePromotion).NotTo(BeNil())
 
 		By("Get components")
-		comps, err := controller.GetComponents(teamName)
+		Expect(controller.EnsureConfigTemplateChanged(config)).To(BeNil())
+		Expect(controller.Update(config)).To(BeNil())
+		comps, err := controller.GetComponents(teamTest)
 		Expect(err).To(BeNil())
 		Expect(len(comps)).To(Equal(3))
 
 		By("Get parent components")
-		parentComps, err := controller.GetParentComponents(teamName)
+		parentComps, err := controller.GetParentComponents(teamTest)
 		Expect(err).To(BeNil())
 		Expect(len(parentComps)).To(Equal(2))
 
 		By("Get bundles")
-		bundles, err := controller.GetBundles(teamName)
+		bundles, err := controller.GetBundles(teamTest)
 		Expect(err).To(BeNil())
 		dbs, ok := bundles["db"]
 		Expect(ok).To(BeTrue())
 		Expect(len(dbs)).To(Equal(2))
 
 		By("Delete Config")
-		err = controller.Delete(teamName)
+		err = controller.Delete(teamTest)
 
 		By("Config should be deleted")
 		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
 			config = &s2hv1beta1.Config{}
-			err = client.Get(context.TODO(), types.NamespacedName{Name: teamName}, config)
+			err = client.Get(context.TODO(), types.NamespacedName{Name: teamTest}, config)
 			if err != nil && errors.IsNotFound(err) {
 				return true, nil
 			}
@@ -104,4 +108,50 @@ var _ = Describe("[e2e] Config controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Delete config error")
 	}, 10)
+
+	It("Should successfully apply/update config template", func(done Done) {
+		defer close(done)
+		ctx := context.TODO()
+
+		By("Creating Config")
+		yamlTeam, err := ioutil.ReadFile(path.Join("..", "data", "wordpress-redis", "config.yaml"))
+		Expect(err).NotTo(HaveOccurred())
+
+		obj, _ := util.MustParseYAMLtoRuntimeObject(yamlTeam)
+		config, _ := obj.(*s2hv1beta1.Config)
+		Expect(client.Create(ctx, config)).To(BeNil())
+
+		By("Creating Config using template")
+		yamlTeam2, err := ioutil.ReadFile(path.Join("..", "data", "template", "config.yaml"))
+		Expect(err).NotTo(HaveOccurred())
+
+		obj, _ = util.MustParseYAMLtoRuntimeObject(yamlTeam2)
+		configUsingTemplate, _ := obj.(*s2hv1beta1.Config)
+		Expect(client.Create(ctx, configUsingTemplate)).To(BeNil())
+
+		By("Apply config template")
+		Expect(controller.EnsureConfigTemplateChanged(configUsingTemplate)).To(BeNil())
+		Expect(configUsingTemplate.Status.Used).NotTo(BeNil())
+		Expect(len(configUsingTemplate.Status.Used.Components)).To(Equal(2))
+		Expect(len(configUsingTemplate.Status.Used.Envs)).To(Equal(4))
+		Expect(configUsingTemplate.Status.Used.Staging).NotTo(BeNil())
+		Expect(configUsingTemplate.Status.Used.ActivePromotion).NotTo(BeNil())
+		mockEngine := "mock"
+		Expect(configUsingTemplate.Status.Used.Staging.Deployment.Engine).To(Equal(&mockEngine))
+
+		By("Update config template")
+		config, err = controller.Get(teamTest)
+		Expect(err).NotTo(HaveOccurred())
+
+		config.Spec.ActivePromotion.Deployment.Engine = &mockEngine
+		Expect(controller.Update(config)).To(BeNil())
+		Expect(controller.EnsureConfigTemplateChanged(configUsingTemplate)).To(BeNil())
+		Expect(configUsingTemplate.Status.Used.ActivePromotion.Deployment.Engine).To(Equal(&mockEngine))
+
+		By("Delete Config")
+		Expect(controller.Delete(teamTest)).To(BeNil())
+		Expect(controller.Delete(teamTest2)).To(BeNil())
+
+	}, 10)
+
 })

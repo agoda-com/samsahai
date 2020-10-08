@@ -49,9 +49,15 @@ const (
 	VKActivePromotionDemotionTimeout  = "active-demotion-timeout"
 	VKActivePromotionRollbackTimeout  = "active-promotion-rollback-timeout"
 	VKActivePromotionTearDownDuration = "active-promotion-teardown-duration"
+	VKActivePromotionMaxRetry         = "active-promotion-max-retry"
 	VKActivePromotionMaxHistories     = "active-promotion-max-histories"
 	VKActivePromotionOnTeamCreation   = "active-promotion-on-team-creation"
 	VKQueueMaxHistoryDays             = "queue-max-history-days"
+	VKPRQueueConcurrences             = "pr-queue-concurrences"
+	VKPRVerificationMaxRetry          = "pr-verification-max-retry"
+	VKPRTriggerMaxRetry               = "pr-trigger-max-retry"
+	VKPRTriggerPollingTime            = "pr-trigger-polling-time"
+	VKPullRequestQueueMaxHistoryDays  = "pr-queue-max-history-days"
 )
 
 type ConfigurationJSON struct {

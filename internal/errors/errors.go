@@ -2,6 +2,7 @@ package errors
 
 import (
 	"errors"
+	"strings"
 
 	pkgerrors "github.com/pkg/errors"
 )
@@ -44,9 +45,12 @@ const (
 	ErrCannotMarshalJSON = Error("cannot marshal to json")
 	ErrCannotMarshalYAML = Error("cannot marshal to yaml")
 
-	ErrTestConfigurationNotFound = Error("test configuration not found")
+	ErrTestConfigurationNotFound  = Error("test configuration not found")
+	ErrConfigurationRequiredField = Error("required filed cannot be empty")
 
 	ErrEnsureConfigDestroyed = Error("config been being destroyed")
+
+	ErrParsingRuntimeObject = Error("cannot parse runtime object")
 )
 
 var (
@@ -68,12 +72,14 @@ func IsImageNotFound(err error) bool {
 
 // IsNamespaceStillCreating checks namespace is still creating
 func IsNamespaceStillCreating(err error) bool {
-	return ErrTeamNamespaceStillCreating.Error() == err.Error()
+	return ErrTeamNamespaceStillCreating.Error() == err.Error() ||
+		strings.Contains(err.Error(), ErrTeamNamespaceStillCreating.Error())
 }
 
 // IsNamespaceStillExists checks namespace still exists
 func IsNamespaceStillExists(err error) bool {
-	return ErrTeamNamespaceStillExists.Error() == err.Error()
+	return ErrTeamNamespaceStillExists.Error() == err.Error() ||
+		strings.Contains(err.Error(), ErrTeamNamespaceStillExists.Error())
 }
 
 // IsNewNamespaceEnvObjsCreated checks ensuring environment objects created
@@ -111,8 +117,8 @@ func IsEnsuringComponentDeployed(err error) bool {
 	return ErrEnsureComponentDeployed.Error() == err.Error()
 }
 
-// IsEnsuringActivePromoted checks ensuring active tested
-func IsEnsuringActiveTested(err error) bool {
+// IsEnsuringComponentTested checks ensuring component tested
+func IsEnsuringComponentTested(err error) bool {
 	return ErrEnsureComponentTested.Error() == err.Error()
 }
 

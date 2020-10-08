@@ -8,10 +8,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/http"
-	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 var logger = s2hlog.Log.WithName(ReporterName)
@@ -42,7 +42,12 @@ type activePromotionRest struct {
 
 type imageMissingRest struct {
 	ReporterJSON
-	*rpc.Image
+	s2hv1beta1.Image
+}
+
+type pullRequestTriggerRest struct {
+	ReporterJSON
+	internal.PullRequestTriggerReporter
 }
 
 // NewReporterJSON creates new reporter json
@@ -96,13 +101,13 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Rest == nil ||
-		config.Spec.Reporter.Rest.ComponentUpgrade == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Rest == nil ||
+		config.Status.Used.Reporter.Rest.ComponentUpgrade == nil {
 		return nil
 	}
 
-	for _, ep := range config.Spec.Reporter.Rest.ComponentUpgrade.Endpoints {
+	for _, ep := range config.Status.Used.Reporter.Rest.ComponentUpgrade.Endpoints {
 		restObj := &componentUpgradeRest{NewReporterJSON(), *comp}
 		body, err := json.Marshal(restObj)
 		if err != nil {
@@ -118,6 +123,35 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	return nil
 }
 
+// SendPullRequestQueue implements the reporter SendPullRequestQueue function
+func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
+	config, err := configCtrl.Get(comp.TeamName)
+	if err != nil {
+		return err
+	}
+
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Rest == nil ||
+		config.Spec.Reporter.Rest.PullRequestQueue == nil {
+		return nil
+	}
+
+	for _, ep := range config.Spec.Reporter.Rest.PullRequestQueue.Endpoints {
+		restObj := &componentUpgradeRest{NewReporterJSON(), *comp}
+		body, err := json.Marshal(restObj)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", body))
+			return err
+		}
+
+		if err = r.send(ep.URL, body, internal.PullRequestQueueType); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // SendActivePromotionStatus send active promotion status via http POST
 func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigController, atpRpt *internal.ActivePromotionReporter) error {
 	config, err := configCtrl.Get(atpRpt.TeamName)
@@ -125,13 +159,13 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Rest == nil ||
-		config.Spec.Reporter.Rest.ActivePromotion == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Rest == nil ||
+		config.Status.Used.Reporter.Rest.ActivePromotion == nil {
 		return nil
 	}
 
-	for _, ep := range config.Spec.Reporter.Rest.ActivePromotion.Endpoints {
+	for _, ep := range config.Status.Used.Reporter.Rest.ActivePromotion.Endpoints {
 		restObj := &activePromotionRest{NewReporterJSON(), *atpRpt}
 		body, err := json.Marshal(restObj)
 		if err != nil {
@@ -154,13 +188,13 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Rest == nil ||
-		config.Spec.Reporter.Rest.ImageMissing == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Rest == nil ||
+		config.Status.Used.Reporter.Rest.ImageMissing == nil {
 		return nil
 	}
 
-	for _, ep := range config.Spec.Reporter.Rest.ImageMissing.Endpoints {
+	for _, ep := range config.Status.Used.Reporter.Rest.ImageMissing.Endpoints {
 		restObj := &imageMissingRest{NewReporterJSON(), imageMissingRpt.Image}
 		body, err := json.Marshal(restObj)
 		if err != nil {
@@ -169,6 +203,35 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 		}
 
 		if err = r.send(ep.URL, body, internal.ImageMissingType); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// SendPullRequestTriggerResult implements the reporter SendPullRequestTriggerResult function
+func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
+	config, err := configCtrl.Get(prTriggerRpt.TeamName)
+	if err != nil {
+		return err
+	}
+
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Rest == nil ||
+		config.Spec.Reporter.Rest.PullRequestTrigger == nil {
+		return nil
+	}
+
+	for _, ep := range config.Spec.Reporter.Rest.PullRequestTrigger.Endpoints {
+		restObj := &pullRequestTriggerRest{NewReporterJSON(), *prTriggerRpt}
+		body, err := json.Marshal(restObj)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("cannot convert struct to json object, %v", body))
+			return err
+		}
+
+		if err = r.send(ep.URL, body, internal.PullRequestTriggerType); err != nil {
 			return err
 		}
 	}

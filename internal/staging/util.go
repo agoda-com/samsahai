@@ -24,16 +24,23 @@ func (c *controller) getDeployConfiguration(queue *s2hv1beta1.Queue) *s2hv1beta1
 		return &s2hv1beta1.ConfigDeploy{}
 	}
 
-	if queue.IsActivePromotionQueue() {
+	switch {
+	case queue.IsActivePromotionQueue():
 		if cfg.ActivePromotion != nil && cfg.ActivePromotion.Deployment != nil {
 			return cfg.ActivePromotion.Deployment
 		}
 		return &s2hv1beta1.ConfigDeploy{}
+	case queue.IsPullRequestQueue():
+		if cfg.PullRequest != nil && cfg.PullRequest.Deployment != nil {
+			return cfg.PullRequest.Deployment
+		}
+		return &s2hv1beta1.ConfigDeploy{}
+	default:
+		if cfg.Staging != nil {
+			return cfg.Staging.Deployment
+		}
+		return &s2hv1beta1.ConfigDeploy{}
 	}
-	if cfg.Staging != nil {
-		return cfg.Staging.Deployment
-	}
-	return &s2hv1beta1.ConfigDeploy{}
 }
 
 func (c *controller) getTestConfiguration(queue *s2hv1beta1.Queue) *s2hv1beta1.ConfigTestRunner {

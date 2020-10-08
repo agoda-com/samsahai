@@ -110,6 +110,18 @@ type TeamStatus struct {
 	// ActivePromotedBy represents a person who promoted the ActivePromotion
 	// +optional
 	ActivePromotedBy string `json:"activePromotedBy,omitempty"`
+
+	// Used represents overridden team specification
+	// +optional
+	Used TeamSpec `json:"used,omitempty"`
+
+	// TemplateUID represents the template update ID
+	// +optional
+	TemplateUID string `json:"templateUID,omitempty"`
+
+	// SyncTemplate represents whether the team has been synced to the template or not
+	// +optional
+	SyncTemplate bool `json:"syncTemplate,omitempty"`
 }
 
 func (ts *TeamStatus) GetStableComponent(stableCompName string) StableComponent {
@@ -222,6 +234,9 @@ type TeamNamespace struct {
 
 	// +optional
 	Active string `json:"active,omitempty"`
+
+	// +optional
+	PullRequests []string `json:"pullRequests,omitempty"`
 }
 
 type TeamCondition struct {
@@ -242,11 +257,14 @@ const (
 	TeamNamespacePreActiveCreated         TeamConditionType = "TeamNamespacePreActiveCreated"
 	TeamNamespacePreviousActiveCreated    TeamConditionType = "TeamNamespacePreviousActiveCreated"
 	TeamNamespaceActiveCreated            TeamConditionType = "TeamNamespaceActiveCreated"
+	TeamNamespacePullRequestCreated       TeamConditionType = "TeamNamespacePullRequestCreated"
 	TeamConfigExisted                     TeamConditionType = "TeamConfigExist"
 	TeamPostStagingNamespaceCreationRun   TeamConditionType = "TeamPostStagingNamespaceCreationRun"
 	TeamPostPreActiveNamespaceCreationRun TeamConditionType = "TeamPostPreActiveNamespaceCreationRun"
 	TeamFirstNotifyComponentChanged       TeamConditionType = "TeamFirstNotifyComponentChanged"
 	TeamFirstActivePromotionRun           TeamConditionType = "TeamFirstActivePromotionRun"
+	TeamUsedUpdated                       TeamConditionType = "TeamUsedUpdated"
+	TeamRequiredFieldsValidated           TeamConditionType = "TeamRequiredFieldsValidated"
 )
 
 func (ts *TeamStatus) IsConditionTrue(cond TeamConditionType) bool {

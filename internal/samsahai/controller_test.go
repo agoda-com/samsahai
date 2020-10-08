@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
@@ -23,6 +24,15 @@ var _ = Describe("S2H Controller", func() {
 			plugins:  map[string]internal.Plugin{},
 		}
 		pluginName := "example"
+		mockTeam := s2hv1beta1.Team{
+			Spec: s2hv1beta1.TeamSpec{
+				Owners: []string{"teamTest@samsahai.io"},
+				StagingCtrl: &s2hv1beta1.StagingCtrl{
+					IsDeploy: false,
+				},
+			},
+		}
+		mockTeamUsingTemplate := s2hv1beta1.Team{}
 
 		It("should successfully load plugins", func() {
 			ctrl.loadPlugins("plugin")
@@ -34,6 +44,15 @@ var _ = Describe("S2H Controller", func() {
 			g.Expect(len(ctrl.checkers)).To(Equal(1))
 			name = ctrl.checkers[pluginName].GetName()
 			g.Expect(name).To(Equal(pluginName))
+		})
+
+		It("should apply template to team correctly", func() {
+			g := NewWithT(GinkgoT())
+
+			err := applyTeamTemplate(&mockTeamUsingTemplate, &mockTeam)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(mockTeamUsingTemplate.Status.Used.Owners).To(Equal(mockTeam.Spec.Owners))
+			g.Expect(mockTeamUsingTemplate.Status.Used.StagingCtrl).To(Equal(mockTeam.Spec.StagingCtrl))
 		})
 
 		Specify("Non-existing plugin", func(done Done) {

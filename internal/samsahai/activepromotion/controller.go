@@ -92,8 +92,8 @@ func (c *controller) setup(ctx context.Context, atpComp *s2hv1beta1.ActivePromot
 			return err
 		}
 
-		if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.TearDownDuration.Duration != 0 {
-			duration = config.Spec.ActivePromotion.TearDownDuration
+		if config.Status.Used.ActivePromotion != nil && config.Status.Used.ActivePromotion.TearDownDuration.Duration != 0 {
+			duration = config.Status.Used.ActivePromotion.TearDownDuration
 		}
 
 		atpComp.Spec.SetTearDownDuration(duration)
@@ -168,10 +168,14 @@ func (c *controller) checkActivePromotionTimeout(ctx context.Context, atpComp *s
 }
 
 func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) (
-	skipUpdate bool, err error) {
+	skipReconcile bool, err error) {
 
 	if atpComp.Status.State == s2hv1beta1.ActivePromotionFinished {
 		if err = c.teardown(ctx, atpComp); err != nil {
+			return
+		}
+
+		if skipReconcile, err = c.checkRetryQueue(ctx, atpComp); err != nil || skipReconcile {
 			return
 		}
 
@@ -298,7 +302,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
-	if isTriggered, err := c.manageQueue(ctx, atpComp); err != nil || isTriggered {
+	if skipReconcile, err := c.manageQueue(ctx, atpComp); err != nil || skipReconcile {
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -315,7 +319,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
-	if isSkipped, err := c.deleteFinalizerWhenFinished(ctx, atpComp); err != nil || isSkipped {
+	if skipReconcile, err := c.deleteFinalizerWhenFinished(ctx, atpComp); err != nil || skipReconcile {
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -369,7 +373,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	case s2hv1beta1.ActivePromotionTestingPreActive:
 		if err := c.testPreActiveEnvironment(atpComp); err != nil {
-			if s2herrors.IsEnsuringActiveTested(err) {
+			if s2herrors.IsEnsuringComponentTested(err) {
 				return reconcile.Result{
 					Requeue:      true,
 					RequeueAfter: 2 * time.Second,
@@ -380,7 +384,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	case s2hv1beta1.ActivePromotionCollectingPreActiveResult:
 		if err := c.collectResult(ctx, atpComp); err != nil {
-			if s2herrors.IsEnsuringActiveTested(err) {
+			if s2herrors.IsEnsuringComponentTested(err) {
 				return reconcile.Result{
 					Requeue:      true,
 					RequeueAfter: 2 * time.Second,
