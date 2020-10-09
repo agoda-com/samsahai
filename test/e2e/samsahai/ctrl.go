@@ -244,7 +244,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Creating Config")
 		config := mockConfig
-		config.Status.Used.ActivePromotion.MaxRetry = &maxActivePromotionRetry
+		config.Spec.ActivePromotion.MaxRetry = &maxActivePromotionRetry
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
@@ -731,7 +731,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Creating Config")
 		config := mockConfig
-		config.Status.Used.ActivePromotion.MaxRetry = &maxActivePromotionRetry
+		config.Spec.ActivePromotion.MaxRetry = &maxActivePromotionRetry
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
@@ -1120,7 +1120,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				"repository": "bitnami/rediss",
 			},
 		}
-		config.Status.Used.Components = []*s2hv1beta1.Component{&redisComp}
+		config.Spec.Components = []*s2hv1beta1.Component{&redisComp}
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
@@ -1302,7 +1302,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Updating components config")
 		configComp := s2hv1beta1.Config{}
 		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &configComp)).To(BeNil())
-		configComp.Status.Used.Components = []*s2hv1beta1.Component{{Name: redisCompName}}
+		configComp.Spec.Components = []*s2hv1beta1.Component{{Name: redisCompName}}
 		Expect(client.Update(ctx, &configComp)).To(BeNil())
 
 		time.Sleep(verifyTime1s)
