@@ -396,6 +396,7 @@ spec:
     base:
       # component name must consist of lower case alphanumeric characters, '-' or '.',
       # and must start and end with an alphanumeric character
+      # support {{ .TeamName }} parameter
       <component_name>:
         - <values_file_url>
 
@@ -403,6 +404,7 @@ spec:
     staging:
       # component name must consist of lower case alphanumeric characters, '-' or '.',
       # and must start and end with an alphanumeric character
+      # support {{ .TeamName }} parameter
       <component_name>:
         - <values_file_url>
 
@@ -410,6 +412,7 @@ spec:
     pre-active:
       # component name must consist of lower case alphanumeric characters, '-' or '.',
       # and must start and end with an alphanumeric character
+      # support {{ .TeamName }} parameter
       <component_name>:
         - <values_file_url>
 
@@ -417,6 +420,7 @@ spec:
     active:
       # component name must consist of lower case alphanumeric characters, '-' or '.',
       # and must start and end with an alphanumeric character
+      # support {{ .TeamName }} parameter
       <component_name>:
         - <values_file_url>
 
