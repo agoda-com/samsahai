@@ -366,17 +366,18 @@ func applyEnvBaseConfig(
 	values map[string]interface{},
 	qt s2hv1beta1.QueueType,
 	comp *s2hv1beta1.Component,
+	teamName string,
 ) map[string]interface{} {
 	var target map[string]s2hv1beta1.ComponentValues
 	var err error
 
 	switch qt {
 	case s2hv1beta1.QueueTypePreActive:
-		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvPreActive)
+		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvPreActive, teamName)
 	case s2hv1beta1.QueueTypePromoteToActive:
-		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvActive)
+		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvActive, teamName)
 	case s2hv1beta1.QueueTypeUpgrade, s2hv1beta1.QueueTypeReverify:
-		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvStaging)
+		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvStaging, teamName)
 	case s2hv1beta1.QueueTypeDemoteFromActive:
 		return values
 	default:
@@ -519,7 +520,7 @@ func (c *controller) deployComponentsExceptQueue(
 			continue
 		}
 
-		baseValues, err := configctrl.GetEnvComponentValues(cfg, name, s2hv1beta1.EnvBase)
+		baseValues, err := configctrl.GetEnvComponentValues(cfg, name, c.teamName, s2hv1beta1.EnvBase)
 		if err != nil {
 			return false, err
 		}
@@ -536,7 +537,7 @@ func (c *controller) deployComponentsExceptQueue(
 				return true, err
 			}
 		default:
-			values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, comp)
+			values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, comp, c.teamName)
 			if err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values, &deployTimeout); err != nil {
 				return true, err
 			}
@@ -574,7 +575,7 @@ func (c *controller) deployQueueComponent(
 				envType = s2hv1beta1.EnvPullRequest
 			}
 
-			baseValues, err := configctrl.GetEnvComponentValues(cfg, name, envType)
+			baseValues, err := configctrl.GetEnvComponentValues(cfg, name, c.teamName, envType)
 			if err != nil {
 				errCh <- err
 				return
@@ -602,7 +603,7 @@ func (c *controller) deployQueueComponent(
 				}
 			}
 
-			values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, parentComp)
+			values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, parentComp, c.teamName)
 			err = deployEngine.Create(c.genReleaseName(parentComp), parentComp, parentComp, values, &deployTimeout)
 			if err != nil {
 				errCh <- err

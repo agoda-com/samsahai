@@ -32,7 +32,7 @@ import (
 const (
 	verifyTime1s           = 1 * time.Second
 //	verifyTime5s           = 5 * time.Second
-	verifyTime10s          = 10 * time.Second
+//	verifyTime10s          = 10 * time.Second
 //	verifyTime15s          = 15 * time.Second
 	verifyTime30s          = 30 * time.Second
 )
