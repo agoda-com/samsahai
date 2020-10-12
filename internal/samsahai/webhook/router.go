@@ -52,6 +52,8 @@ func (h *handler) bind(r *httprouter.Router) {
 
 	r.GET("/teams/:team/components/:component/values", h.getTeamComponentStableValues)
 
+	r.DELETE("/teams/:team/environment/active/delete", h.deleteTeamActiveEnvironment)
+
 	r.GET("/teams/:team/activepromotions", h.getTeamActivePromotions)
 	r.GET("/teams/:team/activepromotions/histories", h.getTeamActivePromotionHistories)
 	r.GET("/teams/:team/activepromotions/histories/:history", h.getTeamActivePromotionHistory)
