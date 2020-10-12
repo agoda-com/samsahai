@@ -117,24 +117,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Creating Secret")
 		secret := mockSecret
 		_ = client.Create(ctx, &secret)
-
-		By("Deleting all ActivePromotions before running")
-		err = client.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotion{}, rclient.MatchingLabels(testLabels))
-		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
-			atpList := s2hv1beta1.ActivePromotionList{}
-			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
-			if err = client.List(ctx, &atpList, listOpt); err != nil {
-				return false, nil
-			}
-
-			if len(atpList.Items) == 0 {
-				return true, nil
-			}
-
-			return false, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Delete all active promotions before running error")
 	}, 60)
 
 	AfterEach(func(done Done) {
@@ -882,7 +864,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Pre-active namespace should be deleted")
 		preActiveNs := atpComp.Status.TargetNamespace
-		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			err = client.Get(ctx, types.NamespacedName{Name: preActiveNs}, &namespace)
 			if err != nil && errors.IsNotFound(err) {
@@ -917,7 +899,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).To(BeNil())
 		Expect(len(atpHists.Items)).To(Equal(1))
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())
-	}, 60)
+	}, 90)
 
 	It("should rollback active environment timeout", func(done Done) {
 		defer close(done)
@@ -1051,6 +1033,119 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Team should be error if missing Config")
 	}, 15)
 
+	It("should detect image missing and not create desired component", func(done Done) {
+		defer close(done)
+		setupSamsahai(true)
+
+		By("Starting Samsahai internal process")
+		go samsahaiCtrl.Start(chStop)
+
+		By("Starting http server")
+		mux := http.NewServeMux()
+		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
+		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		ctx := context.TODO()
+
+		By("Creating Config")
+		config := mockConfig
+		redisComp := configCompRedis
+		redisComp.Image.Repository = "bitnami/rediss"
+		redisComp.Image.Pattern = "image-missing"
+		redisComp.Values = map[string]interface{}{
+			"image": map[string]interface{}{
+				"repository": "bitnami/rediss",
+			},
+		}
+		config.Spec.Components = []*s2hv1beta1.Component{&redisComp}
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(client.Create(ctx, &team)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1beta1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		components, err := samsahaiCtrl.GetConfigController().GetComponents(team.Name)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("Send webhook")
+		jsonData, err := json.Marshal(map[string]interface{}{
+			"component": redisCompName,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		componentRepository := components[redisCompName].Image.Repository
+		Expect(componentRepository).NotTo(Equal(""))
+
+		By("Get Team")
+		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &team)).NotTo(HaveOccurred())
+
+		By("Verifying DesiredComponentImageCreatedTime has been updated")
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+			_, _, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
+			if err != nil {
+				return false, nil
+			}
+
+			teamComp := s2hv1beta1.Team{}
+			if err := client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
+				return false, nil
+			}
+
+			image := stringutils.ConcatImageString(componentRepository, "image-missing")
+			if _, ok = teamComp.Status.DesiredComponentImageCreatedTime[redisCompName][image]; !ok {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Update DesiredComponentImageCreatedTime error")
+
+		By("Verifying DesiredComponent has not been created")
+		foundCh := make(chan bool)
+		go func() {
+			const maxCount = 2
+			count := 0
+			for count < maxCount {
+				dc := s2hv1beta1.DesiredComponent{}
+				err := client.Get(
+					ctx,
+					types.NamespacedName{Name: redisCompName, Namespace: team.Status.Namespace.Staging},
+					&dc)
+				if err != nil {
+					count++
+					time.Sleep(time.Second)
+					continue
+				}
+
+				foundCh <- true
+				return
+			}
+			foundCh <- false
+		}()
+		found := <-foundCh
+		Expect(found).To(BeFalse())
+
+	}, 60)
+
 	It("should create DesiredComponent on team staging namespace", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
@@ -1112,114 +1207,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify DesiredComponent error")
 	}, 75)
-
-	It("should detect image missing and not create desired component", func(done Done) {
-		defer close(done)
-		setupSamsahai(true)
-
-		By("Starting Samsahai internal process")
-		go samsahaiCtrl.Start(chStop)
-
-		By("Starting http server")
-		mux := http.NewServeMux()
-		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
-		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
-		server := httptest.NewServer(mux)
-		defer server.Close()
-
-		ctx := context.TODO()
-
-		By("Creating Config")
-		config := mockConfig
-		redisComp := configCompRedis
-		redisComp.Image.Repository = "bitnami/redis-not-found"
-		redisComp.Image.Pattern = "image-missing"
-		redisComp.Values = map[string]interface{}{
-			"image": map[string]interface{}{
-				"repository": "bitnami/redis-not-found",
-			},
-		}
-		config.Spec.Components = []*s2hv1beta1.Component{&redisComp}
-		Expect(client.Create(ctx, &config)).To(BeNil())
-
-		By("Creating Team")
-		team := mockTeam
-		Expect(client.Create(ctx, &team)).To(BeNil())
-
-		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-			namespace := corev1.Namespace{}
-			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
-				return false, nil
-			}
-
-			config := s2hv1beta1.Config{}
-			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
-			if err != nil {
-				return false, nil
-			}
-
-			return true, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
-
-		components, err := samsahaiCtrl.GetConfigController().GetComponents(team.Name)
-		Expect(err).NotTo(HaveOccurred())
-
-		By("Sending webhook & Verifying DesiredComponentImageCreatedTime has been updated")
-		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
-			jsonData, err := json.Marshal(map[string]interface{}{
-				"component": redisCompName,
-			})
-			if err != nil {
-				return false, nil
-			}
-			componentRepository := components[redisCompName].Image.Repository
-			_, _, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
-			if err != nil {
-				return false, nil
-			}
-
-			teamComp := s2hv1beta1.Team{}
-			if err := client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
-				return false, nil
-			}
-
-			image := stringutils.ConcatImageString(componentRepository, "image-missing")
-			if _, ok = teamComp.Status.DesiredComponentImageCreatedTime[redisCompName][image]; !ok {
-				return false, nil
-			}
-
-			return true, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Update DesiredComponentImageCreatedTime error")
-
-		By("Verifying DesiredComponent has not been created")
-		foundCh := make(chan bool)
-		go func() {
-			const maxCount = 2
-			count := 0
-			for count < maxCount {
-				dc := s2hv1beta1.DesiredComponent{}
-				err := client.Get(
-					ctx,
-					types.NamespacedName{Name: redisCompName, Namespace: team.Status.Namespace.Staging},
-					&dc)
-				if err != nil {
-					count++
-					time.Sleep(time.Second)
-					continue
-				}
-
-				foundCh <- true
-				return
-			}
-			foundCh <- false
-		}()
-		found := <-foundCh
-		Expect(found).To(BeFalse())
-
-	}, 60)
 
 	It("should successfully detect changed components", func(done Done) {
 		defer close(done)
@@ -1527,23 +1514,27 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
 
 		By("Waiting pre-active environment is successfully created")
-		atpResCh := make(chan s2hv1beta1.ActivePromotion)
-		go func() {
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
-			for {
-				_ = client.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
-				if atpTemp.Status.IsConditionTrue(s2hv1beta1.ActivePromotionCondPreActiveCreated) {
-					break
-				}
-				time.Sleep(500 * time.Millisecond)
+			if err := client.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp); err != nil {
+				return false, nil
 			}
-			atpResCh <- atpTemp
-		}()
-		atpRes := <-atpResCh
+
+			if atpTemp.Status.IsConditionTrue(s2hv1beta1.ActivePromotionCondPreActiveCreated) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
 
 		By("Checking pre-active namespace has been set")
 		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
 		Expect(teamComp.Status.Namespace.PreActive).ToNot(BeEmpty())
+
+		atpRes := s2hv1beta1.ActivePromotion{}
+		err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &atpRes)
+		Expect(err).NotTo(HaveOccurred(), "Get active promotion error")
 		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
 		Expect(atpRes.Status.PreviousActiveNamespace).To(BeEmpty())
 
@@ -1666,19 +1657,24 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Create staging related objects error")
 
 		By("Waiting pre-active environment is successfully created")
-		atpResCh := make(chan s2hv1beta1.ActivePromotion)
-		go func() {
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpTemp := s2hv1beta1.ActivePromotion{}
-			for {
-				_ = client.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
-				if atpTemp.Status.IsConditionTrue(s2hv1beta1.ActivePromotionCondPreActiveCreated) {
-					break
-				}
-				time.Sleep(500 * time.Millisecond)
+			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
+			if err != nil {
+				return false, nil
 			}
-			atpResCh <- atpTemp
-		}()
-		atpRes := <-atpResCh
+
+			if atpTemp.Status.IsConditionTrue(s2hv1beta1.ActivePromotionCondPreActiveCreated) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete previous namespace error")
+
+		atpRes := s2hv1beta1.ActivePromotion{}
+		err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &atpRes)
+		Expect(err).NotTo(HaveOccurred(), "Get active promotion error")
 
 		By("Checking pre-active namespace has been set")
 		teamComp := s2hv1beta1.Team{}
@@ -1758,7 +1754,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Current active components should not be set")
 		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
-	}, 60)
+	}, 100)
 
 	It("should successfully notify component changed and promote active after creating team", func(done Done) {
 		defer close(done)
@@ -1794,7 +1790,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
 
 		By("Waiting TeamFirstNotifyComponentChanged and TeamFirstActivePromotionRun conditions have been set")
-		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
 			teamComp := s2hv1beta1.Team{}
 			if err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
 				return false, nil
@@ -1821,8 +1817,9 @@ var _ = Describe("[e2e] Main controller", func() {
 
 			return false, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Notify component changed and promote the first active error")
-	}, 20)
+		Expect(err).NotTo(HaveOccurred(),
+			"Notify component changed and promote the first active error")
+	}, 45)
 
 	It("should successfully create cronjob", func(done Done) {
 		defer close(done)
@@ -1935,20 +1932,21 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Apply team template error")
 
 		By("Update team template")
+		stagingCtrlEndpoint := "http://127.0.0.1"
 		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
 			team := s2hv1beta1.Team{}
 			teamUsingTemplate := s2hv1beta1.Team{}
 			if err = client.Get(context.TODO(), types.NamespacedName{Name: mockTeam.Name}, &team); err != nil {
 				return false, nil
 			}
-			team.Spec.StagingCtrl.Endpoint = "http://127.0.0.1"
+			team.Spec.StagingCtrl.Endpoint = stagingCtrlEndpoint
 			if err = client.Update(context.TODO(), &team); err != nil {
 				return false, nil
 			}
 			if err = client.Get(context.TODO(), types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err != nil {
 				return false, nil
 			}
-			if teamUsingTemplate.Status.Used.StagingCtrl.Endpoint == "http://127.0.0.1" &&
+			if teamUsingTemplate.Status.Used.StagingCtrl.Endpoint == stagingCtrlEndpoint &&
 				teamUsingTemplate.Status.TemplateUID == team.Status.TemplateUID {
 				return true, nil
 			}
@@ -1956,7 +1954,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Update team template error")
 
-	}, 10)
+	}, 15)
 })
 
 var (

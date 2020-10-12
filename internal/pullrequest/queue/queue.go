@@ -65,7 +65,7 @@ func (c *controller) SetLastOrder(obj runtime.Object) error {
 		return err
 	}
 
-	prQueue.Labels = c.getStateLabel(stateWaiting)
+	c.appendStateLabel(prQueue, stateWaiting)
 	prQueue.Spec.NoOfOrder = queueList.LastQueueOrder()
 
 	createdAt := prQueue.Status.CreatedAt
@@ -95,7 +95,7 @@ func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt tim
 	}
 
 	now := metav1.Now()
-	prQueue.Labels = c.getStateLabel(stateWaiting)
+	c.appendStateLabel(prQueue, stateWaiting)
 	prQueue.Status = s2hv1beta1.PullRequestQueueStatus{
 		CreatedAt: &now,
 		State:     s2hv1beta1.PullRequestQueueWaiting,
