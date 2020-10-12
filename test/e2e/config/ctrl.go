@@ -30,20 +30,18 @@ import (
 )
 
 const (
-	verifyTime1s           = 1 * time.Second
-//	verifyTime5s           = 5 * time.Second
-//	verifyTime10s          = 10 * time.Second
-//	verifyTime15s          = 15 * time.Second
-	verifyTime30s          = 30 * time.Second
+	verifyTime1s  = 1 * time.Second
+	verifyTime30s = 30 * time.Second
 )
+
 var (
-	samsahaiCtrl   internal.SamsahaiController
-	configCtrl     internal.ConfigController
-	wgStop         *sync.WaitGroup
-	chStop         chan struct{}
-	mgr            manager.Manager
-	client         rclient.Client
-	namespace      string
+	samsahaiCtrl internal.SamsahaiController
+	configCtrl   internal.ConfigController
+	wgStop       *sync.WaitGroup
+	chStop       chan struct{}
+	mgr          manager.Manager
+	client       rclient.Client
+	namespace    string
 )
 
 func setupSamsahai() {
@@ -242,12 +240,11 @@ var (
 			InternalAuthToken: samsahaiAuthToken,
 		},
 	}
-	teamTest  = "teamtest"
-	teamTest2 = "teamtest2"
+	teamTest   = "teamtest"
+	teamTest2  = "teamtest2"
 	testLabels = map[string]string{
 		"created-for": "s2h-testing",
 	}
-
 
 	mockTeam = s2hv1beta1.Team{
 		ObjectMeta: metav1.ObjectMeta{
