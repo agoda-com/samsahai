@@ -113,9 +113,28 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(os.Setenv("S2H_CONFIG_PATH", "../data/application.yaml")).NotTo(HaveOccurred(),
 			"should sent samsahai file config path successfully")
 
+		ctx := context.TODO()
 		By("Creating Secret")
 		secret := mockSecret
-		_ = client.Create(context.TODO(), &secret)
+		_ = client.Create(ctx, &secret)
+
+		By("Deleting all ActivePromotions before running")
+		err = client.DeleteAllOf(ctx, &s2hv1beta1.ActivePromotion{}, rclient.MatchingLabels(testLabels))
+		Expect(err).NotTo(HaveOccurred())
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
+			atpList := s2hv1beta1.ActivePromotionList{}
+			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
+			if err = client.List(ctx, &atpList, listOpt); err != nil {
+				return false, nil
+			}
+
+			if len(atpList.Items) == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete all active promotions before running error")
 	}, 60)
 
 	AfterEach(func(done Done) {
@@ -1113,11 +1132,11 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Creating Config")
 		config := mockConfig
 		redisComp := configCompRedis
-		redisComp.Image.Repository = "bitnami/rediss"
+		redisComp.Image.Repository = "bitnami/redis-not-found"
 		redisComp.Image.Pattern = "image-missing"
 		redisComp.Values = map[string]interface{}{
 			"image": map[string]interface{}{
-				"repository": "bitnami/rediss",
+				"repository": "bitnami/redis-not-found",
 			},
 		}
 		config.Spec.Components = []*s2hv1beta1.Component{&redisComp}
@@ -1147,22 +1166,20 @@ var _ = Describe("[e2e] Main controller", func() {
 		components, err := samsahaiCtrl.GetConfigController().GetComponents(team.Name)
 		Expect(err).NotTo(HaveOccurred())
 
-		By("Send webhook")
-		jsonData, err := json.Marshal(map[string]interface{}{
-			"component": redisCompName,
-		})
+		By("Sending webhook & Verifying DesiredComponentImageCreatedTime has been updated")
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+			jsonData, err := json.Marshal(map[string]interface{}{
+				"component": redisCompName,
+			})
+			if err != nil {
+				return false, nil
+			}
+			componentRepository := components[redisCompName].Image.Repository
+			_, _, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
+			if err != nil {
+				return false, nil
+			}
 
-		componentRepository := components[redisCompName].Image.Repository
-		Expect(err).NotTo(HaveOccurred())
-		_, _, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(componentRepository).NotTo(Equal(""))
-
-		By("Get Team")
-		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &team)).NotTo(HaveOccurred())
-
-		By("Verifying DesiredComponentImageCreatedTime has been updated")
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			teamComp := s2hv1beta1.Team{}
 			if err := client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
 				return false, nil
