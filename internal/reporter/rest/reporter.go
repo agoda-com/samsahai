@@ -130,13 +130,13 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 		return err
 	}
 
-	if config.Status.Used.Reporter == nil ||
-		config.Status.Used.Reporter.Rest == nil ||
-		config.Status.Used.Reporter.Rest.PullRequestQueue == nil {
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Rest == nil ||
+		config.Spec.Reporter.Rest.PullRequestQueue == nil {
 		return nil
 	}
 
-	for _, ep := range config.Status.Used.Reporter.Rest.PullRequestQueue.Endpoints {
+	for _, ep := range config.Spec.Reporter.Rest.PullRequestQueue.Endpoints {
 		restObj := &componentUpgradeRest{NewReporterJSON(), *comp}
 		body, err := json.Marshal(restObj)
 		if err != nil {
@@ -217,13 +217,13 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 		return err
 	}
 
-	if config.Status.Used.Reporter == nil ||
-		config.Status.Used.Reporter.Rest == nil ||
-		config.Status.Used.Reporter.Rest.PullRequestTrigger == nil {
+	if config.Spec.Reporter == nil ||
+		config.Spec.Reporter.Rest == nil ||
+		config.Spec.Reporter.Rest.PullRequestTrigger == nil {
 		return nil
 	}
 
-	for _, ep := range config.Status.Used.Reporter.Rest.PullRequestTrigger.Endpoints {
+	for _, ep := range config.Spec.Reporter.Rest.PullRequestTrigger.Endpoints {
 		restObj := &pullRequestTriggerRest{NewReporterJSON(), *prTriggerRpt}
 		body, err := json.Marshal(restObj)
 		if err != nil {

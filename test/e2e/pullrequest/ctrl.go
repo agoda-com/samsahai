@@ -550,7 +550,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 			By("Creating Config")
 			config := mockConfig
-			config.Status.Used.PullRequest.Components[0].Image.Repository = "missing"
+			config.Spec.PullRequest.Components[0].Image.Repository = "missing"
 			Expect(client.Create(ctx, &config)).To(BeNil())
 
 			By("Creating Team")
@@ -607,7 +607,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger created error")
 
 			By("Verifying PullRequestTrigger has been deleted")
-			err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 				prTrigger := s2hv1beta1.PullRequestTrigger{}
 				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prTrigger)
 				if err != nil && k8serrors.IsNotFound(err) {
@@ -616,7 +616,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 				return false, nil
 			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger deleted error")
+			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger deleteds error")
 		}, 45)
 
 		It("should update pull request retry queue if deployment fail", func(done Done) {
@@ -872,34 +872,6 @@ var (
 				MaxRetry:     &prMaxRetry,
 			},
 			Reporter: configReporter,
-		},
-		Status: s2hv1beta1.ConfigStatus{
-			Used: s2hv1beta1.ConfigSpec{
-				Staging: &s2hv1beta1.ConfigStaging{
-					Deployment: &s2hv1beta1.ConfigDeploy{},
-				},
-				Components: []*s2hv1beta1.Component{
-					&configCompRedis,
-				},
-				PullRequest: &s2hv1beta1.ConfigPullRequest{
-					Trigger: s2hv1beta1.PullRequestTriggerConfig{
-						PollingTime: metav1.Duration{Duration: 1 * time.Second},
-						MaxRetry:    &prMaxRetry,
-					},
-					Deployment: &s2hv1beta1.ConfigDeploy{},
-					Components: []*s2hv1beta1.PullRequestComponent{
-						{
-							Name:         prCompName,
-							Image:        prImage,
-							Source:       &compSource,
-							Dependencies: []string{prDepCompName},
-						},
-					},
-					Concurrences: 1,
-					MaxRetry:     &prMaxRetry,
-				},
-				Reporter: configReporter,
-			},
 		},
 	}
 )

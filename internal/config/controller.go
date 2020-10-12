@@ -28,7 +28,6 @@ import (
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/http"
-	"github.com/agoda-com/samsahai/internal/util/template"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
 )
 
@@ -166,7 +165,7 @@ func (c *controller) GetPullRequestComponents(configName string) (map[string]*s2
 		return map[string]*s2hv1beta1.Component{}, err
 	}
 
-	if config.Status.Used.PullRequest == nil || config.Status.Used.PullRequest.Components == nil {
+	if config.Spec.PullRequest == nil || config.Spec.PullRequest.Components == nil {
 		return map[string]*s2hv1beta1.Component{}, nil
 	}
 
@@ -176,7 +175,7 @@ func (c *controller) GetPullRequestComponents(configName string) (map[string]*s2
 	}
 
 	filteredPRComps := map[string]*s2hv1beta1.Component{}
-	prComps := config.Status.Used.PullRequest.Components
+	prComps := config.Spec.PullRequest.Components
 	for compName, comp := range filteredComps {
 		for _, prComp := range prComps {
 			if prComp.Name == compName {
@@ -208,7 +207,7 @@ func (c *controller) GetBundles(configName string) (s2hv1beta1.ConfigBundles, er
 		return s2hv1beta1.ConfigBundles{}, err
 	}
 
-	return config.Status.Used.Bundles, nil
+	return config.Spec.Bundles, nil
 }
 
 // GetPriorityQueues returns a list of priority queues which defined in Config
@@ -219,7 +218,7 @@ func (c *controller) GetPriorityQueues(configName string) ([]string, error) {
 		return []string{}, err
 	}
 
-	return config.Status.Used.PriorityQueues, nil
+	return config.Spec.PriorityQueues, nil
 }
 
 // GetPullRequestComponentDependencies returns a pull request component dependencies from configuration
@@ -231,8 +230,8 @@ func (c *controller) GetPullRequestComponentDependencies(configName, prCompName 
 	}
 
 	prDeps := make([]string, 0)
-	if config.Status.Used.PullRequest != nil {
-		for _, prComp := range config.Status.Used.PullRequest.Components {
+	if config.Spec.PullRequest != nil {
+		for _, prComp := range config.Spec.PullRequest.Components {
 			if prComp.Name == prCompName {
 				prDeps = prComp.Dependencies
 				break
@@ -251,7 +250,7 @@ func (c *controller) GetPullRequestConfig(configName string) (*s2hv1beta1.Config
 		return &s2hv1beta1.ConfigPullRequest{}, err
 	}
 
-	prConfig := config.Status.Used.PullRequest
+	prConfig := config.Spec.PullRequest
 	if prConfig == nil {
 		prConfig = &s2hv1beta1.ConfigPullRequest{}
 	}
@@ -288,7 +287,7 @@ func (c *controller) Delete(configName string) error {
 }
 
 // GetEnvValues returns component values per component name by the given env type
-func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType, teamName string) (
+func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType) (
 	map[string]s2hv1beta1.ComponentValues, error) {
 
 	chartValuesURLs, ok := config.Envs[envType]
@@ -300,7 +299,7 @@ func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType, tea
 	out := make(map[string]s2hv1beta1.ComponentValues)
 
 	for chart := range chartValuesURLs {
-		out[chart], err = GetEnvComponentValues(config, chart, teamName, envType)
+		out[chart], err = GetEnvComponentValues(config, chart, envType)
 		if err != nil {
 			return map[string]s2hv1beta1.ComponentValues{}, err
 		}
@@ -310,7 +309,7 @@ func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType, tea
 }
 
 // GetEnvComponentValues returns component values by the given env type and component name
-func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName, teamName string, envType s2hv1beta1.EnvType) (
+func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envType s2hv1beta1.EnvType) (
 	s2hv1beta1.ComponentValues, error) {
 
 	opts := []http.Option{
@@ -335,8 +334,6 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName, teamName str
 				"cannot get values file of %s env from url %s", envType, url)
 		}
 
-		valuesBytes = teamNameRendering(teamName, string(valuesBytes))
-
 		var v map[string]interface{}
 		if err := yaml.Unmarshal(valuesBytes, &v); err != nil {
 			logger.Error(err, "cannot parse component values",
@@ -348,17 +345,6 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName, teamName str
 	}
 
 	return baseValues, nil
-}
-
-type teamObject struct {
-	TeamName string
-}
-
-func teamNameRendering(teamName, values string) []byte {
-	return []byte(template.TextRender("TeamNameRendering",
-		values,
-		teamObject{TeamName: teamName},
-	))
 }
 
 func (c *controller) createCronJob(cronJob batchv1beta1.CronJob) error {

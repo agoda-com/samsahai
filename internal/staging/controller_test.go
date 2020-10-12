@@ -40,7 +40,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypeUpgrade, comps["redis"], "teamtest")
+			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypeUpgrade, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -51,7 +51,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypePreActive, comps["redis"], "teamtest")
+			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypePreActive, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -62,7 +62,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypePromoteToActive, comps["redis"], "teamtest")
+			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypePromoteToActive, comps["redis"])
 			v, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			port, ok := v.(float64)
@@ -73,7 +73,7 @@ var _ = Describe("Apply Env Based Config", func() {
 
 		{
 			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypeDemoteFromActive, comps["redis"], "teamtest")
+			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1beta1.QueueTypeDemoteFromActive, comps["redis"])
 			val, err := dotaccess.Get(values, "master.service.nodePort")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(val).To(BeNil())
@@ -88,7 +88,7 @@ var _ = Describe("Apply Env Based Config", func() {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		wordpress := comps["wordpress"]
-		envValues, err := configctrl.GetEnvComponentValues(&config.Status.Used, "wordpress", "teamtest", s2hv1beta1.EnvBase)
+		envValues, err := configctrl.GetEnvComponentValues(&config.Status.Used, "wordpress", s2hv1beta1.EnvBase)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		values := valuesutil.GenStableComponentValues(wordpress, nil, envValues)

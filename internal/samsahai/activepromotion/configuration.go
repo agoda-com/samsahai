@@ -98,8 +98,8 @@ func (c *controller) getMaxActivePromotionRetry(teamName string) int {
 		return *maxRetry
 	}
 
-	if config.Status.Used.ActivePromotion != nil && config.Status.Used.ActivePromotion.MaxRetry != nil {
-		maxRetry = config.Status.Used.ActivePromotion.MaxRetry
+	if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.MaxRetry != nil {
+		maxRetry = config.Spec.ActivePromotion.MaxRetry
 	}
 
 	return *maxRetry

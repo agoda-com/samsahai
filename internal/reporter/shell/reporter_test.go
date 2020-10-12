@@ -283,20 +283,12 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 								Command: []string{"/bin/sh", "-c"},
 								Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
 							},
-							PullRequestQueue: &s2hv1beta1.CommandAndArgs{
-								Command: []string{"/bin/sh", "-c"},
-								Args:    []string{"echo executing\n echo pull request #{{ .PullRequestComponent.PRNumber }}: {{ .StatusStr }}"},
-							},
 							ActivePromotion: &s2hv1beta1.CommandAndArgs{
 								Command: []string{"echo active promotion status {{ .Result }} #{{ .Runs }}"},
 							},
 							ImageMissing: &s2hv1beta1.CommandAndArgs{
 								Command: []string{"/bin/sh", "-c"},
 								Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }} of {{ .ComponentName }}"},
-							},
-							PullRequestTrigger: &s2hv1beta1.CommandAndArgs{
-								Command: []string{"/bin/sh", "-c"},
-								Args:    []string{"echo pull request trigger of {{ .PRNumber }}: {{ .Result }}"},
 							},
 						},
 					},
