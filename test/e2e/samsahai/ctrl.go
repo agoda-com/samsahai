@@ -1796,22 +1796,8 @@ var _ = Describe("[e2e] Main controller", func() {
 				return false, nil
 			}
 
-			var foundNotifying, foundPromotion bool
-			for i, c := range teamComp.Status.Conditions {
-				if c.Type == s2hv1beta1.TeamFirstNotifyComponentChanged {
-					if teamComp.Status.Conditions[i].Status == corev1.ConditionTrue {
-						foundNotifying = true
-					}
-				}
-
-				if c.Type == s2hv1beta1.TeamFirstActivePromotionRun {
-					if teamComp.Status.Conditions[i].Status == corev1.ConditionTrue {
-						foundPromotion = true
-					}
-				}
-			}
-
-			if foundNotifying && foundPromotion {
+			if teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstNotifyComponentChanged) &&
+				teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstActivePromotionRun) {
 				return true, nil
 			}
 
