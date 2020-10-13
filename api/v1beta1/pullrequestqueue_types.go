@@ -31,6 +31,10 @@ type PullRequestQueueSpec struct {
 	// PRNumber represents a pull request number
 	PRNumber string `json:"prNumber"`
 
+	// CommitSHA represents a commit SHA
+	// +optional
+	CommitSHA string `json:"commitSHA,omitempty"`
+
 	// Components represents a list of components which are deployed
 	// +optional
 	Components QueueComponents `json:"components,omitempty"`

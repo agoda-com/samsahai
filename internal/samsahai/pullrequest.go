@@ -12,7 +12,7 @@ import (
 )
 
 // TriggerPullRequestDeployment creates/updates PullRequestTrigger crd object
-func (c *controller) TriggerPullRequestDeployment(teamName, component, tag, prNumber string) error {
+func (c *controller) TriggerPullRequestDeployment(teamName, component, tag, prNumber, commitSHA string) error {
 	ctx := context.TODO()
 
 	teamComp := s2hv1beta1.Team{}
@@ -35,6 +35,7 @@ func (c *controller) TriggerPullRequestDeployment(teamName, component, tag, prNu
 				Spec: s2hv1beta1.PullRequestTriggerSpec{
 					Component: component,
 					PRNumber:  prNumber,
+					CommitSHA: commitSHA,
 					Image:     &s2hv1beta1.Image{Tag: tag},
 				},
 			}
@@ -55,6 +56,7 @@ func (c *controller) TriggerPullRequestDeployment(teamName, component, tag, prNu
 	}
 
 	prTrigger.Spec.Image.Tag = tag
+	prTrigger.Spec.CommitSHA = commitSHA
 
 	if err := c.client.Update(ctx, &prTrigger); err != nil {
 		return err

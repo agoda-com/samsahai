@@ -17,6 +17,7 @@ import (
 type pullRequestWebhookEventJSON struct {
 	Component string             `json:"component"`
 	PRNumber  intstr.IntOrString `json:"prNumber"`
+	CommitSHA string             `json:"commitSHA,omitempty"`
 	Tag       string             `json:"tag,omitempty"`
 }
 
@@ -60,7 +61,8 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
-	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.Component, jsonData.Tag, jsonData.PRNumber.String())
+	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.Component, jsonData.Tag,
+		jsonData.PRNumber.String(), jsonData.CommitSHA)
 	if err != nil {
 		h.error(w, http.StatusInternalServerError, err)
 	}

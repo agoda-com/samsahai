@@ -101,7 +101,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 	// send pull request history URL
 	prHistURL := r.getPRHistoryURL(comp)
 	prHistDesc := fmt.Sprintf("Samsahai pull request deployment history")
-	err = r.post(githubConfig, commitSHA, LabelNameHistory, prHistDesc, prHistURL, commitStatus,
+	err = r.post(githubConfig, commitSHA, LabelNameHistory, prHistURL, prHistDesc, commitStatus,
 		internal.PullRequestQueueType)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 	// send pull request logs URL
 	prLogsURL := r.getPRLogsURL(comp)
 	prLogsDesc := fmt.Sprintf("Samsahai pull request deployment logs")
-	err = r.post(githubConfig, commitSHA, LabelNameLogs, prLogsDesc, prLogsURL, commitStatus,
+	err = r.post(githubConfig, commitSHA, LabelNameLogs, prLogsURL, prLogsDesc, commitStatus,
 		internal.PullRequestQueueType)
 	if err != nil {
 		return err
@@ -165,19 +165,19 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 func (r *reporter) post(githubConfig *s2hv1beta1.ReporterGithub, commitSHA, labelName, targetURL, description string,
 	commitStatus github.CommitStatus, event internal.EventType) error {
 
+	repository := githubConfig.Repository
+	logger.Debug("start publishing commit status to Github",
+		"event", event, "repository", repository, "commitSHA", commitSHA, "status", commitStatus)
+
 	githubCli := r.github
 	if r.github == nil {
 		githubCli = NewGithubClient(r.githubURL, r.githubToken)
 	}
 
-	repository := githubConfig.Repository
-	logger.Debug("start publishing commit status to Github",
-		"event", event, "repository", repository)
-
 	err := githubCli.PublishCommitStatus(repository, commitSHA, labelName, targetURL, description, commitStatus)
 	if err != nil {
-		logger.Error(err, "cannot publish commit status into github",
-			"repository", repository, "commitSHA", commitSHA)
+		logger.Error(err, "cannot publish commit status into github", "repository", repository,
+			"commitSHA", commitSHA, "labelName", labelName, "targetURL", targetURL, "status", commitStatus)
 		return err
 	}
 
@@ -193,17 +193,17 @@ func (r *reporter) getGithubConfig(teamName string, configCtrl internal.ConfigCo
 	}
 
 	// no Github configuration
-	if config.Spec.Reporter == nil || config.Spec.Reporter.Github == nil {
+	if config.Status.Used.Reporter == nil || config.Status.Used.Reporter.Github == nil {
 		return nil, s2herrors.New("github configuration not found")
 	}
 
-	return config.Spec.Reporter.Github, nil
+	return config.Status.Used.Reporter.Github, nil
 }
 
 func (r *reporter) overrideGithubCredential(comp *internal.ComponentUpgradeReporter,
 	githubConfig *s2hv1beta1.ReporterGithub) {
 
-	if comp.Credential.Github.Token != "" {
+	if comp.Credential.Github != nil && comp.Credential.Github.Token != "" {
 		r.githubToken = comp.Credential.Github.Token
 	}
 
