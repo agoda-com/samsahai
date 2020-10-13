@@ -69,11 +69,13 @@ func NewPullRequestQueue(teamName, namespace, componentName, prNumber, commitSHA
 			Labels:    qLabels,
 		},
 		Spec: s2hv1beta1.PullRequestQueueSpec{
-			TeamName:      teamName,
-			ComponentName: componentName,
-			PRNumber:      prNumber,
-			CommitSHA:     commitSHA,
-			Components:    comps,
+			TeamName:           teamName,
+			ComponentName:      componentName,
+			PRNumber:           prNumber,
+			CommitSHA:          commitSHA,
+			Components:         comps,
+			UpcomingCommitSHA:  commitSHA,
+			UpcomingComponents: comps,
 		},
 		Status: s2hv1beta1.PullRequestQueueStatus{},
 	}
@@ -304,6 +306,9 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 		waitingPRQueues.Items[0].Status.SetCondition(s2hv1beta1.PullRequestQueueCondStarted, corev1.ConditionTrue,
 			"Pull request queue has been started")
 		waitingPRQueues.Items[0].Labels = c.getStateLabel(stateRunning)
+
+		waitingPRQueues.Items[0].Spec.Components = waitingPRQueues.Items[0].Spec.UpcomingComponents
+		waitingPRQueues.Items[0].Spec.CommitSHA = waitingPRQueues.Items[0].Spec.UpcomingCommitSHA
 		if err = c.updatePullRequestQueue(ctx, &waitingPRQueues.Items[0]); err != nil {
 			return
 		}

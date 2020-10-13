@@ -39,6 +39,14 @@ type PullRequestQueueSpec struct {
 	// +optional
 	Components QueueComponents `json:"components,omitempty"`
 
+	// UpcomingCommitSHA represents an upcoming commit SHA in case queue is running
+	// +optional
+	UpcomingCommitSHA string `json:"upcomingCommitSHA,omitempty"`
+
+	// UpcomingComponents represents an upcoming components which are deployed in case queue is running
+	// +optional
+	UpcomingComponents QueueComponents `json:"upcomingComponents,omitempty"`
+
 	// NoOfRetry defines how many times this pull request component has been tested
 	// +optional
 	NoOfRetry int `json:"noOfRetry"`
