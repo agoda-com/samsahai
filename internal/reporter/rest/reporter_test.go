@@ -365,24 +365,15 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		return &s2hv1beta1.Config{}, nil
 	default:
 		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					Rest: &s2hv1beta1.ReporterRest{
-						ComponentUpgrade:   &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-						ActivePromotion:    &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-						ImageMissing:       &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-						PullRequestTrigger: &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-						PullRequestQueue:   &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-					},
-				},
-			},
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
 						Rest: &s2hv1beta1.ReporterRest{
-							ComponentUpgrade: &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-							ActivePromotion:  &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-							ImageMissing:     &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+							ComponentUpgrade:   &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+							ActivePromotion:    &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+							ImageMissing:       &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+							PullRequestTrigger: &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+							PullRequestQueue:   &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
 						},
 					},
 				},

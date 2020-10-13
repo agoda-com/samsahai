@@ -63,10 +63,12 @@ var _ = Describe("publish commit status to github", func() {
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
-				Name:                 "comp1",
-				Status:               rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
-				TeamName:             "owner",
-				PullRequestComponent: &rpc.TeamWithPullRequest{},
+				Name:     "comp1",
+				Status:   rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				TeamName: "owner",
+				PullRequestComponent: &rpc.TeamWithPullRequest{
+					ComponentName: "pr-comp1",
+				},
 			}
 			mockGithubCli := &mockGithub{}
 			r := s2hgithub.New(s2hgithub.WithGithubClient(mockGithubCli))
@@ -100,7 +102,9 @@ var _ = Describe("publish commit status to github", func() {
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
-				PullRequestComponent: &rpc.TeamWithPullRequest{},
+				PullRequestComponent: &rpc.TeamWithPullRequest{
+					ComponentName: "pr-comp1",
+				},
 			}
 			mockGithubCli := &mockGithub{}
 			r := s2hgithub.New(s2hgithub.WithGithubClient(mockGithubCli))
@@ -158,8 +162,16 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
 						Github: &s2hv1beta1.ReporterGithub{
-							BaseURL:    "https://github.com",
-							Repository: "error",
+							Enabled: true,
+							BaseURL: "https://github.com",
+						},
+					},
+					PullRequest: &s2hv1beta1.ConfigPullRequest{
+						Components: []*s2hv1beta1.PullRequestComponent{
+							{
+								Name:          "pr-comp1",
+								GitRepository: "error",
+							},
 						},
 					},
 				},
@@ -171,8 +183,16 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
 						Github: &s2hv1beta1.ReporterGithub{
-							BaseURL:    "https://github.com",
-							Repository: "samsahai/samsahai",
+							Enabled: true,
+							BaseURL: "https://github.com",
+						},
+					},
+					PullRequest: &s2hv1beta1.ConfigPullRequest{
+						Components: []*s2hv1beta1.PullRequestComponent{
+							{
+								Name:          "pr-comp1",
+								GitRepository: "samsahai/samsahai",
+							},
 						},
 					},
 				},

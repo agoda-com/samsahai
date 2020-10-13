@@ -242,7 +242,7 @@ var _ = Describe("send ms teams message", func() {
 				rpcComp,
 				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
 				internal.WithTestRunner(testRunner),
-				internal.WithQueueHistoryName("comp1-5678"),
+				internal.WithQueueHistoryName("pr-comp1-5678"),
 				internal.WithNamespace("pr-namespace"),
 			)
 			err := r.SendPullRequestQueue(configCtrl, comp)
@@ -260,9 +260,9 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("#2"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("pr-namespace"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(
-				`<a href="http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log">Download here</a>`))
+				`<a href="http://localhost:8080/teams/owner/pullrequest/queue/histories/pr-comp1-5678/log">Download here</a>`))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(
-				`<a href="http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678">Click here</a>`))
+				`<a href="http://localhost:8080/teams/owner/pullrequest/queue/histories/pr-comp1-5678">Click here</a>`))
 		})
 	})
 

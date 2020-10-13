@@ -93,6 +93,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 		return nil
 	}
 
+	repository := r.getGithubRepository(comp, configCtrl)
 	r.overrideGithubCredential(comp, githubConfig)
 
 	commitSHA := comp.PullRequestComponent.CommitSHA
@@ -101,7 +102,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 	// send pull request history URL
 	prHistURL := r.getPRHistoryURL(comp)
 	prHistDesc := fmt.Sprintf("Samsahai pull request deployment history")
-	err = r.post(githubConfig, commitSHA, LabelNameHistory, prHistURL, prHistDesc, commitStatus,
+	err = r.post(githubConfig, repository, commitSHA, LabelNameHistory, prHistURL, prHistDesc, commitStatus,
 		internal.PullRequestQueueType)
 	if err != nil {
 		return err
@@ -110,7 +111,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 	// send pull request logs URL
 	prLogsURL := r.getPRLogsURL(comp)
 	prLogsDesc := fmt.Sprintf("Samsahai pull request deployment logs")
-	err = r.post(githubConfig, commitSHA, LabelNameLogs, prLogsURL, prLogsDesc, commitStatus,
+	err = r.post(githubConfig, repository, commitSHA, LabelNameLogs, prLogsURL, prLogsDesc, commitStatus,
 		internal.PullRequestQueueType)
 	if err != nil {
 		return err
@@ -162,10 +163,14 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return nil
 }
 
-func (r *reporter) post(githubConfig *s2hv1beta1.ReporterGithub, commitSHA, labelName, targetURL, description string,
+func (r *reporter) post(githubConfig *s2hv1beta1.ReporterGithub,
+	repository, commitSHA, labelName, targetURL, description string,
 	commitStatus github.CommitStatus, event internal.EventType) error {
 
-	repository := githubConfig.Repository
+	if !githubConfig.Enabled || repository == "" {
+		return nil
+	}
+
 	logger.Debug("start publishing commit status to Github",
 		"event", event, "repository", repository, "commitSHA", commitSHA, "status", commitStatus)
 
@@ -198,6 +203,33 @@ func (r *reporter) getGithubConfig(teamName string, configCtrl internal.ConfigCo
 	}
 
 	return config.Status.Used.Reporter.Github, nil
+}
+
+func (r *reporter) getGithubRepository(comp *internal.ComponentUpgradeReporter,
+	configCtrl internal.ConfigController) string {
+
+	config, err := configCtrl.Get(comp.TeamName)
+	if err != nil {
+		return ""
+	}
+
+	// no Github configuration
+	if comp.PullRequestComponent == nil {
+		return ""
+	}
+
+	repository := ""
+	prCompName := comp.PullRequestComponent.ComponentName
+	if config.Status.Used.PullRequest != nil && len(config.Status.Used.PullRequest.Components) > 0 {
+		for _, comp := range config.Status.Used.PullRequest.Components {
+			if comp.Name == prCompName {
+				repository = comp.GitRepository
+				break
+			}
+		}
+	}
+
+	return repository
 }
 
 func (r *reporter) overrideGithubCredential(comp *internal.ComponentUpgradeReporter,

@@ -204,15 +204,6 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		return &s2hv1beta1.Config{}, nil
 	case "env":
 		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					Shell: &s2hv1beta1.ReporterShell{
-						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
-							Command: []string{"echo {{ .Envs.TEST_ENV }}"},
-						},
-					},
-				},
-			},
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
@@ -227,15 +218,6 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		}, nil
 	case "failure":
 		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					Shell: &s2hv1beta1.ReporterShell{
-						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
-							Command: []string{"/bin/sleep", "5"},
-						},
-					},
-				},
-			},
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
@@ -250,31 +232,6 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		}, nil
 	default:
 		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					Shell: &s2hv1beta1.ReporterShell{
-						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
-							Command: []string{"/bin/sh", "-c"},
-							Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
-						},
-						PullRequestQueue: &s2hv1beta1.CommandAndArgs{
-							Command: []string{"/bin/sh", "-c"},
-							Args:    []string{"echo executing\n echo pull request #{{ .PullRequestComponent.PRNumber }}: {{ .StatusStr }}"},
-						},
-						ActivePromotion: &s2hv1beta1.CommandAndArgs{
-							Command: []string{"echo active promotion status {{ .Result }} #{{ .Runs }}"},
-						},
-						ImageMissing: &s2hv1beta1.CommandAndArgs{
-							Command: []string{"/bin/sh", "-c"},
-							Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }} of {{ .ComponentName }}"},
-						},
-						PullRequestTrigger: &s2hv1beta1.CommandAndArgs{
-							Command: []string{"/bin/sh", "-c"},
-							Args:    []string{"echo pull request trigger of {{ .PRNumber }}: {{ .Result }}"},
-						},
-					},
-				},
-			},
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
@@ -283,12 +240,20 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 								Command: []string{"/bin/sh", "-c"},
 								Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
 							},
+							PullRequestQueue: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"/bin/sh", "-c"},
+								Args:    []string{"echo executing\n echo pull request #{{ .PullRequestComponent.PRNumber }}: {{ .StatusStr }}"},
+							},
 							ActivePromotion: &s2hv1beta1.CommandAndArgs{
 								Command: []string{"echo active promotion status {{ .Result }} #{{ .Runs }}"},
 							},
 							ImageMissing: &s2hv1beta1.CommandAndArgs{
 								Command: []string{"/bin/sh", "-c"},
 								Args:    []string{"echo image missing {{ .Repository }}:{{ .Tag }} of {{ .ComponentName }}"},
+							},
+							PullRequestTrigger: &s2hv1beta1.CommandAndArgs{
+								Command: []string{"/bin/sh", "-c"},
+								Args:    []string{"echo pull request trigger of {{ .PRNumber }}: {{ .Result }}"},
 							},
 						},
 					},

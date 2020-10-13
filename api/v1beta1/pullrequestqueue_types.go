@@ -244,6 +244,10 @@ func (prql *PullRequestQueueList) LastQueueOrder() int {
 	return prql.Items[len(prql.Items)-1].Spec.NoOfOrder + 1
 }
 
+func (prq *PullRequestQueue) IsFailure() bool {
+	return prq.Status.Result == PullRequestQueueFailure
+}
+
 func (prq *PullRequestQueue) IsCanceled() bool {
 	return prq.Status.Result == PullRequestQueueCanceled
 }

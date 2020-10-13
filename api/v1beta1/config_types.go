@@ -267,10 +267,12 @@ type ConfigPullRequestQueueReport struct {
 // ReporterGithub defines a configuration of github reporter
 // supports pull request queue reporter type only
 type ReporterGithub struct {
+	// Enabled represents an enabled flag
+	// +optional
+	Enabled bool `json:"enabled"`
 	// BaseURL represents a github base url e.g., https://github.com
-	BaseURL string `json:"baseURL"`
-	// Repository represents a string of git owner/repository e.g., agoda-com/samsahai
-	Repository string `json:"repository"`
+	// +optional
+	BaseURL string `json:"baseURL,omitempty"`
 }
 
 // ReporterRest defines a configuration of http rest
@@ -344,7 +346,11 @@ type PullRequestComponent struct {
 	Source *UpdatingSource `json:"source,omitempty"`
 	// Dependencies defines a list of components which are required to be deployed together with the main component
 	// +optional
-	Dependencies           []string `json:"dependencies,omitempty"`
+	Dependencies []string `json:"dependencies,omitempty"`
+	// GitRepository represents a string of git owner/repository e.g., agoda-com/samsahai
+	// used for publishing commit status
+	// +optional
+	GitRepository          string `json:"gitRepository,omitempty"`
 	PullRequestExtraConfig `json:",inline"`
 }
 
