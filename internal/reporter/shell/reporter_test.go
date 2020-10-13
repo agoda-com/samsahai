@@ -206,7 +206,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		return &s2hv1beta1.Config{
 			Spec: s2hv1beta1.ConfigSpec{
 				Reporter: &s2hv1beta1.ConfigReporter{
-					Shell: &s2hv1beta1.Shell{
+					Shell: &s2hv1beta1.ReporterShell{
 						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
 							Command: []string{"echo {{ .Envs.TEST_ENV }}"},
 						},
@@ -216,7 +216,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
-						Shell: &s2hv1beta1.Shell{
+						Shell: &s2hv1beta1.ReporterShell{
 							ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
 								Command: []string{"echo {{ .Envs.TEST_ENV }}"},
 							},
@@ -229,7 +229,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		return &s2hv1beta1.Config{
 			Spec: s2hv1beta1.ConfigSpec{
 				Reporter: &s2hv1beta1.ConfigReporter{
-					Shell: &s2hv1beta1.Shell{
+					Shell: &s2hv1beta1.ReporterShell{
 						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
 							Command: []string{"/bin/sleep", "5"},
 						},
@@ -239,7 +239,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
-						Shell: &s2hv1beta1.Shell{
+						Shell: &s2hv1beta1.ReporterShell{
 							ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
 								Command: []string{"/bin/sleep", "5"},
 							},
@@ -252,7 +252,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		return &s2hv1beta1.Config{
 			Spec: s2hv1beta1.ConfigSpec{
 				Reporter: &s2hv1beta1.ConfigReporter{
-					Shell: &s2hv1beta1.Shell{
+					Shell: &s2hv1beta1.ReporterShell{
 						ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
 							Command: []string{"/bin/sh", "-c"},
 							Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},
@@ -278,7 +278,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
-						Shell: &s2hv1beta1.Shell{
+						Shell: &s2hv1beta1.ReporterShell{
 							ComponentUpgrade: &s2hv1beta1.CommandAndArgs{
 								Command: []string{"/bin/sh", "-c"},
 								Args:    []string{"echo executing\n echo upgraded component {{ .StatusStr }}"},

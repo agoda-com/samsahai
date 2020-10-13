@@ -670,7 +670,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		return &s2hv1beta1.Config{
 			Spec: s2hv1beta1.ConfigSpec{
 				Reporter: &s2hv1beta1.ConfigReporter{
-					MSTeams: &s2hv1beta1.MSTeams{
+					MSTeams: &s2hv1beta1.ReporterMSTeams{
 						Groups: []s2hv1beta1.MSTeamsGroup{
 							{
 								GroupNameOrID:    "group-1",
@@ -687,7 +687,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
-						MSTeams: &s2hv1beta1.MSTeams{
+						MSTeams: &s2hv1beta1.ReporterMSTeams{
 							Groups: []s2hv1beta1.MSTeamsGroup{
 								{
 									GroupNameOrID:    "group-1",
@@ -707,7 +707,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		return &s2hv1beta1.Config{
 			Spec: s2hv1beta1.ConfigSpec{
 				Reporter: &s2hv1beta1.ConfigReporter{
-					MSTeams: &s2hv1beta1.MSTeams{
+					MSTeams: &s2hv1beta1.ReporterMSTeams{
 						Groups: []s2hv1beta1.MSTeamsGroup{
 							{
 								GroupNameOrID:    "group1",
@@ -728,7 +728,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
-						MSTeams: &s2hv1beta1.MSTeams{
+						MSTeams: &s2hv1beta1.ReporterMSTeams{
 							Groups: []s2hv1beta1.MSTeamsGroup{
 								{
 									GroupNameOrID:    "group1",

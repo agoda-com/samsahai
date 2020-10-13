@@ -572,6 +572,17 @@ func (c *controller) getImageSource(comps map[string]*s2hv1beta1.Component, name
 func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv1beta1.Queue, comp *rpc.ComponentUpgrade) error {
 	configCtrl := c.GetConfigController()
 
+	teamComp := &s2hv1beta1.Team{}
+	err := c.getTeam(comp.TeamName, teamComp)
+	if err != nil {
+		return err
+	}
+
+	if err := c.LoadTeamSecret(teamComp); err != nil {
+		logger.Error(err, "cannot load team secret", "team", teamComp.Name)
+		return err
+	}
+
 	for _, reporter := range c.reporters {
 		testRunner := s2hv1beta1.TestRunner{}
 		if queue != nil {
@@ -584,6 +595,7 @@ func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv
 			s2h.WithTestRunner(testRunner),
 			s2h.WithQueueHistoryName(queueHistName),
 			s2h.WithNamespace(comp.PullRequestNamespace),
+			s2h.WithComponentUpgradeOptCredential(teamComp.Status.Used.Credential),
 		)
 
 		if comp.PullRequestComponent != nil && comp.PullRequestComponent.PRNumber != "" {

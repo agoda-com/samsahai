@@ -83,8 +83,8 @@ var _ = Describe("Github REST API", func() {
 			}))
 			defer server.Close()
 
-			githubClient = github.NewClient(server.URL, repository, token)
-			err := githubClient.PublishCommitStatus(commitSHA, labelName, targetURL, description, status)
+			githubClient = github.NewClient(server.URL, token)
+			err := githubClient.PublishCommitStatus(repository, commitSHA, labelName, targetURL, description, status)
 			g.Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -101,8 +101,9 @@ var _ = Describe("Github REST API", func() {
 			}))
 			defer server.Close()
 
-			githubClient = github.NewClient(server.URL, repository, token)
-			err := githubClient.PublishCommitStatus("", "", "", "", "")
+			githubClient = github.NewClient(server.URL, token)
+			err := githubClient.PublishCommitStatus("", "", "", "",
+				"", "")
 			g.Expect(err).NotTo(BeNil())
 		})
 	})
