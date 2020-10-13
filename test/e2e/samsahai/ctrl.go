@@ -1480,6 +1480,57 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())
 	}, 60)
 
+	It("should successfully notify component changed and promote active after creating team", func(done Done) {
+		defer close(done)
+		setupSamsahai(false)
+		ctx := context.TODO()
+
+		By("Creating Config")
+		config := mockConfigOnlyRedis
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		Expect(client.Create(ctx, &team)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1beta1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
+
+		teamComp := s2hv1beta1.Team{}
+		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
+
+		By("Waiting TeamFirstNotifyComponentChanged and TeamFirstActivePromotionRun conditions have been set")
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+			teamComp := s2hv1beta1.Team{}
+			if err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
+				return false, nil
+			}
+
+			if teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstNotifyComponentChanged) &&
+				teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstActivePromotionRun) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(),
+			"Notify component changed and promote the first active error")
+	}, 45)
+
 	It("should successfully set new active namespace when success promotion on team creation", func(done Done) {
 		defer close(done)
 		setupSamsahai(false)
@@ -1756,57 +1807,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
 	}, 100)
 
-	It("should successfully notify component changed and promote active after creating team", func(done Done) {
-		defer close(done)
-		setupSamsahai(false)
-		ctx := context.TODO()
-
-		By("Creating Config")
-		config := mockConfigOnlyRedis
-		Expect(client.Create(ctx, &config)).To(BeNil())
-
-		By("Creating Team")
-		team := mockTeam
-		Expect(client.Create(ctx, &team)).To(BeNil())
-
-		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-			namespace := corev1.Namespace{}
-			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
-				return false, nil
-			}
-
-			config := s2hv1beta1.Config{}
-			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
-			if err != nil {
-				return false, nil
-			}
-
-			return true, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
-
-		teamComp := s2hv1beta1.Team{}
-		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
-
-		By("Waiting TeamFirstNotifyComponentChanged and TeamFirstActivePromotionRun conditions have been set")
-		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
-			teamComp := s2hv1beta1.Team{}
-			if err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
-				return false, nil
-			}
-
-			if teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstNotifyComponentChanged) &&
-				teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstActivePromotionRun) {
-				return true, nil
-			}
-
-			return false, nil
-		})
-		Expect(err).NotTo(HaveOccurred(),
-			"Notify component changed and promote the first active error")
-	}, 45)
-
 	It("should successfully create cronjob", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
@@ -1961,8 +1961,8 @@ var (
 		},
 	}
 
-	teamName  = "teamtest"
-	teamName2 = "teamtest2"
+	teamName  = "teamtest-main"
+	teamName2 = "teamtest-main-2"
 	teamForQ1 = teamName + "-q1"
 	teamForQ2 = teamName + "-q2"
 	teamForQ3 = teamName + "-q3"

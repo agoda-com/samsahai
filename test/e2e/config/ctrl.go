@@ -127,6 +127,17 @@ var _ = Describe("[e2e] Config controller", func() {
 		Expect(client.Create(ctx, config)).To(BeNil())
 
 		By("Get Config")
+		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
+			config = &s2hv1beta1.Config{}
+			err = client.Get(context.TODO(), types.NamespacedName{Name: teamTest}, config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Get config error")
+
 		cfg, err := configCtrl.Get(teamTest)
 		Expect(err).To(BeNil())
 		Expect(cfg.Status.Used).NotTo(BeNil())
@@ -199,9 +210,25 @@ var _ = Describe("[e2e] Config controller", func() {
 		team2 := mockTeam2
 		Expect(client.Create(ctx, &team2)).To(BeNil())
 
-		By("Apply config template")
-		Expect(configCtrl.EnsureConfigTemplateChanged(configUsingTemplate)).To(BeNil())
-		Expect(configUsingTemplate.Status.Used).NotTo(BeNil())
+		By("Verifying config template updated")
+		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
+			configUsingTemplate = &s2hv1beta1.Config{}
+			err = client.Get(context.TODO(), types.NamespacedName{Name: teamTest2}, configUsingTemplate)
+			if err != nil {
+				return false, nil
+			}
+
+			if len(configUsingTemplate.Status.Used.Components) > 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verifying config template updated errors")
+
+		configUsingTemplate = &s2hv1beta1.Config{}
+		err = client.Get(context.TODO(), types.NamespacedName{Name: teamTest2}, configUsingTemplate)
+		Expect(err).NotTo(HaveOccurred())
 		Expect(len(configUsingTemplate.Status.Used.Components)).To(Equal(2))
 		Expect(len(configUsingTemplate.Status.Used.Envs)).To(Equal(4))
 		Expect(configUsingTemplate.Status.Used.Staging).NotTo(BeNil())
@@ -215,6 +242,7 @@ var _ = Describe("[e2e] Config controller", func() {
 
 		config.Spec.ActivePromotion.Deployment.Engine = &mockEngine
 		Expect(configCtrl.Update(config)).To(BeNil())
+
 		configUsingTemplate, err = configCtrl.Get(teamTest2)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(configCtrl.EnsureConfigTemplateChanged(configUsingTemplate)).To(BeNil())
