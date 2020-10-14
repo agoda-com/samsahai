@@ -652,7 +652,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 			By("Creating Config")
 			config := mockConfig
-			config.Spec.PullRequest.Components[0].Image.Repository = "missing"
+			config.Status.Used.PullRequest.Components[0].Image.Repository = "missing"
 			Expect(client.Create(ctx, &config)).To(BeNil())
 
 			By("Creating Team")
@@ -947,36 +947,42 @@ var (
 
 	prMaxRetry    = 2
 	prTriggerName = internal.GenPullRequestComponentName(prCompName, prNumber)
-	mockConfig    = s2hv1beta1.Config{
+
+	configSpec = s2hv1beta1.ConfigSpec{
+		Staging: &s2hv1beta1.ConfigStaging{
+			Deployment: &s2hv1beta1.ConfigDeploy{},
+		},
+		Components: []*s2hv1beta1.Component{
+			&configCompRedis,
+		},
+		PullRequest: &s2hv1beta1.ConfigPullRequest{
+			Trigger: s2hv1beta1.PullRequestTriggerConfig{
+				PollingTime: metav1.Duration{Duration: 1 * time.Second},
+				MaxRetry:    &prMaxRetry,
+			},
+			Deployment: &s2hv1beta1.ConfigDeploy{},
+			Components: []*s2hv1beta1.PullRequestComponent{
+				{
+					Name:         prCompName,
+					Image:        prImage,
+					Source:       &compSource,
+					Dependencies: []string{prDepCompName},
+				},
+			},
+			Concurrences: 1,
+			MaxRetry:     &prMaxRetry,
+		},
+		Reporter: configReporter,
+	}
+
+	mockConfig = s2hv1beta1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
 			Labels: testLabels,
 		},
-		Spec: s2hv1beta1.ConfigSpec{
-			Staging: &s2hv1beta1.ConfigStaging{
-				Deployment: &s2hv1beta1.ConfigDeploy{},
-			},
-			Components: []*s2hv1beta1.Component{
-				&configCompRedis,
-			},
-			PullRequest: &s2hv1beta1.ConfigPullRequest{
-				Trigger: s2hv1beta1.PullRequestTriggerConfig{
-					PollingTime: metav1.Duration{Duration: 1 * time.Second},
-					MaxRetry:    &prMaxRetry,
-				},
-				Deployment: &s2hv1beta1.ConfigDeploy{},
-				Components: []*s2hv1beta1.PullRequestComponent{
-					{
-						Name:         prCompName,
-						Image:        prImage,
-						Source:       &compSource,
-						Dependencies: []string{prDepCompName},
-					},
-				},
-				Concurrences: 1,
-				MaxRetry:     &prMaxRetry,
-			},
-			Reporter: configReporter,
+		Spec: configSpec,
+		Status: s2hv1beta1.ConfigStatus{
+			Used: configSpec,
 		},
 	}
 )

@@ -31,7 +31,8 @@ import (
 
 const (
 	verifyTime1s  = 1 * time.Second
-	verifyTime30s = 30 * time.Second
+	verifyTime10s = 10 * time.Second
+	verifyTime15s = 15 * time.Second
 )
 
 var (
@@ -89,14 +90,10 @@ var _ = Describe("[e2e] Config controller", func() {
 		defer close(done)
 		ctx := context.TODO()
 
-		By("Deleting Config")
-		Expect(configCtrl.Delete(teamTest)).NotTo(HaveOccurred())
-		Expect(configCtrl.Delete(teamTest2)).NotTo(HaveOccurred())
-
 		By("Deleting all Teams")
 		err := client.DeleteAllOf(ctx, &s2hv1beta1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
 			teamList := s2hv1beta1.TeamList{}
 			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = client.List(ctx, &teamList, listOpt)
@@ -111,7 +108,27 @@ var _ = Describe("[e2e] Config controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Delete all Teams error")
 
-	}, 5)
+		By("Deleting all Configs")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			config1 := &s2hv1beta1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamTest}, config1)
+			if err != nil && !errors.IsNotFound(err) {
+				return false, nil
+			}
+
+			_ = client.Delete(ctx, config1)
+
+			config2 := &s2hv1beta1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamTest2}, config2)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+
+			_ = client.Delete(ctx, config2)
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete all Configs error")
+	}, 30)
 
 	It("should successfully get/delete Config", func(done Done) {
 		defer close(done)

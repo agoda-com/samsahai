@@ -28,6 +28,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/http"
+	"github.com/agoda-com/samsahai/internal/util/template"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
 )
 
@@ -287,7 +288,7 @@ func (c *controller) Delete(configName string) error {
 }
 
 // GetEnvValues returns component values per component name by the given env type
-func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType) (
+func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType, teamName string) (
 	map[string]s2hv1beta1.ComponentValues, error) {
 
 	chartValuesURLs, ok := config.Envs[envType]
@@ -299,7 +300,7 @@ func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType) (
 	out := make(map[string]s2hv1beta1.ComponentValues)
 
 	for chart := range chartValuesURLs {
-		out[chart], err = GetEnvComponentValues(config, chart, envType)
+		out[chart], err = GetEnvComponentValues(config, chart, teamName, envType)
 		if err != nil {
 			return map[string]s2hv1beta1.ComponentValues{}, err
 		}
@@ -309,7 +310,7 @@ func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType) (
 }
 
 // GetEnvComponentValues returns component values by the given env type and component name
-func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envType s2hv1beta1.EnvType) (
+func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName, teamName string, envType s2hv1beta1.EnvType) (
 	s2hv1beta1.ComponentValues, error) {
 
 	opts := []http.Option{
@@ -334,6 +335,8 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envTy
 				"cannot get values file of %s env from url %s", envType, url)
 		}
 
+		valuesBytes = teamNameRendering(teamName, string(valuesBytes))
+
 		var v map[string]interface{}
 		if err := yaml.Unmarshal(valuesBytes, &v); err != nil {
 			logger.Error(err, "cannot parse component values",
@@ -345,6 +348,17 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName string, envTy
 	}
 
 	return baseValues, nil
+}
+
+type teamObject struct {
+	TeamName string
+}
+
+func teamNameRendering(teamName, values string) []byte {
+	return []byte(template.TextRender("TeamNameRendering",
+		values,
+		teamObject{TeamName: teamName},
+	))
 }
 
 func (c *controller) createCronJob(cronJob batchv1beta1.CronJob) error {

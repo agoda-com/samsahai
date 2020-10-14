@@ -245,80 +245,51 @@ var _ = Describe("[e2e] Staging controller", func() {
 	}
 
 	bundleName := "db"
+	configSpec := s2hv1beta1.ConfigSpec{
+		Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
+			"base": map[string][]string{
+				wordpressCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/base/wordpress.yaml"},
+			},
+			"staging": map[string][]string{
+				redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
+			},
+			"pre-active": map[string][]string{
+				redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml"},
+			},
+			"active": map[string][]string{
+				redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
+			},
+			"pull-request": map[string][]string{
+				redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/pull-request/redis.yaml"},
+			},
+		},
+		Staging: &s2hv1beta1.ConfigStaging{
+			Deployment: &deployConfig,
+		},
+		ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+			Timeout:          metav1.Duration{Duration: 5 * time.Minute},
+			TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+			Deployment:       &deployConfig,
+		},
+		Reporter: &s2hv1beta1.ConfigReporter{
+			ReportMock: true,
+		},
+		Bundles: s2hv1beta1.ConfigBundles{
+			bundleName: []string{redisCompName, mariaDBCompName},
+		},
+		PriorityQueues: []string{wordpressCompName, redisCompName},
+		Components:     []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
+		PullRequest:    &configPR,
+	}
+
 	mockConfig := s2hv1beta1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
 			Labels: testLabels,
 		},
-		Spec: s2hv1beta1.ConfigSpec{
-			Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
-				"base": map[string][]string{
-					wordpressCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/base/wordpress.yaml"},
-				},
-				"staging": map[string][]string{
-					redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
-				},
-				"pre-active": map[string][]string{
-					redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml"},
-				},
-				"active": map[string][]string{
-					redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
-				},
-				"pull-request": map[string][]string{
-					redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/pull-request/redis.yaml"},
-				},
-			},
-			Staging: &s2hv1beta1.ConfigStaging{
-				Deployment: &deployConfig,
-			},
-			ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
-				Timeout:          metav1.Duration{Duration: 5 * time.Minute},
-				TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
-				Deployment:       &deployConfig,
-			},
-			Reporter: &s2hv1beta1.ConfigReporter{
-				ReportMock: true,
-			},
-			Bundles: s2hv1beta1.ConfigBundles{
-				bundleName: []string{redisCompName, mariaDBCompName},
-			},
-			PriorityQueues: []string{wordpressCompName, redisCompName},
-			Components:     []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
-			PullRequest:    &configPR,
-		},
+		Spec: configSpec,
 		Status: s2hv1beta1.ConfigStatus{
-			Used: s2hv1beta1.ConfigSpec{
-				Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
-					"base": map[string][]string{
-						wordpressCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/base/wordpress.yaml"},
-					},
-					"staging": map[string][]string{
-						redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
-					},
-					"pre-active": map[string][]string{
-						redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/pre-active/redis.yaml"},
-					},
-					"active": map[string][]string{
-						redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
-					},
-				},
-				Staging: &s2hv1beta1.ConfigStaging{
-					Deployment: &deployConfig,
-				},
-				ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
-					Timeout:          metav1.Duration{Duration: 5 * time.Minute},
-					TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
-					Deployment:       &deployConfig,
-				},
-				Reporter: &s2hv1beta1.ConfigReporter{
-					ReportMock: true,
-				},
-				Bundles: s2hv1beta1.ConfigBundles{
-					bundleName: []string{redisCompName, mariaDBCompName},
-				},
-				PriorityQueues: []string{wordpressCompName, redisCompName},
-				Components:     []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
-			},
+			Used: configSpec,
 		},
 	}
 
