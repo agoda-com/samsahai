@@ -49,7 +49,7 @@ func (c *controller) manageQueue(ctx context.Context, currentAtpComp *s2hv1beta1
 			"Creating pre-active environment")
 		waitingAtpComps.Items[0].Status.SetCondition(s2hv1beta1.ActivePromotionCondStarted, corev1.ConditionTrue,
 			"Active promotion has been started")
-		waitingAtpComps.Items[0].Labels = c.getStateLabel(stateRunning)
+		c.appendStateLabel(&waitingAtpComps.Items[0], stateRunning)
 		if err = c.updateActivePromotion(ctx, &waitingAtpComps.Items[0]); err != nil {
 			return
 		}

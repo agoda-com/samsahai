@@ -351,6 +351,17 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue running error")
 
 			By("Verifying Queue component dependencies have been updated")
+			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+				queue := s2hv1beta1.Queue{}
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: prNamespace}, &queue)
+				if err != nil {
+					return false, nil
+				}
+
+				return true, nil
+			})
+			Expect(err).NotTo(HaveOccurred(), "Get pull-request Queue type error")
+
 			queue := s2hv1beta1.Queue{}
 			err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: prNamespace}, &queue)
 			Expect(err).NotTo(HaveOccurred(), "Queue component dependencies should have been updated")
@@ -362,12 +373,12 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			Expect(queue.Spec.Components[1].Repository).To(Equal(prComps[1].Repository))
 			Expect(queue.Spec.Components[1].Version).To(Equal(prComps[1].Version))
 
-			By("Updating mock Queue pull request type")
+			By("Updating mock pull-request Queue type")
 			queue.Status.State = s2hv1beta1.Finished
 			queue.Status.SetCondition(s2hv1beta1.QueueDeployed, corev1.ConditionTrue, "")
 			queue.Status.SetCondition(s2hv1beta1.QueueTested, corev1.ConditionTrue, "")
 			Expect(client.Update(ctx, &queue)).NotTo(HaveOccurred(),
-				"Queue pull request type updated error")
+				"pull-request Queue type updated error")
 
 			By("Verifying PullRequestQueue has been deleted and PullRequestQueueHistory has been created")
 			err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
@@ -698,7 +709,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger created error")
 
 			By("Verifying PullRequestTrigger has been deleted")
-			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 				prTrigger := s2hv1beta1.PullRequestTrigger{}
 				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prTrigger)
 				if err != nil && k8serrors.IsNotFound(err) {
@@ -707,8 +718,8 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 				return false, nil
 			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger deleteds error")
-		}, 45)
+			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger deleted error")
+		}, 60)
 
 		It("should update pull request retry queue if deployment fail", func(done Done) {
 			defer close(done)
@@ -814,7 +825,7 @@ var (
 		},
 	}
 
-	teamName = "teamtest"
+	teamName = "teamtest-pr"
 
 	stgNamespace = fmt.Sprintf("%s%s", internal.AppPrefix, teamName)
 	prNamespace  = fmt.Sprintf("%s-%s-%s", stgNamespace, prCompName, prNumber)
