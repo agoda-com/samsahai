@@ -593,7 +593,7 @@ definitions:
         type: array
       gitRepository:
         description: |-
-          GitRepository represents a string of git owner/repository e.g., agoda-com/samsahai
+          GitRepository represents a string of git "<owner>/<repository>" e.g., agoda-com/samsahai
           used for publishing commit status
           +optional
         type: string

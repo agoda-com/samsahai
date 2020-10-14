@@ -347,7 +347,7 @@ type PullRequestComponent struct {
 	// Dependencies defines a list of components which are required to be deployed together with the main component
 	// +optional
 	Dependencies []string `json:"dependencies,omitempty"`
-	// GitRepository represents a string of git owner/repository e.g., agoda-com/samsahai
+	// GitRepository represents a string of git "<owner>/<repository>" e.g., agoda-com/samsahai
 	// used for publishing commit status
 	// +optional
 	GitRepository          string `json:"gitRepository,omitempty"`

@@ -902,10 +902,10 @@ func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
 		teamComp.Status.Used.Credential.Teamcity.Password = string(s2hSecret.Data[tcPassword.Key])
 	}
 
-	ghCred := teamComp.Status.Used.Credential.Github
-	if ghCred != nil {
-		ghToken := ghCred.TokenRef
-		teamComp.Status.Used.Credential.Github.Token = string(s2hSecret.Data[ghToken.Key])
+	gitCred := teamComp.Status.Used.Credential.Github
+	if gitCred != nil {
+		gitToken := gitCred.TokenRef
+		teamComp.Status.Used.Credential.Github.Token = string(s2hSecret.Data[gitToken.Key])
 	}
 
 	return nil
