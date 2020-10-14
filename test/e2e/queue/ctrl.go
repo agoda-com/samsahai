@@ -19,7 +19,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 	var controller internal.QueueController
 	var namespace string
 	var client rclient.Client
-	var teamName = "example"
+	var teamName = "teamtest-queue"
 
 	BeforeEach(func(done Done) {
 		defer close(done)

@@ -99,7 +99,7 @@ func (c *controller) setup(ctx context.Context, atpComp *s2hv1beta1.ActivePromot
 		atpComp.Spec.SetTearDownDuration(duration)
 	}
 
-	atpComp.Labels = c.getStateLabel(stateWaiting)
+	c.appendStateLabel(atpComp, stateWaiting)
 	atpComp.SetState(s2hv1beta1.ActivePromotionWaiting, "Waiting in queue")
 	logger.Info("activepromotion is waiting in queue", "team", atpComp.Name)
 	return nil

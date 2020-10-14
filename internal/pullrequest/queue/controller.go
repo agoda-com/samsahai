@@ -234,7 +234,7 @@ func (c *controller) setup(prQueue *s2hv1beta1.PullRequestQueue) {
 	logger.Info("pull request queue has been created", "team", c.teamName,
 		"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PRNumber)
 
-	prQueue.Labels = c.getStateLabel(stateWaiting)
+	c.appendStateLabel(prQueue, stateWaiting)
 	prQueue.SetState(s2hv1beta1.PullRequestQueueWaiting)
 
 	logger.Info("pull request is waiting in queue", "team", c.teamName,
@@ -245,6 +245,14 @@ const (
 	stateWaiting = "waiting"
 	stateRunning = "running"
 )
+
+func (c *controller) appendStateLabel(prQueue *s2hv1beta1.PullRequestQueue, state string) {
+	if prQueue.Labels == nil {
+		prQueue.Labels = make(map[string]string)
+	}
+
+	prQueue.Labels["state"] = state
+}
 
 func (c *controller) getStateLabel(state string) map[string]string {
 	return map[string]string{"state": state}
@@ -300,7 +308,8 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 		waitingPRQueues.Items[0].SetState(s2hv1beta1.PullRequestQueueEnvCreating)
 		waitingPRQueues.Items[0].Status.SetCondition(s2hv1beta1.PullRequestQueueCondStarted, corev1.ConditionTrue,
 			"Pull request queue has been started")
-		waitingPRQueues.Items[0].Labels = c.getStateLabel(stateRunning)
+
+		c.appendStateLabel(&waitingPRQueues.Items[0], stateRunning)
 		if err = c.updatePullRequestQueue(ctx, &waitingPRQueues.Items[0]); err != nil {
 			return
 		}
