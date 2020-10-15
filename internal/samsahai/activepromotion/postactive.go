@@ -72,7 +72,7 @@ func (c *controller) sendReport(ctx context.Context, atpComp *s2hv1beta1.ActiveP
 		atpComp.Name,
 		currentNs,
 		runs,
-		internal.WithCredential(teamComp.Status.Used.Credential),
+		internal.WithActivePromotionOptCredential(teamComp.Status.Used.Credential),
 	)
 	c.s2hCtrl.NotifyActivePromotionReport(atpRpt)
 

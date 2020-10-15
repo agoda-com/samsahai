@@ -242,7 +242,7 @@ var _ = Describe("send ms teams message", func() {
 				rpcComp,
 				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
 				internal.WithTestRunner(testRunner),
-				internal.WithQueueHistoryName("comp1-5678"),
+				internal.WithQueueHistoryName("pr-comp1-5678"),
 				internal.WithNamespace("pr-namespace"),
 			)
 			err := r.SendPullRequestQueue(configCtrl, comp)
@@ -260,9 +260,9 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("#2"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("pr-namespace"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(
-				`<a href="http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log">Download here</a>`))
+				`<a href="http://localhost:8080/teams/owner/pullrequest/queue/histories/pr-comp1-5678/log">Download here</a>`))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(
-				`<a href="http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678">Click here</a>`))
+				`<a href="http://localhost:8080/teams/owner/pullrequest/queue/histories/pr-comp1-5678">Click here</a>`))
 		})
 	})
 
@@ -592,9 +592,9 @@ var _ = Describe("send ms teams message", func() {
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
 			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
 			err := r.SendComponentUpgrade(configCtrl, comp)
+			g.Expect(err).To(HaveOccurred())
 			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(1))
 			g.Expect(mockMSTeamsCli.getChannelIDCalls).Should(Equal(1))
-			g.Expect(err).To(HaveOccurred())
 		})
 	})
 })
@@ -668,26 +668,10 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		return &s2hv1beta1.Config{}, nil
 	case "failure":
 		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					MSTeams: &s2hv1beta1.MSTeams{
-						Groups: []s2hv1beta1.MSTeamsGroup{
-							{
-								GroupNameOrID:    "group-1",
-								ChannelNameOrIDs: []string{"msg-error", "chan-error"},
-							},
-							{
-								GroupNameOrID:    "group-error",
-								ChannelNameOrIDs: []string{"chan-1"},
-							},
-						},
-					},
-				},
-			},
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
-						MSTeams: &s2hv1beta1.MSTeams{
+						MSTeams: &s2hv1beta1.ReporterMSTeams{
 							Groups: []s2hv1beta1.MSTeamsGroup{
 								{
 									GroupNameOrID:    "group-1",
@@ -705,30 +689,10 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		}, nil
 	default:
 		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					MSTeams: &s2hv1beta1.MSTeams{
-						Groups: []s2hv1beta1.MSTeamsGroup{
-							{
-								GroupNameOrID:    "group1",
-								ChannelNameOrIDs: []string{"chan1-1", "chan1-2"},
-							},
-							{
-								GroupNameOrID:    "group2",
-								ChannelNameOrIDs: []string{"chan2-1"},
-							},
-						},
-						ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgradeReport{
-							Interval: c.interval,
-							Criteria: c.criteria,
-						},
-					},
-				},
-			},
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
-						MSTeams: &s2hv1beta1.MSTeams{
+						MSTeams: &s2hv1beta1.ReporterMSTeams{
 							Groups: []s2hv1beta1.MSTeamsGroup{
 								{
 									GroupNameOrID:    "group1",

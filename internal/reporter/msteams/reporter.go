@@ -44,7 +44,7 @@ func WithMSTeamsClient(msTeams msteams.MSTeams) NewOption {
 // New creates a new Microsoft Teams reporter
 func New(tenantID, clientID, clientSecret, username, password string, opts ...NewOption) internal.Reporter {
 	r := &reporter{
-		msTeams: newMSTeams(tenantID, clientID, clientSecret, username, password),
+		msTeams: newMSTeamsClient(tenantID, clientID, clientSecret, username, password),
 	}
 
 	// apply the new options
@@ -55,12 +55,12 @@ func New(tenantID, clientID, clientSecret, username, password string, opts ...Ne
 	return r
 }
 
-// newMSTeams returns reporter for sending report via Microsoft Teams into specific groups and channels
-func newMSTeams(tenantID, clientID, clientSecret, username, password string) msteams.MSTeams {
+// newMSTeamsClient returns a msteams client for sending report via Microsoft Teams into specific groups and channels
+func newMSTeamsClient(tenantID, clientID, clientSecret, username, password string) msteams.MSTeams {
 	return msteams.NewClient(tenantID, clientID, clientSecret, username, password)
 }
 
-// GetName returns msteams type
+// GetName returns a reporter type
 func (r *reporter) GetName() string {
 	return ReporterName
 }
@@ -374,7 +374,7 @@ func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.Pul
 	return strings.TrimSpace(template.TextRender("SlackPullRequestTriggerResult", message, prTriggerRpt))
 }
 
-func (r *reporter) post(msTeamsConfig *s2hv1beta1.MSTeams, message string, event internal.EventType) error {
+func (r *reporter) post(msTeamsConfig *s2hv1beta1.ReporterMSTeams, message string, event internal.EventType) error {
 	logger.Debug("start sending message to Microsoft Teams groups and channels",
 		"event", event, "groups", msTeamsConfig.Groups)
 
@@ -415,7 +415,7 @@ func (r *reporter) post(msTeamsConfig *s2hv1beta1.MSTeams, message string, event
 	return globalErr
 }
 
-func (r *reporter) getMSTeamsConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1beta1.MSTeams, error) {
+func (r *reporter) getMSTeamsConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1beta1.ReporterMSTeams, error) {
 	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return nil, err

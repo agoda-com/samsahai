@@ -112,7 +112,6 @@ var _ = Describe("Config Controller", func() {
 
 	It("should render teamName values correctly", func() {
 		g := NewWithT(GinkgoT())
-
 		valueTemplate := `
 wordpress:	
   ingress:	

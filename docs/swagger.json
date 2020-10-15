@@ -1222,12 +1222,17 @@
                 "cmd": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Shell"
+                    "$ref": "#/definitions/v1beta1.ReporterShell"
+                },
+                "github": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ReporterGithub"
                 },
                 "msTeams": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.MSTeams"
+                    "$ref": "#/definitions/v1beta1.ReporterMSTeams"
                 },
                 "optionals": {
                     "description": "+optional",
@@ -1243,12 +1248,12 @@
                 "rest": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Rest"
+                    "$ref": "#/definitions/v1beta1.ReporterRest"
                 },
                 "slack": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Slack"
+                    "$ref": "#/definitions/v1beta1.ReporterSlack"
                 }
             }
         },
@@ -1367,6 +1372,11 @@
         "v1beta1.Credential": {
             "type": "object",
             "properties": {
+                "github": {
+                    "description": "Github\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.TokenCredential"
+                },
                 "secretName": {
                     "description": "SecretName",
                     "type": "string"
@@ -1434,32 +1444,6 @@
                 }
             }
         },
-        "v1beta1.MSTeams": {
-            "type": "object",
-            "properties": {
-                "componentUpgrade": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigComponentUpgradeReport"
-                },
-                "groups": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1beta1.MSTeamsGroup"
-                    }
-                },
-                "pullRequestQueue": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigPullRequestQueueReport"
-                },
-                "pullRequestTrigger": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigPullRequestTriggerReport"
-                }
-            }
-        },
         "v1beta1.MSTeamsGroup": {
             "type": "object",
             "properties": {
@@ -1496,6 +1480,10 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "gitRepository": {
+                    "description": "GitRepository represents a string of git \"\u003cowner\u003e/\u003crepository\u003e\" e.g., agoda-com/samsahai\nused for publishing commit status\n+optional",
+                    "type": "string"
                 },
                 "image": {
                     "description": "Image defines an image repository, tag and pattern of pull request component which is a regex of tag\n+optional",
@@ -1580,6 +1568,10 @@
         "v1beta1.PullRequestQueueSpec": {
             "type": "object",
             "properties": {
+                "commitSHA": {
+                    "description": "CommitSHA represents a commit SHA\n+optional",
+                    "type": "string"
+                },
                 "componentName": {
                     "description": "ComponentName represents a pull request Component name",
                     "type": "string"
@@ -1604,6 +1596,15 @@
                 "teamName": {
                     "description": "TeamName represents team owner of the pull request queue",
                     "type": "string"
+                },
+                "upcomingCommitSHA": {
+                    "description": "UpcomingCommitSHA represents an upcoming commit SHA in case queue is running\n+optional",
+                    "type": "string"
+                },
+                "upcomingComponents": {
+                    "description": "UpcomingComponents represents an upcoming components which are deployed in case queue is running\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.QueueComponents"
                 }
             }
         },
@@ -1909,48 +1910,76 @@
                 }
             }
         },
-        "v1beta1.Rest": {
+        "v1beta1.ReporterGithub": {
             "type": "object",
             "properties": {
-                "activePromotion": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
+                "baseURL": {
+                    "description": "BaseURL represents a github base url e.g., https://github.com\n+optional",
+                    "type": "string"
                 },
-                "componentUpgrade": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
-                },
-                "imageMissing": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
-                },
-                "pullRequestQueue": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
-                },
-                "pullRequestTrigger": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
+                "enabled": {
+                    "description": "Enabled represents an enabled flag\n+optional",
+                    "type": "boolean"
                 }
             }
         },
-        "v1beta1.RestObject": {
+        "v1beta1.ReporterMSTeams": {
             "type": "object",
             "properties": {
-                "endpoints": {
+                "componentUpgrade": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigComponentUpgradeReport"
+                },
+                "groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.Endpoint"
+                        "$ref": "#/definitions/v1beta1.MSTeamsGroup"
                     }
+                },
+                "pullRequestQueue": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigPullRequestQueueReport"
+                },
+                "pullRequestTrigger": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigPullRequestTriggerReport"
                 }
             }
         },
-        "v1beta1.Shell": {
+        "v1beta1.ReporterRest": {
+            "type": "object",
+            "properties": {
+                "activePromotion": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.RestObject"
+                },
+                "componentUpgrade": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.RestObject"
+                },
+                "imageMissing": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.RestObject"
+                },
+                "pullRequestQueue": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.RestObject"
+                },
+                "pullRequestTrigger": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.RestObject"
+                }
+            }
+        },
+        "v1beta1.ReporterShell": {
             "type": "object",
             "properties": {
                 "activePromotion": {
@@ -1980,7 +2009,7 @@
                 }
             }
         },
-        "v1beta1.Slack": {
+        "v1beta1.ReporterSlack": {
             "type": "object",
             "properties": {
                 "channels": {
@@ -2003,6 +2032,17 @@
                     "description": "+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.ConfigPullRequestTriggerReport"
+                }
+            }
+        },
+        "v1beta1.RestObject": {
+            "type": "object",
+            "properties": {
+                "endpoints": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1beta1.Endpoint"
+                    }
                 }
             }
         },
@@ -2227,6 +2267,14 @@
                 }
             }
         },
+        "v1beta1.TokenCredential": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
         "v1beta1.UsernamePasswordCredential": {
             "type": "object",
             "properties": {
@@ -2317,6 +2365,9 @@
         "webhook.pullRequestWebhookEventJSON": {
             "type": "object",
             "properties": {
+                "commitSHA": {
+                    "type": "string"
+                },
                 "component": {
                     "type": "string"
                 },

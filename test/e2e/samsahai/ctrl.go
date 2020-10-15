@@ -1580,6 +1580,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
 
 		By("Checking pre-active namespace has been set")
+		teamComp = s2hv1beta1.Team{}
 		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
 		Expect(teamComp.Status.Namespace.PreActive).ToNot(BeEmpty())
 
@@ -2232,30 +2233,24 @@ var (
 		},
 	}
 
+	configSpec = s2hv1beta1.ConfigSpec{
+		Staging:         configStg,
+		ActivePromotion: configAtp,
+		Reporter:        configReporter,
+		Components: []*s2hv1beta1.Component{
+			&configCompRedis,
+			&configCompWordpress,
+		},
+	}
+
 	mockConfig = s2hv1beta1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
 			Labels: testLabels,
 		},
-		Spec: s2hv1beta1.ConfigSpec{
-			Staging:         configStg,
-			ActivePromotion: configAtp,
-			Reporter:        configReporter,
-			Components: []*s2hv1beta1.Component{
-				&configCompRedis,
-				&configCompWordpress,
-			},
-		},
+		Spec: configSpec,
 		Status: s2hv1beta1.ConfigStatus{
-			Used: s2hv1beta1.ConfigSpec{
-				Staging:         configStg,
-				ActivePromotion: configAtp,
-				Reporter:        configReporter,
-				Components: []*s2hv1beta1.Component{
-					&configCompRedis,
-					&configCompWordpress,
-				},
-			},
+			Used: configSpec,
 		},
 	}
 

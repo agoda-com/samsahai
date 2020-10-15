@@ -68,6 +68,10 @@ type Credential struct {
 	// Teamcity
 	// +optional
 	Teamcity *UsernamePasswordCredential `json:"teamcity,omitempty"`
+
+	// Github
+	// +optional
+	Github *TokenCredential `json:"github,omitempty"`
 }
 
 type UsernamePasswordCredential struct {

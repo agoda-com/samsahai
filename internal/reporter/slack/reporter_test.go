@@ -547,7 +547,7 @@ var _ = Describe("send slack message", func() {
 	})
 })
 
-// mockSlack mocks Slack interface
+// mockSlack mocks ReporterSlack interface
 type mockSlack struct {
 	postMessageCalls int
 	channels         []string
@@ -587,17 +587,10 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		return &s2hv1beta1.Config{}, nil
 	case "failure":
 		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					Slack: &s2hv1beta1.Slack{
-						Channels: []string{"error"},
-					},
-				},
-			},
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
-						Slack: &s2hv1beta1.Slack{
+						Slack: &s2hv1beta1.ReporterSlack{
 							Channels: []string{"error"},
 						},
 					},
@@ -606,21 +599,10 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		}, nil
 	default:
 		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					Slack: &s2hv1beta1.Slack{
-						Channels: []string{"chan1", "chan2"},
-						ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgradeReport{
-							Interval: c.interval,
-							Criteria: c.criteria,
-						},
-					},
-				},
-			},
 			Status: s2hv1beta1.ConfigStatus{
 				Used: s2hv1beta1.ConfigSpec{
 					Reporter: &s2hv1beta1.ConfigReporter{
-						Slack: &s2hv1beta1.Slack{
+						Slack: &s2hv1beta1.ReporterSlack{
 							Channels: []string{"chan1", "chan2"},
 							ComponentUpgrade: &s2hv1beta1.ConfigComponentUpgradeReport{
 								Interval: c.interval,

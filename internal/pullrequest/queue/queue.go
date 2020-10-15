@@ -139,7 +139,8 @@ func (c *controller) addQueue(ctx context.Context, prQueue *s2hv1beta1.PullReque
 	currentRetry := tmpPRQueue.Spec.NoOfRetry
 
 	// update pull request queue
-	tmpPRQueue.Spec = prQueue.Spec
+	tmpPRQueue.Spec.UpcomingCommitSHA = prQueue.Spec.UpcomingCommitSHA
+	tmpPRQueue.Spec.UpcomingComponents = prQueue.Spec.UpcomingComponents
 	tmpPRQueue.Spec.NoOfOrder = currentOrder
 	tmpPRQueue.Spec.NoOfRetry = currentRetry
 	if err := c.client.Update(ctx, tmpPRQueue); err != nil {

@@ -38,6 +38,7 @@ import (
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	"github.com/agoda-com/samsahai/internal/reporter/github"
 	"github.com/agoda-com/samsahai/internal/reporter/msteams"
 	"github.com/agoda-com/samsahai/internal/reporter/reportermock"
 	"github.com/agoda-com/samsahai/internal/reporter/rest"
@@ -205,6 +206,7 @@ func (c *controller) loadReporters() {
 		reportermock.New(),
 		rest.New(),
 		shell.New(),
+		github.New(github.WithGithubURL(c.configs.GithubURL), github.WithGithubToken(cred.GithubToken)),
 	}
 
 	if cred.SlackToken != "" {
@@ -213,8 +215,8 @@ func (c *controller) loadReporters() {
 
 	if cred.MSTeams.TenantID != "" && cred.MSTeams.ClientID != "" && cred.MSTeams.ClientSecret != "" &&
 		cred.MSTeams.Username != "" && cred.MSTeams.Password != "" {
-		reporters = append(reporters, msteams.New(cred.MSTeams.TenantID, cred.MSTeams.ClientID, cred.MSTeams.ClientSecret,
-			cred.MSTeams.Username, cred.MSTeams.Password))
+		reporters = append(reporters, msteams.New(cred.MSTeams.TenantID, cred.MSTeams.ClientID,
+			cred.MSTeams.ClientSecret, cred.MSTeams.Username, cred.MSTeams.Password))
 	}
 
 	for _, reporter := range reporters {
@@ -890,6 +892,7 @@ func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
 		return errors.Wrapf(err, "cannot find %s secret in %s namespace", secretName, c.namespace)
 	}
 
+	// currently, has been used only sending reporter not test runner
 	tcCred := teamComp.Status.Used.Credential.Teamcity
 	if tcCred != nil {
 		tcUsername := tcCred.UsernameRef
@@ -897,6 +900,12 @@ func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
 
 		tcPassword := tcCred.PasswordRef
 		teamComp.Status.Used.Credential.Teamcity.Password = string(s2hSecret.Data[tcPassword.Key])
+	}
+
+	gitCred := teamComp.Status.Used.Credential.Github
+	if gitCred != nil {
+		gitToken := gitCred.TokenRef
+		teamComp.Status.Used.Credential.Github.Token = string(s2hSecret.Data[gitToken.Key])
 	}
 
 	return nil

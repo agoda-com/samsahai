@@ -31,9 +31,21 @@ type PullRequestQueueSpec struct {
 	// PRNumber represents a pull request number
 	PRNumber string `json:"prNumber"`
 
+	// CommitSHA represents a commit SHA
+	// +optional
+	CommitSHA string `json:"commitSHA,omitempty"`
+
 	// Components represents a list of components which are deployed
 	// +optional
 	Components QueueComponents `json:"components,omitempty"`
+
+	// UpcomingCommitSHA represents an upcoming commit SHA in case queue is running
+	// +optional
+	UpcomingCommitSHA string `json:"upcomingCommitSHA,omitempty"`
+
+	// UpcomingComponents represents an upcoming components which are deployed in case queue is running
+	// +optional
+	UpcomingComponents QueueComponents `json:"upcomingComponents,omitempty"`
 
 	// NoOfRetry defines how many times this pull request component has been tested
 	// +optional
@@ -230,6 +242,10 @@ func (prql *PullRequestQueueList) LastQueueOrder() int {
 	}
 	sort.Sort(PullRequestQueueByNoOfOrder(prql.Items))
 	return prql.Items[len(prql.Items)-1].Spec.NoOfOrder + 1
+}
+
+func (prq *PullRequestQueue) IsFailure() bool {
+	return prq.Status.Result == PullRequestQueueFailure
 }
 
 func (prq *PullRequestQueue) IsCanceled() bool {

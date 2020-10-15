@@ -29,6 +29,7 @@ func GetTeamLabelKey() string {
 type SamsahaiCredential struct {
 	InternalAuthToken string
 	SlackToken        string
+	GithubToken       string
 	MSTeams           MSTeamsCredential
 	TeamcityUsername  string
 	TeamcityPassword  string
@@ -57,6 +58,9 @@ type SamsahaiConfig struct {
 
 	// SamsahaiExternalURL defines a Samsahai external url
 	SamsahaiExternalURL string `json:"s2hExternalURL" yaml:"s2hExternalURL"`
+
+	// GithubURL defines a Github url
+	GithubURL string `json:"githubURL" yaml:"githubURL"`
 
 	// TeamcityURL defines a Teamcity url
 	TeamcityURL string `json:"teamcityURL" yaml:"teamcityURL"`
@@ -190,7 +194,7 @@ type SamsahaiController interface {
 	NotifyActivePromotionReport(atpRpt *ActivePromotionReporter)
 
 	// TriggerPullRequestDeployment creates PullRequestTrigger crd object
-	TriggerPullRequestDeployment(teamName, component, tag, prNumber string) error
+	TriggerPullRequestDeployment(teamName, component, tag, prNumber, commitSHA string) error
 
 	// API
 

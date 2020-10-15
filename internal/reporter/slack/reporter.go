@@ -369,7 +369,7 @@ func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.Pul
 	return strings.TrimSpace(template.TextRender("SlackPullRequestTriggerResult", message, prTriggerRpt))
 }
 
-func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event internal.EventType) error {
+func (r *reporter) post(slackConfig *s2hv1beta1.ReporterSlack, message string, event internal.EventType) error {
 	logger.Debug("start sending message to slack channels",
 		"event", event, "channels", slackConfig.Channels)
 	var globalErr error
@@ -383,7 +383,7 @@ func (r *reporter) post(slackConfig *s2hv1beta1.Slack, message string, event int
 	return globalErr
 }
 
-func (r *reporter) getSlackConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1beta1.Slack, error) {
+func (r *reporter) getSlackConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1beta1.ReporterSlack, error) {
 	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return nil, err
