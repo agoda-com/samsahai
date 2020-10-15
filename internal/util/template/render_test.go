@@ -17,9 +17,39 @@ func TestUnit(t *testing.T) {
 var _ = Describe("render template", func() {
 	g := NewGomegaWithT(GinkgoT())
 
-	It("should fail to render", func() {
-		message := "Fail to render {{ .Value | MissingFunc }}"
-		out := template.TextRender("FailToRender", message, nil)
-		g.Expect(out).To(BeEmpty())
+	data := struct {
+		Name string
+	}{
+		Name: "foo",
+	}
+
+	It("should correctly render", func() {
+		message := "name: {{ .Name }}"
+		out := template.TextRender("SuccessRender", message, data)
+		g.Expect(out).To(Equal("name: foo"))
+	})
+
+	It("should ignore value if it is missing", func() {
+		message := `
+name: {{ .Name }}
+url: {{ .Data.URL }}
+`
+		out := template.TextRender("IgnoreMissingValues", message, data)
+		g.Expect(out).To(Equal(`
+name: foo
+url: {{.Data.URL}}
+`))
+	})
+
+	It("should return same text if error", func() {
+		message := `
+name: {{ .Name }}
+url: {{{ .Data.URL }}}
+`
+		out := template.TextRender("TemplateError", message, data)
+		g.Expect(out).To(Equal(`
+name: {{ .Name }}
+url: {{{ .Data.URL }}}
+`))
 	})
 })
