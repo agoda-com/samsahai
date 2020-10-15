@@ -113,21 +113,21 @@ var _ = Describe("Config Controller", func() {
 	It("should render teamName values correctly", func() {
 		g := NewWithT(GinkgoT())
 
-		valueTemplate := `	
-			wordpress:	
-			  ingress:	
-				hosts:	
-				- wordpress.{{ .TeamName }}-1
-                - wordpress.{{ .Team.Missing.Data }}-2
+		valueTemplate := `
+wordpress:	
+  ingress:	
+    hosts:	
+    - wordpress.{{ .TeamName }}-1
+    - wordpress.{{ .Team.Missing.Data }}-2
 `
 
 		Values := teamNameRendering(teamTest, valueTemplate)
-		g.Expect(string(Values)).To(Equal(`	
-			wordpress:	
-			  ingress:	
-				hosts:	
-				- wordpress.teamtest-1
-                - wordpress.{{.Team.Missing.Data}}-2
+		g.Expect(string(Values)).To(Equal(`
+wordpress:	
+  ingress:	
+    hosts:	
+    - wordpress.teamtest-1
+    - wordpress.{{.Team.Missing.Data}}-2
 `,
 		))
 	})
@@ -336,6 +336,5 @@ var _ = Describe("Config Controller", func() {
 			g.Expect(deletingResult).To(ConsistOf(mockCronJobs.Items))
 
 		})
-
 	})
 })
