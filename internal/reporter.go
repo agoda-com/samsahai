@@ -47,6 +47,13 @@ func WithNamespace(ns string) ComponentUpgradeOption {
 	}
 }
 
+// WithComponentUpgradeOptCredential specifies credential to override when create component upgrade reporter object
+func WithComponentUpgradeOptCredential(creds s2hv1beta1.Credential) ComponentUpgradeOption {
+	return func(c *ComponentUpgradeReporter) {
+		c.Credential = creds
+	}
+}
+
 // ComponentUpgradeReporter manages component upgrade report
 type ComponentUpgradeReporter struct {
 	IssueTypeStr IssueType             `json:"issueTypeStr,omitempty"`
@@ -101,8 +108,8 @@ const (
 type ActivePromotionOption func(*ActivePromotionReporter)
 
 // TODO: should override tc credential per team
-// WithCredential specifies credential to override when create active promotion reporter object
-func WithCredential(creds s2hv1beta1.Credential) ActivePromotionOption {
+// WithActivePromotionOptCredential specifies credential to override when create active promotion reporter object
+func WithActivePromotionOptCredential(creds s2hv1beta1.Credential) ActivePromotionOption {
 	return func(c *ActivePromotionReporter) {
 		c.Credential = creds
 	}

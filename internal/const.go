@@ -39,6 +39,8 @@ const (
 	VKTeamcityUsername                = "teamcity-username"
 	VKTeamcityPassword                = "teamcity-password"
 	VKSlackToken                      = "slack-token"
+	VKGithubURL                       = "github-url"
+	VKGithubToken                     = "github-token"
 	VKMSTeamsTenantID                 = "ms-teams-tenant-id"
 	VKMSTeamsClientID                 = "ms-teams-client-id"
 	VKMSTeamsClientSecret             = "ms-teams-client-secret"

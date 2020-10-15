@@ -13,7 +13,7 @@ import (
 )
 
 func TestMSTeams(t *testing.T) {
-	unittest.InitGinkgo(t, "Microsoft Teams")
+	unittest.InitGinkgo(t, "Microsoft Teams Util")
 }
 
 var _ = Describe("Microsoft Teams", func() {

@@ -169,13 +169,15 @@ type ConfigReporter struct {
 	// +optional
 	Optional []ReportOption `json:"optionals,omitempty"`
 	// +optional
-	Slack *Slack `json:"slack,omitempty"`
+	Slack *ReporterSlack `json:"slack,omitempty"`
 	// +optional
-	MSTeams *MSTeams `json:"msTeams,omitempty"`
+	MSTeams *ReporterMSTeams `json:"msTeams,omitempty"`
 	// +optional
-	Rest *Rest `json:"rest,omitempty"`
+	Github *ReporterGithub `json:"github,omitempty"`
 	// +optional
-	Shell *Shell `json:"cmd,omitempty"`
+	Rest *ReporterRest `json:"rest,omitempty"`
+	// +optional
+	Shell *ReporterShell `json:"cmd,omitempty"`
 	// +optional
 	ReportMock bool `json:"reportMock,omitempty"`
 }
@@ -212,8 +214,8 @@ const (
 	ConfigRequiredFieldsValidated ConfigConditionType = "ConfigRequiredFieldsValidated"
 )
 
-// Slack defines a configuration of slack
-type Slack struct {
+// ReporterSlack defines a configuration of slack
+type ReporterSlack struct {
 	Channels []string `json:"channels"`
 	// +optional
 	ComponentUpgrade *ConfigComponentUpgradeReport `json:"componentUpgrade,omitempty"`
@@ -223,8 +225,8 @@ type Slack struct {
 	PullRequestQueue *ConfigPullRequestQueueReport `json:"pullRequestQueue,omitempty"`
 }
 
-// MSTeams defines a configuration of Microsoft Teams
-type MSTeams struct {
+// ReporterMSTeams defines a configuration of Microsoft Teams
+type ReporterMSTeams struct {
 	Groups []MSTeamsGroup `json:"groups"`
 	// +optional
 	ComponentUpgrade *ConfigComponentUpgradeReport `json:"componentUpgrade,omitempty"`
@@ -262,8 +264,19 @@ type ConfigPullRequestQueueReport struct {
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
 }
 
-// Rest defines a configuration of http rest
-type Rest struct {
+// ReporterGithub defines a configuration of github reporter
+// supports pull request queue reporter type only
+type ReporterGithub struct {
+	// Enabled represents an enabled flag
+	// +optional
+	Enabled bool `json:"enabled"`
+	// BaseURL represents a github base url e.g., https://github.com
+	// +optional
+	BaseURL string `json:"baseURL,omitempty"`
+}
+
+// ReporterRest defines a configuration of http rest
+type ReporterRest struct {
 	// +optional
 	ComponentUpgrade *RestObject `json:"componentUpgrade,omitempty"`
 	// +optional
@@ -280,8 +293,8 @@ type RestObject struct {
 	Endpoints []*Endpoint `json:"endpoints"`
 }
 
-// Shell defines a configuration of shell command
-type Shell struct {
+// ReporterShell defines a configuration of shell command
+type ReporterShell struct {
 	// +optional
 	ComponentUpgrade *CommandAndArgs `json:"componentUpgrade,omitempty"`
 	// +optional
@@ -333,7 +346,11 @@ type PullRequestComponent struct {
 	Source *UpdatingSource `json:"source,omitempty"`
 	// Dependencies defines a list of components which are required to be deployed together with the main component
 	// +optional
-	Dependencies           []string `json:"dependencies,omitempty"`
+	Dependencies []string `json:"dependencies,omitempty"`
+	// GitRepository represents a string of git "<owner>/<repository>" e.g., agoda-com/samsahai
+	// used for publishing commit status
+	// +optional
+	GitRepository          string `json:"gitRepository,omitempty"`
 	PullRequestExtraConfig `json:",inline"`
 }
 

@@ -61,6 +61,7 @@ func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2
 			TeamName:      c.teamName,
 			ComponentName: prQueue.Spec.ComponentName,
 			PRNumber:      prQueue.Spec.PRNumber,
+			CommitSHA:     prQueue.Spec.CommitSHA,
 			Namespace:     prQueue.Status.PullRequestNamespace,
 			MaxRetryQueue: prConfig.MaxRetry,
 		}

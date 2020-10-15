@@ -56,7 +56,9 @@ func WithClient(client client.Client) Option {
 	}
 }
 
-func NewPullRequestQueue(teamName, namespace, componentName, prNumber string, comps []*s2hv1beta1.QueueComponent) *s2hv1beta1.PullRequestQueue {
+func NewPullRequestQueue(teamName, namespace, componentName, prNumber, commitSHA string,
+	comps []*s2hv1beta1.QueueComponent) *s2hv1beta1.PullRequestQueue {
+
 	qLabels := getPullRequestQueueLabels(teamName, componentName, prNumber)
 	prQueueName := internal.GenPullRequestComponentName(componentName, prNumber)
 
@@ -67,10 +69,13 @@ func NewPullRequestQueue(teamName, namespace, componentName, prNumber string, co
 			Labels:    qLabels,
 		},
 		Spec: s2hv1beta1.PullRequestQueueSpec{
-			TeamName:      teamName,
-			ComponentName: componentName,
-			PRNumber:      prNumber,
-			Components:    comps,
+			TeamName:           teamName,
+			ComponentName:      componentName,
+			PRNumber:           prNumber,
+			CommitSHA:          commitSHA,
+			Components:         comps,
+			UpcomingCommitSHA:  commitSHA,
+			UpcomingComponents: comps,
 		},
 		Status: s2hv1beta1.PullRequestQueueStatus{},
 	}
@@ -305,11 +310,14 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 			"component", waitingPRQueues.Items[0].Name, "prNumber", waitingPRQueues.Items[0].Spec.PRNumber)
 
 		c.addFinalizer(&waitingPRQueues.Items[0])
+		c.appendStateLabel(&waitingPRQueues.Items[0], stateRunning)
+
 		waitingPRQueues.Items[0].SetState(s2hv1beta1.PullRequestQueueEnvCreating)
 		waitingPRQueues.Items[0].Status.SetCondition(s2hv1beta1.PullRequestQueueCondStarted, corev1.ConditionTrue,
 			"Pull request queue has been started")
+		waitingPRQueues.Items[0].Spec.Components = waitingPRQueues.Items[0].Spec.UpcomingComponents
+		waitingPRQueues.Items[0].Spec.CommitSHA = waitingPRQueues.Items[0].Spec.UpcomingCommitSHA
 
-		c.appendStateLabel(&waitingPRQueues.Items[0], stateRunning)
 		if err = c.updatePullRequestQueue(ctx, &waitingPRQueues.Items[0]); err != nil {
 			return
 		}

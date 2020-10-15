@@ -118,8 +118,9 @@ message TeamWithPullRequest {
     string teamName = 1;
     string componentName = 2;
     string PRNumber = 3;
-    string namespace = 4;
-    int32 maxRetryQueue = 5;
+    string commitSHA = 4;
+    string namespace = 5;
+    int32 maxRetryQueue = 6;
 }
 
 message PullRequestConfig {

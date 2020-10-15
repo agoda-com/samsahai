@@ -546,6 +546,97 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			Expect(err).NotTo(HaveOccurred(), "Verify running PullRequestQueue deleted error")
 		}, 45)
 
+		It("should successfully reset pull request queue if commit SHA changed", func(done Done) {
+			defer close(done)
+
+			By("Starting Samsahai internal process")
+			setupSamsahai()
+			go samsahaiCtrl.Start(chStop)
+
+			By("Starting Staging internal process")
+			stagingCtrl, prQueueCtrl := setupStaging(stgNamespace)
+			go stagingCtrl.Start(chStop)
+
+			ctx := context.TODO()
+
+			By("Creating Config")
+			config := mockConfig
+			Expect(client.Create(ctx, &config)).To(BeNil())
+
+			By("Creating Team")
+			teamComp := mockTeam
+			Expect(client.Create(ctx, &teamComp)).To(BeNil())
+
+			By("Verifying namespace and config have been created")
+			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+				namespace := corev1.Namespace{}
+				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+					return false, nil
+				}
+
+				if namespace.Status.Phase == corev1.NamespaceTerminating {
+					return false, nil
+				}
+
+				config := s2hv1beta1.Config{}
+				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
+				if err != nil {
+					return false, nil
+				}
+
+				return true, nil
+			})
+			Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+			Expect(prQueueCtrl.Size(stgNamespace)).To(Equal(0),
+				"should start with empty queue")
+
+			By("Creating mock success PullRequestQueue")
+			prQueue := s2hv1beta1.PullRequestQueue{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      prTriggerName,
+					Namespace: stgNamespace,
+				},
+				Spec: s2hv1beta1.PullRequestQueueSpec{
+					ComponentName:     prCompName,
+					PRNumber:          prNumber,
+					Components:        prComps,
+					CommitSHA:         commitSHA,
+					UpcomingCommitSHA: upComingCommitSHA,
+					NoOfRetry:         2,
+				},
+				Status: s2hv1beta1.PullRequestQueueStatus{
+					Result:               s2hv1beta1.PullRequestQueueSuccess,
+					State:                s2hv1beta1.PullRequestQueueEnvDestroying,
+					PullRequestNamespace: prNamespace,
+				},
+			}
+			Expect(prQueueCtrl.Add(&prQueue, nil)).NotTo(HaveOccurred(),
+				"add pull request queue")
+
+			By("Verifying one PullRequestQueue has been updated")
+			err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+				prQueue := s2hv1beta1.PullRequestQueue{}
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
+				if err != nil {
+					return false, nil
+				}
+
+				if prQueue.Status.State == s2hv1beta1.PullRequestQueueEnvDestroying {
+					return false, nil
+				}
+
+				return true, nil
+			})
+			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue updated error")
+
+			prQueue = s2hv1beta1.PullRequestQueue{}
+			err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(prQueue.Spec.CommitSHA).To(Equal(upComingCommitSHA))
+			Expect(prQueue.Spec.NoOfRetry).To(Equal(0))
+		}, 45)
+
 		It("should do pull request retry trigger if image not found", func(done Done) {
 			defer close(done)
 
@@ -851,66 +942,47 @@ var (
 		},
 	}
 
+	commitSHA         = "12345"
+	upComingCommitSHA = "67890"
+
 	prMaxRetry    = 2
 	prTriggerName = internal.GenPullRequestComponentName(prCompName, prNumber)
-	mockConfig    = s2hv1beta1.Config{
+
+	configSpec = s2hv1beta1.ConfigSpec{
+		Staging: &s2hv1beta1.ConfigStaging{
+			Deployment: &s2hv1beta1.ConfigDeploy{},
+		},
+		Components: []*s2hv1beta1.Component{
+			&configCompRedis,
+		},
+		PullRequest: &s2hv1beta1.ConfigPullRequest{
+			Trigger: s2hv1beta1.PullRequestTriggerConfig{
+				PollingTime: metav1.Duration{Duration: 1 * time.Second},
+				MaxRetry:    &prMaxRetry,
+			},
+			Deployment: &s2hv1beta1.ConfigDeploy{},
+			Components: []*s2hv1beta1.PullRequestComponent{
+				{
+					Name:         prCompName,
+					Image:        prImage,
+					Source:       &compSource,
+					Dependencies: []string{prDepCompName},
+				},
+			},
+			Concurrences: 1,
+			MaxRetry:     &prMaxRetry,
+		},
+		Reporter: configReporter,
+	}
+
+	mockConfig = s2hv1beta1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
 			Labels: testLabels,
 		},
-		Spec: s2hv1beta1.ConfigSpec{
-			Staging: &s2hv1beta1.ConfigStaging{
-				Deployment: &s2hv1beta1.ConfigDeploy{},
-			},
-			Components: []*s2hv1beta1.Component{
-				&configCompRedis,
-			},
-			PullRequest: &s2hv1beta1.ConfigPullRequest{
-				Trigger: s2hv1beta1.PullRequestTriggerConfig{
-					PollingTime: metav1.Duration{Duration: 1 * time.Second},
-					MaxRetry:    &prMaxRetry,
-				},
-				Deployment: &s2hv1beta1.ConfigDeploy{},
-				Components: []*s2hv1beta1.PullRequestComponent{
-					{
-						Name:         prCompName,
-						Image:        prImage,
-						Source:       &compSource,
-						Dependencies: []string{prDepCompName},
-					},
-				},
-				Concurrences: 1,
-				MaxRetry:     &prMaxRetry,
-			},
-			Reporter: configReporter,
-		},
+		Spec: configSpec,
 		Status: s2hv1beta1.ConfigStatus{
-			Used: s2hv1beta1.ConfigSpec{
-				Staging: &s2hv1beta1.ConfigStaging{
-					Deployment: &s2hv1beta1.ConfigDeploy{},
-				},
-				Components: []*s2hv1beta1.Component{
-					&configCompRedis,
-				},
-				PullRequest: &s2hv1beta1.ConfigPullRequest{
-					Trigger: s2hv1beta1.PullRequestTriggerConfig{
-						PollingTime: metav1.Duration{Duration: 1 * time.Second},
-						MaxRetry:    &prMaxRetry,
-					},
-					Deployment: &s2hv1beta1.ConfigDeploy{},
-					Components: []*s2hv1beta1.PullRequestComponent{
-						{
-							Name:         prCompName,
-							Image:        prImage,
-							Source:       &compSource,
-							Dependencies: []string{prDepCompName},
-						},
-					},
-					Concurrences: 1,
-					MaxRetry:     &prMaxRetry,
-				},
-				Reporter: configReporter,
-			},
+			Used: configSpec,
 		},
 	}
 )

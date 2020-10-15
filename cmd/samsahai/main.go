@@ -139,6 +139,7 @@ func startCtrlCmd() *cobra.Command {
 			configs := s2h.SamsahaiConfig{
 				// TODO: move to credential
 				TeamcityURL: viper.GetString(s2h.VKTeamcityURL),
+				GithubURL:   viper.GetString(s2h.VKGithubURL),
 				SamsahaiURL: fmt.Sprintf("%s://%s.%s:%s",
 					viper.GetString(s2h.VKS2HServiceScheme),
 					viper.GetString(s2h.VKS2HServiceName),
@@ -167,6 +168,7 @@ func startCtrlCmd() *cobra.Command {
 				SamsahaiCredential: s2h.SamsahaiCredential{
 					InternalAuthToken: authToken,
 					SlackToken:        viper.GetString(s2h.VKSlackToken),
+					GithubToken:       viper.GetString(s2h.VKGithubToken),
 					TeamcityUsername:  viper.GetString(s2h.VKTeamcityUsername),
 					TeamcityPassword:  viper.GetString(s2h.VKTeamcityPassword),
 					MSTeams: s2h.MSTeamsCredential{
@@ -243,11 +245,13 @@ func startCtrlCmd() *cobra.Command {
 	cmd.Flags().String(s2h.VKServerHTTPPort, s2h.SamsahaiDefaultPort, "The port for http server to listens to.")
 	cmd.Flags().String(s2h.VKMetricHTTPPort, "8081", "The port for prometheus metric to binds to.")
 	cmd.Flags().String(s2h.VKS2HAuthToken, "<random>", "Samsahai server authentication token.")
-	cmd.Flags().String(s2h.VKSlackToken, "", "Slack token for send notification if using slack.")
+	cmd.Flags().String(s2h.VKSlackToken, "", "Slack token for sending notification if using slack.")
 	cmd.Flags().String(s2h.VKS2HImage, defaultImage, "Docker image for running Staging.")
 	cmd.Flags().String(s2h.VKS2HServiceScheme, "http", "Scheme to use for connecting to Samsahai.")
 	cmd.Flags().String(s2h.VKS2HServiceName, "samsahai", "Service name for connecting to Samsahai.")
 	cmd.Flags().String(s2h.VKS2HExternalURL, "http://localhost:8080", "External url for Samsahai.")
+	cmd.Flags().String(s2h.VKGithubToken, "", "Github access token for publishing commit status into github.")
+	cmd.Flags().String(s2h.VKGithubURL, "", "Github base URL used for initializing Github reporter.")
 	cmd.Flags().String(s2h.VKTeamcityURL, "",
 		"Teamcity base URL used for initializing Teamcity test runner.")
 	cmd.Flags().String(s2h.VKTeamcityUsername, "",

@@ -58,7 +58,17 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 		return
 	}
 
-	if prQueue.Status.Result == s2hv1beta1.PullRequestQueueFailure {
+	if prQueue.Spec.CommitSHA != prQueue.Spec.UpcomingCommitSHA {
+		if err = c.SetRetryQueue(prQueue, 0, time.Now()); err != nil {
+			return
+		}
+
+		c.resetQueueOrder(ctx)
+		skipReconcile = true
+		return
+	}
+
+	if prQueue.IsFailure() {
 		maxRetryQueue := int(prConfig.MaxRetry)
 		if prQueue.Spec.NoOfRetry < maxRetryQueue {
 			prQueue.Spec.NoOfRetry++

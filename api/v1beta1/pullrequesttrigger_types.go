@@ -26,6 +26,8 @@ type PullRequestTriggerSpec struct {
 	Component string `json:"component"`
 	PRNumber  string `json:"prNumber"`
 	// +optional
+	CommitSHA string `json:"commitSHA,omitempty"`
+	// +optional
 	Image *Image `json:"image,omitempty"`
 	// +optional
 	Pattern string `json:"pattern,omitempty"`

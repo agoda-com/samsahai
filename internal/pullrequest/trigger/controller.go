@@ -180,9 +180,11 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	// successfully get component version from image registry
 	prTrigger.Status.SetResult(s2hv1beta1.PullRequestTriggerSuccess)
 
+	comp := prTrigger.Spec.Component
 	imgRepo := prTrigger.Spec.Image.Repository
 	prNumber := prTrigger.Spec.PRNumber
-	err = c.createPullRequestQueue(req.Namespace, prTrigger.Spec.Component, imgRepo, version.Version, prNumber)
+	commitSHA := prTrigger.Spec.CommitSHA
+	err = c.createPullRequestQueue(req.Namespace, comp, imgRepo, version.Version, prNumber, commitSHA)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -261,7 +263,7 @@ func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger
 	return prCompSource, nil
 }
 
-func (c *controller) createPullRequestQueue(namespace, compName, compRepo, compVersion, prNumber string) error {
+func (c *controller) createPullRequestQueue(namespace, compName, compRepo, compVersion, prNumber, commitSHA string) error {
 	comps := s2hv1beta1.QueueComponents{
 		{
 			Name:       compName,
@@ -270,7 +272,7 @@ func (c *controller) createPullRequestQueue(namespace, compName, compRepo, compV
 		},
 	}
 
-	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, compName, prNumber, comps)
+	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, compName, prNumber, commitSHA, comps)
 	if err := c.prQueueCtrl.Add(prQueue, nil); err != nil {
 		return err
 	}
