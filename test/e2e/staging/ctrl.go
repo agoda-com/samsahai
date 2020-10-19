@@ -475,11 +475,21 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		go stagingCtrl.Start(chStop)
 
-		cfg, err := cfgCtrl.Get(teamName)
-		Expect(err).NotTo(HaveOccurred())
+		var deployTimeout time.Duration
+		var testingTimeout metav1.Duration
+		By("Getting Configuration")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			cfg, err := cfgCtrl.Get(teamName)
+			if err != nil {
+				return false, nil
+			}
 
-		deployTimeout := cfg.Status.Used.Staging.Deployment.Timeout.Duration
-		testingTimeout := cfg.Status.Used.Staging.Deployment.TestRunner.Timeout
+			deployTimeout = cfg.Status.Used.Staging.Deployment.Timeout.Duration
+			testingTimeout = cfg.Status.Used.Staging.Deployment.TestRunner.Timeout
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify config error")
 
 		swp := stableWordPress
 		Expect(client.Create(context.TODO(), &swp)).To(BeNil())
