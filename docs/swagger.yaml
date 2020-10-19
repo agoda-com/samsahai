@@ -1387,7 +1387,7 @@ definitions:
         type: object
       pullRequest:
         description: |-
-          PullRequest represents connection strings of pull request environment
+          PullRequest represents connection strings of all pull request environments
           +optional
         type: object
       staging:

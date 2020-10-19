@@ -2462,7 +2462,7 @@
                     "type": "object"
                 },
                 "pullRequest": {
-                    "description": "PullRequest represents connection strings of pull request environment\n+optional",
+                    "description": "PullRequest represents connection strings of all pull request environments\n+optional",
                     "type": "object"
                 },
                 "staging": {

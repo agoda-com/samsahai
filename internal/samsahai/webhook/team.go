@@ -71,6 +71,10 @@ type teamEnvConnections struct {
 
 	// +optional
 	Active map[string][]internal.Connection `json:"active,omitempty"`
+
+	// PullRequest represents connection strings of all pull request environments
+	// +optional
+	PullRequest map[string]map[string][]internal.Connection `json:"pullRequest,omitempty"`
 }
 
 // getTeams godoc
@@ -114,6 +118,20 @@ func (h *handler) getTeam(w http.ResponseWriter, r *http.Request, params httprou
 			return
 		}
 		envConnections.PreActive = connections
+	}
+
+	if len(team.Status.Namespace.PullRequests) > 0 {
+		for _, prNamespace := range team.Status.Namespace.PullRequests {
+			connections, err := h.samsahai.GetConnections(prNamespace)
+			if err != nil {
+				h.errorf(w, http.StatusInternalServerError, "cannot get pull-request connections: %+v", err)
+				return
+			}
+			if len(envConnections.PullRequest) == 0 {
+				envConnections.PullRequest = make(map[string]map[string][]internal.Connection)
+			}
+			envConnections.PullRequest[prNamespace] = connections
+		}
 	}
 
 	// Get Team info.
