@@ -1506,7 +1506,17 @@ var _ = Describe("[e2e] Main controller", func() {
 				return false, nil
 			}
 
-			return true, nil
+			teamComp := s2hv1beta1.Team{}
+			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+			if err != nil {
+				return false, nil
+			}
+
+			if teamComp.Status.IsConditionTrue(s2hv1beta1.TeamNamespaceStagingCreated) {
+				return true, nil
+			}
+
+			return false, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
 

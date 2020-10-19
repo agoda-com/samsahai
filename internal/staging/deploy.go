@@ -528,7 +528,8 @@ func (c *controller) deployComponentsExceptQueue(
 		values := valuesutil.GenStableComponentValues(
 			comp,
 			stableMap,
-			baseValues)
+			baseValues,
+		)
 
 		switch queue.Spec.Type {
 		case s2hv1beta1.QueueTypeDemoteFromActive:
@@ -587,7 +588,7 @@ func (c *controller) deployQueueComponent(
 				baseValues,
 			)
 
-			if queue.Spec.Type == s2hv1beta1.QueueTypeUpgrade || queue.Spec.Type == s2hv1beta1.QueueTypePullRequest {
+			if queue.IsComponentUpgradeQueue() || queue.IsPullRequestQueue() {
 				// merge stable only matched component or dependencies
 				for _, comp := range queueComps {
 					v := genCompValueFromQueue(comp.Name, queue.Spec.Components)

@@ -234,12 +234,12 @@ var _ = Describe("[e2e] Staging controller", func() {
 	}
 
 	configPR := s2hv1beta1.ConfigPullRequest{
-		Deployment: &deployConfig,
 		Components: []*s2hv1beta1.PullRequestComponent{
 			{
-				Name:   redisCompName,
-				Image:  prImage,
-				Source: &compSource,
+				Name:       redisCompName,
+				Image:      prImage,
+				Source:     &compSource,
+				Deployment: &deployConfig,
 			},
 		},
 	}
@@ -475,11 +475,21 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		go stagingCtrl.Start(chStop)
 
-		cfg, err := cfgCtrl.Get(teamName)
-		Expect(err).NotTo(HaveOccurred())
+		var deployTimeout time.Duration
+		var testingTimeout metav1.Duration
+		By("Getting Configuration")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			cfg, err := cfgCtrl.Get(teamName)
+			if err != nil {
+				return false, nil
+			}
 
-		deployTimeout := cfg.Status.Used.Staging.Deployment.Timeout.Duration
-		testingTimeout := cfg.Status.Used.Staging.Deployment.TestRunner.Timeout
+			deployTimeout = cfg.Status.Used.Staging.Deployment.Timeout.Duration
+			testingTimeout = cfg.Status.Used.Staging.Deployment.TestRunner.Timeout
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify config error")
 
 		swp := stableWordPress
 		Expect(client.Create(context.TODO(), &swp)).To(BeNil())
@@ -688,7 +698,8 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Ensure Pull Request Components")
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			retry := 0
-			queue, err := queue.EnsurePullRequestComponents(client, teamName, namespace, redisCompName, "123",
+			queue, err := queue.EnsurePullRequestComponents(client, teamName, namespace, redisCompName, redisCompName,
+				"123",
 				prComps, retry)
 			if err != nil {
 				logger.Error(err, "cannot ensure pull request components")

@@ -344,6 +344,8 @@ type PullRequestComponent struct {
 	// Source defines a source for image repository
 	// +optional
 	Source *UpdatingSource `json:"source,omitempty"`
+	// Deployment represents configuration about deploy
+	Deployment *ConfigDeploy `json:"deployment"`
 	// Dependencies defines a list of components which are required to be deployed together with the main component
 	// +optional
 	Dependencies []string `json:"dependencies,omitempty"`
@@ -366,6 +368,9 @@ type PullRequestTriggerConfig struct {
 
 // PullRequestExtraConfig represents a pull request extra configuration
 type PullRequestExtraConfig struct {
+	// MaxRetry defines max retry counts of pull request component upgrade
+	// +optional
+	MaxRetry *int `json:"maxRetry,omitempty"`
 	// Resources represents how many resources of pull request namespace
 	// +optional
 	Resources corev1.ResourceList `json:"resources,omitempty"`
@@ -373,18 +378,13 @@ type PullRequestExtraConfig struct {
 
 // ConfigPullRequest defines a configuration of pull request
 type ConfigPullRequest struct {
-	// MaxRetry defines max retry counts of pull request component upgrade
-	// +optional
-	MaxRetry *int `json:"maxRetry,omitempty"`
 	// MaxHistoryDays defines maximum days of PullRequestQueueHistory stored
 	// +optional
 	MaxHistoryDays int `json:"maxHistoryDays,omitempty"`
 	// Trigger represents a pull request trigger configuration
 	// +optional
-	Trigger PullRequestTriggerConfig `json:"trigger,omitempty"`
-	// Deployment represents configuration about deploy
-	Deployment *ConfigDeploy           `json:"deployment"`
-	Components []*PullRequestComponent `json:"components"`
+	Trigger    PullRequestTriggerConfig `json:"trigger,omitempty"`
+	Components []*PullRequestComponent  `json:"components"`
 	// Concurrences defines a parallel number of pull request queue
 	// +optional
 	Concurrences           int `json:"concurrences,omitempty"`

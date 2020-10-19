@@ -37,19 +37,19 @@ spec:
     trigger:
       pollingTime: 1m
       maxRetry: 5
-    deployment:
-      timeout: 1h
-      engine: helm3
-      testRunner:
-        timeout: 240s
-        pollingTime: 5s
-        testMock:
-          result: true
     components:
       - name: redis
         image:
           repository: bitnami/redis
           pattern: '5.0.7-debian-9-r{{ .PRNumber }}'
+        deployment:
+          timeout: 1h
+          engine: helm3
+          testRunner:
+            timeout: 240s
+            pollingTime: 5s
+            testMock:
+              result: true
 
   activePromotion:
     maxRetry: 1

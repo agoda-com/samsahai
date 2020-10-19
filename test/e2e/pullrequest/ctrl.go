@@ -960,17 +960,19 @@ var (
 				PollingTime: metav1.Duration{Duration: 1 * time.Second},
 				MaxRetry:    &prMaxRetry,
 			},
-			Deployment: &s2hv1beta1.ConfigDeploy{},
 			Components: []*s2hv1beta1.PullRequestComponent{
 				{
 					Name:         prCompName,
 					Image:        prImage,
 					Source:       &compSource,
+					Deployment:   &s2hv1beta1.ConfigDeploy{},
 					Dependencies: []string{prDepCompName},
 				},
 			},
 			Concurrences: 1,
-			MaxRetry:     &prMaxRetry,
+			PullRequestExtraConfig: s2hv1beta1.PullRequestExtraConfig{
+				MaxRetry: &prMaxRetry,
+			},
 		},
 		Reporter: configReporter,
 	}

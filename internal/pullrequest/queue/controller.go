@@ -277,7 +277,10 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 		return
 	}
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithComponentName{
+		TeamName:      c.teamName,
+		ComponentName: currentPRQueue.Spec.ComponentName,
+	})
 	if err != nil {
 		return
 	}

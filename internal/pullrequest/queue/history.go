@@ -54,7 +54,7 @@ func (c *controller) deletePullRequestQueueHistoryOutOfRange(ctx context.Context
 		return errors.Wrapf(err, "cannot list pull request queue histories of namespace: %s", c.namespace)
 	}
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithComponentName{TeamName: c.teamName})
 	if err != nil {
 		return err
 	}
