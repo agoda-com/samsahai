@@ -53,7 +53,10 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 	prQueue.Status.SetCondition(s2hv1beta1.PullRequestQueueCondEnvDestroyed, corev1.ConditionTrue,
 		"Pull request environment has been destroyed")
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithComponentName{
+		TeamName:      c.teamName,
+		ComponentName: prQueue.Spec.ComponentName,
+	})
 	if err != nil {
 		return
 	}
@@ -205,7 +208,10 @@ func (c *controller) updatePullRequestComponentDependenciesVersion(ctx context.C
 	return nil
 }
 
-func (c *controller) ensurePullRequestComponents(prQueue *s2hv1beta1.PullRequestQueue, prComps s2hv1beta1.QueueComponents) (*s2hv1beta1.Queue, error) {
+func (c *controller) ensurePullRequestComponents(
+	prQueue *s2hv1beta1.PullRequestQueue,
+	prComps s2hv1beta1.QueueComponents,
+) (*s2hv1beta1.Queue, error) {
 	runtimeClient, err := c.getRuntimeClient()
 	if err != nil {
 		return nil, err
@@ -213,7 +219,7 @@ func (c *controller) ensurePullRequestComponents(prQueue *s2hv1beta1.PullRequest
 
 	prNamespace := prQueue.Status.PullRequestNamespace
 	deployedQueue, err := queue.EnsurePullRequestComponents(runtimeClient, c.teamName, prNamespace, prQueue.Name,
-		prQueue.Spec.PRNumber, prComps, prQueue.Spec.NoOfRetry)
+		prQueue.Spec.ComponentName, prQueue.Spec.PRNumber, prComps, prQueue.Spec.NoOfRetry)
 	if err != nil {
 		return nil, err
 	}

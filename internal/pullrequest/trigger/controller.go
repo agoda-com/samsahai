@@ -117,7 +117,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		logger.Error(err, "cannot set request header")
 	}
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithComponentName{TeamName: c.teamName})
 	if err != nil {
 		return reconcile.Result{}, errors.Wrapf(err, "cannot get pull request config of team: %s", c.teamName)
 	}

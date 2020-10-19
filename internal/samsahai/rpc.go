@@ -328,13 +328,15 @@ func (c *controller) GetComponentVersion(ctx context.Context, compSource *rpc.Co
 	return &rpc.ComponentVersion{Version: version}, nil
 }
 
-func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.TeamName) (*rpc.PullRequestConfig, error) {
+func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc.TeamWithComponentName) (
+	*rpc.PullRequestConfig, error) {
+
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 
 	configCtrl := c.GetConfigController()
-	prConfig, err := configCtrl.GetPullRequestConfig(teamName.Name)
+	prConfig, err := configCtrl.GetPullRequestConfig(teamWithComp.TeamName)
 	if err != nil {
 		return &rpc.PullRequestConfig{}, err
 	}
@@ -357,6 +359,17 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.Tea
 	maxRetryVerification := &c.configs.PullRequest.MaxVerificationRetryCounts
 	if prConfig.MaxRetry != nil {
 		maxRetryVerification = prConfig.MaxRetry
+	}
+
+	if len(prConfig.Components) > 0 {
+		for _, comp := range prConfig.Components {
+			if comp.Name == teamWithComp.ComponentName {
+				if comp.MaxRetry != nil {
+					maxRetryVerification = comp.MaxRetry
+				}
+				break
+			}
+		}
 	}
 
 	maxHistoryDays := c.configs.PullRequest.MaxHistoryDays
