@@ -113,6 +113,21 @@ spec:
     # default value is 20m
     tearDownDuration: 30m
 
+    # how long the active demotion process should take?
+    # to demote the current active namespace before continuing promote the pre-active namespace
+    # if it reaches a timeout, the current active namespace will be deleted
+    # support units are either <number>s, <number>m or <number>h
+    # default value is 3m
+    demotionTimeout: 3m
+
+    # how long the rollback process should take?
+    # when pre-active namespace cannot be promoted after demotion finished
+    # the pre-active namespace will be demoted and destroyed, and current namespace will be re-promoted
+    # if it reaches a timeout, the active promotion flow will be marked as finished and send notification
+    # support units are either <number>s, <number>m or <number>h
+    # default value is 5m
+    rollbackTimeout: 5m
+
     # how many times the active promotion should be processed?
     # default value is 0
     maxRetry: 1
