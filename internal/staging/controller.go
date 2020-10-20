@@ -311,6 +311,12 @@ func (c *controller) syncQueueWithK8s() error {
 
 func (c *controller) initQueue(q *s2hv1beta1.Queue) error {
 	deployConfig := c.getDeployConfiguration(q)
+	if deployConfig == nil {
+		err := fmt.Errorf("cannot get deployment configuration, namespace: %s, queue: %s", c.namespace, q.Name)
+		logger.Error(err, "cannot init queue", "queue", q.Name, "namespace", c.namespace)
+		return err
+	}
+
 	q.Status.NoOfProcessed++
 	q.Status.QueueHistoryName = generateQueueHistoryName(q.Name)
 	if deployConfig.Engine != nil {

@@ -56,6 +56,8 @@ spec:
     timeout: 10m
     maxHistories: 5
     tearDownDuration: 10s
+    demotionTimeout: 3m
+    rollbackTimeout: 5m
     deployment:
       timeout: 5m
       engine: helm3
