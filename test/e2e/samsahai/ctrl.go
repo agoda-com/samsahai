@@ -1060,7 +1060,7 @@ var _ = Describe("[e2e] Main controller", func() {
 			return false, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Delete active environment error")
-	}, 130)
+	}, 30)
 
 	It("should be error when creating team if config does not exist", func(done Done) {
 		defer close(done)
