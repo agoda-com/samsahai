@@ -66,7 +66,8 @@ type ConfigBundles map[string][]string
 // ConfigStaging represents configuration about staging
 type ConfigStaging struct {
 	// Deployment represents configuration about deploy
-	Deployment *ConfigDeploy `json:"deployment"`
+	// +optional
+	Deployment *ConfigDeploy `json:"deployment,omitempty"`
 
 	// MaxRetry defines max retry counts of component upgrade
 	// +optional
@@ -153,7 +154,8 @@ type ConfigActivePromotion struct {
 	OutdatedNotification *OutdatedNotification `json:"outdatedNotification,omitempty"`
 
 	// Deployment represents configuration about deploy
-	Deployment *ConfigDeploy `json:"deployment"`
+	// +optional
+	Deployment *ConfigDeploy `json:"deployment,omitempty"`
 }
 
 // OutdatedNotification defines a configuration of outdated notification
@@ -345,7 +347,8 @@ type PullRequestComponent struct {
 	// +optional
 	Source *UpdatingSource `json:"source,omitempty"`
 	// Deployment represents configuration about deploy
-	Deployment *ConfigDeploy `json:"deployment"`
+	// +optional
+	Deployment *ConfigDeploy `json:"deployment,omitempty"`
 	// Dependencies defines a list of components which are required to be deployed together with the main component
 	// +optional
 	Dependencies []string `json:"dependencies,omitempty"`
