@@ -411,10 +411,6 @@ func (c *controller) PromoteActiveEnvironment(
 			s2hv1beta1.TeamNamespacePreActiveCreated,
 			corev1.ConditionFalse,
 			"pre-active namespace is reset")
-		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamActiveEnvironmentDeleted,
-			corev1.ConditionTrue,
-			fmt.Sprintf("%s namespace is exist", activeNamespace))
 
 		if err := c.updateTeamNamespacesStatus(teamComp, teamNsOpts...); err != nil {
 			return errors.Wrap(err, "cannot update team conditions when promote active")
@@ -1254,7 +1250,7 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) err
 
 	teamComp.Status.SetCondition(
 		s2hv1beta1.TeamActiveEnvironmentDeleted,
-		corev1.ConditionFalse,
+		corev1.ConditionTrue,
 		fmt.Sprintf("%s namespace is deleting", namespace))
 
 	if err := c.updateTeam(teamComp); err != nil {
@@ -1286,7 +1282,7 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) err
 		// condition false
 		teamComp.Status.SetCondition(
 			s2hv1beta1.TeamActiveEnvironmentDeleted,
-			corev1.ConditionFalse,
+			corev1.ConditionTrue,
 			fmt.Sprintf("%s namespace is deleting", namespace))
 
 		if err := c.updateTeam(teamComp); err != nil {
@@ -1307,7 +1303,7 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) err
 	teamComp.Status.ActivePromotedBy = ""
 	teamComp.Status.SetCondition(
 		s2hv1beta1.TeamActiveEnvironmentDeleted,
-		corev1.ConditionTrue,
+		corev1.ConditionFalse,
 		fmt.Sprintf("%s namespace has been deleted successfully", namespace))
 	teamComp.Status.SetCondition(
 		s2hv1beta1.TeamNamespaceActiveCreated,
@@ -1673,7 +1669,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	}
 
-	if teamComp.Status.Namespace.Active != "" && !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDeleted) {
+	if teamComp.Status.Namespace.Active != "" && teamComp.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDeleted) {
 		activeNamespace := teamComp.Status.Namespace.Active
 		if err := c.DeleteTeamActiveEnvironment(teamComp.Name, activeNamespace); err != nil {
 			return reconcile.Result{}, err

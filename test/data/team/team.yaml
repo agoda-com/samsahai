@@ -12,3 +12,4 @@ spec:
 status:
   namespace:
     staging: default
+    active: active-Ns
