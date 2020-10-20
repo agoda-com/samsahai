@@ -1004,6 +1004,64 @@ var _ = Describe("[e2e] Main controller", func() {
 
 	}, 30)
 
+	It("should successfully delete active environment", func(done Done) {
+		defer close(done)
+		setupSamsahai(true)
+		ctx := context.TODO()
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		conditionDeleteActive := s2hv1beta1.TeamCondition{
+			Type:               s2hv1beta1.TeamActiveEnvironmentDeleted,
+			Status:             corev1.ConditionFalse,
+			LastTransitionTime: metav1.Now(),
+			Message:            "test",
+		}
+		team.Status.Conditions = append(team.Status.Conditions, conditionDeleteActive)
+		team.Status.Namespace.Active = atvNamespace
+		team.Status.ActivePromotedBy = "user"
+		Expect(client.Create(ctx, &team)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1beta1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Active Environment should be deleted")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			team := s2hv1beta1.Team{}
+			if err := client.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
+				return false, nil
+			}
+			if team.Status.Namespace.Active != "" && team.Status.ActivePromotedBy != "" {
+				return false, nil
+			}
+			for _, c := range team.Status.Conditions {
+				if c.Type == s2hv1beta1.TeamActiveEnvironmentDeleted && c.Status == corev1.ConditionTrue {
+					return true, nil
+				}
+			}
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete active environment error")
+	}, 130)
+
 	It("should be error when creating team if config does not exist", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)

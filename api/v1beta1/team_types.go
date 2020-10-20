@@ -269,6 +269,7 @@ const (
 	TeamFirstActivePromotionRun           TeamConditionType = "TeamFirstActivePromotionRun"
 	TeamUsedUpdated                       TeamConditionType = "TeamUsedUpdated"
 	TeamRequiredFieldsValidated           TeamConditionType = "TeamRequiredFieldsValidated"
+	TeamActiveEnvironmentDeleted          TeamConditionType = "TeamActiveEnvironmentDeleted"
 )
 
 func (ts *TeamStatus) IsConditionTrue(cond TeamConditionType) bool {
