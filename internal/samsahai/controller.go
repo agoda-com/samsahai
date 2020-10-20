@@ -1249,7 +1249,7 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) err
 	}
 
 	teamComp.Status.SetCondition(
-		s2hv1beta1.TeamActiveEnvironmentDeleted,
+		s2hv1beta1.TeamActiveEnvironmentDelete,
 		corev1.ConditionTrue,
 		fmt.Sprintf("%s namespace is deleting", namespace))
 
@@ -1281,7 +1281,7 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) err
 		!errors.IsNamespaceStillExists(err) && err != errors.ErrEnsureStableComponentsDestroyed {
 		// condition false
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamActiveEnvironmentDeleted,
+			s2hv1beta1.TeamActiveEnvironmentDelete,
 			corev1.ConditionTrue,
 			fmt.Sprintf("%s namespace is deleting", namespace))
 
@@ -1302,7 +1302,7 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) err
 	teamComp.Status.Namespace.Active = ""
 	teamComp.Status.ActivePromotedBy = ""
 	teamComp.Status.SetCondition(
-		s2hv1beta1.TeamActiveEnvironmentDeleted,
+		s2hv1beta1.TeamActiveEnvironmentDelete,
 		corev1.ConditionFalse,
 		fmt.Sprintf("%s namespace has been deleted successfully", namespace))
 	teamComp.Status.SetCondition(
@@ -1669,7 +1669,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	}
 
-	if teamComp.Status.Namespace.Active != "" && teamComp.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDeleted) {
+	if teamComp.Status.Namespace.Active != "" && teamComp.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDelete) {
 		activeNamespace := teamComp.Status.Namespace.Active
 		if err := c.DeleteTeamActiveEnvironment(teamComp.Name, activeNamespace); err != nil {
 			return reconcile.Result{}, err

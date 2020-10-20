@@ -1016,8 +1016,8 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Creating Team")
 		team := mockTeam
 		conditionDeleteActive := s2hv1beta1.TeamCondition{
-			Type:               s2hv1beta1.TeamActiveEnvironmentDeleted,
-			Status:             corev1.ConditionFalse,
+			Type:               s2hv1beta1.TeamActiveEnvironmentDelete,
+			Status:             corev1.ConditionTrue,
 			LastTransitionTime: metav1.Now(),
 			Message:            "test",
 		}
@@ -1053,7 +1053,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				return false, nil
 			}
 			for _, c := range team.Status.Conditions {
-				if c.Type == s2hv1beta1.TeamActiveEnvironmentDeleted && c.Status == corev1.ConditionTrue {
+				if c.Type == s2hv1beta1.TeamActiveEnvironmentDelete && c.Status == corev1.ConditionFalse {
 					return true, nil
 				}
 			}
