@@ -1004,7 +1004,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 	}, 30)
 
-	It("should successfully delete active environment", func(done Done) {
+	FIt("should successfully delete active environment", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
 		ctx := context.TODO()
@@ -1015,13 +1015,6 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Creating Team")
 		team := mockTeam
-		conditionDeleteActive := s2hv1beta1.TeamCondition{
-			Type:               s2hv1beta1.TeamActiveEnvironmentDelete,
-			Status:             corev1.ConditionTrue,
-			LastTransitionTime: metav1.Now(),
-			Message:            "test",
-		}
-		team.Status.Conditions = append(team.Status.Conditions, conditionDeleteActive)
 		team.Status.Namespace.Active = atvNamespace
 		team.Status.ActivePromotedBy = "user"
 		Expect(client.Create(ctx, &team)).To(BeNil())
@@ -1043,10 +1036,33 @@ var _ = Describe("[e2e] Main controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
+		By("Active Environment should not be deleted")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			team := s2hv1beta1.Team{}
+			if err := client.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
+				return false, nil
+			}
+			if team.Status.Namespace.Active != "" && team.Status.ActivePromotedBy != "" {
+				return true, nil
+			}
+			return false, nil
+		})
+
 		By("Active Environment should be deleted")
 		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			team := s2hv1beta1.Team{}
 			if err := client.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
+				return false, nil
+			}
+
+			conditionDeleteActive := s2hv1beta1.TeamCondition{
+				Type:               s2hv1beta1.TeamActiveEnvironmentDelete,
+				Status:             corev1.ConditionTrue,
+				LastTransitionTime: metav1.Now(),
+				Message:            "test",
+			}
+			team.Status.Conditions = append(team.Status.Conditions, conditionDeleteActive)
+			if err := client.Update(ctx, &team); err != nil {
 				return false, nil
 			}
 			if team.Status.Namespace.Active != "" && team.Status.ActivePromotedBy != "" {
