@@ -1004,7 +1004,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 	}, 30)
 
-	FIt("should successfully delete active environment", func(done Done) {
+	It("should successfully delete active environment", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
 		ctx := context.TODO()
