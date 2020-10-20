@@ -5,8 +5,6 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
-
-	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
 
 type MessageResp struct {
@@ -25,25 +23,14 @@ func (h *handler) deleteTeamActiveEnvironment(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	retry := false
-	for {
-		if err = h.samsahai.DestroyActiveEnvironment(team.Name, activeNamespace); err != nil {
-			if s2herrors.IsNamespaceStillExists(err) || !retry {
-				retry = true
-				continue
-			}
-		}
-		break
-	}
-
-	if err != nil {
+	if err := h.samsahai.DeleteTeamActiveEnvironment(team.Name, activeNamespace); err != nil {
 		h.JSON(w, http.StatusInternalServerError, MessageResp{
 			Message: fmt.Sprintf("delete active environment failed"),
 		})
-	} else {
-		h.JSON(w, http.StatusOK, MessageResp{
-			Message: "success",
-		})
+		return
 	}
 
+	h.JSON(w, http.StatusOK, MessageResp{
+		Message: "success",
+	})
 }

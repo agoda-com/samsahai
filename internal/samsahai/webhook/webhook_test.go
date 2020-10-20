@@ -253,6 +253,14 @@ var _ = Describe("Samsahai Webhook", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
+
+		FIt("should successfully delete active environment", func(done Done) {
+			defer close(done)
+
+			_, _, err := http.Delete(server.URL + "/teams/" + teamName + "/environment/active/delete")
+			g.Expect(err).NotTo(HaveOccurred())
+
+		}, timeout)
 	})
 
 	Describe("PullRequest", func() {
