@@ -329,10 +329,6 @@ definitions:
           Concurrences defines a parallel number of pull request queue
           +optional
         type: integer
-      deployment:
-        $ref: '#/definitions/v1beta1.ConfigDeploy'
-        description: Deployment represents configuration about deploy
-        type: object
       maxHistoryDays:
         description: |-
           MaxHistoryDays defines maximum days of PullRequestQueueHistory stored
@@ -591,6 +587,10 @@ definitions:
         items:
           type: string
         type: array
+      deployment:
+        $ref: '#/definitions/v1beta1.ConfigDeploy'
+        description: Deployment represents configuration about deploy
+        type: object
       gitRepository:
         description: |-
           GitRepository represents a string of git "<owner>/<repository>" e.g., agoda-com/samsahai
@@ -603,6 +603,11 @@ definitions:
           Image defines an image repository, tag and pattern of pull request component which is a regex of tag
           +optional
         type: object
+      maxRetry:
+        description: |-
+          MaxRetry defines max retry counts of pull request component upgrade
+          +optional
+        type: integer
       name:
         description: Name defines a main component name which is deployed per pull
           request
@@ -1379,6 +1384,11 @@ definitions:
         type: object
       preActive:
         description: +optional
+        type: object
+      pullRequest:
+        description: |-
+          PullRequest represents connection strings of all pull request environments
+          +optional
         type: object
       staging:
         description: +optional

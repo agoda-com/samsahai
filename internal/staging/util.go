@@ -31,8 +31,12 @@ func (c *controller) getDeployConfiguration(queue *s2hv1beta1.Queue) *s2hv1beta1
 		}
 		return &s2hv1beta1.ConfigDeploy{}
 	case queue.IsPullRequestQueue():
-		if cfg.PullRequest != nil && cfg.PullRequest.Deployment != nil {
-			return cfg.PullRequest.Deployment
+		if cfg.PullRequest != nil && len(cfg.PullRequest.Components) > 0 {
+			for _, comp := range cfg.PullRequest.Components {
+				if comp.Name == queue.Spec.Name {
+					return comp.Deployment
+				}
+			}
 		}
 		return &s2hv1beta1.ConfigDeploy{}
 	default:

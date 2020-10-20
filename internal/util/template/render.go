@@ -40,7 +40,7 @@ func TextRender(name, tmpl string, data interface{}) string {
 
 	defer func() {
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("cannot render template: %s", name))
+			logger.Warnf("cannot render template: %s, %v", name, err)
 		}
 	}()
 

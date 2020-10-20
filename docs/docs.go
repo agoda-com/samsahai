@@ -1191,11 +1191,6 @@ var doc = `{
                     "description": "Concurrences defines a parallel number of pull request queue\n+optional",
                     "type": "integer"
                 },
-                "deployment": {
-                    "description": "Deployment represents configuration about deploy",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigDeploy"
-                },
                 "maxHistoryDays": {
                     "description": "MaxHistoryDays defines maximum days of PullRequestQueueHistory stored\n+optional",
                     "type": "integer"
@@ -1502,6 +1497,11 @@ var doc = `{
                         "type": "string"
                     }
                 },
+                "deployment": {
+                    "description": "Deployment represents configuration about deploy",
+                    "type": "object",
+                    "$ref": "#/definitions/v1beta1.ConfigDeploy"
+                },
                 "gitRepository": {
                     "description": "GitRepository represents a string of git \"\u003cowner\u003e/\u003crepository\u003e\" e.g., agoda-com/samsahai\nused for publishing commit status\n+optional",
                     "type": "string"
@@ -1510,6 +1510,10 @@ var doc = `{
                     "description": "Image defines an image repository, tag and pattern of pull request component which is a regex of tag\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.ComponentImage"
+                },
+                "maxRetry": {
+                    "description": "MaxRetry defines max retry counts of pull request component upgrade\n+optional",
+                    "type": "integer"
                 },
                 "name": {
                     "description": "Name defines a main component name which is deployed per pull request",
@@ -2476,6 +2480,10 @@ var doc = `{
                 },
                 "preActive": {
                     "description": "+optional",
+                    "type": "object"
+                },
+                "pullRequest": {
+                    "description": "PullRequest represents connection strings of all pull request environments\n+optional",
                     "type": "object"
                 },
                 "staging": {

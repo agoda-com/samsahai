@@ -383,6 +383,10 @@ func (q *Queue) IsActivePromotionQueue() bool {
 		q.Spec.Type == QueueTypeDemoteFromActive
 }
 
+func (q *Queue) IsComponentUpgradeQueue() bool {
+	return q.Spec.Type == QueueTypeUpgrade
+}
+
 func (q *Queue) IsPullRequestQueue() bool {
 	return q.Spec.Type == QueueTypePullRequest
 }
@@ -408,6 +412,8 @@ func (q *Queue) GetQueueType() string {
 		return "component-upgrade"
 	case QueueTypeReverify:
 		return "reverification"
+	case QueueTypePullRequest:
+		return "pull-request"
 	default:
 		return "active-promotion"
 	}

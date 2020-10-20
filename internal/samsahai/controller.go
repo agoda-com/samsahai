@@ -546,40 +546,39 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 				setPostNamespaceCreationCondition(teamComp, nsConditionType, corev1.ConditionTrue,
 					"post namespace creation has been executed successfully")
 			}
+		}
+	}
 
+	if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
+		if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstNotifyComponentChanged) {
+			logger.Debug("start notifying component", "team", teamComp.Name, "namespace", namespace)
+			if err := c.notifyComponentChanged(teamComp.Name); err != nil {
+				logger.Error(err, "cannot notify component changed while creating staging namespace",
+					"team", teamComp.Name, "namespace", namespace)
+				return errors.ErrTeamNamespaceComponentNotified
+			}
+
+			teamComp.Status.SetCondition(
+				s2hv1beta1.TeamFirstNotifyComponentChanged,
+				corev1.ConditionTrue,
+				fmt.Sprintf("notified component changed successfully"))
 		}
 
-		if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
-			if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstNotifyComponentChanged) {
-				logger.Debug("start notifying component", "team", teamComp.Name, "namespace", namespace)
-				if err := c.notifyComponentChanged(teamComp.Name); err != nil {
-					logger.Error(err, "cannot notify component changed while creating staging namespace",
-						"team", teamComp.Name, "namespace", namespace)
-					return errors.ErrTeamNamespaceComponentNotified
-				}
+		if c.configs.ActivePromotion.PromoteOnTeamCreation &&
+			!teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstActivePromotionRun) {
 
-				teamComp.Status.SetCondition(
-					s2hv1beta1.TeamFirstNotifyComponentChanged,
-					corev1.ConditionTrue,
-					fmt.Sprintf("notified component changed successfully"))
+			logger.Debug("start creating active promotion",
+				"team", teamComp.Name, "namespace", namespace)
+			if err := c.createActivePromotion(teamComp.Name); err != nil {
+				logger.Error(err, "cannot create active promotion while creating staging namespace",
+					"namespace", namespace)
+				return errors.ErrTeamNamespacePromotionCreated
 			}
 
-			if c.configs.ActivePromotion.PromoteOnTeamCreation &&
-				!teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstActivePromotionRun) {
-
-				logger.Debug("start creating active promotion",
-					"team", teamComp.Name, "namespace", namespace)
-				if err := c.createActivePromotion(teamComp.Name); err != nil {
-					logger.Error(err, "cannot create active promotion while creating staging namespace",
-						"namespace", namespace)
-					return errors.ErrTeamNamespacePromotionCreated
-				}
-
-				teamComp.Status.SetCondition(
-					s2hv1beta1.TeamFirstActivePromotionRun,
-					corev1.ConditionTrue,
-					fmt.Sprintf("triggered active promotion successfully"))
-			}
+			teamComp.Status.SetCondition(
+				s2hv1beta1.TeamFirstActivePromotionRun,
+				corev1.ConditionTrue,
+				fmt.Sprintf("triggered active promotion successfully"))
 		}
 	}
 

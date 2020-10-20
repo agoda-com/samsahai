@@ -52,7 +52,10 @@ func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2
 			compUpgradeStatus = samsahairpc.ComponentUpgrade_UpgradeStatus_SUCCESS
 		}
 
-		prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
+		prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithComponentName{
+			TeamName:      c.teamName,
+			ComponentName: prQueue.Spec.ComponentName,
+		})
 		if err != nil {
 			return err
 		}

@@ -13,7 +13,7 @@ service RPC {
     rpc GetBundleName (TeamWithComponentName) returns (BundleName);
     rpc GetPriorityQueues (TeamName) returns (PriorityQueues);
     rpc GetPullRequestComponentDependencies (TeamWithComponentName) returns (PullRequestDependencies);
-    rpc GetPullRequestConfig (TeamName) returns (PullRequestConfig);
+    rpc GetPullRequestConfig (TeamWithComponentName) returns (PullRequestConfig);
     rpc GetPullRequestComponentSource (TeamWithPullRequest) returns (ComponentSource);
     rpc GetComponentVersion (ComponentSource) returns (ComponentVersion);
     rpc DeployActiveServicesIntoPullRequestEnvironment (TeamWithNamespace) returns (Empty);
