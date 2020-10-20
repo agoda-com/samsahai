@@ -242,7 +242,9 @@ definitions:
         type: string
       deployment:
         $ref: '#/definitions/v1beta1.ConfigDeploy'
-        description: Deployment represents configuration about deploy
+        description: |-
+          Deployment represents configuration about deploy
+          +optional
         type: object
       maxHistories:
         description: |-
@@ -460,7 +462,9 @@ definitions:
     properties:
       deployment:
         $ref: '#/definitions/v1beta1.ConfigDeploy'
-        description: Deployment represents configuration about deploy
+        description: |-
+          Deployment represents configuration about deploy
+          +optional
         type: object
       maxHistoryDays:
         description: |-
@@ -589,7 +593,9 @@ definitions:
         type: array
       deployment:
         $ref: '#/definitions/v1beta1.ConfigDeploy'
-        description: Deployment represents configuration about deploy
+        description: |-
+          Deployment represents configuration about deploy
+          +optional
         type: object
       gitRepository:
         description: |-

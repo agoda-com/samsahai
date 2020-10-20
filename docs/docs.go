@@ -1105,7 +1105,7 @@ var doc = `{
                     "type": "string"
                 },
                 "deployment": {
-                    "description": "Deployment represents configuration about deploy",
+                    "description": "Deployment represents configuration about deploy\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.ConfigDeploy"
                 },
@@ -1329,7 +1329,7 @@ var doc = `{
             "type": "object",
             "properties": {
                 "deployment": {
-                    "description": "Deployment represents configuration about deploy",
+                    "description": "Deployment represents configuration about deploy\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.ConfigDeploy"
                 },
@@ -1498,7 +1498,7 @@ var doc = `{
                     }
                 },
                 "deployment": {
-                    "description": "Deployment represents configuration about deploy",
+                    "description": "Deployment represents configuration about deploy\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.ConfigDeploy"
                 },
