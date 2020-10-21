@@ -1090,7 +1090,7 @@ func (c *controller) GetActivePromotionHistory(name string) (v *s2hv1beta1.Activ
 	return
 }
 
-func (c *controller) GetDeployEngine(teamName, ns string) internal.DeployEngine {
+func (c *controller) GetActivePromotionDeployEngine(teamName, ns string) internal.DeployEngine {
 	var e string
 	configCtrl := c.GetConfigController()
 	config, err := configCtrl.Get(teamName)
@@ -1259,7 +1259,7 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) err
 
 	configCtrl := c.GetConfigController()
 
-	deployEngine := c.GetDeployEngine(teamName, namespace)
+	deployEngine := c.GetActivePromotionDeployEngine(teamName, namespace)
 
 	parentComps, err := configCtrl.GetParentComponents(teamName)
 	if err != nil {

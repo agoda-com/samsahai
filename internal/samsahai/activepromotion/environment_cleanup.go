@@ -156,7 +156,7 @@ func (c *controller) ensureNamespaceDestroyed(ctx context.Context, teamName, ns 
 func (c *controller) deleteAllComponentsInNamespace(teamName, ns string, startedCleanupTime *metav1.Time) error {
 	configCtrl := c.s2hCtrl.GetConfigController()
 
-	deployEngine := c.s2hCtrl.GetDeployEngine(teamName, ns)
+	deployEngine := c.s2hCtrl.GetActivePromotionDeployEngine(teamName, ns)
 
 	parentComps, err := configCtrl.GetParentComponents(teamName)
 	if err != nil {

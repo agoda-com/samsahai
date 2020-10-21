@@ -154,8 +154,8 @@ type SamsahaiController interface {
 	// GetPlugins returns samsahai plugins
 	GetPlugins() map[string]Plugin
 
-	// GetDeployEngine returns samsahai deploy engine
-	GetDeployEngine(teamName, ns string) DeployEngine
+	// GetActivePromotionDeployEngine returns samsahai deploy engine
+	GetActivePromotionDeployEngine(teamName, ns string) DeployEngine
 
 	// EnsureTeamTemplateChanged  updates team if template changed
 	EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error
