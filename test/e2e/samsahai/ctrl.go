@@ -2070,7 +2070,7 @@ var (
 	wordpressCompName = "wordpress"
 
 	maxActivePromotionRetry = 2
-	mockTeamTemplateUID = "eddff85e8b4a4c3a15587a02933a8665"
+	mockTeamTemplateUID     = "eddff85e8b4a4c3a15587a02933a8665"
 
 	mockTeamSpec = s2hv1beta1.TeamSpec{
 		Description: "team for testing",
@@ -2112,7 +2112,7 @@ var (
 				},
 			},
 			TemplateUID: mockTeamTemplateUID,
-			Used: mockTeamSpec,
+			Used:        mockTeamSpec,
 		},
 	}
 
@@ -2332,7 +2332,7 @@ var (
 		},
 	}
 
-	configTemplateUID = "351a6fb96ffd51745ce0d25fdbcec1f0"
+	configTemplateUID          = "351a6fb96ffd51745ce0d25fdbcec1f0"
 	configOnlyRedisTemplateUID = "82425add0c35197c65f48bcf949ab063"
 
 	mockConfig = s2hv1beta1.Config{
@@ -2343,7 +2343,7 @@ var (
 		Spec: configSpec,
 		Status: s2hv1beta1.ConfigStatus{
 			TemplateUID: configTemplateUID,
-			Used: configSpec,
+			Used:        configSpec,
 		},
 	}
 
@@ -2365,7 +2365,7 @@ var (
 		Spec: configOnlyRedisSpec,
 		Status: s2hv1beta1.ConfigStatus{
 			TemplateUID: configOnlyRedisTemplateUID,
-			Used: configOnlyRedisSpec,
+			Used:        configOnlyRedisSpec,
 		},
 	}
 )

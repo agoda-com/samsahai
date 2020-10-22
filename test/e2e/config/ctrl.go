@@ -310,7 +310,7 @@ var (
 		Spec: mockTeamSpec,
 		Status: s2hv1beta1.TeamStatus{
 			Namespace: s2hv1beta1.TeamNamespace{},
-			Used: mockTeamSpec,
+			Used:      mockTeamSpec,
 		},
 	}
 	mockTeam2 = s2hv1beta1.Team{
@@ -321,7 +321,7 @@ var (
 		Spec: mockTeamSpec,
 		Status: s2hv1beta1.TeamStatus{
 			Namespace: s2hv1beta1.TeamNamespace{},
-			Used: mockTeamSpec,
+			Used:      mockTeamSpec,
 		},
 	}
 )
