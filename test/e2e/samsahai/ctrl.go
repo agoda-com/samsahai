@@ -1048,21 +1048,22 @@ var _ = Describe("[e2e] Main controller", func() {
 			return false, nil
 		})
 
+		By("Updating Team Delete Active Environment Condition")
+		team = s2hv1beta1.Team{}
+		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &team)).To(BeNil())
+		conditionDeleteActive := s2hv1beta1.TeamCondition{
+			Type:               s2hv1beta1.TeamActiveEnvironmentDelete,
+			Status:             corev1.ConditionTrue,
+			LastTransitionTime: metav1.Now(),
+			Message:            "test",
+		}
+		team.Status.Conditions = append(team.Status.Conditions, conditionDeleteActive)
+		Expect(client.Update(ctx, &team)).To(BeNil())
+
 		By("Active Environment should be deleted")
 		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			team := s2hv1beta1.Team{}
 			if err := client.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
-				return false, nil
-			}
-
-			conditionDeleteActive := s2hv1beta1.TeamCondition{
-				Type:               s2hv1beta1.TeamActiveEnvironmentDelete,
-				Status:             corev1.ConditionTrue,
-				LastTransitionTime: metav1.Now(),
-				Message:            "test",
-			}
-			team.Status.Conditions = append(team.Status.Conditions, conditionDeleteActive)
-			if err := client.Update(ctx, &team); err != nil {
 				return false, nil
 			}
 			if team.Status.Namespace.Active != "" && team.Status.ActivePromotedBy != "" {
@@ -2069,22 +2070,25 @@ var (
 	wordpressCompName = "wordpress"
 
 	maxActivePromotionRetry = 2
+	mockTeamTemplateUID = "eddff85e8b4a4c3a15587a02933a8665"
+
+	mockTeamSpec = s2hv1beta1.TeamSpec{
+		Description: "team for testing",
+		Owners:      []string{"samsahai@samsahai.io"},
+		Credential: s2hv1beta1.Credential{
+			SecretName: s2hobject.GetTeamSecretName(teamName),
+		},
+		StagingCtrl: &s2hv1beta1.StagingCtrl{
+			IsDeploy: false,
+		},
+	}
 
 	mockTeam = s2hv1beta1.Team{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
 			Labels: testLabels,
 		},
-		Spec: s2hv1beta1.TeamSpec{
-			Description: "team for testing",
-			Owners:      []string{"samsahai@samsahai.io"},
-			Credential: s2hv1beta1.Credential{
-				SecretName: s2hobject.GetTeamSecretName(teamName),
-			},
-			StagingCtrl: &s2hv1beta1.StagingCtrl{
-				IsDeploy: false,
-			},
-		},
+		Spec: mockTeamSpec,
 		Status: s2hv1beta1.TeamStatus{
 			Namespace: s2hv1beta1.TeamNamespace{},
 			DesiredComponentImageCreatedTime: map[string]map[string]s2hv1beta1.DesiredImageTime{
@@ -2107,16 +2111,8 @@ var (
 					},
 				},
 			},
-			Used: s2hv1beta1.TeamSpec{
-				Description: "team for testing",
-				Owners:      []string{"samsahai@samsahai.io"},
-				Credential: s2hv1beta1.Credential{
-					SecretName: s2hobject.GetTeamSecretName(teamName),
-				},
-				StagingCtrl: &s2hv1beta1.StagingCtrl{
-					IsDeploy: false,
-				},
-			},
+			TemplateUID: mockTeamTemplateUID,
+			Used: mockTeamSpec,
 		},
 	}
 
@@ -2327,6 +2323,18 @@ var (
 		},
 	}
 
+	configOnlyRedisSpec = s2hv1beta1.ConfigSpec{
+		Staging:         configStg,
+		ActivePromotion: configAtp,
+		Reporter:        configReporter,
+		Components: []*s2hv1beta1.Component{
+			&configCompRedis,
+		},
+	}
+
+	configTemplateUID = "351a6fb96ffd51745ce0d25fdbcec1f0"
+	configOnlyRedisTemplateUID = "82425add0c35197c65f48bcf949ab063"
+
 	mockConfig = s2hv1beta1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
@@ -2334,6 +2342,7 @@ var (
 		},
 		Spec: configSpec,
 		Status: s2hv1beta1.ConfigStatus{
+			TemplateUID: configTemplateUID,
 			Used: configSpec,
 		},
 	}
@@ -2353,23 +2362,10 @@ var (
 			Name:   teamName,
 			Labels: testLabels,
 		},
-		Spec: s2hv1beta1.ConfigSpec{
-			Staging:         configStg,
-			ActivePromotion: configAtp,
-			Reporter:        configReporter,
-			Components: []*s2hv1beta1.Component{
-				&configCompRedis,
-			},
-		},
+		Spec: configOnlyRedisSpec,
 		Status: s2hv1beta1.ConfigStatus{
-			Used: s2hv1beta1.ConfigSpec{
-				Staging:         configStg,
-				ActivePromotion: configAtp,
-				Reporter:        configReporter,
-				Components: []*s2hv1beta1.Component{
-					&configCompRedis,
-				},
-			},
+			TemplateUID: configOnlyRedisTemplateUID,
+			Used: configOnlyRedisSpec,
 		},
 	}
 )
