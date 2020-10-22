@@ -24,6 +24,7 @@ func (h *handler) deleteTeamActiveEnvironment(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := h.samsahai.DeleteTeamActiveEnvironment(team.Name, activeNamespace); err != nil {
+		logger.Warn("error while delete active environment", err.Error())
 		h.JSON(w, http.StatusInternalServerError, MessageResp{
 			Message: fmt.Sprintf("delete active environment failed"),
 		})

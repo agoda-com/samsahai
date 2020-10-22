@@ -842,6 +842,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		logger.Debug("no s2h ctrl, skip detect changed component", "team", req.Name)
 		return cr.Result{}, nil
 	}
+
 	if err := c.EnsureConfigTemplateChanged(configComp); err != nil {
 		return cr.Result{}, err
 	}
@@ -855,6 +856,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		if err := c.Update(configComp); err != nil {
 			return reconcile.Result{}, err
 		}
+		return reconcile.Result{}, nil
 	}
 
 	if err := c.ensureTriggerChildrenConfig(configComp.Name); err != nil {
@@ -882,6 +884,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		if err := c.Update(configComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update config conditions when require fields is valid")
 		}
+		return reconcile.Result{}, nil
 	}
 
 	teamComp := s2hv1beta1.Team{}

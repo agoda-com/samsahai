@@ -1638,6 +1638,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, err
 		}
+		return reconcile.Result{}, nil
 	}
 
 	if err := c.ensureTriggerChildrenTeam(teamComp.Name); err != nil {
@@ -1666,14 +1667,16 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is valid")
 		}
-
+		return reconcile.Result{}, nil
 	}
 
 	if teamComp.Status.Namespace.Active != "" && teamComp.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDelete) {
 		activeNamespace := teamComp.Status.Namespace.Active
-		if err := c.DeleteTeamActiveEnvironment(teamComp.Name, activeNamespace); err != nil {
+		if err := c.DeleteTeamActiveEnvironment(teamComp.Name, activeNamespace); err != nil &&
+			!errors.IsNamespaceStillExists(err) {
 			return reconcile.Result{}, err
 		}
+		return reconcile.Result{}, nil
 	}
 
 	teamName := teamComp.GetName()
