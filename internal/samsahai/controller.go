@@ -1623,6 +1623,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when config exists")
 		}
+		return reconcile.Result{}, err
 	}
 
 	if err := c.EnsureTeamTemplateChanged(teamComp); err != nil {

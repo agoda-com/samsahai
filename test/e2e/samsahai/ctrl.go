@@ -1015,8 +1015,6 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Creating Team")
 		team := mockTeam
-		team.Status.Namespace.Active = atvNamespace
-		team.Status.ActivePromotedBy = "user"
 		Expect(client.Create(ctx, &team)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
@@ -1035,6 +1033,16 @@ var _ = Describe("[e2e] Main controller", func() {
 			return true, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Creating active namespace")
+		atvNs := activeNamespace
+		Expect(client.Create(ctx, &atvNs)).To(BeNil())
+
+		team = s2hv1beta1.Team{}
+		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &team)).To(BeNil())
+		team.Status.Namespace.Active = atvNamespace
+		team.Status.ActivePromotedBy = "user"
+		Expect(client.Update(ctx, &team)).To(BeNil())
 
 		By("Active Environment should not be deleted")
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
