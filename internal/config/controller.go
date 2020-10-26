@@ -856,7 +856,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		if err := c.Update(configComp); err != nil {
 			return reconcile.Result{}, err
 		}
-		return reconcile.Result{}, nil
+		return cr.Result{}, nil
 	}
 
 	if err := c.ensureTriggerChildrenConfig(configComp.Name); err != nil {
@@ -884,7 +884,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		if err := c.Update(configComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update config conditions when require fields is valid")
 		}
-		return reconcile.Result{}, nil
+		return cr.Result{}, nil
 	}
 
 	teamComp := s2hv1beta1.Team{}
