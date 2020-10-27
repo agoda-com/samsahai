@@ -154,6 +154,9 @@ type SamsahaiController interface {
 	// GetPlugins returns samsahai plugins
 	GetPlugins() map[string]Plugin
 
+	// GetActivePromotionDeployEngine returns samsahai deploy engine
+	GetActivePromotionDeployEngine(teamName, ns string) DeployEngine
+
 	// EnsureTeamTemplateChanged  updates team if template changed
 	EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error
 
@@ -236,6 +239,9 @@ type SamsahaiController interface {
 
 	// GetActivePromotionHistory returns ActivePromotion by name
 	GetActivePromotionHistory(name string) (*s2hv1beta1.ActivePromotionHistory, error)
+
+	// DeleteTeamActiveEnvironment deletes all component in namespace and namespace object
+	DeleteTeamActiveEnvironment(teamName, namespace string) error
 }
 
 type Connection struct {

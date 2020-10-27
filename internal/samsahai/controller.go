@@ -49,6 +49,8 @@ import (
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/samsahai/k8sobject"
 	"github.com/agoda-com/samsahai/internal/samsahai/plugin"
+	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
+	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 	"github.com/agoda-com/samsahai/internal/util/cmd"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
@@ -1088,6 +1090,33 @@ func (c *controller) GetActivePromotionHistory(name string) (v *s2hv1beta1.Activ
 	return
 }
 
+func (c *controller) GetActivePromotionDeployEngine(teamName, ns string) internal.DeployEngine {
+	var e string
+	configCtrl := c.GetConfigController()
+	config, err := configCtrl.Get(teamName)
+	if err != nil {
+		return mock.New()
+	}
+
+	atpConfig := config.Status.Used.ActivePromotion
+
+	if atpConfig == nil || atpConfig.Deployment == nil || atpConfig.Deployment.Engine == nil || *atpConfig.Deployment.Engine == "" {
+		e = mock.EngineName
+	} else {
+		e = *config.Status.Used.ActivePromotion.Deployment.Engine
+	}
+
+	var engine internal.DeployEngine
+
+	switch e {
+	case helm3.EngineName:
+		engine = helm3.New(ns, false)
+	default:
+		engine = mock.New()
+	}
+	return engine
+}
+
 func (c *controller) getComponentChecker(source string) (internal.DesiredComponentChecker, error) {
 	checker, ok := c.checkers[source]
 	if !ok {
@@ -1184,7 +1213,11 @@ func (c *controller) destroyClusterRole(namespace string) error {
 		return errors.Wrapf(err, "cannot get clusterrole name %s", clusterRoleName)
 	}
 
-	return c.client.Delete(ctx, clusterRole)
+	if err = c.client.Delete(ctx, clusterRole); err != nil &&
+		k8serrors.IsNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 func (c *controller) destroyClusterRoleBinding(namespace string) error {
@@ -1200,7 +1233,88 @@ func (c *controller) destroyClusterRoleBinding(namespace string) error {
 		return errors.Wrapf(err, "cannot get clusterrole name %s", clusterRoleBindingName)
 	}
 
-	return c.client.Delete(ctx, clusterRoleBinding)
+	if err = c.client.Delete(ctx, clusterRoleBinding); err != nil &&
+		k8serrors.IsNotFound(err) {
+		return nil
+	}
+	return err
+}
+
+func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) error {
+	teamComp := &s2hv1beta1.Team{}
+	if err := c.getTeam(teamName, teamComp); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+	}
+
+	teamComp.Status.SetCondition(
+		s2hv1beta1.TeamActiveEnvironmentDelete,
+		corev1.ConditionTrue,
+		fmt.Sprintf("%s namespace is deleting", namespace))
+
+	if err := c.updateTeam(teamComp); err != nil {
+		return errors.Wrap(err, "cannot update team conditions when active environment is deleting")
+	}
+
+	configCtrl := c.GetConfigController()
+
+	deployEngine := c.GetActivePromotionDeployEngine(teamName, namespace)
+
+	parentComps, err := configCtrl.GetParentComponents(teamName)
+	if err != nil {
+		return err
+	}
+
+	for compName := range parentComps {
+		refName := internal.GenReleaseName(namespace, compName)
+		if err := deployEngine.Delete(refName); err != nil &&
+			!k8serrors.IsNotFound(err) {
+			logger.Error(err, "cannot delete release",
+				"refName", refName,
+				"namespace", namespace,
+				"component", compName)
+		}
+	}
+
+	if err = c.DestroyActiveEnvironment(teamName, namespace); err != nil &&
+		!errors.IsNamespaceStillExists(err) && err != errors.ErrEnsureStableComponentsDestroyed {
+		// condition false
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamActiveEnvironmentDelete,
+			corev1.ConditionTrue,
+			fmt.Sprintf("%s namespace is deleting", namespace))
+
+		if err := c.updateTeam(teamComp); err != nil {
+			logger.Error(err, "cannot update team conditions when active environment is deleting")
+			return nil
+		}
+		//return err
+	}
+
+	teamComp = &s2hv1beta1.Team{}
+	if err := c.getTeam(teamName, teamComp); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+	}
+
+	teamComp.Status.Namespace.Active = ""
+	teamComp.Status.ActivePromotedBy = ""
+	teamComp.Status.SetCondition(
+		s2hv1beta1.TeamActiveEnvironmentDelete,
+		corev1.ConditionFalse,
+		fmt.Sprintf("%s namespace has been deleted successfully", namespace))
+	teamComp.Status.SetCondition(
+		s2hv1beta1.TeamNamespaceActiveCreated,
+		corev1.ConditionFalse,
+		fmt.Sprintf("%s namespace is destroyed", namespace))
+
+	if err := c.updateTeam(teamComp); err != nil {
+		logger.Error(err, "cannot update team conditions when delete active environment completed")
+	}
+
+	return nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -1509,6 +1623,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when config exists")
 		}
+		return reconcile.Result{}, err
 	}
 
 	if err := c.EnsureTeamTemplateChanged(teamComp); err != nil {
@@ -1524,6 +1639,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, err
 		}
+		return reconcile.Result{}, nil
 	}
 
 	if err := c.ensureTriggerChildrenTeam(teamComp.Name); err != nil {
@@ -1552,7 +1668,16 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is valid")
 		}
+		return reconcile.Result{}, nil
+	}
 
+	if teamComp.Status.Namespace.Active != "" && teamComp.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDelete) {
+		activeNamespace := teamComp.Status.Namespace.Active
+		if err := c.DeleteTeamActiveEnvironment(teamComp.Name, activeNamespace); err != nil &&
+			!errors.IsNamespaceStillExists(err) {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
 	}
 
 	teamName := teamComp.GetName()

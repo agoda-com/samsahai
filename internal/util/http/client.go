@@ -84,6 +84,23 @@ func NewClient(baseURL string, opts ...Option) *Client {
 	return &client
 }
 
+// Delete sends http delete
+func (c *Client) Delete(reqURI string, opts ...Option) (int, []byte, error) {
+	baseURL, err := url.Parse(c.BaseURL.String())
+	if err != nil {
+		return 0, nil, err
+	}
+	baseURL.Path = path.Join(baseURL.Path, reqURI)
+	req, err := http.NewRequest("DELETE", baseURL.String(), nil)
+	if err != nil {
+		return 0, nil, err
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c.request(req)
+}
+
 // Post sends http post
 func (c *Client) Post(reqURI string, data []byte, opts ...Option) (int, []byte, error) {
 	baseURL, err := url.Parse(c.BaseURL.String())
@@ -171,6 +188,26 @@ func Post(reqURI string, data []byte, opts ...Option) (int, []byte, error) {
 		opt(&client)
 	}
 
+	return client.request(client.req)
+}
+
+// Delete sends http delete
+func Delete(reqURI string, opts ...Option) (int, []byte, error) {
+	var err error
+	var client = Client{
+		client: &http.Client{},
+	}
+	reqURL, err := url.Parse(reqURI)
+	if err != nil {
+		return 0, nil, err
+	}
+	client.req, err = http.NewRequest("DELETE", reqURL.String(), nil)
+	if err != nil {
+		return 0, nil, err
+	}
+	for _, opt := range opts {
+		opt(&client)
+	}
 	return client.request(client.req)
 }
 

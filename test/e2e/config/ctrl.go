@@ -291,33 +291,26 @@ var (
 		"created-for": "s2h-testing",
 	}
 
+	mockTeamSpec = s2hv1beta1.TeamSpec{
+		Description: "team for testing",
+		Owners:      []string{"samsahai@samsahai.io"},
+		Credential: s2hv1beta1.Credential{
+			SecretName: s2hobject.GetTeamSecretName(teamTest),
+		},
+		StagingCtrl: &s2hv1beta1.StagingCtrl{
+			IsDeploy: false,
+		},
+	}
+
 	mockTeam = s2hv1beta1.Team{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamTest,
 			Labels: testLabels,
 		},
-		Spec: s2hv1beta1.TeamSpec{
-			Description: "team for testing",
-			Owners:      []string{"samsahai@samsahai.io"},
-			Credential: s2hv1beta1.Credential{
-				SecretName: s2hobject.GetTeamSecretName(teamTest),
-			},
-			StagingCtrl: &s2hv1beta1.StagingCtrl{
-				IsDeploy: false,
-			},
-		},
+		Spec: mockTeamSpec,
 		Status: s2hv1beta1.TeamStatus{
 			Namespace: s2hv1beta1.TeamNamespace{},
-			Used: s2hv1beta1.TeamSpec{
-				Description: "team for testing",
-				Owners:      []string{"samsahai@samsahai.io"},
-				Credential: s2hv1beta1.Credential{
-					SecretName: s2hobject.GetTeamSecretName(teamTest),
-				},
-				StagingCtrl: &s2hv1beta1.StagingCtrl{
-					IsDeploy: false,
-				},
-			},
+			Used:      mockTeamSpec,
 		},
 	}
 	mockTeam2 = s2hv1beta1.Team{
@@ -325,28 +318,10 @@ var (
 			Name:   teamTest2,
 			Labels: testLabels,
 		},
-		Spec: s2hv1beta1.TeamSpec{
-			Description: "team for testing",
-			Owners:      []string{"samsahai@samsahai.io"},
-			Credential: s2hv1beta1.Credential{
-				SecretName: s2hobject.GetTeamSecretName(teamTest2),
-			},
-			StagingCtrl: &s2hv1beta1.StagingCtrl{
-				IsDeploy: false,
-			},
-		},
+		Spec: mockTeamSpec,
 		Status: s2hv1beta1.TeamStatus{
 			Namespace: s2hv1beta1.TeamNamespace{},
-			Used: s2hv1beta1.TeamSpec{
-				Description: "team for testing",
-				Owners:      []string{"samsahai@samsahai.io"},
-				Credential: s2hv1beta1.Credential{
-					SecretName: s2hobject.GetTeamSecretName(teamTest2),
-				},
-				StagingCtrl: &s2hv1beta1.StagingCtrl{
-					IsDeploy: false,
-				},
-			},
+			Used:      mockTeamSpec,
 		},
 	}
 )
