@@ -1077,15 +1077,22 @@ var _ = Describe("[e2e] Main controller", func() {
 			if team.Status.Namespace.Active != "" && team.Status.ActivePromotedBy != "" {
 				return false, nil
 			}
-			for _, c := range team.Status.Conditions {
-				if c.Type == s2hv1beta1.TeamActiveEnvironmentDelete && c.Status == corev1.ConditionFalse {
+
+			if team.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDelete) {
+				return false, nil
+			}
+
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: activeNamespace.Name}, &namespace); err != nil {
+				if errors.IsNotFound(err) {
 					return true, nil
 				}
 			}
+
 			return false, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Delete active environment error")
-	}, 30)
+	}, 60)
 
 	It("should be error when creating team if config does not exist", func(done Done) {
 		defer close(done)

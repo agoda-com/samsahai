@@ -1774,6 +1774,35 @@ paths:
       summary: get team configuration
       tags:
       - GET
+  /teams/{team}/environment/active/delete:
+    delete:
+      description: Delete the current active namespace.
+      parameters:
+      - description: Team name
+        in: path
+        name: team
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: There is no active namespace to destroy
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+        "404":
+          description: Team not found
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+      summary: Delete the current active namespace
+      tags:
+      - GET
   /teams/{team}/pullrequest/queue:
     get:
       description: Returns queue information of pull request deployment flow.

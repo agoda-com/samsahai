@@ -166,3 +166,8 @@ func IsEnsuringConfigDestroyed(err error) bool {
 func IsErrReleaseFailed(err error) bool {
 	return ErrReleaseFailed.Error() == err.Error()
 }
+
+// IsEnsuringStableComponentsDestroyed checks ensuring all stable components destroyed
+func IsEnsuringStableComponentsDestroyed(err error) bool {
+	return ErrEnsureStableComponentsDestroyed.Error() == err.Error()
+}

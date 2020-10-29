@@ -1,16 +1,21 @@
 package webhook
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
 )
 
-type MessageResp struct {
-	Message string `json:"message,omitempty"`
-}
-
+// deleteTeamActiveEnvironment godoc
+// @Summary Delete the current active namespace
+// @Description Delete the current active namespace.
+// @Tags GET
+// @Param team path string true "Team name"
+// @Success 200 {string} string
+// @Failure 400 {object} errResp "There is no active namespace to destroy"
+// @Failure 404 {object} errResp "Team not found"
+// @Failure 500 {object} errResp
+// @Router /teams/{team}/environment/active/delete [delete]
 func (h *handler) deleteTeamActiveEnvironment(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	team, err := h.loadTeam(w, params)
 	if err != nil {
@@ -24,14 +29,10 @@ func (h *handler) deleteTeamActiveEnvironment(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := h.samsahai.DeleteTeamActiveEnvironment(team.Name, activeNamespace); err != nil {
-		logger.Warn("error while delete active environment", err.Error())
-		h.JSON(w, http.StatusInternalServerError, MessageResp{
-			Message: fmt.Sprintf("delete active environment failed"),
-		})
+		logger.Error(err, "error while delete active environment", "team", team.Name)
+		h.errorf(w, http.StatusInternalServerError, "delete active environment failed, %v", err)
 		return
 	}
 
-	h.JSON(w, http.StatusOK, MessageResp{
-		Message: "success",
-	})
+	w.WriteHeader(http.StatusOK)
 }
