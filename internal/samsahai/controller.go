@@ -1277,8 +1277,8 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) err
 		}
 	}
 
-	if err = c.DestroyActiveEnvironment(teamName, namespace); err != nil &&
-		!errors.IsNamespaceStillExists(err) && err != errors.ErrEnsureStableComponentsDestroyed {
+	err = c.DestroyActiveEnvironment(teamName, namespace)
+	if err != nil && !errors.IsNamespaceStillExists(err) && errors.IsEnsuringStableComponentsDestroyed(err) {
 		// condition false
 		teamComp.Status.SetCondition(
 			s2hv1beta1.TeamActiveEnvironmentDelete,
@@ -1289,7 +1289,6 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) err
 			logger.Error(err, "cannot update team conditions when active environment is deleting")
 			return nil
 		}
-		//return err
 	}
 
 	teamComp = &s2hv1beta1.Team{}
