@@ -1,6 +1,7 @@
 package slack
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/nlopes/slack"
@@ -84,7 +85,7 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	message := r.makeComponentUpgradeReport(comp)
 	if len(comp.ImageMissingList) > 0 {
 		message += "\n"
-		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList))
+		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList), "")
 	}
 
 	return r.post(slackConfig, message, internal.ComponentUpgradeType)
@@ -110,7 +111,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 	message := r.makePullRequestQueueReport(comp)
 	if len(comp.ImageMissingList) > 0 {
 		message += "\n"
-		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList))
+		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList), "")
 	}
 
 	return r.post(slackConfig, message, internal.PullRequestQueueType)
@@ -128,7 +129,7 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 	imageMissingList := atpRpt.ActivePromotionStatus.PreActiveQueue.ImageMissingList
 	if len(imageMissingList) > 0 {
 		message += "\n"
-		message += r.makeImageMissingListReport(imageMissingList)
+		message += r.makeImageMissingListReport(imageMissingList, "")
 	}
 
 	message += "\n"
@@ -165,7 +166,7 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 		return nil
 	}
 
-	message := r.makeImageMissingListReport([]s2hv1beta1.Image{imageMissingRpt.Image})
+	message := r.makeImageMissingListReport([]s2hv1beta1.Image{imageMissingRpt.Image}, imageMissingRpt.Reason)
 
 	return r.post(slackConfig, message, internal.ImageMissingType)
 }
@@ -343,11 +344,17 @@ func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.Acti
 	return strings.TrimSpace(template.TextRender("DestroyedTime", message, status))
 }
 
-func (r *reporter) makeImageMissingListReport(images []s2hv1beta1.Image) string {
+func (r *reporter) makeImageMissingListReport(images []s2hv1beta1.Image, reason string) string {
+	var reasonMsg string
+	if reason != "" {
+		reasonMsg = fmt.Sprintf("   `%s`", reason)
+	}
+
 	var message = `
 *Image Missing List*
 {{- range .Images }}
 - {{ .Repository }}:{{ .Tag }}
+` + reasonMsg + `
 {{- end }}
 `
 

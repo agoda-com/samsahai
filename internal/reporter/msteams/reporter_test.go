@@ -491,7 +491,8 @@ var _ = Describe("send ms teams message", func() {
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
 
 			img := s2hv1beta1.Image{Repository: "registry/comp-1", Tag: "1.0.0"}
-			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{}, "owner", "comp1")
+			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{},
+				"owner", "comp1", "internal server error")
 			err := r.SendImageMissing(configCtrl, imageMissingRpt)
 			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
 			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
@@ -499,6 +500,7 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.channels).Should(Equal([]string{"chan1-1", "chan1-2", "chan2-1"}))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("registry/comp-1:1.0.0"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("internal server error"))
 			g.Expect(err).Should(BeNil())
 		})
 	})

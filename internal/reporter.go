@@ -150,19 +150,24 @@ func NewActivePromotionReporter(status s2hv1beta1.ActivePromotionStatus, s2hConf
 type ImageMissingReporter struct {
 	TeamName      string `json:"teamName,omitempty"`
 	ComponentName string `json:"componentName,omitempty"`
+	// Reason represents error reason
+	Reason        string `json:"reason,omitempty"`
 	Envs          map[string]string
 	s2hv1beta1.Image
 	SamsahaiConfig
 }
 
 // NewImageMissingReporter creates image missing reporter object
-func NewImageMissingReporter(image s2hv1beta1.Image, s2hConfig SamsahaiConfig, teamName, compName string) *ImageMissingReporter {
+func NewImageMissingReporter(image s2hv1beta1.Image, s2hConfig SamsahaiConfig,
+	teamName, compName, reason string) *ImageMissingReporter {
+
 	c := &ImageMissingReporter{
 		SamsahaiConfig: s2hConfig,
 		TeamName:       teamName,
 		ComponentName:  compName,
 		Image:          image,
 		Envs:           listEnv(),
+		Reason:         reason,
 	}
 
 	return c

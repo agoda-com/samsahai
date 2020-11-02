@@ -456,11 +456,13 @@ var _ = Describe("send slack message", func() {
 			mockSlackCli := &mockSlack{}
 			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
 			img := s2hv1beta1.Image{Repository: "registry/comp-1", Tag: "1.0.0"}
-			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{}, "owner", "comp1")
+			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{},
+				"owner", "comp1", "internal checker error")
 			err := r.SendImageMissing(configCtrl, imageMissingRpt)
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("registry/comp-1:1.0.0"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("internal checker error"))
 			g.Expect(err).Should(BeNil())
 		})
 	})

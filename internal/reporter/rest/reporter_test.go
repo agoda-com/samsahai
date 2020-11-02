@@ -239,7 +239,8 @@ var _ = Describe("send rest message", func() {
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
-			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{}, "owner", "comp1")
+			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{},
+				"owner", "comp1", "")
 			err := client.SendImageMissing(configCtrl, imageMissingRpt)
 			g.Expect(err).To(BeNil(), "request should not thrown any error")
 		})
