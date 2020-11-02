@@ -1009,13 +1009,29 @@ var _ = Describe("[e2e] Main controller", func() {
 		setupSamsahai(true)
 		ctx := context.TODO()
 
+		By("Starting Samsahai internal process")
+		go samsahaiCtrl.Start(chStop)
+
+		By("Starting http server")
+		mux := http.NewServeMux()
+		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
+		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
 		By("Creating Config")
 		config := mockConfig
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
 		team := mockTeam
+		team.Status.Namespace.Active = atvNamespace
+		team.Status.ActivePromotedBy = "user"
 		Expect(client.Create(ctx, &team)).To(BeNil())
+
+		By("Creating active namespace")
+		atvNs := activeNamespace
+		Expect(client.Create(ctx, &atvNs)).To(BeNil())
 
 		By("Verifying namespace and config have been created")
 		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
@@ -1034,17 +1050,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
-		By("Creating active namespace")
-		atvNs := activeNamespace
-		Expect(client.Create(ctx, &atvNs)).To(BeNil())
-
-		team = s2hv1beta1.Team{}
-		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &team)).To(BeNil())
-		team.Status.Namespace.Active = atvNamespace
-		team.Status.ActivePromotedBy = "user"
-		Expect(client.Update(ctx, &team)).To(BeNil())
-
-		By("Active Environment should not be deleted")
+		By("Active environment should not be deleted")
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			team := s2hv1beta1.Team{}
 			if err := client.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
@@ -1056,19 +1062,11 @@ var _ = Describe("[e2e] Main controller", func() {
 			return false, nil
 		})
 
-		By("Updating Team Delete Active Environment Condition")
-		team = s2hv1beta1.Team{}
-		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &team)).To(BeNil())
-		conditionDeleteActive := s2hv1beta1.TeamCondition{
-			Type:               s2hv1beta1.TeamActiveEnvironmentDelete,
-			Status:             corev1.ConditionTrue,
-			LastTransitionTime: metav1.Now(),
-			Message:            "test",
-		}
-		team.Status.Conditions = append(team.Status.Conditions, conditionDeleteActive)
-		Expect(client.Update(ctx, &team)).To(BeNil())
+		By("Delete active environment")
+		_, _, err = utilhttp.Delete(server.URL + "/teams/" + teamName + "/environment/active/delete")
+		Expect(err).NotTo(HaveOccurred(), "Trigger delete active environment error")
 
-		By("Active Environment should be deleted")
+		By("Active environment should be deleted")
 		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 			team := s2hv1beta1.Team{}
 			if err := client.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
@@ -1126,6 +1124,7 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should detect image missing and not create desired component", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
+		ctx := context.TODO()
 
 		By("Starting Samsahai internal process")
 		go samsahaiCtrl.Start(chStop)
@@ -1137,19 +1136,18 @@ var _ = Describe("[e2e] Main controller", func() {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		ctx := context.TODO()
-
 		By("Creating Config")
 		config := mockConfig
 		redisComp := configCompRedis
-		redisComp.Image.Repository = "bitnami/rediss"
+		redisComp.Image.Repository = "bitnami/redis-missing"
 		redisComp.Image.Pattern = "image-missing"
 		redisComp.Values = map[string]interface{}{
 			"image": map[string]interface{}{
-				"repository": "bitnami/rediss",
+				"repository": "bitnami/redis-missing",
 			},
 		}
 		config.Spec.Components = []*s2hv1beta1.Component{&redisComp}
+		config.Status.Used.Components = []*s2hv1beta1.Component{&redisComp}
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
@@ -1233,7 +1231,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		}()
 		found := <-foundCh
 		Expect(found).To(BeFalse())
-
 	}, 60)
 
 	It("should create DesiredComponent on team staging namespace", func(done Done) {
@@ -1397,6 +1394,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		configComp := s2hv1beta1.Config{}
 		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &configComp)).To(BeNil())
 		configComp.Spec.Components = []*s2hv1beta1.Component{{Name: redisCompName}}
+		configComp.Status.Used.Components = []*s2hv1beta1.Component{{Name: redisCompName}}
 		Expect(client.Update(ctx, &configComp)).To(BeNil())
 
 		time.Sleep(verifyTime1s)
@@ -2085,7 +2083,6 @@ var (
 	wordpressCompName = "wordpress"
 
 	maxActivePromotionRetry = 2
-	mockTeamTemplateUID     = "eddff85e8b4a4c3a15587a02933a8665"
 
 	mockTeamSpec = s2hv1beta1.TeamSpec{
 		Description: "team for testing",
@@ -2126,7 +2123,7 @@ var (
 					},
 				},
 			},
-			TemplateUID: mockTeamTemplateUID,
+			TemplateUID: internal.GenTeamHashID(s2hv1beta1.TeamStatus{Used: mockTeamSpec}),
 			Used:        mockTeamSpec,
 		},
 	}
@@ -2347,9 +2344,6 @@ var (
 		},
 	}
 
-	configTemplateUID          = "351a6fb96ffd51745ce0d25fdbcec1f0"
-	configOnlyRedisTemplateUID = "82425add0c35197c65f48bcf949ab063"
-
 	mockConfig = s2hv1beta1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
@@ -2357,7 +2351,7 @@ var (
 		},
 		Spec: configSpec,
 		Status: s2hv1beta1.ConfigStatus{
-			TemplateUID: configTemplateUID,
+			TemplateUID: internal.GenConfigHashID(s2hv1beta1.ConfigStatus{Used: configSpec}),
 			Used:        configSpec,
 		},
 	}
@@ -2379,7 +2373,7 @@ var (
 		},
 		Spec: configOnlyRedisSpec,
 		Status: s2hv1beta1.ConfigStatus{
-			TemplateUID: configOnlyRedisTemplateUID,
+			TemplateUID: internal.GenConfigHashID(s2hv1beta1.ConfigStatus{Used: configOnlyRedisSpec}),
 			Used:        configOnlyRedisSpec,
 		},
 	}

@@ -205,7 +205,13 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 
 	// TODO: do caching for better performance
 	version, vErr := checker.GetVersion(compRepository, compName, checkPattern)
-	if vErr != nil && !errors.IsImageNotFound(vErr) && !errors.IsErrRequestTimeout(vErr) {
+	switch {
+	case vErr == nil: // do nothing
+	case errors.IsImageNotFound(vErr) || errors.IsErrRequestTimeout(vErr):
+	case errors.IsInternalCheckerError(vErr):
+		c.sendImageMissingReport(updateInfo.TeamName, updateInfo.ComponentName, compRepository, version, vErr.Error())
+		return nil
+	default:
 		logger.Error(vErr, "error while run checker.getversion",
 			"team", updateInfo.TeamName, "name", compName, "repository", compRepository,
 			"version pattern", checkPattern)
@@ -231,7 +237,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	}
 
 	if vErr != nil && (errors.IsImageNotFound(vErr) || errors.IsErrRequestTimeout(vErr)) {
-		c.sendImageMissingReport(updateInfo.TeamName, updateInfo.ComponentName, compRepository, version)
+		c.sendImageMissingReport(updateInfo.TeamName, updateInfo.ComponentName, compRepository, version, "")
 		return nil
 	}
 
@@ -299,11 +305,11 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	return nil
 }
 
-func (c *controller) sendImageMissingReport(teamName, compName, repo, version string) {
+func (c *controller) sendImageMissingReport(teamName, compName, repo, version, reason string) {
 	configCtrl := c.GetConfigController()
 	for _, reporter := range c.reporters {
 		img := s2hv1beta1.Image{Repository: repo, Tag: version}
-		imageMissingRpt := internal.NewImageMissingReporter(img, c.configs, teamName, compName)
+		imageMissingRpt := internal.NewImageMissingReporter(img, c.configs, teamName, compName, reason)
 		if err := reporter.SendImageMissing(configCtrl, imageMissingRpt); err != nil {
 			logger.Error(err, "cannot send image missing list report", "team", teamName)
 		}

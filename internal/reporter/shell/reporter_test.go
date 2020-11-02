@@ -100,7 +100,8 @@ var _ = Describe("shell command reporter", func() {
 			configCtrl := newMockConfigCtrl("")
 
 			img := s2hv1beta1.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
-			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{}, "owner", "comp1")
+			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{},
+				"owner", "comp1", "")
 			err := r.SendImageMissing(configCtrl, imageMissingRpt)
 			g.Expect(err).NotTo(HaveOccurred())
 

@@ -1,6 +1,7 @@
 package msteams
 
 import (
+	"fmt"
 	"strings"
 
 	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
@@ -85,7 +86,7 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	message := r.makeComponentUpgradeReport(comp)
 	if len(comp.ImageMissingList) > 0 {
 		message += "<hr/>"
-		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList))
+		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList), "")
 	}
 
 	return r.post(msTeamsConfig, message, internal.ComponentUpgradeType)
@@ -111,7 +112,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 	message := r.makePullRequestQueueReport(comp)
 	if len(comp.ImageMissingList) > 0 {
 		message += "\n"
-		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList))
+		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList), "")
 	}
 
 	return r.post(msTeamsConfig, message, internal.PullRequestQueueType)
@@ -129,7 +130,7 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 	imageMissingList := atpRpt.ActivePromotionStatus.PreActiveQueue.ImageMissingList
 	if len(imageMissingList) > 0 {
 		message += "<hr/>"
-		message += r.makeImageMissingListReport(imageMissingList)
+		message += r.makeImageMissingListReport(imageMissingList, "")
 	}
 
 	if atpRpt.HasOutdatedComponent {
@@ -181,7 +182,7 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 		return nil
 	}
 
-	message := r.makeImageMissingListReport([]s2hv1beta1.Image{imageMissingRpt.Image})
+	message := r.makeImageMissingListReport([]s2hv1beta1.Image{imageMissingRpt.Image}, imageMissingRpt.Reason)
 
 	return r.post(msTeamsConfig, message, internal.ImageMissingType)
 }
@@ -348,11 +349,17 @@ func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.Acti
 	return strings.TrimSpace(template.TextRender("DestroyedTime", message, status))
 }
 
-func (r *reporter) makeImageMissingListReport(images []s2hv1beta1.Image) string {
+func (r *reporter) makeImageMissingListReport(images []s2hv1beta1.Image, reason string) string {
+	var reasonMsg string
+	if reason != "" {
+		reasonMsg = fmt.Sprintf("   <code>%s</code>", reason)
+	}
+
 	var message = `
 <b>Image Missing List</b>
 {{- range .Images }}
 <li>{{ .Repository }}:{{ .Tag }}</li>
+` + reasonMsg + `
 {{- end }}
 `
 

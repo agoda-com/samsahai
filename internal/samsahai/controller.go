@@ -2,8 +2,6 @@ package samsahai
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -1472,12 +1470,12 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error 
 		return err
 	}
 
-	template := configComp.Spec.Template
-	if template != "" && template != teamComp.Name {
+	configTemplate := configComp.Spec.Template
+	if configTemplate != "" && configTemplate != teamComp.Name {
 		templateObj := &s2hv1beta1.Team{}
-		err := c.getTeam(template, templateObj)
+		err := c.getTeam(configTemplate, templateObj)
 		if err != nil {
-			logger.Error(err, "team template not found", "template", template)
+			logger.Error(err, "team template not found", "template", configTemplate)
 			return err
 		}
 
@@ -1489,9 +1487,7 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error 
 		teamComp.Status.Used = teamComp.Spec
 	}
 
-	bytesTeamComp, _ := json.Marshal(&teamComp.Status.Used)
-	bytesHashID := md5.Sum(bytesTeamComp)
-	hashID := fmt.Sprintf("%x", bytesHashID)
+	hashID := internal.GenTeamHashID(teamComp.Status)
 
 	if !teamComp.Status.SyncTemplate {
 		teamComp.Status.SyncTemplate = true
