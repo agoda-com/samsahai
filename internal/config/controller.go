@@ -2,8 +2,6 @@ package config
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -584,11 +582,11 @@ func (c *controller) ensureConfigChanged(teamName, namespace string) error {
 }
 
 func (c *controller) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) error {
-	template := config.Spec.Template
-	if template != "" && template != config.Name {
-		templateObj, err := c.getConfig(template)
+	configTemplate := config.Spec.Template
+	if configTemplate != "" && configTemplate != config.Name {
+		templateObj, err := c.getConfig(configTemplate)
 		if err != nil {
-			logger.Error(err, "config template not found", "template", template)
+			logger.Error(err, "config template not found", "template", configTemplate)
 			return err
 		}
 
@@ -598,11 +596,9 @@ func (c *controller) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) erro
 
 	} else {
 		config.Status.Used = config.Spec
-
 	}
-	bytesConfigComp, _ := json.Marshal(&config.Status.Used)
-	bytesHashID := md5.Sum(bytesConfigComp)
-	hashID := fmt.Sprintf("%x", bytesHashID)
+
+	hashID := internal.GenConfigHashID(config.Status)
 
 	if !config.Status.SyncTemplate {
 		config.Status.SyncTemplate = true

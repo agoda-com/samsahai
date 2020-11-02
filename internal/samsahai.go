@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -290,4 +292,24 @@ func GenPullRequestComponentName(component, prNumber string) string {
 type PullRequestData struct {
 	// PRNumber defines a pull request number
 	PRNumber string
+}
+
+// GenConfigHashID generates config hash from Config status.used
+func GenConfigHashID(configStatus s2hv1beta1.ConfigStatus) string {
+	configUsed := configStatus.Used
+	bytesConfigComp, _ := json.Marshal(&configUsed)
+	bytesHashID := md5.Sum(bytesConfigComp)
+	hashID := fmt.Sprintf("%x", bytesHashID)
+
+	return hashID
+}
+
+// GenTeamHashID generates team hash from Team status.used
+func GenTeamHashID(teamStatus s2hv1beta1.TeamStatus) string {
+	teamUsed := teamStatus.Used
+	bytesTeamComp, _ := json.Marshal(teamUsed)
+	bytesHashID := md5.Sum(bytesTeamComp)
+	hashID := fmt.Sprintf("%x", bytesHashID)
+
+	return hashID
 }

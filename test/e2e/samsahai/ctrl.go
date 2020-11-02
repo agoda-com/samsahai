@@ -1063,7 +1063,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		})
 
 		By("Delete active environment")
-		_, _, err = utilhttp.Delete(server.URL+"/teams/"+teamName+"/environment/active/delete")
+		_, _, err = utilhttp.Delete(server.URL + "/teams/" + teamName + "/environment/active/delete")
 		Expect(err).NotTo(HaveOccurred(), "Trigger delete active environment error")
 
 		By("Active environment should be deleted")
@@ -2083,7 +2083,6 @@ var (
 	wordpressCompName = "wordpress"
 
 	maxActivePromotionRetry = 2
-	mockTeamTemplateUID     = "eddff85e8b4a4c3a15587a02933a8665"
 
 	mockTeamSpec = s2hv1beta1.TeamSpec{
 		Description: "team for testing",
@@ -2124,7 +2123,7 @@ var (
 					},
 				},
 			},
-			TemplateUID: mockTeamTemplateUID,
+			TemplateUID: internal.GenTeamHashID(s2hv1beta1.TeamStatus{Used: mockTeamSpec}),
 			Used:        mockTeamSpec,
 		},
 	}
@@ -2345,9 +2344,6 @@ var (
 		},
 	}
 
-	configTemplateUID          = "351a6fb96ffd51745ce0d25fdbcec1f0"
-	configOnlyRedisTemplateUID = "82425add0c35197c65f48bcf949ab063"
-
 	mockConfig = s2hv1beta1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
@@ -2355,7 +2351,7 @@ var (
 		},
 		Spec: configSpec,
 		Status: s2hv1beta1.ConfigStatus{
-			TemplateUID: configTemplateUID,
+			TemplateUID: internal.GenConfigHashID(s2hv1beta1.ConfigStatus{Used: configSpec}),
 			Used:        configSpec,
 		},
 	}
@@ -2377,7 +2373,7 @@ var (
 		},
 		Spec: configOnlyRedisSpec,
 		Status: s2hv1beta1.ConfigStatus{
-			TemplateUID: configOnlyRedisTemplateUID,
+			TemplateUID: internal.GenConfigHashID(s2hv1beta1.ConfigStatus{Used: configOnlyRedisSpec}),
 			Used:        configOnlyRedisSpec,
 		},
 	}
