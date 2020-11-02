@@ -17,6 +17,7 @@ const (
 	ErrRequestTimeout            = Error("request timeout")
 	ErrExecutionTimeout          = Error("execution timeout")
 	ErrImageVersionNotFound      = Error("image version not found")
+	ErrInternalCheckerError      = Error("internal checker error")
 	ErrNoDesiredComponentVersion = Error("no desired component version")
 
 	ErrTeamNamespaceStillCreating     = Error("still creating namespace")
@@ -66,8 +67,15 @@ type Error string
 // Error overrides error
 func (e Error) Error() string { return string(e) }
 
+// IsImageNotFound checks image not found error
 func IsImageNotFound(err error) bool {
 	return ErrImageVersionNotFound.Error() == err.Error()
+}
+
+// IsInternalCheckerError checks internal checker error
+func IsInternalCheckerError(err error) bool {
+	return ErrInternalCheckerError.Error() == err.Error() ||
+		strings.Contains(err.Error(), ErrInternalCheckerError.Error())
 }
 
 // IsNamespaceStillCreating checks namespace is still creating
