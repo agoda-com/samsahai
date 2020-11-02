@@ -241,7 +241,7 @@ type SamsahaiController interface {
 	GetActivePromotionHistory(name string) (*s2hv1beta1.ActivePromotionHistory, error)
 
 	// DeleteTeamActiveEnvironment deletes all component in namespace and namespace object
-	DeleteTeamActiveEnvironment(teamName, namespace string) error
+	DeleteTeamActiveEnvironment(teamName, namespace, deletedBy string) error
 }
 
 type Connection struct {

@@ -1240,7 +1240,7 @@ func (c *controller) destroyClusterRoleBinding(namespace string) error {
 	return err
 }
 
-func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) error {
+func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy string) error {
 	teamComp := &s2hv1beta1.Team{}
 	if err := c.getTeam(teamName, teamComp); err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -1296,6 +1296,10 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace string) err
 		if k8serrors.IsNotFound(err) {
 			return nil
 		}
+	}
+
+	if deletedBy != "" {
+		teamComp.Status.ActiveDeletedBy = deletedBy
 	}
 
 	teamComp.Status.Namespace.Active = ""
@@ -1672,7 +1676,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	if teamComp.Status.Namespace.Active != "" && teamComp.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDelete) {
 		activeNamespace := teamComp.Status.Namespace.Active
-		if err := c.DeleteTeamActiveEnvironment(teamComp.Name, activeNamespace); err != nil &&
+		if err := c.DeleteTeamActiveEnvironment(teamComp.Name, activeNamespace, ""); err != nil &&
 			!errors.IsNamespaceStillExists(err) {
 			return reconcile.Result{}, err
 		}

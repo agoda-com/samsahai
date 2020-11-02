@@ -450,6 +450,12 @@
                         "name": "team",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Delete by",
+                        "name": "deleted_by",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2246,6 +2252,10 @@
                 "activeComponents": {
                     "description": "ActiveComponents represents a list of stable components in active namespace\n+optional",
                     "type": "object"
+                },
+                "activeDeletedBy": {
+                    "description": "ActiveDeletedBy represents a person who deleted the Active environment\n+optional",
+                    "type": "string"
                 },
                 "activePromotedBy": {
                     "description": "ActivePromotedBy represents a person who promoted the ActivePromotion\n+optional",

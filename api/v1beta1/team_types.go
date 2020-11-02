@@ -115,6 +115,10 @@ type TeamStatus struct {
 	// +optional
 	ActivePromotedBy string `json:"activePromotedBy,omitempty"`
 
+	// ActiveDeletedBy represents a person who deleted the Active environment
+	// +optional
+	ActiveDeletedBy string `json:"activeDeletedBy,omitempty"`
+
 	// Used represents overridden team specification
 	// +optional
 	Used TeamSpec `json:"used,omitempty"`
