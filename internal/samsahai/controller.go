@@ -1296,12 +1296,9 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 		}
 	}
 
-	if deletedBy != "" {
-		teamComp.Status.ActiveDeletedBy = deletedBy
-	}
-
 	teamComp.Status.Namespace.Active = ""
 	teamComp.Status.ActivePromotedBy = ""
+	teamComp.Status.ActiveDeletedBy = deletedBy
 	teamComp.Status.SetCondition(
 		s2hv1beta1.TeamActiveEnvironmentDelete,
 		corev1.ConditionFalse,

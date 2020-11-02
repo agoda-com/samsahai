@@ -23,8 +23,11 @@ func (h *handler) deleteTeamActiveEnvironment(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	deletedBy := r.URL.Query()["deleted_by"][0]
-
+	d, ok := r.URL.Query()["deleted_by"]
+	var deletedBy = ""
+	if ok {
+		deletedBy = d[0]
+	}
 	activeNamespace := team.Status.Namespace.Active
 	if activeNamespace == "" {
 		h.errorf(w, http.StatusBadRequest, "there is no active namespace to destroy")
