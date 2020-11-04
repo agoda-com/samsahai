@@ -326,6 +326,7 @@ func withTeamActiveNamespaceStatus(namespace, promotedBy string, isDelete ...boo
 		teamComp.Status.Namespace.Active = namespace
 		if promotedBy != "" {
 			teamComp.Status.ActivePromotedBy = promotedBy
+			teamComp.Status.ActiveNamespaceDeleted = s2hv1beta1.ActiveNamespaceDeleted{}
 		}
 		if len(isDelete) > 0 && isDelete[0] {
 			teamComp.Status.Namespace.Active = ""
@@ -1246,6 +1247,11 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 		}
 	}
 
+	if teamComp.Status.ActiveNamespaceDeleted == (s2hv1beta1.ActiveNamespaceDeleted{}) {
+		now := metav1.Now()
+		teamComp.Status.ActiveNamespaceDeleted.ActiveDeletedAt = &now
+		teamComp.Status.ActiveNamespaceDeleted.ActiveDeletedBy = deletedBy
+	}
 	teamComp.Status.SetCondition(
 		s2hv1beta1.TeamActiveEnvironmentDelete,
 		corev1.ConditionTrue,
@@ -1277,7 +1283,6 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 
 	err = c.DestroyActiveEnvironment(teamName, namespace)
 	if err != nil && !errors.IsNamespaceStillExists(err) && errors.IsEnsuringStableComponentsDestroyed(err) {
-		// condition false
 		teamComp.Status.SetCondition(
 			s2hv1beta1.TeamActiveEnvironmentDelete,
 			corev1.ConditionTrue,
@@ -1298,7 +1303,6 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 
 	teamComp.Status.Namespace.Active = ""
 	teamComp.Status.ActivePromotedBy = ""
-	teamComp.Status.ActiveDeletedBy = deletedBy
 	teamComp.Status.SetCondition(
 		s2hv1beta1.TeamActiveEnvironmentDelete,
 		corev1.ConditionFalse,

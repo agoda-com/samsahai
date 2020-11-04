@@ -115,9 +115,9 @@ type TeamStatus struct {
 	// +optional
 	ActivePromotedBy string `json:"activePromotedBy,omitempty"`
 
-	// ActiveDeletedBy represents a person who deleted the Active environment
+	// ActiveNamespaceDeleted represents a person who deleted the Active environment and time when it was deleted
 	// +optional
-	ActiveDeletedBy string `json:"activeDeletedBy,omitempty"`
+	ActiveNamespaceDeleted ActiveNamespaceDeleted `json:"activeNamespaceDeleted,omitempty"`
 
 	// Used represents overridden team specification
 	// +optional
@@ -259,6 +259,16 @@ type TeamCondition struct {
 }
 
 type TeamConditionType string
+
+type ActiveNamespaceDeleted struct {
+	// ActiveDeletedBy represents a person who deleted the Active environment
+	// +optional
+	ActiveDeletedBy string `json:"activeDeletedBy,omitempty"`
+
+	// ActiveDeletedAt represents time when the Active environment was deleted
+	// +optional
+	ActiveDeletedAt *metav1.Time `json:"activeDeletedAt,omitempty"`
+}
 
 const (
 	TeamNamespaceStagingCreated           TeamConditionType = "TeamNamespaceStagingCreated"

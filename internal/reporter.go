@@ -151,8 +151,8 @@ type ImageMissingReporter struct {
 	TeamName      string `json:"teamName,omitempty"`
 	ComponentName string `json:"componentName,omitempty"`
 	// Reason represents error reason
-	Reason        string `json:"reason,omitempty"`
-	Envs          map[string]string
+	Reason string `json:"reason,omitempty"`
+	Envs   map[string]string
 	s2hv1beta1.Image
 	SamsahaiConfig
 }
