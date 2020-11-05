@@ -1,17 +1,4 @@
 definitions:
-  v1beta1.ActiveNamespaceDeleted:
-    properties:
-      activeDeletedAt:
-        description: |-
-          ActiveDeletedAt represents time when the Active environment was deleted
-          +optional
-        type: string
-      activeDeletedBy:
-        description: |-
-          ActiveDeletedBy represents a person who deleted the Active environment
-          +optional
-        type: string
-    type: object
   v1beta1.ActivePromotion:
     properties:
       spec:
@@ -1038,6 +1025,10 @@ definitions:
     type: object
   v1beta1.ReporterShell:
     properties:
+      activeNamespaceDeleted:
+        $ref: '#/definitions/v1beta1.CommandAndArgs'
+        description: +optional
+        type: object
       activePromotion:
         $ref: '#/definitions/v1beta1.CommandAndArgs'
         description: +optional
@@ -1208,12 +1199,11 @@ definitions:
           ActiveComponents represents a list of stable components in active namespace
           +optional
         type: object
-      activeNamespaceDeleted:
-        $ref: '#/definitions/v1beta1.ActiveNamespaceDeleted'
+      activeDeletedBy:
         description: |-
-          ActiveNamespaceDeleted represents a person who deleted the Active environment and time when it was deleted
+          ActiveDeletedBy represents a person who deleted the Active environment
           +optional
-        type: object
+        type: string
       activePromotedBy:
         description: |-
           ActivePromotedBy represents a person who promoted the ActivePromotion

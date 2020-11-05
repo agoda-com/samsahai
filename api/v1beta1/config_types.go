@@ -307,6 +307,8 @@ type ReporterShell struct {
 	PullRequestTrigger *CommandAndArgs `json:"pullRequestTrigger,omitempty"`
 	// +optional
 	PullRequestQueue *CommandAndArgs `json:"pullRequestQueue,omitempty"`
+	// +optional
+	ActiveNamespaceDeleted *CommandAndArgs `json:"activeNamespaceDeleted,omitempty"`
 }
 
 // CommandAndArgs defines commands and args
