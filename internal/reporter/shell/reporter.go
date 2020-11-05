@@ -10,7 +10,6 @@ import (
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/cmd"
-	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 var logger = s2hlog.Log.WithName(ReporterName)
@@ -71,15 +70,37 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Shell == nil ||
-		config.Spec.Reporter.Shell.ComponentUpgrade == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.ComponentUpgrade == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.ComponentUpgrade.Command,
-		config.Spec.Reporter.Shell.ComponentUpgrade.Args, comp)
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.ComponentUpgrade.Command,
+		config.Status.Used.Reporter.Shell.ComponentUpgrade.Args, comp)
 	if err := r.execute(cmdObj, internal.ComponentUpgradeType); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SendPullRequestQueue implements the reporter SendPullRequestQueue function
+func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
+	config, err := configCtrl.Get(comp.TeamName)
+	if err != nil {
+		return err
+	}
+
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.PullRequestQueue == nil {
+		return nil
+	}
+
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.PullRequestQueue.Command,
+		config.Status.Used.Reporter.Shell.PullRequestQueue.Args, comp)
+	if err := r.execute(cmdObj, internal.PullRequestQueueType); err != nil {
 		return err
 	}
 
@@ -93,14 +114,14 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Shell == nil ||
-		config.Spec.Reporter.Shell.ActivePromotion == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.ActivePromotion == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.ActivePromotion.Command,
-		config.Spec.Reporter.Shell.ActivePromotion.Args, atpRpt)
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.ActivePromotion.Command,
+		config.Status.Used.Reporter.Shell.ActivePromotion.Args, atpRpt)
 	if err := r.execute(cmdObj, internal.ActivePromotionType); err != nil {
 		return err
 	}
@@ -110,21 +131,43 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 }
 
 // SendImageMissing implements the reporter SendImageMissing function
-func (r *reporter) SendImageMissing(teamName string, configCtrl internal.ConfigController, images *rpc.Image) error {
-	config, err := configCtrl.Get(teamName)
+func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageMissingRpt *internal.ImageMissingReporter) error {
+	config, err := configCtrl.Get(imageMissingRpt.TeamName)
 	if err != nil {
 		return err
 	}
 
-	if config.Spec.Reporter == nil ||
-		config.Spec.Reporter.Shell == nil ||
-		config.Spec.Reporter.Shell.ImageMissing == nil {
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.ImageMissing == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(config.Spec.Reporter.Shell.ImageMissing.Command,
-		config.Spec.Reporter.Shell.ImageMissing.Args, images)
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.ImageMissing.Command,
+		config.Status.Used.Reporter.Shell.ImageMissing.Args, imageMissingRpt)
 	if err := r.execute(cmdObj, internal.ImageMissingType); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SendPullRequestTriggerResult implements the reporter SendPullRequestTriggerResult function
+func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
+	config, err := configCtrl.Get(prTriggerRpt.TeamName)
+	if err != nil {
+		return err
+	}
+
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.PullRequestTrigger == nil {
+		return nil
+	}
+
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.PullRequestTrigger.Command,
+		config.Status.Used.Reporter.Shell.PullRequestTrigger.Args, prTriggerRpt)
+	if err := r.execute(cmdObj, internal.PullRequestTriggerType); err != nil {
 		return err
 	}
 

@@ -68,6 +68,10 @@ type Credential struct {
 	// Teamcity
 	// +optional
 	Teamcity *UsernamePasswordCredential `json:"teamcity,omitempty"`
+
+	// Github
+	// +optional
+	Github *TokenCredential `json:"github,omitempty"`
 }
 
 type UsernamePasswordCredential struct {
@@ -104,7 +108,23 @@ type TeamStatus struct {
 
 	// DesiredComponents represents mapping of desired component image and created time
 	// +optional
-	DesiredComponents map[string]ImageCreatedTime `json:"desiredComponents,omitempty"`
+	DesiredComponentImageCreatedTime map[string]map[string]DesiredImageTime `json:"desiredComponentImageCreatedTime,omitempty"`
+
+	// ActivePromotedBy represents a person who promoted the ActivePromotion
+	// +optional
+	ActivePromotedBy string `json:"activePromotedBy,omitempty"`
+
+	// Used represents overridden team specification
+	// +optional
+	Used TeamSpec `json:"used,omitempty"`
+
+	// TemplateUID represents the template update ID
+	// +optional
+	TemplateUID string `json:"templateUID,omitempty"`
+
+	// SyncTemplate represents whether the team has been synced to the template or not
+	// +optional
+	SyncTemplate bool `json:"syncTemplate,omitempty"`
 }
 
 func (ts *TeamStatus) GetStableComponent(stableCompName string) StableComponent {
@@ -172,38 +192,32 @@ func (ts *TeamStatus) SetActiveComponents(comps map[string]StableComponent) {
 
 // UpdateDesiredComponentImageCreatedTime updates desired component version and created time mapping
 func (ts *TeamStatus) UpdateDesiredComponentImageCreatedTime(compName, image string, desiredImageTime DesiredImageTime) {
-	if ts.DesiredComponents == nil {
-		ts.DesiredComponents = make(map[string]ImageCreatedTime)
+	if ts.DesiredComponentImageCreatedTime == nil {
+		ts.DesiredComponentImageCreatedTime = make(map[string]map[string]DesiredImageTime)
 	}
 
-	if _, ok := ts.DesiredComponents[compName]; !ok {
-		ts.DesiredComponents[compName] = ImageCreatedTime{
-			ImageCreatedTime: map[string]DesiredImageTime{
-				image: desiredImageTime,
-			},
+	if _, ok := ts.DesiredComponentImageCreatedTime[compName]; !ok {
+		ts.DesiredComponentImageCreatedTime[compName] = map[string]DesiredImageTime{
+			image: desiredImageTime,
 		}
 		return
 	}
 
-	descCreatedTime := SortByCreatedTimeDESC(ts.DesiredComponents[compName].ImageCreatedTime)
+	descCreatedTime := SortByCreatedTimeDESC(ts.DesiredComponentImageCreatedTime[compName])
 	if strings.EqualFold(descCreatedTime[0].Image, image) {
 		return
 	}
 
-	ts.DesiredComponents[compName].ImageCreatedTime[image] = desiredImageTime
+	ts.DesiredComponentImageCreatedTime[compName][image] = desiredImageTime
 }
 
 // RemoveDesiredComponentImageCreatedTime removes desired component from team
 func (ts *TeamStatus) RemoveDesiredComponentImageCreatedTime(compName string) {
-	if ts.DesiredComponents == nil {
+	if ts.DesiredComponentImageCreatedTime == nil {
 		return
 	}
 
-	delete(ts.DesiredComponents, compName)
-}
-
-type ImageCreatedTime struct {
-	ImageCreatedTime map[string]DesiredImageTime `json:"imageCreatedTime"`
+	delete(ts.DesiredComponentImageCreatedTime, compName)
 }
 
 type DesiredImageTime struct {
@@ -223,6 +237,9 @@ type TeamNamespace struct {
 
 	// +optional
 	Active string `json:"active,omitempty"`
+
+	// +optional
+	PullRequests []string `json:"pullRequests,omitempty"`
 }
 
 type TeamCondition struct {
@@ -239,11 +256,19 @@ type TeamCondition struct {
 type TeamConditionType string
 
 const (
-	TeamNamespaceStagingCreated        TeamConditionType = "TeamNamespaceStagingCreated"
-	TeamNamespacePreActiveCreated      TeamConditionType = "TeamNamespacePreActiveCreated"
-	TeamNamespacePreviousActiveCreated TeamConditionType = "TeamNamespacePreviousActiveCreated"
-	TeamNamespaceActiveCreated         TeamConditionType = "TeamNamespaceActiveCreated"
-	TeamConfigExisted                  TeamConditionType = "TeamConfigExist"
+	TeamNamespaceStagingCreated           TeamConditionType = "TeamNamespaceStagingCreated"
+	TeamNamespacePreActiveCreated         TeamConditionType = "TeamNamespacePreActiveCreated"
+	TeamNamespacePreviousActiveCreated    TeamConditionType = "TeamNamespacePreviousActiveCreated"
+	TeamNamespaceActiveCreated            TeamConditionType = "TeamNamespaceActiveCreated"
+	TeamNamespacePullRequestCreated       TeamConditionType = "TeamNamespacePullRequestCreated"
+	TeamConfigExisted                     TeamConditionType = "TeamConfigExist"
+	TeamPostStagingNamespaceCreationRun   TeamConditionType = "TeamPostStagingNamespaceCreationRun"
+	TeamPostPreActiveNamespaceCreationRun TeamConditionType = "TeamPostPreActiveNamespaceCreationRun"
+	TeamFirstNotifyComponentChanged       TeamConditionType = "TeamFirstNotifyComponentChanged"
+	TeamFirstActivePromotionRun           TeamConditionType = "TeamFirstActivePromotionRun"
+	TeamUsedUpdated                       TeamConditionType = "TeamUsedUpdated"
+	TeamRequiredFieldsValidated           TeamConditionType = "TeamRequiredFieldsValidated"
+	TeamActiveEnvironmentDelete           TeamConditionType = "TeamActiveEnvironmentDelete"
 )
 
 func (ts *TeamStatus) IsConditionTrue(cond TeamConditionType) bool {

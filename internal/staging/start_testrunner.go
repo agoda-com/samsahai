@@ -55,6 +55,7 @@ func (c *controller) checkTestTimeout(queue *s2hv1.Queue, testingTimeout metav1.
 	// check testing timeout
 	if queue.Status.StartTestingTime != nil &&
 		now.Sub(queue.Status.StartTestingTime.Time) > testingTimeout.Duration {
+
 		// testing timeout
 		if err := c.updateTestQueueCondition(queue, v1.ConditionFalse, "queue testing timeout"); err != nil {
 			return err
@@ -69,8 +70,18 @@ func (c *controller) checkTestTimeout(queue *s2hv1.Queue, testingTimeout metav1.
 
 // checkTestConfig checks test configuration and return testRunner
 func (c *controller) checkTestConfig(queue *s2hv1.Queue) (skipTest bool, testRunner internal.StagingTestRunner, err error) {
-	testConfig := c.getTestConfiguration(queue)
+	if queue.Spec.SkipTestRunner {
+		if err = c.updateTestQueueCondition(
+			queue,
+			v1.ConditionTrue,
+			"skip running test"); err != nil {
+			return
+		}
 
+		return true, nil, nil
+	}
+
+	testConfig := c.getTestConfiguration(queue)
 	if testConfig == nil {
 		if err = c.updateTestQueueCondition(
 			queue,
@@ -114,6 +125,8 @@ func (c *controller) triggerTest(queue *s2hv1.Queue, testRunner internal.Staging
 			logger.Error(err, "testing triggered error")
 			return err
 		}
+		// set teamcity build number to message
+		queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
 
 		queue.Status.SetCondition(
 			s2hv1.QueueTestTriggered,

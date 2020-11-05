@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -37,6 +38,8 @@ type Component struct {
 	// +optional
 	Source *UpdatingSource `json:"source,omitempty"`
 	// +optional
+	Schedules []string `json:"schedules,omitempty"`
+	// +optional
 	Dependencies []*Dependency `json:"dependencies,omitempty"`
 }
 
@@ -53,6 +56,8 @@ type Dependency struct {
 	Values ComponentValues `json:"values,omitempty"`
 	// +optional
 	Source *UpdatingSource `json:"source,omitempty"`
+	// +optional
+	Schedules []string `json:"schedules,omitempty"`
 }
 
 // ComponentImage represents an image repository, tag and pattern which is a regex of tag
@@ -72,10 +77,15 @@ type ComponentChart struct {
 	Version string `json:"version,omitempty"`
 }
 
+// ConfigBundles represents a group of component for each bundle
+// to verify a group of components of a same bundle together in staging environment
+type ConfigBundles map[string][]string
+
 // ConfigStaging represents configuration about staging
 type ConfigStaging struct {
 	// Deployment represents configuration about deploy
-	Deployment *ConfigDeploy `json:"deployment"`
+	// +optional
+	Deployment *ConfigDeploy `json:"deployment,omitempty"`
 
 	// MaxRetry defines max retry counts of component upgrade
 	// +optional
@@ -145,6 +155,10 @@ type ConfigActivePromotion struct {
 	// +optional
 	RollbackTimeout metav1.Duration `json:"rollbackTimeout,omitempty"`
 
+	// MaxRetry defines max retry counts of active promotion process in case failure
+	// +optional
+	MaxRetry *int `json:"maxRetry,omitempty"`
+
 	// MaxHistories defines maximum length of ActivePromotionHistory stored per team
 	// +optional
 	MaxHistories int `json:"maxHistories,omitempty"`
@@ -158,7 +172,8 @@ type ConfigActivePromotion struct {
 	OutdatedNotification *OutdatedNotification `json:"outdatedNotification,omitempty"`
 
 	// Deployment represents configuration about deploy
-	Deployment *ConfigDeploy `json:"deployment"`
+	// +optional
+	Deployment *ConfigDeploy `json:"deployment,omitempty"`
 }
 
 // OutdatedNotification defines a configuration of outdated notification
@@ -174,13 +189,15 @@ type ConfigReporter struct {
 	// +optional
 	Optional []ReportOption `json:"optionals,omitempty"`
 	// +optional
-	Slack *Slack `json:"slack,omitempty"`
+	Slack *ReporterSlack `json:"slack,omitempty"`
 	// +optional
-	MSTeams *MSTeams `json:"msTeams,omitempty"`
+	MSTeams *ReporterMSTeams `json:"msTeams,omitempty"`
 	// +optional
-	Rest *Rest `json:"rest,omitempty"`
+	Github *ReporterGithub `json:"github,omitempty"`
 	// +optional
-	Shell *Shell `json:"cmd,omitempty"`
+	Rest *ReporterRest `json:"rest,omitempty"`
+	// +optional
+	Shell *ReporterShell `json:"cmd,omitempty"`
 	// +optional
 	ReportMock bool `json:"reportMock,omitempty"`
 }
@@ -211,20 +228,32 @@ const (
 	CriteriaFailure ReporterCriteria = "failure"
 	// CriteriaBoth means sending slack notification whether component upgrade is success or failure
 	CriteriaBoth ReporterCriteria = "both"
+	// ConfigUsedUpdated means the configuration used has been updated
+	ConfigUsedUpdated ConfigConditionType = "ConfigUsedUpdated"
+	// ConfigRequiredFieldsValidated means the required fields have been validated
+	ConfigRequiredFieldsValidated ConfigConditionType = "ConfigRequiredFieldsValidated"
 )
 
-// Slack defines a configuration of slack
-type Slack struct {
+// ReporterSlack defines a configuration of slack
+type ReporterSlack struct {
 	Channels []string `json:"channels"`
 	// +optional
-	ComponentUpgrade *ConfigComponentUpgrade `json:"componentUpgrade,omitempty"`
+	ComponentUpgrade *ConfigComponentUpgradeReport `json:"componentUpgrade,omitempty"`
+	// +optional
+	PullRequestTrigger *ConfigPullRequestTriggerReport `json:"pullRequestTrigger,omitempty"`
+	// +optional
+	PullRequestQueue *ConfigPullRequestQueueReport `json:"pullRequestQueue,omitempty"`
 }
 
-// MSTeams defines a configuration of Microsoft Teams
-type MSTeams struct {
+// ReporterMSTeams defines a configuration of Microsoft Teams
+type ReporterMSTeams struct {
 	Groups []MSTeamsGroup `json:"groups"`
 	// +optional
-	ComponentUpgrade *ConfigComponentUpgrade `json:"componentUpgrade,omitempty"`
+	ComponentUpgrade *ConfigComponentUpgradeReport `json:"componentUpgrade,omitempty"`
+	// +optional
+	PullRequestTrigger *ConfigPullRequestTriggerReport `json:"pullRequestTrigger,omitempty"`
+	// +optional
+	PullRequestQueue *ConfigPullRequestQueueReport `json:"pullRequestQueue,omitempty"`
 }
 
 // MSTeamsGroup defines group name/id and channel name/id of Microsoft Teams
@@ -233,36 +262,69 @@ type MSTeamsGroup struct {
 	ChannelNameOrIDs []string `json:"channelNameOrIDs"`
 }
 
-// ConfigComponentUpgrade defines a configuration of component upgrade report
-type ConfigComponentUpgrade struct {
+// ConfigComponentUpgradeReport defines a configuration of component upgrade report
+type ConfigComponentUpgradeReport struct {
 	// +optional
 	Interval ReporterInterval `json:"interval,omitempty"`
 	// +optional
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
 }
 
-// Rest defines a configuration of http rest
-type Rest struct {
+// ConfigPullRequestTrigger defines a configuration of pull request trigger report
+type ConfigPullRequestTriggerReport struct {
+	// +optional
+	Criteria ReporterCriteria `json:"criteria,omitempty"`
+}
+
+// ConfigPullRequestQueueReport defines a configuration of pull request queues report
+type ConfigPullRequestQueueReport struct {
+	// +optional
+	Interval ReporterInterval `json:"interval,omitempty"`
+	// +optional
+	Criteria ReporterCriteria `json:"criteria,omitempty"`
+}
+
+// ReporterGithub defines a configuration of github reporter
+// supports pull request queue reporter type only
+type ReporterGithub struct {
+	// Enabled represents an enabled flag
+	// +optional
+	Enabled bool `json:"enabled"`
+	// BaseURL represents a github base url e.g., https://github.com
+	// +optional
+	BaseURL string `json:"baseURL,omitempty"`
+}
+
+// ReporterRest defines a configuration of http rest
+type ReporterRest struct {
 	// +optional
 	ComponentUpgrade *RestObject `json:"componentUpgrade,omitempty"`
 	// +optional
 	ActivePromotion *RestObject `json:"activePromotion,omitempty"`
 	// +optional
 	ImageMissing *RestObject `json:"imageMissing,omitempty"`
+	// +optional
+	PullRequestTrigger *RestObject `json:"pullRequestTrigger,omitempty"`
+	// +optional
+	PullRequestQueue *RestObject `json:"pullRequestQueue,omitempty"`
 }
 
 type RestObject struct {
 	Endpoints []*Endpoint `json:"endpoints"`
 }
 
-// Shell defines a configuration of shell command
-type Shell struct {
+// ReporterShell defines a configuration of shell command
+type ReporterShell struct {
 	// +optional
 	ComponentUpgrade *CommandAndArgs `json:"componentUpgrade,omitempty"`
 	// +optional
 	ActivePromotion *CommandAndArgs `json:"activePromotion,omitempty"`
 	// +optional
 	ImageMissing *CommandAndArgs `json:"imageMissing,omitempty"`
+	// +optional
+	PullRequestTrigger *CommandAndArgs `json:"pullRequestTrigger,omitempty"`
+	// +optional
+	PullRequestQueue *CommandAndArgs `json:"pullRequestQueue,omitempty"`
 }
 
 // CommandAndArgs defines commands and args
@@ -281,27 +343,101 @@ type Endpoint struct {
 type EnvType string
 
 const (
-	EnvBase      EnvType = "base"
-	EnvStaging   EnvType = "staging"
-	EnvPreActive EnvType = "pre-active"
-	EnvActive    EnvType = "active"
-	EnvDeActive  EnvType = "de-active"
+	EnvBase        EnvType = "base"
+	EnvStaging     EnvType = "staging"
+	EnvPreActive   EnvType = "pre-active"
+	EnvActive      EnvType = "active"
+	EnvDeActive    EnvType = "de-active"
+	EnvPullRequest EnvType = "pull-request"
 )
 
 // ChartValuesURLs represents values file URL of each chart
 type ChartValuesURLs map[string][]string
 
+// PullRequestComponent represents a pull request component configuration
+type PullRequestComponent struct {
+	// Name defines a main component name which is deployed per pull request
+	Name string `json:"name"`
+	// Image defines an image repository, tag and pattern of pull request component which is a regex of tag
+	// +optional
+	Image ComponentImage `json:"image,omitempty"`
+	// Source defines a source for image repository
+	// +optional
+	Source *UpdatingSource `json:"source,omitempty"`
+	// Deployment represents configuration about deploy
+	// +optional
+	Deployment *ConfigDeploy `json:"deployment,omitempty"`
+	// Dependencies defines a list of components which are required to be deployed together with the main component
+	// +optional
+	Dependencies []string `json:"dependencies,omitempty"`
+	// GitRepository represents a string of git "<owner>/<repository>" e.g., agoda-com/samsahai
+	// used for publishing commit status
+	// +optional
+	GitRepository          string `json:"gitRepository,omitempty"`
+	PullRequestExtraConfig `json:",inline"`
+}
+
+// PullRequestTriggerConfig represents a pull request trigger configuration
+type PullRequestTriggerConfig struct {
+	// PollingTime defines a waiting duration time to re-check the pull request image in the registry
+	// +optional
+	PollingTime metav1.Duration `json:"pollingTime,omitempty"`
+	// MaxRetry defines max retry counts of pull request trigger if cannot find image in the registry
+	// +optional
+	MaxRetry *int `json:"maxRetry,omitempty"`
+}
+
+// PullRequestExtraConfig represents a pull request extra configuration
+type PullRequestExtraConfig struct {
+	// MaxRetry defines max retry counts of pull request component upgrade
+	// +optional
+	MaxRetry *int `json:"maxRetry,omitempty"`
+	// Resources represents how many resources of pull request namespace
+	// +optional
+	Resources corev1.ResourceList `json:"resources,omitempty"`
+}
+
+// ConfigPullRequest defines a configuration of pull request
+type ConfigPullRequest struct {
+	// MaxHistoryDays defines maximum days of PullRequestQueueHistory stored
+	// +optional
+	MaxHistoryDays int `json:"maxHistoryDays,omitempty"`
+	// Trigger represents a pull request trigger configuration
+	// +optional
+	Trigger    PullRequestTriggerConfig `json:"trigger,omitempty"`
+	Components []*PullRequestComponent  `json:"components"`
+	// Concurrences defines a parallel number of pull request queue
+	// +optional
+	Concurrences           int `json:"concurrences,omitempty"`
+	PullRequestExtraConfig `json:",inline"`
+}
+
 // ConfigSpec defines the desired state of Config
 type ConfigSpec struct {
 	// Components represents all components that are managed
-	Components []*Component `json:"components"`
+	// +optional
+	Components []*Component `json:"components,omitempty"`
+
+	// Bundles represents a group of component for each bundle
+	// +optional
+	Bundles ConfigBundles `json:"bundles,omitempty"`
+
+	// PriorityQueues represents a list of bundles/components' name which needs to be prioritized
+	// the first one has the highest priority and the last one has the lowest priority
+	// +optional
+	PriorityQueues []string `json:"priorityQueues,omitempty"`
 
 	// Staging represents configuration about staging
-	Staging *ConfigStaging `json:"staging"`
+	// +optional
+	Staging *ConfigStaging `json:"staging,omitempty"`
 
 	// ActivePromotion represents configuration about active promotion
 	// +optional
 	ActivePromotion *ConfigActivePromotion `json:"activePromotion,omitempty"`
+
+	// PullRequest represents configuration about pull request
+	// +optional
+	PullRequest *ConfigPullRequest `json:"pullRequest,omitempty"`
 
 	// Envs represents urls of values file per environments
 	// ordering by less priority to high priority
@@ -311,11 +447,41 @@ type ConfigSpec struct {
 	// Reporter represents configuration about reporter
 	// +optional
 	Reporter *ConfigReporter `json:"report,omitempty"`
+
+	// Template represents configuration's template
+	// +optional
+	Template string `json:"template,omitempty"`
 }
 
 // ConfigStatus defines the observed state of Config
 type ConfigStatus struct {
+	// Used represents overridden configuration specification
+	// +optional
+	Used ConfigSpec `json:"used,omitempty"`
+
+	// TemplateUID represents the template update ID
+	// +optional
+	TemplateUID string `json:"templateUID,omitempty"`
+
+	// SyncTemplate represents whether the configuration has been synced to the template or not
+	// +optional
+	SyncTemplate bool `json:"syncTemplate,omitempty"`
+
+	// Conditions contains observations of the state
+	// +optional
+	Conditions []ConfigCondition `json:"conditions,omitempty"`
 }
+
+type ConfigCondition struct {
+	Type   ConfigConditionType    `json:"type"`
+	Status corev1.ConditionStatus `json:"status"`
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
+type ConfigConditionType string
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
@@ -340,6 +506,34 @@ type ConfigList struct {
 // +k8s:deepcopy-gen=false
 //ComponentValues represents values of a component chart
 type ComponentValues map[string]interface{}
+
+func (cs *ConfigStatus) IsConditionTrue(cond ConfigConditionType) bool {
+	for i, c := range cs.Conditions {
+		if c.Type == cond {
+			return cs.Conditions[i].Status == corev1.ConditionTrue
+		}
+	}
+
+	return false
+}
+
+func (cs *ConfigStatus) SetCondition(cond ConfigConditionType, status corev1.ConditionStatus, message string) {
+	for i, c := range cs.Conditions {
+		if c.Type == cond {
+			cs.Conditions[i].Status = status
+			cs.Conditions[i].LastTransitionTime = metav1.Now()
+			cs.Conditions[i].Message = message
+			return
+		}
+	}
+
+	cs.Conditions = append(cs.Conditions, ConfigCondition{
+		Type:               cond,
+		Status:             status,
+		LastTransitionTime: metav1.Now(),
+		Message:            message,
+	})
+}
 
 func (in *ComponentValues) DeepCopyInto(out *ComponentValues) {
 	if in == nil {

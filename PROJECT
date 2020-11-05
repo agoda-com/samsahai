@@ -22,4 +22,16 @@ resources:
 - group: env
   kind: DesiredComponent
   version: v1
+- group: env
+  kind: Config
+  version: v1
+- group: env
+  kind: PullRequestQueue
+  version: v1
+- group: env
+  kind: PullRequestQueueHistory
+  version: v1
+- group: env
+  kind: PullRequestTrigger
+  version: v1
 version: "2"

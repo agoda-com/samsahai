@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -88,6 +87,7 @@ func (e *engine) Create(
 	_ *s2hv1.Component,
 	parentComp *s2hv1.Component,
 	values map[string]interface{},
+	deployTimeout *time.Duration,
 ) error {
 	if err := e.helmInit(); err != nil {
 		return err
@@ -98,13 +98,11 @@ func (e *engine) Create(
 		RepoURL: parentComp.Chart.Repository,
 	}
 
-	cliHist := action.NewHistory(e.actionSettings)
-	cliHist.Max = 1
-	_, err := cliHist.Run(refName)
+	_, err := e.GetHistories(refName)
 	if err != nil {
 		switch err {
 		case driver.ErrReleaseNotFound:
-			err = e.helmInstall(refName, parentComp.Chart.Name, cpo, values)
+			err = e.helmInstall(refName, parentComp.Chart.Name, cpo, values, deployTimeout)
 			if err != nil {
 				return err
 			}
@@ -114,21 +112,24 @@ func (e *engine) Create(
 		}
 	}
 
-	cliGet := action.NewGetValues(e.actionSettings)
-	v, err := cliGet.Run(refName)
+	// update
+	err = e.helmUpgrade(refName, parentComp.Chart.Name, cpo, values, deployTimeout)
 	if err != nil {
-		return errors.Wrapf(err, "cannot get helm values of release %q", refName)
-	}
-
-	if !reflect.DeepEqual(values, v) {
-		// update
-		err = e.helmUpgrade(refName, parentComp.Chart.Name, cpo, values)
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
 	return nil
+}
+
+func (e *engine) Rollback(refName string, revision int) error {
+	return e.helmRollback(refName, revision)
+}
+
+func (e *engine) GetHistories(refName string) ([]*release.Release, error) {
+	cliHist := action.NewHistory(e.actionSettings)
+	cliHist.Max = 1
+
+	return cliHist.Run(refName)
 }
 
 func (e *engine) Delete(refName string) error {
@@ -180,6 +181,15 @@ func (e *engine) GetValues() (map[string][]byte, error) {
 	return valuesYaml, nil
 }
 
+func (e *engine) GetReleases() ([]*release.Release, error) {
+	releases, err := e.helmList()
+	if err != nil {
+		return []*release.Release{}, err
+	}
+
+	return releases, nil
+}
+
 func (e *engine) helmUninstall(refName string, disableHooks bool) error {
 	client := action.NewUninstall(e.actionSettings)
 	client.Timeout = DefaultUninstallTimeout
@@ -196,18 +206,6 @@ func (e *engine) helmUninstall(refName string, disableHooks bool) error {
 	}
 
 	return nil
-}
-
-func (e *engine) IsReady(queue *s2hv1.Queue) (bool, error) {
-	refName := queue.Status.ReleaseName
-
-	client := action.NewStatus(e.actionSettings)
-	rel, err := client.Run(refName)
-	if err != nil {
-		return false, errors.Wrap(err, "cannot get status of helm release")
-	}
-
-	return rel.Info.Status == release.StatusDeployed, nil
 }
 
 func (e *engine) helmInit() error {
@@ -234,6 +232,7 @@ func (e *engine) helmInstall(
 	chartName string,
 	cpo action.ChartPathOptions,
 	values map[string]interface{},
+	deployTimeout *time.Duration,
 ) error {
 	logger.Debug("helm install", "releaseName", refName, "chartName", chartName)
 
@@ -242,6 +241,10 @@ func (e *engine) helmInstall(
 	client.Namespace = e.namespace
 	client.ReleaseName = refName
 	client.DisableVerify = true
+	if deployTimeout != nil {
+		client.Timeout = *deployTimeout
+		client.Wait = true
+	}
 
 	ch, err := e.helmPrepareChart(chartName, cpo)
 	if err != nil {
@@ -265,6 +268,7 @@ func (e *engine) helmUpgrade(
 	chartName string,
 	cpo action.ChartPathOptions,
 	values map[string]interface{},
+	deployTimeout *time.Duration,
 ) error {
 	logger.Debug("helm upgrade", "releaseName", refName, "chartName", chartName)
 
@@ -273,6 +277,10 @@ func (e *engine) helmUpgrade(
 	client.Namespace = e.namespace
 	client.Atomic = true
 	client.DisableVerify = true
+	if deployTimeout != nil {
+		client.Timeout = *deployTimeout
+		client.Wait = true
+	}
 
 	ch, err := e.helmPrepareChart(chartName, cpo)
 	if err != nil {
@@ -284,6 +292,21 @@ func (e *engine) helmUpgrade(
 	if err != nil {
 		logger.Error(err, "helm upgrade failed", "releaseName", refName, "chartName", chartName)
 		return errors.Wrapf(err, "helm upgrade failed")
+	}
+
+	return nil
+}
+
+func (e *engine) helmRollback(refName string, revision int) error {
+	logger.Debug("helm rollback", "releaseName", refName, "revision", revision)
+
+	client := action.NewRollback(e.actionSettings)
+	client.Version = revision
+
+	err := client.Run(refName)
+	if err != nil {
+		logger.Error(err, "helm rollback failed", "releaseName", refName, "revision", revision)
+		return errors.Wrapf(err, "helm rollback failed")
 	}
 
 	return nil

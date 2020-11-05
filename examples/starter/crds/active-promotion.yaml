@@ -1,0 +1,25 @@
+apiVersion: env.samsahai.io/v1
+kind: ActivePromotion
+metadata:
+  # team name has to be the same as specifying
+  # in metadata.name of team.yaml
+  # name must consist of lower case alphanumeric characters, '-' or '.',
+  # and must start and end with an alphanumeric character
+  name: <your_team_name>
+spec:
+  # [optional] how long idle time of old active namespace before destroying?
+  # when pre-active switches to active namespace successfully
+  # so old active will be destroyed in xx minutes
+  # support units are either <number>s, <number>m or <number>h
+  # default value is 20m
+  tearDownDuration: 30m
+
+  # [optional] boolean flag for skipping test
+  # when promoting active environment
+  # use 'true' for skipping test
+  # use 'false' for using the default setting from Config.yaml <default>
+  skipTestRunner: false
+
+  # [optional] name of user who applying active promotion
+  # default value is empty
+  promotedBy: <your_name>

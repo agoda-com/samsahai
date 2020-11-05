@@ -36,11 +36,11 @@ var _ = Describe("Harbor Checker", func() {
 
 	})
 
-	It("Should returns 'harbor' as name", func() {
+	It("should returns 'harbor' as name", func() {
 		Expect(checker.GetName()).To(Equal("harbor"))
 	})
 
-	It("Should successfully get new version from harbor", func(done Done) {
+	It("should successfully get new version from harbor", func(done Done) {
 		defer close(done)
 		server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
@@ -570,7 +570,7 @@ var _ = Describe("Harbor Checker", func() {
 		g.Expect(version).To(Equal("1.13.5-3.0.0-beta.2"))
 	})
 
-	It("Should correctly ensure version", func(done Done) {
+	It("should correctly ensure version", func(done Done) {
 		defer close(done)
 		server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()

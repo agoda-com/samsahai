@@ -1,0 +1,12 @@
+apiVersion: env.samsahai.io/v1
+kind: Team
+metadata:
+  name: example
+spec:
+  description: Example team
+  owners:
+    - example@samsahai.io
+  stagingCtrl:
+    isDeploy: true
+#   credential:
+#     secretName: s2h-example-secret

@@ -12,7 +12,7 @@ import (
 func (c *controller) deployComponentsToTargetNamespace(atpComp *s2hv1.ActivePromotion) error {
 	teamName := atpComp.Name
 	targetNs := c.getTargetNamespace(atpComp)
-	q, err := c.ensurePreActiveComponentsDeployed(teamName, targetNs)
+	q, err := c.ensurePreActiveComponentsDeployed(teamName, targetNs, atpComp.Spec.SkipTestRunner)
 	if err != nil {
 		return err
 	}
@@ -35,8 +35,8 @@ func (c *controller) deployComponentsToTargetNamespace(atpComp *s2hv1.ActiveProm
 	return nil
 }
 
-func (c *controller) ensurePreActiveComponentsDeployed(teamName, targetNs string) (*s2hv1.Queue, error) {
-	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs)
+func (c *controller) ensurePreActiveComponentsDeployed(teamName, targetNs string, skipTest bool) (*s2hv1.Queue, error) {
+	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs, skipTest)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot ensure pre-active components, namespace %s", targetNs)
 	}
@@ -56,19 +56,19 @@ func (c *controller) ensurePreActiveComponentsDeployed(teamName, targetNs string
 func (c *controller) testPreActiveEnvironment(atpComp *s2hv1.ActivePromotion) error {
 	teamName := atpComp.Name
 	targetNs := c.getTargetNamespace(atpComp)
-	q, err := c.ensurePreActiveComponentsTested(teamName, targetNs)
+	q, err := c.ensurePreActiveComponentsTested(teamName, targetNs, atpComp.Spec.SkipTestRunner)
 	if err != nil {
 		return err
 	}
 
 	if q.IsTestSuccess() {
-		// in case of successful test
-		logger.Debug("components has been tested successfully",
+		// in case successful test
+		logger.Debug("components have been tested successfully",
 			"team", atpComp.Name, "namespace", targetNs)
 		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondVerified, corev1.ConditionTrue,
 			"Pre-active environment has been verified successfully")
 	} else {
-		// in case of failure test
+		// in case failure test
 		atpComp.Status.SetResult(s2hv1.ActivePromotionFailure)
 		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondVerified, corev1.ConditionTrue,
 			"Test failed")
@@ -79,8 +79,8 @@ func (c *controller) testPreActiveEnvironment(atpComp *s2hv1.ActivePromotion) er
 	return nil
 }
 
-func (c *controller) ensurePreActiveComponentsTested(teamName, targetNs string) (*s2hv1.Queue, error) {
-	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs)
+func (c *controller) ensurePreActiveComponentsTested(teamName, targetNs string, skipTest bool) (*s2hv1.Queue, error) {
+	q, err := queue.EnsurePreActiveComponents(c.client, teamName, targetNs, skipTest)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot ensure pre-active components, namespace %s", targetNs)
 	}

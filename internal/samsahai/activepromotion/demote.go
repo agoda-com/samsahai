@@ -22,7 +22,26 @@ func (c *controller) demoteActiveEnvironment(ctx context.Context, atpComp *s2hv1
 
 	if prevNs != "" {
 		if err := c.ensureQueueActiveDemoted(teamName, prevNs); err != nil {
-			return err
+			if !s2herrors.IsErrReleaseFailed(err) {
+				return err
+			}
+
+			// destroy active environment if release failed
+			if err := c.destroyActiveEnvironment(ctx, atpComp, atpComp.Status.DestroyedTime); err != nil {
+				if !s2herrors.IsDeletingReleases(err) && !s2herrors.IsEnsuringNamespaceDestroyed(err) {
+					return err
+				}
+			}
+
+			teamName := atpComp.Name
+			prevNs := atpComp.Status.PreviousActiveNamespace
+			logger.Debug("failed to demote active environment, deleted active environment",
+				"team", teamName, "namespace", prevNs)
+			atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemoted, corev1.ConditionFalse,
+				"Failed to demote active environment, active environment has been deleted")
+			atpComp.SetState(s2hv1.ActivePromotionActiveEnvironment, "Failed to demote active environment")
+
+			return nil
 		}
 	}
 
@@ -41,6 +60,10 @@ func (c *controller) ensureQueueActiveDemoted(teamName, ns string) error {
 	}
 
 	if q.Status.State == s2hv1.Finished {
+		if !q.IsDeploySuccess() {
+			return s2herrors.ErrReleaseFailed
+		}
+
 		return nil
 	}
 
@@ -67,10 +90,9 @@ func (c *controller) checkDemotionTimeout(ctx context.Context, atpComp *s2hv1.Ac
 		}
 
 		if err := c.destroyActiveEnvironment(ctx, atpComp, atpComp.Status.DestroyedTime); err != nil {
-			if s2herrors.IsDeletingReleases(err) || s2herrors.IsEnsuringNamespaceDestroyed(err) {
-				return s2herrors.ErrEnsureActiveDemoted
+			if !s2herrors.IsDeletingReleases(err) && !s2herrors.IsEnsuringNamespaceDestroyed(err) {
+				return err
 			}
-			return err
 		}
 
 		teamName := atpComp.Name

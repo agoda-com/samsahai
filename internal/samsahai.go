@@ -1,6 +1,9 @@
 package internal
 
 import (
+	"crypto/md5"
+	"encoding/json"
+	"fmt"
 	"net/http"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,6 +31,7 @@ func GetTeamLabelKey() string {
 type SamsahaiCredential struct {
 	InternalAuthToken string
 	SlackToken        string
+	GithubToken       string
 	MSTeams           MSTeamsCredential
 	TeamcityUsername  string
 	TeamcityPassword  string
@@ -57,6 +61,9 @@ type SamsahaiConfig struct {
 	// SamsahaiExternalURL defines a Samsahai external url
 	SamsahaiExternalURL string `json:"s2hExternalURL" yaml:"s2hExternalURL"`
 
+	// GithubURL defines a Github url
+	GithubURL string `json:"githubURL" yaml:"githubURL"`
+
 	// TeamcityURL defines a Teamcity url
 	TeamcityURL string `json:"teamcityURL" yaml:"teamcityURL"`
 
@@ -65,6 +72,9 @@ type SamsahaiConfig struct {
 
 	// ActivePromotion defines an active promotion configuration
 	ActivePromotion ActivePromotionConfig `json:"activePromotion,omitempty" yaml:"activePromotion,omitempty"`
+
+	// PullRequest represents configuration of pull request
+	PullRequest PullRequestConfig `json:"pullRequest,omitempty" yaml:"pullRequest,omitempty"`
 
 	// PostNamespaceCreation defines commands executing after creating s2h namespace
 	PostNamespaceCreation *struct {
@@ -76,6 +86,24 @@ type SamsahaiConfig struct {
 
 	SamsahaiURL        string             `json:"-" yaml:"-"`
 	SamsahaiCredential SamsahaiCredential `json:"-" yaml:"-"`
+}
+
+// PullRequestConfig represents configuration of pull request
+type PullRequestConfig struct {
+	// QueueConcurrences defines number of pull request queue concurrences
+	QueueConcurrences int `json:"queueConcurrences" yaml:"queueConcurrences"`
+
+	// MaxVerificationRetryCounts defines the maximum times of pull request has been verified
+	MaxVerificationRetryCounts int `json:"maxVerificationRetryCounts" yaml:"maxVerificationRetryCounts"`
+
+	// MaxPRTriggerRetryCounts defines the maximum times of pull request has been triggered
+	MaxTriggerRetryCounts int `json:"maxTriggerRetryCounts" yaml:"maxTriggerRetryCounts"`
+
+	// TriggerPollingTime defines a waiting duration time to re-check the pull request image in the registry
+	TriggerPollingTime metav1.Duration `json:"triggerPollingTime" yaml:"triggerPollingTime"`
+
+	// MaxHistoryDays defines maximum days of PullRequestQueueHistory stored
+	MaxHistoryDays int `json:"maxHistoryDays" yaml:"maxHistoryDays"`
 }
 
 // ActivePromotionConfig represents configuration of active promotion
@@ -94,6 +122,9 @@ type ActivePromotionConfig struct {
 
 	// TearDownDuration defines tear down duration of previous active environment
 	TearDownDuration metav1.Duration `json:"teardownDuration" yaml:"teardownDuration"`
+
+	// MaxRetry defines max retry counts of active promotion process in case failure
+	MaxRetry *int `json:"maxRetry"`
 
 	// MaxHistories defines max stored histories of active promotion
 	MaxHistories int `json:"maxHistories" yaml:"maxHistories"`
@@ -125,17 +156,23 @@ type SamsahaiController interface {
 	// GetPlugins returns samsahai plugins
 	GetPlugins() map[string]Plugin
 
+	// GetActivePromotionDeployEngine returns samsahai deploy engine
+	GetActivePromotionDeployEngine(teamName, ns string) DeployEngine
+
+	// EnsureTeamTemplateChanged  updates team if template changed
+	EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error
+
 	// LoadTeamSecret loads team secret from main namespace
 	LoadTeamSecret(teamComp *s2hv1.Team) error
 
 	// CreateStagingEnvironment creates staging environment
-	CreateStagingEnvironment(teamName, namespaceName string) error
+	CreateStagingEnvironment(teamName, namespace string) error
 
 	// CreatePreActiveEnvironment creates pre-active environment
 	CreatePreActiveEnvironment(teamName, namespace string) error
 
 	// PromoteActiveEnvironment switches environment from pre-active to active and stores current active components
-	PromoteActiveEnvironment(teamComp *s2hv1.Team, namespace string, comps map[string]s2hv1.StableComponent) error
+	PromoteActiveEnvironment(teamComp *s2hv1.Team, namespace, promotedBy string, comps map[string]s2hv1.StableComponent) error
 
 	// DestroyActiveEnvironment destroys active environment when active demotion is failure.
 	DestroyActiveEnvironment(teamName, namespace string) error
@@ -156,10 +193,13 @@ type SamsahaiController interface {
 	SetActiveNamespace(teamComp *s2hv1.Team, namespace string) error
 
 	// NotifyComponentChanged adds Component to queue for checking new version
-	NotifyComponentChanged(name, repository string)
+	NotifyComponentChanged(name, repository, teamName string)
 
-	// NotifyActivePromotion sends active promotion status report
-	NotifyActivePromotion(atpRpt *ActivePromotionReporter)
+	// NotifyActivePromotionReport sends active promotion status report
+	NotifyActivePromotionReport(atpRpt *ActivePromotionReporter)
+
+	// TriggerPullRequestDeployment creates PullRequestTrigger crd object
+	TriggerPullRequestDeployment(teamName, component, tag, prNumber, commitSHA string) error
 
 	// API
 
@@ -178,6 +218,15 @@ type SamsahaiController interface {
 	// GetQueues returns QueueList of the namespace
 	GetQueues(namespace string) (*s2hv1.QueueList, error)
 
+	// GetPullRequestQueueHistories returns PullRequestQueueHistoryList of the namespace
+	GetPullRequestQueueHistories(namespace string) (*s2hv1.PullRequestQueueHistoryList, error)
+
+	// GetQueueHistory returns PullRequestQueue by name and namespace
+	GetPullRequestQueueHistory(name, namespace string) (*s2hv1.PullRequestQueueHistory, error)
+
+	// GetQueues returns PullRequestQueueList of the namespace
+	GetPullRequestQueues(namespace string) (*s2hv1.PullRequestQueueList, error)
+
 	// GetStableValues returns Stable Values of parent component in team
 	GetStableValues(team *s2hv1.Team, comp *s2hv1.Component) (s2hv1.ComponentValues, error)
 
@@ -192,6 +241,9 @@ type SamsahaiController interface {
 
 	// GetActivePromotionHistory returns ActivePromotion by name
 	GetActivePromotionHistory(name string) (*s2hv1.ActivePromotionHistory, error)
+
+	// DeleteTeamActiveEnvironment deletes all component in namespace and namespace object
+	DeleteTeamActiveEnvironment(teamName, namespace string) error
 }
 
 type Connection struct {
@@ -229,4 +281,35 @@ type PostNamespaceCreation struct {
 // GenStagingNamespace returns the name of staging namespace by team name
 func GenStagingNamespace(teamName string) string {
 	return AppPrefix + teamName
+}
+
+// GenPullRequestComponentName generates PullRequest object name from component and pull request number
+func GenPullRequestComponentName(component, prNumber string) string {
+	return fmt.Sprintf("%s-%s", component, prNumber)
+}
+
+// PullRequestData defines a pull request data for template rendering
+type PullRequestData struct {
+	// PRNumber defines a pull request number
+	PRNumber string
+}
+
+// GenConfigHashID generates config hash from Config status.used
+func GenConfigHashID(configStatus s2hv1.ConfigStatus) string {
+	configUsed := configStatus.Used
+	bytesConfigComp, _ := json.Marshal(&configUsed)
+	bytesHashID := md5.Sum(bytesConfigComp)
+	hashID := fmt.Sprintf("%x", bytesHashID)
+
+	return hashID
+}
+
+// GenTeamHashID generates team hash from Team status.used
+func GenTeamHashID(teamStatus s2hv1.TeamStatus) string {
+	teamUsed := teamStatus.Used
+	bytesTeamComp, _ := json.Marshal(teamUsed)
+	bytesHashID := md5.Sum(bytesTeamComp)
+	hashID := fmt.Sprintf("%x", bytesHashID)
+
+	return hashID
 }

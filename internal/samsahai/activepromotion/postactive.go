@@ -65,14 +65,16 @@ func (c *controller) sendReport(ctx context.Context, atpComp *s2hv1.ActivePromot
 		return err
 	}
 
+	runs := atpComp.Spec.NoOfRetry + 1
 	atpRpt := internal.NewActivePromotionReporter(
-		&atpComp.Status,
+		atpComp.Status,
 		c.configs,
 		atpComp.Name,
 		currentNs,
-		internal.WithCredential(teamComp.Spec.Credential),
+		runs,
+		internal.WithActivePromotionOptCredential(teamComp.Status.Used.Credential),
 	)
-	c.s2hCtrl.NotifyActivePromotion(atpRpt)
+	c.s2hCtrl.NotifyActivePromotionReport(atpRpt)
 
 	return nil
 }
@@ -112,8 +114,8 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1.Act
 	if len(currentActiveComps) == 0 {
 		currentActiveComps = teamComp.Status.ActiveComponents
 	}
-	desiredCompsImageCreatedTime := teamComp.Status.DesiredComponents
-	o := outdated.New(&config.Spec, desiredCompsImageCreatedTime, currentActiveComps)
+	desiredCompsImageCreatedTime := teamComp.Status.DesiredComponentImageCreatedTime
+	o := outdated.New(&config.Status.Used, desiredCompsImageCreatedTime, currentActiveComps)
 	atpStatus := &atpComp.Status
 	o.SetOutdatedDuration(atpStatus)
 	return nil

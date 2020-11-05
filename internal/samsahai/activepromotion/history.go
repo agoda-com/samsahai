@@ -27,7 +27,7 @@ func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *
 
 	history := &s2hv1.ActivePromotionHistory{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   generateHistoryName(atpComp.Name, atpComp.CreationTimestamp),
+			Name:   generateHistoryName(atpComp.Name, atpComp.CreationTimestamp, atpComp.Spec.NoOfRetry),
 			Labels: atpLabels,
 		},
 		Spec: s2hv1.ActivePromotionHistorySpec{
@@ -82,8 +82,8 @@ func (c *controller) deleteActivePromotionHistoryOutOfRange(ctx context.Context,
 	// get configuration
 	config, err := c.s2hCtrl.GetConfigController().Get(teamName)
 	if err == nil {
-		if config.Spec.ActivePromotion != nil && config.Spec.ActivePromotion.MaxHistories != 0 {
-			maxHistoriesPerTeam = config.Spec.ActivePromotion.MaxHistories
+		if config.Status.Used.ActivePromotion != nil && config.Status.Used.ActivePromotion.MaxHistories != 0 {
+			maxHistoriesPerTeam = config.Status.Used.ActivePromotion.MaxHistories
 		}
 	}
 
@@ -104,6 +104,6 @@ func (c *controller) deleteActivePromotionHistoryOutOfRange(ctx context.Context,
 	return nil
 }
 
-func generateHistoryName(atpName string, startTime metav1.Time) string {
-	return fmt.Sprintf("%s-%s", atpName, startTime.Format("20060102-150405"))
+func generateHistoryName(atpName string, startTime metav1.Time, noOfRetry int) string {
+	return fmt.Sprintf("%s-%s-%d", atpName, startTime.Format("20060102-150405"), noOfRetry)
 }

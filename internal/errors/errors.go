@@ -2,6 +2,7 @@ package errors
 
 import (
 	"errors"
+	"strings"
 
 	pkgerrors "github.com/pkg/errors"
 )
@@ -10,11 +11,13 @@ const (
 	ErrInternalError             = Error("internal error")
 	ErrNotImplemented            = Error("not implemented")
 	ErrDeployTimeout             = Error("deploy timeout")
+	ErrReleaseFailed             = Error("release failed")
 	ErrTestTimeout               = Error("test timeout")
 	ErrTestRunnerNotFound        = Error("test runner not found")
 	ErrRequestTimeout            = Error("request timeout")
 	ErrExecutionTimeout          = Error("execution timeout")
 	ErrImageVersionNotFound      = Error("image version not found")
+	ErrInternalCheckerError      = Error("internal checker error")
 	ErrNoDesiredComponentVersion = Error("no desired component version")
 
 	ErrTeamNamespaceStillCreating     = Error("still creating namespace")
@@ -26,12 +29,12 @@ const (
 	ErrActivePromotionTimeout            = Error("active promotion timeout")
 	ErrActiveDemotionTimeout             = Error("demoted active environment timeout")
 	ErrRollbackActivePromotionTimeout    = Error("rollback active promotion timeout")
-	ErrEnsurePreActiveEnvironmentCreated = Error("pre-active environment has been being created")
+	ErrEnsurePreActiveEnvironmentCreated = Error("pre-active environment is being created")
 	ErrEnsureNamespaceDestroyed          = Error("namespace has not been destroyed")
-	ErrEnsureActiveDemoted               = Error("active environment has been being demoted")
-	ErrEnsureActivePromoted              = Error("active environment has been being promoted")
-	ErrEnsureComponentDeployed           = Error("components has been being deployed")
-	ErrEnsureComponentTested             = Error("components has been being tested")
+	ErrEnsureActiveDemoted               = Error("active environment is being demoted")
+	ErrEnsureActivePromoted              = Error("active environment is being promoted")
+	ErrEnsureComponentDeployed           = Error("components are being deployed")
+	ErrEnsureComponentTested             = Error("components are being tested")
 	ErrDeletingReleases                  = Error("deleting releases")
 	ErrForceDeletingComponents           = Error("force deleting components")
 	ErrRollingBackActivePromotion        = Error("rolling back active promotion process")
@@ -43,9 +46,12 @@ const (
 	ErrCannotMarshalJSON = Error("cannot marshal to json")
 	ErrCannotMarshalYAML = Error("cannot marshal to yaml")
 
-	ErrTestConfigurationNotFound = Error("test configuration not found")
+	ErrTestConfigurationNotFound  = Error("test configuration not found")
+	ErrConfigurationRequiredField = Error("required filed cannot be empty")
 
 	ErrEnsureConfigDestroyed = Error("config been being destroyed")
+
+	ErrParsingRuntimeObject = Error("cannot parse runtime object")
 )
 
 var (
@@ -61,18 +67,27 @@ type Error string
 // Error overrides error
 func (e Error) Error() string { return string(e) }
 
+// IsImageNotFound checks image not found error
 func IsImageNotFound(err error) bool {
 	return ErrImageVersionNotFound.Error() == err.Error()
 }
 
+// IsInternalCheckerError checks internal checker error
+func IsInternalCheckerError(err error) bool {
+	return ErrInternalCheckerError.Error() == err.Error() ||
+		strings.Contains(err.Error(), ErrInternalCheckerError.Error())
+}
+
 // IsNamespaceStillCreating checks namespace is still creating
 func IsNamespaceStillCreating(err error) bool {
-	return ErrTeamNamespaceStillCreating.Error() == err.Error()
+	return ErrTeamNamespaceStillCreating.Error() == err.Error() ||
+		strings.Contains(err.Error(), ErrTeamNamespaceStillCreating.Error())
 }
 
 // IsNamespaceStillExists checks namespace still exists
 func IsNamespaceStillExists(err error) bool {
-	return ErrTeamNamespaceStillExists.Error() == err.Error()
+	return ErrTeamNamespaceStillExists.Error() == err.Error() ||
+		strings.Contains(err.Error(), ErrTeamNamespaceStillExists.Error())
 }
 
 // IsNewNamespaceEnvObjsCreated checks ensuring environment objects created
@@ -110,8 +125,8 @@ func IsEnsuringComponentDeployed(err error) bool {
 	return ErrEnsureComponentDeployed.Error() == err.Error()
 }
 
-// IsEnsuringActivePromoted checks ensuring active tested
-func IsEnsuringActiveTested(err error) bool {
+// IsEnsuringComponentTested checks ensuring component tested
+func IsEnsuringComponentTested(err error) bool {
 	return ErrEnsureComponentTested.Error() == err.Error()
 }
 
@@ -153,4 +168,14 @@ func IsRollingBackActivePromotion(err error) bool {
 // IsEnsuringConfigDestroyed checks ensuring config destroyed
 func IsEnsuringConfigDestroyed(err error) bool {
 	return ErrEnsureConfigDestroyed.Error() == err.Error()
+}
+
+// IsErrReleaseFailed checks release failed
+func IsErrReleaseFailed(err error) bool {
+	return ErrReleaseFailed.Error() == err.Error()
+}
+
+// IsEnsuringStableComponentsDestroyed checks ensuring all stable components destroyed
+func IsEnsuringStableComponentsDestroyed(err error) bool {
+	return ErrEnsureStableComponentsDestroyed.Error() == err.Error()
 }

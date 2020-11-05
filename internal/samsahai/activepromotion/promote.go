@@ -22,6 +22,15 @@ func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv
 	}
 
 	if err := c.ensureQueuePromotedToActive(teamName, targetNs); err != nil {
+		if s2herrors.IsErrReleaseFailed(err) {
+			atpComp.Status.SetResult(s2hv1.ActivePromotionFailure)
+			atpComp.Status.SetCondition(s2hv1.ActivePromotionCondRollbackStarted, corev1.ConditionTrue,
+				"Rollback process has been started due to cannot apply active values file")
+			atpComp.SetState(s2hv1.ActivePromotionRollback,
+				"Active promotion failed due to cannot apply active values file")
+			return nil
+		}
+
 		return err
 	}
 
@@ -60,6 +69,10 @@ func (c *controller) ensureQueuePromotedToActive(teamName, ns string) error {
 	}
 
 	if q.Status.State == s2hv1.Finished {
+		if !q.IsDeploySuccess() {
+			return s2herrors.ErrReleaseFailed
+		}
+
 		return nil
 	}
 

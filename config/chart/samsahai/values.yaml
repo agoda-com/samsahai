@@ -5,7 +5,7 @@
 image:
   repository: quay.io/samsahai/samsahai
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 imagePullSecrets: []
 
@@ -26,11 +26,32 @@ configs:
 fileConfigs:
   s2hImage: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'
   clusterDomain: "cluster.local"
+  githubURL: "https://github.com"
+
+  # pullRequest global config
+  pullRequest:
+    # how many concurrences of pull request queue running?
+    queueConcurrences: 2
+
+    # how many times the pull request component should be tested?
+    maxVerificationRetryCounts: 0
+
+    # how many times the image version should be checked ?
+    maxTriggerRetryCounts: 30
+
+    # polling time to verify the image version
+    triggerPollingTime: 5m
+
+    # what is the maximum pull request queue histories in days to store?
+    maxHistoryDays: 7
 
   # activePromotion global config
   activePromotion:
     # how many active promotions can run in parallel?
     concurrences: 3
+
+    # how many times the active promotion should be processed?
+    maxRetry: 0
 
     # how long for active promotion flow?
     timeout: "30m"
@@ -79,8 +100,8 @@ exporter:
 ingress:
   enabled: false
   annotations: {}
-#    kubernetes.io/ingress.class: nginx
-#    kubernetes.io/tls-acme: "true"
+  #    kubernetes.io/ingress.class: nginx
+  #    kubernetes.io/tls-acme: "true"
   hosts:
     - host: chart-example.local
       paths: []

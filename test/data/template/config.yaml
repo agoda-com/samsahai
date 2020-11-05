@@ -1,0 +1,9 @@
+apiVersion: env.samsahai.io/v1beta1
+kind: Config
+metadata:
+  name: teamtest2
+spec:
+  template: teamtest
+  staging:
+    deployment:
+      engine: mock

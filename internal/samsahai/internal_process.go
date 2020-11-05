@@ -15,7 +15,6 @@ import (
 	"github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
-	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 const maxDesiredMappingPerComp = 10
@@ -23,6 +22,7 @@ const maxDesiredMappingPerComp = 10
 type changedComponent struct {
 	Name       string
 	Repository string
+	TeamName   string
 }
 
 type updateHealth struct {
@@ -37,6 +37,7 @@ type updateTeamDesiredComponent struct {
 	ComponentName   string
 	ComponentSource string
 	ComponentImage  s2hv1.ComponentImage
+	ComponentBundle string
 }
 
 func (c *controller) Start(stop <-chan struct{}) {
@@ -60,10 +61,11 @@ func (c *controller) Start(stop <-chan struct{}) {
 	logger.Info("stopping internal process")
 }
 
-func (c *controller) NotifyComponentChanged(compName, repository string) {
+func (c *controller) NotifyComponentChanged(compName, repository, teamName string) {
 	c.queue.Add(changedComponent{
 		Repository: repository,
 		Name:       compName,
+		TeamName:   teamName,
 	})
 }
 
@@ -109,48 +111,67 @@ func (c *controller) process() bool {
 //
 // Component should match both name and repository
 func (c *controller) checkComponentChanged(component changedComponent) error {
-	configCtrl := c.GetConfigController()
-	teamList, err := c.GetTeams()
-	if err != nil {
-		return err
-	}
-
-	for _, teamComp := range teamList.Items {
-		teamName := teamComp.Name
-		team := &s2hv1.Team{}
-		if err := c.getTeam(teamName, team); err != nil {
-			logger.Error(err, "cannot get team", "team", teamName)
+	if component.TeamName != "" {
+		if err := c.checkTeamComponentChanged(component.Name, component.Repository, component.TeamName); err != nil {
+			logger.Error(err, "cannot check component changed", "team", component.TeamName)
+			return err
+		}
+	} else {
+		teamList, err := c.GetTeams()
+		if err != nil {
 			return err
 		}
 
-		comps, _ := configCtrl.GetComponents(teamName)
-		for _, comp := range comps {
-			if component.Name != comp.Name || comp.Source == nil {
-				// ignored mismatch or missing source
+		for _, teamComp := range teamList.Items {
+			teamName := teamComp.Name
+			if err := c.checkTeamComponentChanged(component.Name, component.Repository, teamName); err != nil {
+				logger.Error(err, "cannot check component changed", "team", teamName)
 				continue
 			}
-
-			if _, ok := c.checkers[string(*comp.Source)]; !ok {
-				// ignore non-existing source
-				continue
-			}
-
-			if component.Repository != "" && component.Repository != comp.Image.Repository {
-				// ignore mismatch repository
-				continue
-			}
-
-			logger.Debug("component has been notified", "team", teamName, "component", comp.Name)
-
-			// add to queue for processing
-			c.queue.Add(updateTeamDesiredComponent{
-				TeamName:        teamName,
-				ComponentName:   comp.Name,
-				ComponentSource: string(*comp.Source),
-				ComponentImage:  comp.Image,
-			})
 		}
 	}
+
+	return nil
+}
+
+func (c *controller) checkTeamComponentChanged(compName, repository, teamName string) error {
+	configCtrl := c.GetConfigController()
+	team := &s2hv1.Team{}
+	if err := c.getTeam(teamName, team); err != nil {
+		logger.Error(err, "cannot get team", "team", teamName)
+		return err
+	}
+
+	comps, _ := configCtrl.GetComponents(teamName)
+	for _, comp := range comps {
+		if compName != comp.Name || comp.Source == nil {
+			// ignored mismatch or missing source
+			continue
+		}
+
+		if _, err := c.getComponentChecker(string(*comp.Source)); err != nil {
+			// ignore non-existing source
+			continue
+		}
+
+		if repository != "" && repository != comp.Image.Repository {
+			// ignore mismatch repository
+			continue
+		}
+
+		logger.Debug("component has been notified", "team", teamName, "component", comp.Name)
+
+		// add to queue for processing
+		bundleName := c.getBundleName(comp.Name, teamName)
+		c.queue.Add(updateTeamDesiredComponent{
+			TeamName:        teamName,
+			ComponentName:   comp.Name,
+			ComponentSource: string(*comp.Source),
+			ComponentImage:  comp.Image,
+			ComponentBundle: bundleName,
+		})
+	}
+
 	return nil
 }
 
@@ -163,7 +184,12 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	var err error
 
 	// run checker to get desired version
-	checker := c.checkers[updateInfo.ComponentSource]
+	checker, err := c.getComponentChecker(updateInfo.ComponentSource)
+	if err != nil {
+		logger.Error(err, "cannot get component checker",
+			"team", updateInfo.TeamName, "source", updateInfo.ComponentSource)
+		return err
+	}
 	checkPattern := updateInfo.ComponentImage.Pattern
 
 	team := &s2hv1.Team{}
@@ -175,10 +201,17 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	compNs := team.Status.Namespace.Staging
 	compName := updateInfo.ComponentName
 	compRepository := updateInfo.ComponentImage.Repository
+	compBundle := updateInfo.ComponentBundle
 
 	// TODO: do caching for better performance
 	version, vErr := checker.GetVersion(compRepository, compName, checkPattern)
-	if vErr != nil && !errors.IsImageNotFound(vErr) && !errors.IsErrRequestTimeout(vErr) {
+	switch {
+	case vErr == nil: // do nothing
+	case errors.IsImageNotFound(vErr) || errors.IsErrRequestTimeout(vErr):
+	case errors.IsInternalCheckerError(vErr):
+		c.sendImageMissingReport(updateInfo.TeamName, updateInfo.ComponentName, compRepository, version, vErr.Error())
+		return nil
+	default:
 		logger.Error(vErr, "error while run checker.getversion",
 			"team", updateInfo.TeamName, "name", compName, "repository", compRepository,
 			"version pattern", checkPattern)
@@ -204,7 +237,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	}
 
 	if vErr != nil && (errors.IsImageNotFound(vErr) || errors.IsErrRequestTimeout(vErr)) {
-		c.sendImageMissingReport(updateInfo.TeamName, compRepository, version)
+		c.sendImageMissingReport(updateInfo.TeamName, updateInfo.ComponentName, compRepository, version, "")
 		return nil
 	}
 
@@ -225,6 +258,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 					Version:    version,
 					Name:       compName,
 					Repository: compRepository,
+					Bundle:     compBundle,
 				},
 				Status: s2hv1.DesiredComponentStatus{
 					CreatedAt: &now,
@@ -245,13 +279,22 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	}
 
 	// DesiredComponent found, check the version
-	if desiredComp.Spec.Version == version && desiredComp.Spec.Repository == compRepository {
+	sameComp := desiredComp.IsSame(&s2hv1.DesiredComponent{
+		Spec: s2hv1.DesiredComponentSpec{
+			Name:       compName,
+			Version:    version,
+			Repository: compRepository,
+			Bundle:     compBundle,
+		},
+	})
+	if sameComp {
 		return nil
 	}
 
 	// Update when version or repository changed
 	desiredComp.Spec.Version = version
 	desiredComp.Spec.Repository = compRepository
+	desiredComp.Spec.Bundle = compBundle
 	desiredComp.Status.UpdatedAt = &now
 
 	if err = c.client.Update(ctx, desiredComp); err != nil {
@@ -262,11 +305,12 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	return nil
 }
 
-func (c *controller) sendImageMissingReport(teamName, repo, version string) {
+func (c *controller) sendImageMissingReport(teamName, compName, repo, version, reason string) {
 	configCtrl := c.GetConfigController()
 	for _, reporter := range c.reporters {
-		img := &rpc.Image{Repository: repo, Tag: version}
-		if err := reporter.SendImageMissing(teamName, configCtrl, img); err != nil {
+		img := s2hv1.Image{Repository: repo, Tag: version}
+		imageMissingRpt := internal.NewImageMissingReporter(img, c.configs, teamName, compName, reason)
+		if err := reporter.SendImageMissing(configCtrl, imageMissingRpt); err != nil {
 			logger.Error(err, "cannot send image missing list report", "team", teamName)
 		}
 	}
@@ -282,9 +326,9 @@ type desiredTime struct {
 }
 
 func deleteDesiredMappingOutOfRange(team *s2hv1.Team, maxDesiredMapping int) {
-	desiredMap := team.Status.DesiredComponents
+	desiredMap := team.Status.DesiredComponentImageCreatedTime
 	for compName, m := range desiredMap {
-		desiredList := convertDesiredMapToDesiredTimeList(m.ImageCreatedTime)
+		desiredList := convertDesiredMapToDesiredTimeList(m)
 		if len(desiredList) > maxDesiredMapping {
 			sortDesiredList(desiredList)
 			for i := len(desiredList) - 1; i > maxDesiredMapping-1; i-- {
@@ -293,7 +337,7 @@ func deleteDesiredMappingOutOfRange(team *s2hv1.Team, maxDesiredMapping int) {
 					break
 				}
 
-				delete(desiredMap[compName].ImageCreatedTime, desiredImage)
+				delete(desiredMap[compName], desiredImage)
 			}
 		}
 	}

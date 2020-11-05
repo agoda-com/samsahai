@@ -207,6 +207,30 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		return cr.Result{}, err
 	}
 
+	desiredComp := &s2hv1.DesiredComponent{}
+	err = c.client.Get(ctx, req.NamespacedName, desiredComp)
+	if err != nil {
+		logger.Error(err, "cannot get DesiredComponent", "name", req.Name, "namespace", req.Namespace)
+		return cr.Result{}, err
+	}
+
+	queueList, err := c.s2hCtrl.GetQueues(req.Namespace)
+	if err != nil {
+		return cr.Result{}, err
+	}
+
+	removeQueue, updateQueue := c.removeSameVersionQueue(queueList, stableComp, desiredComp)
+	if removeQueue.Name != "" {
+		if err := c.deleteQueue(ctx, removeQueue); err != nil {
+			return cr.Result{}, err
+		}
+	}
+	if updateQueue.Name != "" {
+		if err := c.updateQueue(ctx, updateQueue); err != nil {
+			return cr.Result{}, err
+		}
+	}
+
 	return cr.Result{}, nil
 }
 
@@ -221,4 +245,40 @@ func (c *controller) detectSpecChanged(stableComp *s2hv1.StableComponent, teamCo
 	}
 
 	return true
+}
+
+func (c *controller) deleteQueue(ctx context.Context, q s2hv1.Queue) error {
+	return c.client.Delete(ctx, &q)
+}
+
+func (c *controller) updateQueue(ctx context.Context, q s2hv1.Queue) error {
+	return c.client.Update(context.Background(), &q)
+}
+
+// removeSameVersionQueue removes component from queue if stable version equal desired version
+func (c *controller) removeSameVersionQueue(queueList *s2hv1.QueueList, stableComp *s2hv1.StableComponent, desiredComp *s2hv1.DesiredComponent) (removeQueue, updateQueue s2hv1.Queue) {
+	removeQueue, updateQueue = s2hv1.Queue{}, s2hv1.Queue{}
+	if stableComp.Spec.Repository == desiredComp.Spec.Repository &&
+		stableComp.Spec.Version == desiredComp.Spec.Version {
+		for _, queue := range queueList.Items {
+
+			var validComponents []*s2hv1.QueueComponent
+			for _, comp := range queue.Spec.Components {
+				if comp.Name != stableComp.Name {
+					validComponents = append(validComponents, comp)
+				}
+			}
+
+			if len(validComponents) == 0 {
+				removeQueue = queue
+				break
+			} else if len(validComponents) != len(queue.Spec.Components) {
+				queue.Spec.Components = validComponents
+				updateQueue = queue
+				break
+			}
+		}
+		return removeQueue, updateQueue
+	}
+	return
 }

@@ -59,7 +59,7 @@ func (c *controller) ensureActiveEnvironmentPromoted(ctx context.Context, atpCom
 		return err
 	}
 
-	err = c.s2hCtrl.PromoteActiveEnvironment(teamComp, targetNs, atpComp.Status.ActiveComponents)
+	err = c.s2hCtrl.PromoteActiveEnvironment(teamComp, targetNs, atpComp.Spec.PromotedBy, atpComp.Status.ActiveComponents)
 	if err != nil && k8serrors.IsAlreadyExists(err) {
 		return err
 	}
@@ -126,8 +126,8 @@ func (c *controller) getStableComponentObjects(ctx context.Context, ns string) (
 	return stableComps, nil
 }
 
-func (c *controller) deployStableComponentObjects(ctx context.Context, comps *s2hv1.StableComponentList, targetNS string) error {
-	if targetNS == "" {
+func (c *controller) deployStableComponentObjects(ctx context.Context, comps *s2hv1.StableComponentList, targetNs string) error {
+	if targetNs == "" {
 		return errors.Wrap(fmt.Errorf("target namespace is empty"), "cannot deploy stable components")
 	}
 
@@ -135,7 +135,7 @@ func (c *controller) deployStableComponentObjects(ctx context.Context, comps *s2
 		newComp := s2hv1.StableComponent{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      comp.Name,
-				Namespace: targetNS,
+				Namespace: targetNs,
 				Labels:    comp.Labels,
 			},
 			Spec: comp.Spec,
@@ -145,7 +145,7 @@ func (c *controller) deployStableComponentObjects(ctx context.Context, comps *s2
 			if k8serrors.IsAlreadyExists(err) {
 				// update stable components
 				ctemp := s2hv1.StableComponent{}
-				err := c.client.Get(ctx, types.NamespacedName{Name: comp.Name, Namespace: targetNS}, &ctemp)
+				err := c.client.Get(ctx, types.NamespacedName{Name: comp.Name, Namespace: targetNs}, &ctemp)
 				if err != nil {
 					return err
 				}
@@ -156,7 +156,7 @@ func (c *controller) deployStableComponentObjects(ctx context.Context, comps *s2
 					return err
 				}
 			} else {
-				return errors.Wrapf(err, "cannot deploy stable components into target namespace %s", targetNS)
+				return errors.Wrapf(err, "cannot deploy stable components into target namespace %s", targetNs)
 			}
 		}
 	}

@@ -2,7 +2,6 @@ package reportermock
 
 import (
 	"github.com/agoda-com/samsahai/internal"
-	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 const (
@@ -31,12 +30,22 @@ func (r *reporterMock) SendComponentUpgrade(configCtrl internal.ConfigController
 	return nil
 }
 
+// SendPullRequestQueue implements the reporter SendPullRequestQueue function
+func (r *reporterMock) SendPullRequestQueue(configCtrl internal.ConfigController, comp *internal.ComponentUpgradeReporter) error {
+	return nil
+}
+
 // SendActivePromotionStatus implements the reporter SendActivePromotionStatus function
 func (r *reporterMock) SendActivePromotionStatus(configCtrl internal.ConfigController, atpRpt *internal.ActivePromotionReporter) error {
 	return nil
 }
 
 // SendImageMissing implements the reporter SendImageMissingList function
-func (r *reporterMock) SendImageMissing(teamName string, configCtrl internal.ConfigController, images *rpc.Image) error {
+func (r *reporterMock) SendImageMissing(configCtrl internal.ConfigController, imageMissingRpt *internal.ImageMissingReporter) error {
+	return nil
+}
+
+// SendPullRequestTriggerResult implements the reporter SendPullRequestTriggerResult function
+func (r *reporterMock) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
 	return nil
 }

@@ -20,53 +20,49 @@ var _ = Describe("S2H internal process", func() {
 		timeNow := time.Now()
 		team := &s2hv1.Team{
 			Status: s2hv1.TeamStatus{
-				DesiredComponents: map[string]s2hv1.ImageCreatedTime{
+				DesiredComponentImageCreatedTime: map[string]map[string]s2hv1.DesiredImageTime{
 					comp1: {
-						ImageCreatedTime: map[string]s2hv1.DesiredImageTime{
-							stringutils.ConcatImageString(repoComp1, v110): {
-								Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp1, v111): {
-								Image:       &s2hv1.Image{Repository: repoComp1, Tag: v111},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp1, v112): {
-								Image:       &s2hv1.Image{Repository: repoComp1, Tag: v112},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
-							},
+						stringutils.ConcatImageString(repoComp1, v110): s2hv1.DesiredImageTime{
+							Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp1, v111): s2hv1.DesiredImageTime{
+							Image:       &s2hv1.Image{Repository: repoComp1, Tag: v111},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp1, v112): s2hv1.DesiredImageTime{
+							Image:       &s2hv1.Image{Repository: repoComp1, Tag: v112},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
 						},
 					},
 					comp2: {
-						ImageCreatedTime: map[string]s2hv1.DesiredImageTime{
-							stringutils.ConcatImageString(repoComp2, v110): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v110},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-6 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v111): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v111},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-5 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v112): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v112},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-4 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v113): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v113},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-3 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v114): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v114},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-2 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v115): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v115},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v009): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v009},
-								CreatedTime: metav1.Time{Time: timeNow.Add(1 * time.Hour)},
-							},
+						stringutils.ConcatImageString(repoComp2, v110): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v110},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-6 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v111): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v111},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-5 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v112): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v112},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-4 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v113): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v113},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-3 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v114): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v114},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-2 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v115): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v115},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v009): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v009},
+							CreatedTime: metav1.Time{Time: timeNow.Add(1 * time.Hour)},
 						},
 					},
 				},
@@ -74,14 +70,14 @@ var _ = Describe("S2H internal process", func() {
 		}
 
 		deleteDesiredMappingOutOfRange(team, maxDesiredMapping)
-		desired := team.Status.DesiredComponents
-		desiredCompImageCreatedTime1 := desired[comp1].ImageCreatedTime
+		desired := team.Status.DesiredComponentImageCreatedTime
+		desiredCompImageCreatedTime1 := desired[comp1]
 		g.Expect(len(desiredCompImageCreatedTime1)).To(Equal(3), "size of comp1 mapping should be matched")
 		g.Expect(desiredCompImageCreatedTime1).Should(HaveKey(stringutils.ConcatImageString(repoComp1, v110)))
 		g.Expect(desiredCompImageCreatedTime1).Should(HaveKey(stringutils.ConcatImageString(repoComp1, v111)))
 		g.Expect(desiredCompImageCreatedTime1).Should(HaveKey(stringutils.ConcatImageString(repoComp1, v112)))
 
-		desiredCompImageCreatedTime2 := desired[comp2].ImageCreatedTime
+		desiredCompImageCreatedTime2 := desired[comp2]
 		g.Expect(len(desiredCompImageCreatedTime2)).To(Equal(5), "size of comp2 mapping should be matched")
 		g.Expect(desiredCompImageCreatedTime2).ShouldNot(HaveKey(stringutils.ConcatImageString(repoComp2, v110)))
 		g.Expect(desiredCompImageCreatedTime2).ShouldNot(HaveKey(stringutils.ConcatImageString(repoComp2, v111)))
@@ -115,73 +111,69 @@ var _ = Describe("S2H internal process", func() {
 						},
 					},
 				},
-				DesiredComponents: map[string]s2hv1.ImageCreatedTime{
+				DesiredComponentImageCreatedTime: map[string]map[string]s2hv1.DesiredImageTime{
 					comp1: {
-						ImageCreatedTime: map[string]s2hv1.DesiredImageTime{
-							stringutils.ConcatImageString(repoComp1, v116): {
-								Image:       &s2hv1.Image{Repository: repoComp1, Tag: v009},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-7 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp1, v110): {
-								Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-6 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp1, v111): {
-								Image:       &s2hv1.Image{Repository: repoComp1, Tag: v111},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-5 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp1, v112): {
-								Image:       &s2hv1.Image{Repository: repoComp1, Tag: v112},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-4 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp1, v113): {
-								Image:       &s2hv1.Image{Repository: repoComp1, Tag: v113},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-3 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp1, v114): {
-								Image:       &s2hv1.Image{Repository: repoComp1, Tag: v114},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-2 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp1, v115): {
-								Image:       &s2hv1.Image{Repository: repoComp1, Tag: v115},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp1, v009): {
-								Image:       &s2hv1.Image{Repository: repoComp1, Tag: v116},
-								CreatedTime: metav1.Time{Time: timeNow.Add(1 * time.Hour)},
-							},
+						stringutils.ConcatImageString(repoComp1, v116): {
+							Image:       &s2hv1.Image{Repository: repoComp1, Tag: v009},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-7 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp1, v110): {
+							Image:       &s2hv1.Image{Repository: repoComp1, Tag: v110},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-6 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp1, v111): {
+							Image:       &s2hv1.Image{Repository: repoComp1, Tag: v111},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-5 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp1, v112): {
+							Image:       &s2hv1.Image{Repository: repoComp1, Tag: v112},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-4 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp1, v113): {
+							Image:       &s2hv1.Image{Repository: repoComp1, Tag: v113},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-3 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp1, v114): {
+							Image:       &s2hv1.Image{Repository: repoComp1, Tag: v114},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-2 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp1, v115): {
+							Image:       &s2hv1.Image{Repository: repoComp1, Tag: v115},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp1, v009): {
+							Image:       &s2hv1.Image{Repository: repoComp1, Tag: v116},
+							CreatedTime: metav1.Time{Time: timeNow.Add(1 * time.Hour)},
 						},
 					},
 					comp2: {
-						ImageCreatedTime: map[string]s2hv1.DesiredImageTime{
-							stringutils.ConcatImageString(repoComp2, v110): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v110},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-6 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v111): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v111},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-5 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v112): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v112},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-4 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v113): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v113},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-3 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v114): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v114},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-2 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v115): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v115},
-								CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
-							},
-							stringutils.ConcatImageString(repoComp2, v116): {
-								Image:       &s2hv1.Image{Repository: repoComp2, Tag: v116},
-								CreatedTime: metav1.Time{Time: timeNow.Add(1 * time.Hour)},
-							},
+						stringutils.ConcatImageString(repoComp2, v110): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v110},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-6 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v111): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v111},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-5 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v112): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v112},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-4 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v113): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v113},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-3 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v114): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v114},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-2 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v115): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v115},
+							CreatedTime: metav1.Time{Time: timeNow.Add(-1 * time.Hour)},
+						},
+						stringutils.ConcatImageString(repoComp2, v116): {
+							Image:       &s2hv1.Image{Repository: repoComp2, Tag: v116},
+							CreatedTime: metav1.Time{Time: timeNow.Add(1 * time.Hour)},
 						},
 					},
 				},
@@ -189,8 +181,8 @@ var _ = Describe("S2H internal process", func() {
 		}
 
 		deleteDesiredMappingOutOfRange(team, maxDesiredMapping)
-		desired := team.Status.DesiredComponents
-		desiredCompImageCreatedTime1 := desired[comp1].ImageCreatedTime
+		desired := team.Status.DesiredComponentImageCreatedTime
+		desiredCompImageCreatedTime1 := desired[comp1]
 		g.Expect(len(desiredCompImageCreatedTime1)).To(Equal(7), "size of comp1 mapping should be matched")
 		g.Expect(desiredCompImageCreatedTime1).ShouldNot(HaveKey(stringutils.ConcatImageString(repoComp1, v116)))
 		g.Expect(desiredCompImageCreatedTime1).Should(HaveKey(stringutils.ConcatImageString(repoComp1, v110)))
@@ -201,7 +193,7 @@ var _ = Describe("S2H internal process", func() {
 		g.Expect(desiredCompImageCreatedTime1).Should(HaveKey(stringutils.ConcatImageString(repoComp1, v115)))
 		g.Expect(desiredCompImageCreatedTime1).Should(HaveKey(stringutils.ConcatImageString(repoComp1, v009)))
 
-		desiredCompImageCreatedTime2 := desired[comp2].ImageCreatedTime
+		desiredCompImageCreatedTime2 := desired[comp2]
 		g.Expect(len(desiredCompImageCreatedTime2)).To(Equal(5), "size of comp2 mapping should be matched")
 		g.Expect(desiredCompImageCreatedTime2).ShouldNot(HaveKey(stringutils.ConcatImageString(repoComp2, v110)))
 		g.Expect(desiredCompImageCreatedTime2).ShouldNot(HaveKey(stringutils.ConcatImageString(repoComp2, v111)))

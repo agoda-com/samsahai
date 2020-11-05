@@ -2,6 +2,9 @@ package mock
 
 import (
 	"fmt"
+	"time"
+
+	"helm.sh/helm/v3/pkg/release"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -14,7 +17,7 @@ const (
 	EngineName = "mock"
 )
 
-type CreateCallbackFn func(refName string, comp *s2hv1.Component, parentComp *s2hv1.Component, values map[string]interface{})
+type CreateCallbackFn func(refName string, comp *s2hv1.Component, parentComp *s2hv1.Component, values map[string]interface{}, deployTimeout *time.Duration)
 type DeleteCallbackFn func(refName string)
 
 type engine struct {
@@ -40,12 +43,23 @@ func (e *engine) Create(
 	comp *s2hv1.Component,
 	parentComp *s2hv1.Component,
 	values map[string]interface{},
+	deployTimeout *time.Duration,
 ) error {
 	if e.createFn != nil {
-		e.createFn(refName, comp, parentComp, values)
+		e.createFn(refName, comp, parentComp, values, deployTimeout)
 	}
 	logger.Debug(fmt.Sprintf("create env with resource key: %s", refName))
 	return nil
+}
+
+func (e *engine) Rollback(refName string, revision int) error {
+	logger.Debug(fmt.Sprintf("rollback env with resource key: %s", refName))
+	return nil
+}
+
+func (e *engine) GetHistories(refName string) ([]*release.Release, error) {
+	logger.Debug(fmt.Sprintf("get helm histories of resource key: %s", refName))
+	return []*release.Release{}, nil
 }
 
 func (e *engine) Delete(refName string) error {
@@ -66,9 +80,9 @@ func (e *engine) GetValues() (map[string][]byte, error) {
 	return nil, nil
 }
 
-func (e *engine) IsReady(queue *s2hv1.Queue) (bool, error) {
-	logger.Debug(fmt.Sprintf("env with resource key '%s' is ready", queue.Status.ReleaseName))
-	return true, nil
+func (e *engine) GetReleases() ([]*release.Release, error) {
+	logger.Debug("get all releases")
+	return []*release.Release{}, nil
 }
 
 func (e *engine) GetName() string {

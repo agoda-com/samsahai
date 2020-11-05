@@ -8,7 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	s2hv1 "github.com/agoda-com/samsahai/api/v1"
+	v1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 )
 
@@ -41,11 +41,11 @@ func (h *handler) getTeams(w http.ResponseWriter, r *http.Request, params httpro
 }
 
 type teamJSON struct {
-	s2hv1.TeamNamespace `json:"namespace"`
-	TeamName            string             `json:"teamName"`
-	TeamConnections     teamEnvConnections `json:"connections"`
-	TeamStatus          s2hv1.TeamStatus   `json:"status"`
-	TeamSpec            s2hv1.TeamSpec     `json:"spec"`
+	v1.TeamNamespace `json:"namespace"`
+	TeamName         string             `json:"teamName"`
+	TeamConnections  teamEnvConnections `json:"connections"`
+	TeamStatus       v1.TeamStatus      `json:"status"`
+	TeamSpec         v1.TeamSpec        `json:"spec"`
 	//TeamQueue             teamQueueJSON          `json:"queue"`
 }
 
@@ -54,10 +54,10 @@ type teamQueueJSON struct {
 	NoOfQueue int `json:"noOfQueue"`
 
 	// +Optional
-	Current *s2hv1.Queue `json:"current"`
+	Current *v1.Queue `json:"current"`
 
 	// +Optional
-	Queues []s2hv1.Queue `json:"queues"`
+	Queues []v1.Queue `json:"queues"`
 
 	Histories []string `json:"historyNames"`
 }
@@ -71,6 +71,10 @@ type teamEnvConnections struct {
 
 	// +optional
 	Active map[string][]internal.Connection `json:"active,omitempty"`
+
+	// PullRequest represents connection strings of all pull request environments
+	// +optional
+	PullRequest map[string]map[string][]internal.Connection `json:"pullRequest,omitempty"`
 }
 
 // getTeams godoc
@@ -116,19 +120,33 @@ func (h *handler) getTeam(w http.ResponseWriter, r *http.Request, params httprou
 		envConnections.PreActive = connections
 	}
 
+	if len(team.Status.Namespace.PullRequests) > 0 {
+		for _, prNamespace := range team.Status.Namespace.PullRequests {
+			connections, err := h.samsahai.GetConnections(prNamespace)
+			if err != nil {
+				h.errorf(w, http.StatusInternalServerError, "cannot get pull-request connections: %+v", err)
+				return
+			}
+			if len(envConnections.PullRequest) == 0 {
+				envConnections.PullRequest = make(map[string]map[string][]internal.Connection)
+			}
+			envConnections.PullRequest[prNamespace] = connections
+		}
+	}
+
 	// Get Team info.
 	data := teamJSON{
 		TeamName:        team.Name,
 		TeamConnections: envConnections,
 		TeamNamespace:   team.Status.Namespace,
 		TeamStatus:      team.Status,
-		TeamSpec:        team.Spec,
+		TeamSpec:        team.Status.Used,
 	}
-	data.TeamSpec.Credential = s2hv1.Credential{}
+	data.TeamSpec.Credential = v1.Credential{}
 	h.JSON(w, http.StatusOK, &data)
 }
 
-type teamComponentsJSON map[string]*s2hv1.Component
+type teamComponentsJSON map[string]*v1.Component
 
 // getTeamComponent godoc
 // @Summary Get Team Component
@@ -147,7 +165,7 @@ func (h *handler) getTeamComponent(w http.ResponseWriter, r *http.Request, param
 	var err error
 	data, err = configCtrl.GetComponents(teamName)
 	if err != nil {
-		h.error(w, http.StatusInternalServerError, fmt.Errorf("cannot get conponents of team: %+v", err))
+		h.error(w, http.StatusInternalServerError, fmt.Errorf("cannot get components of team: %+v", err))
 		return
 	}
 
@@ -190,7 +208,7 @@ func (h *handler) getTeamQueue(w http.ResponseWriter, r *http.Request, params ht
 		}
 	}
 	for i, queue := range queues.Items {
-		if queue.Status.State != s2hv1.Waiting {
+		if queue.Status.State != v1.Waiting {
 			data.Current = &queues.Items[i]
 		}
 	}
@@ -354,17 +372,17 @@ func (h *handler) getTeamConfig(w http.ResponseWriter, r *http.Request, params h
 	case "application/x-yaml":
 		fallthrough
 	case "text/yaml":
-		h.YAML(w, http.StatusOK, config.Spec)
+		h.YAML(w, http.StatusOK, config.Status.Used)
 		return
 	default:
-		h.JSON(w, http.StatusOK, config.Spec)
+		h.JSON(w, http.StatusOK, config.Status.Used)
 	}
 }
 
-func (h *handler) loadTeam(w http.ResponseWriter, params httprouter.Params) (*s2hv1.Team, error) {
+func (h *handler) loadTeam(w http.ResponseWriter, params httprouter.Params) (*v1.Team, error) {
 	teamName := params.ByName("team")
 
-	team := &s2hv1.Team{}
+	team := &v1.Team{}
 	err := h.samsahai.GetTeam(teamName, team)
 	if err != nil {
 		if errors.IsNotFound(err) {

@@ -14,8 +14,6 @@ import (
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/staging"
-	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
-	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 )
 
 type envType string
@@ -158,7 +156,7 @@ func (c *controller) ensureNamespaceDestroyed(ctx context.Context, teamName, ns 
 func (c *controller) deleteAllComponentsInNamespace(teamName, ns string, startedCleanupTime *metav1.Time) error {
 	configCtrl := c.s2hCtrl.GetConfigController()
 
-	deployEngine := c.getDeployEngine(teamName, ns, configCtrl)
+	deployEngine := c.s2hCtrl.GetActivePromotionDeployEngine(teamName, ns)
 
 	parentComps, err := configCtrl.GetParentComponents(teamName)
 	if err != nil {
@@ -203,37 +201,11 @@ func (c *controller) getComponentCleanupTimeout(teamName string, configCtrl inte
 		return cleanupTimeout
 	}
 
-	atpConfig := config.Spec.ActivePromotion
+	atpConfig := config.Status.Used.ActivePromotion
 
 	if atpConfig == nil || atpConfig.Deployment == nil {
 		return cleanupTimeout
 	}
 
 	return &atpConfig.Deployment.ComponentCleanupTimeout
-}
-
-func (c *controller) getDeployEngine(teamName, ns string, configCtrl internal.ConfigController) internal.DeployEngine {
-	var e string
-	config, err := configCtrl.Get(teamName)
-	if err != nil {
-		return mock.New()
-	}
-
-	atpConfig := config.Spec.ActivePromotion
-
-	if atpConfig == nil || atpConfig.Deployment == nil || atpConfig.Deployment.Engine == nil || *atpConfig.Deployment.Engine == "" {
-		e = mock.EngineName
-	} else {
-		e = *config.Spec.ActivePromotion.Deployment.Engine
-	}
-
-	var engine internal.DeployEngine
-
-	switch e {
-	case helm3.EngineName:
-		engine = helm3.New(ns, false)
-	default:
-		engine = mock.New()
-	}
-	return engine
 }

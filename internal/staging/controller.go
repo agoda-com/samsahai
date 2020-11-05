@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -137,11 +138,23 @@ func (c *controller) process() bool {
 	if c.getCurrentQueue() == nil {
 		c.mtQueue.Lock()
 		// pick new queue
-		if c.currentQueue, err = c.queueCtrl.First(); err != nil {
+		obj, err := c.queueCtrl.First(c.namespace)
+		if err != nil {
 			logger.Error(err, "cannot pick the first component of queue")
 			c.mtQueue.Unlock()
 			return false
 		}
+
+		if obj != nil {
+			var ok bool
+			c.currentQueue, ok = obj.(*s2hv1.Queue)
+			if !ok {
+				logger.Error(err, "cannot parse runtime object into queue object")
+				c.mtQueue.Unlock()
+				return false
+			}
+		}
+
 		c.mtQueue.Unlock()
 	}
 
@@ -298,6 +311,12 @@ func (c *controller) syncQueueWithK8s() error {
 
 func (c *controller) initQueue(q *s2hv1.Queue) error {
 	deployConfig := c.getDeployConfiguration(q)
+	if deployConfig == nil {
+		err := fmt.Errorf("cannot get deployment configuration, namespace: %s, queue: %s", c.namespace, q.Name)
+		logger.Error(err, "cannot init queue", "queue", q.Name, "namespace", c.namespace)
+		return err
+	}
+
 	q.Status.NoOfProcessed++
 	q.Status.QueueHistoryName = generateQueueHistoryName(q.Name)
 	if deployConfig.Engine != nil {
@@ -418,7 +437,7 @@ func (c *controller) getConfiguration() (*s2hv1.ConfigSpec, error) {
 		return &s2hv1.ConfigSpec{}, err
 	}
 
-	return &config.Spec, nil
+	return &config.Status.Used, nil
 }
 
 func (c *controller) getConfigController() internal.ConfigController {
@@ -557,6 +576,17 @@ func forceCleanupPod(log s2hlog.Logger, c client.Client, namespace string, selec
 		client.PropagationPolicy(metav1.DeletePropagationBackground),
 	); err != nil {
 		log.Error(err, "delete daemonset error")
+	}
+
+	log.Warn("force delete job")
+	if err = c.DeleteAllOf(ctx,
+		&batchv1.Job{},
+		client.InNamespace(namespace),
+		client.MatchingLabels(selectors),
+		client.GracePeriodSeconds(0),
+		client.PropagationPolicy(metav1.DeletePropagationBackground),
+	); err != nil {
+		log.Error(err, "delete job error")
 	}
 
 	log.Warn("force delete pod")

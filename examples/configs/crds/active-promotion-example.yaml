@@ -1,0 +1,7 @@
+apiVersion: env.samsahai.io/v1
+kind: ActivePromotion
+metadata:
+  name: example
+spec:
+  tearDownDuration: 5m
+  skipTestRunner: false

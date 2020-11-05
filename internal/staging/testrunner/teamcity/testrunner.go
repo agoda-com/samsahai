@@ -16,6 +16,7 @@ import (
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/http"
+	"github.com/agoda-com/samsahai/internal/util/template"
 )
 
 var logger = s2hlog.Log.WithName(TestRunnerName)
@@ -62,8 +63,9 @@ type TriggerResponse struct {
 }
 
 type ResultResponse struct {
-	State  string `xml:"state,attr"`
-	Status string `xml:"status,attr"`
+	BuildNumber string `xml:"number,attr"`
+	State       string `xml:"state,attr"`
+	Status      string `xml:"status,attr"`
 }
 
 type testRunner struct {
@@ -114,6 +116,16 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
 	}
 
+	branchName := testConfig.Teamcity.Branch
+	prData := internal.PullRequestData{PRNumber: currentQueue.Spec.PRNumber}
+	if prData.PRNumber != "" {
+		branchName = template.TextRender("PullRequestBranchName", branchName, prData)
+	}
+
+	if branchName == "" {
+		branchName = testConfig.Teamcity.Branch
+	}
+
 	errCh := make(chan error, 1)
 	ctx, cancelFn := context.WithTimeout(context.Background(), maxRunnerTimeout)
 	defer cancelFn()
@@ -121,8 +133,12 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 	go func() {
 		apiURL := fmt.Sprintf("%s/%s/buildQueue", t.baseURL, baseAPIPath)
 		teamName := currentQueue.Spec.TeamName
+		compVersion := "multiple-components"
+		if len(currentQueue.Spec.Components) == 1 {
+			compVersion = currentQueue.Spec.Components[0].Version
+		}
 		reqJSON := &triggerBuildReq{
-			BranchName: testConfig.Teamcity.Branch,
+			BranchName: branchName,
 			BuildType: buildTypeJSON{
 				ID: testConfig.Teamcity.BuildTypeID,
 			},
@@ -146,9 +162,9 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 					{Name: ParamCompName, Value: currentQueue.Name},
 					{Name: EnvParamCompName, Value: currentQueue.Name},
 					{Name: ParamReverseCompName, Value: currentQueue.Name},
-					{Name: ParamCompVersion, Value: currentQueue.Spec.Version},
-					{Name: EnvParamCompVersion, Value: currentQueue.Spec.Version},
-					{Name: ParamReverseCompVersion, Value: currentQueue.Spec.Version},
+					{Name: ParamCompVersion, Value: compVersion},
+					{Name: EnvParamCompVersion, Value: compVersion},
+					{Name: ParamReverseCompVersion, Value: compVersion},
 					{Name: ParamQueueType, Value: currentQueue.GetQueueType()},
 					{Name: EnvParamQueueType, Value: currentQueue.GetQueueType()},
 					{Name: ParamReverseQueueType, Value: currentQueue.GetQueueType()},
@@ -176,7 +192,7 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 		}
 
 		out := &TriggerResponse{}
-		if err := xml.Unmarshal([]byte(resp), out); err != nil {
+		if err := xml.Unmarshal(resp, out); err != nil {
 			logger.Error(err, "cannot unmarshal xml response data")
 			errCh <- err
 			return
@@ -184,11 +200,14 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 
 		// update build id / build type id / build url to queue status
 		buildTypeID := testConfig.Teamcity.BuildTypeID
-		buildURL := fmt.Sprintf("%s/viewLog.html?buildId=%s&buildTypeId=%s", t.baseURL, out.BuildID, testConfig.Teamcity.BuildTypeID)
-		currentQueue.Status.TestRunner.Teamcity.SetTeamcity(out.BuildID, buildTypeID, buildURL)
-		if err := t.client.Update(ctx, currentQueue); err != nil {
-			errCh <- err
-			return
+		buildURL := fmt.Sprintf("%s/viewLog.html?buildId=%s&buildTypeId=%s",
+			t.baseURL, out.BuildID, testConfig.Teamcity.BuildTypeID)
+		currentQueue.Status.TestRunner.Teamcity.SetTeamcity(branchName, out.BuildID, buildTypeID, buildURL)
+		if t.client != nil {
+			if err := t.client.Update(ctx, currentQueue); err != nil {
+				errCh <- err
+				return
+			}
 		}
 
 		errCh <- nil
@@ -204,7 +223,9 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 }
 
 // GetResult implements the staging testRunner GetResult function
-func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue *s2hv1.Queue) (isResultSuccess bool, isBuildFinished bool, err error) {
+func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue *s2hv1.Queue) (
+	isResultSuccess bool, isBuildFinished bool, err error) {
+
 	if testConfig == nil {
 		return false, false, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
@@ -224,13 +245,15 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 		return false, false, err
 	}
 
-	var byteData = []byte(resp)
+	var byteData = resp
 	var response ResultResponse
 	err = xml.Unmarshal(byteData, &response)
 	if err != nil {
 		logger.Error(err, "cannot unmarshal request data")
 		return false, false, err
 	}
+
+	currentQueue.Status.TestRunner.Teamcity.BuildNumber = "#" + response.BuildNumber
 
 	isBuildFinished = false
 	if strings.EqualFold(buildFinished, response.State) {

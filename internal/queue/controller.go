@@ -2,17 +2,21 @@ package queue
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
+	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 var logger = s2hlog.Log.WithName(CtrlName)
@@ -26,22 +30,25 @@ type controller struct {
 
 var _ internal.QueueController = &controller{}
 
-func NewUpgradeQueue(teamName, namespace, name, repository, version string) *s2hv1.Queue {
-	qLabels := internal.GetDefaultLabels(teamName)
-	qLabels["app"] = name
-	qLabels["component"] = name
+func NewQueue(teamName, namespace, name, bundle string, comps []*s2hv1.QueueComponent, queueType s2hv1.QueueType) *s2hv1.Queue {
+	queueName := name
+	if bundle != "" {
+		queueName = bundle
+	}
+
+	qLabels := getQueueLabels(teamName, queueName)
 	return &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      queueName,
 			Namespace: namespace,
 			Labels:    qLabels,
 		},
 		Spec: s2hv1.QueueSpec{
-			Name:       name,
+			Name:       queueName,
 			TeamName:   teamName,
-			Repository: repository,
-			Version:    version,
-			Type:       s2hv1.QueueTypeUpgrade,
+			Bundle:     bundle,
+			Components: comps,
+			Type:       queueType,
 		},
 		Status: s2hv1.QueueStatus{},
 	}
@@ -56,16 +63,27 @@ func New(ns string, runtimeClient client.Client) internal.QueueController {
 	return c
 }
 
-func (c *controller) Add(q *s2hv1.Queue) error {
-	return c.add(context.TODO(), q, false)
+func (c *controller) Add(obj runtime.Object, priorityQueues []string) error {
+	q, ok := obj.(*s2hv1.Queue)
+	if !ok {
+		return s2herrors.ErrParsingRuntimeObject
+	}
+
+	return c.add(context.TODO(), q, false, priorityQueues)
 }
 
-func (c *controller) AddTop(q *s2hv1.Queue) error {
-	return c.add(context.TODO(), q, true)
+func (c *controller) AddTop(obj runtime.Object) error {
+	q, ok := obj.(*s2hv1.Queue)
+	if !ok {
+		return s2herrors.ErrParsingRuntimeObject
+	}
+
+	return c.add(context.TODO(), q, true, nil)
 }
 
-func (c *controller) Size() int {
-	list, err := c.list(nil)
+func (c *controller) Size(namespace string) int {
+	listOpts := &client.ListOptions{Namespace: namespace}
+	list, err := c.list(listOpts)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
 		return 0
@@ -73,8 +91,9 @@ func (c *controller) Size() int {
 	return len(list.Items)
 }
 
-func (c *controller) First() (*s2hv1.Queue, error) {
-	list, err := c.list(nil)
+func (c *controller) First(namespace string) (runtime.Object, error) {
+	listOpts := &client.ListOptions{Namespace: namespace}
+	list, err := c.list(listOpts)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
 		return nil, err
@@ -97,17 +116,23 @@ func (c *controller) First() (*s2hv1.Queue, error) {
 	return nil, nil
 }
 
-func (c *controller) Remove(q *s2hv1.Queue) error {
-	return c.client.Delete(context.TODO(), q)
+func (c *controller) Remove(obj runtime.Object) error {
+	return c.client.Delete(context.TODO(), obj)
 }
 
-func (c *controller) RemoveAllQueues() error {
-
-	return c.client.DeleteAllOf(context.TODO(), &s2hv1.Queue{}, client.InNamespace(c.namespace))
+func (c *controller) RemoveAllQueues(namespace string) error {
+	return c.client.DeleteAllOf(context.TODO(), &s2hv1.Queue{}, client.InNamespace(namespace))
 }
 
-func (c *controller) add(ctx context.Context, queue *s2hv1.Queue, atTop bool) error {
-	queueList, err := c.list(nil)
+// incoming s`queue` always contains 1 component
+// will add component into queue ordering by priority
+func (c *controller) add(ctx context.Context, queue *s2hv1.Queue, atTop bool, priorityQueues []string) error {
+	if len(queue.Spec.Components) == 0 {
+		return fmt.Errorf("components should not be empty, queueName: %s", queue.Name)
+	}
+
+	listOpts := &client.ListOptions{Namespace: queue.Namespace}
+	queueList, err := c.list(listOpts)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
 		return err
@@ -121,20 +146,48 @@ func (c *controller) add(ctx context.Context, queue *s2hv1.Queue, atTop bool) er
 
 	pQueue := &s2hv1.Queue{}
 	isAlreadyInQueue := false
+	isAlreadyInBundle := false
 	for i, q := range queueList.Items {
-		if q.IsSame(queue) {
+		if q.ContainSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
 			isAlreadyInQueue = true
 			pQueue = &queueList.Items[i]
 			break
 		}
 	}
 
-	// remove duplicate component
-	removingList := c.removeSimilar(queue, queueList)
-
+	// remove/update duplicate component
+	removingList, updatingList := c.removeAndUpdateSimilarQueue(queue, queueList)
 	for i := range removingList {
-		if err := c.client.Delete(context.TODO(), &removingList[i]); err != nil {
+		if err := c.client.Delete(ctx, &removingList[i]); err != nil {
 			return err
+		}
+	}
+	for i := range updatingList {
+		if updatingList[i].Name != "" {
+			updatingList[i].Spec.Components.Sort()
+			updatingList[i].Spec.NoOfRetry = 0
+			updatingList[i].Spec.NextProcessAt = nil
+			updatingList[i].Status.State = s2hv1.Waiting
+			updatingList[i].Spec.Components.Sort()
+			if err := c.client.Update(ctx, &updatingList[i]); err != nil {
+				return err
+			}
+			queueList.Items[i] = updatingList[i]
+		}
+	}
+
+	updatingList = c.addExistingBundleQueue(queue, queueList)
+	for i := range updatingList {
+		if updatingList[i].Name != "" {
+			isAlreadyInBundle = true
+			updatingList[i].Spec.NoOfRetry = 0
+			updatingList[i].Spec.NextProcessAt = nil
+			updatingList[i].Status.State = s2hv1.Waiting
+			updatingList[i].Spec.Components.Sort()
+			if err := c.client.Update(ctx, &updatingList[i]); err != nil {
+				return err
+			}
+			queueList.Items[i] = updatingList[i]
 		}
 	}
 
@@ -142,70 +195,223 @@ func (c *controller) add(ctx context.Context, queue *s2hv1.Queue, atTop bool) er
 
 	now := metav1.Now()
 	if isAlreadyInQueue {
-		isQueueOnTop := pQueue.IsSame(&queueList.Items[0])
+		isQueueOnTop := queueList.Items[0].ContainSameComponent(pQueue.Spec.Name, pQueue.Spec.Components[0])
 
 		// move queue to the top
 		if atTop && !isQueueOnTop {
 			pQueue.Spec.NoOfOrder = queueList.TopQueueOrder()
 		}
 
-		if err = c.client.Update(context.TODO(), pQueue); err != nil {
+		pQueue.Spec.Components.Sort()
+		if err = c.client.Update(ctx, pQueue); err != nil {
 			return err
 		}
 	} else {
-		// queue not exist
-		if atTop {
-			queue.Spec.NoOfOrder = queueList.TopQueueOrder()
-		} else {
-			queue.Spec.NoOfOrder = queueList.LastQueueOrder()
+		updatingList = c.setQueueOrderFollowingPriorityQueues(queue, queueList, priorityQueues)
+		for i := range updatingList {
+			if err := c.client.Update(ctx, &updatingList[i]); err != nil {
+				return err
+			}
 		}
 
-		queue.Status.State = s2hv1.Waiting
-		queue.Status.CreatedAt = &now
-		queue.Status.UpdatedAt = &now
+		if !isAlreadyInBundle {
+			// queue not exist
+			if atTop {
+				queue.Spec.NoOfOrder = queueList.TopQueueOrder()
+			}
 
-		if err = c.client.Create(context.TODO(), queue); err != nil {
-			return err
+			queue.Status.State = s2hv1.Waiting
+			queue.Status.CreatedAt = &now
+			queue.Status.UpdatedAt = &now
+
+			queue.Spec.Components.Sort()
+			if err = c.client.Create(ctx, queue); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
+// queue always contains 1 component
 func (c *controller) isMatchWithStableComponent(ctx context.Context, q *s2hv1.Queue) (isMatch bool, err error) {
+	if len(q.Spec.Components) == 0 {
+		isMatch = true
+		return
+	}
+
+	qComp := q.Spec.Components[0]
 	stableComp := &s2hv1.StableComponent{}
-	err = c.client.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: q.GetName()}, stableComp)
+	err = c.client.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: qComp.Name}, stableComp)
 	if err != nil && k8serrors.IsNotFound(err) {
 		return false, nil
 	} else if err != nil {
 		return
 	}
 
-	isMatch = stableComp.Spec.Repository == q.Spec.Repository &&
-		stableComp.Spec.Version == q.Spec.Version
+	isMatch = stableComp.Spec.Repository == qComp.Repository &&
+		stableComp.Spec.Version == qComp.Version
 
 	return
 }
 
-// removeSimilar removes similar queue (same `name` from queue) from QueueList
-func (c *controller) removeSimilar(queue *s2hv1.Queue, list *s2hv1.QueueList) []s2hv1.Queue {
-	var items []s2hv1.Queue
-	var removing []s2hv1.Queue
-	var hasSameQueue = false
+// expect sorted queue list
+func (c *controller) setQueueOrderFollowingPriorityQueues(queue *s2hv1.Queue, list *s2hv1.QueueList, priorityQueues []string) []s2hv1.Queue {
+	targetNo := c.getPriorityNo(queue, priorityQueues)
+	if targetNo == -1 || len(list.Items) == 0 {
+		queue.Spec.NoOfOrder = list.LastQueueOrder()
+		return []s2hv1.Queue{}
+	}
 
-	for _, q := range list.Items {
-		if !hasSameQueue && q.IsSame(queue) {
-			// only add one `queue` to items
-			hasSameQueue = true
-		} else if q.Spec.Name == queue.Spec.Name {
-			// remove all the name with `queue`
-			removing = append(removing, q)
-			continue
+	existingQueueNo := c.getExistingQueueNumberInList(queue, list)
+
+	var items []s2hv1.Queue
+	var updating []s2hv1.Queue
+	var found, foundTop bool
+	expectedNo := list.LastQueueOrder()
+	for i, q := range list.Items {
+		priorityNo := c.getPriorityNo(&list.Items[i], priorityQueues)
+		isLowerPriority := priorityNo == -1 || priorityNo > targetNo
+		if !found && isLowerPriority {
+			if i-1 < 0 {
+				expectedNo = list.TopQueueOrder()
+				foundTop = true
+			} else {
+				expectedNo = list.Items[i-1].Spec.NoOfOrder + 1
+			}
+
+			found = true
+
 		}
+
+		if found && existingQueueNo != i {
+			if !foundTop {
+				q.Spec.NoOfOrder = q.Spec.NoOfOrder + 1
+			}
+			updating = append(updating, q)
+		}
+
 		items = append(items, q)
 	}
+
+	if existingQueueNo != -1 && items != nil {
+		items[existingQueueNo].Spec.NoOfOrder = expectedNo
+		updating = append(updating, items[existingQueueNo])
+	} else {
+		queue.Spec.NoOfOrder = expectedNo
+	}
+
 	list.Items = items
-	return removing
+	return updating
+}
+
+func (c *controller) getPriorityNo(queue *s2hv1.Queue, priorityQueues []string) int {
+	for i, priorComp := range priorityQueues {
+		if queue.Spec.Name == priorComp {
+			return i
+		}
+
+		for _, comp := range queue.Spec.Components {
+			if comp.Name == priorComp {
+				return i
+			}
+		}
+	}
+
+	return -1
+}
+
+func (c *controller) getExistingQueueNumberInList(queue *s2hv1.Queue, list *s2hv1.QueueList) int {
+	for i, q := range list.Items {
+		for _, qComp := range q.Spec.Components {
+			// queue already existed
+			if qComp.Name == queue.Spec.Components[0].Name {
+				return i
+			}
+		}
+	}
+
+	return -1
+}
+
+// addExistingBundleQueue returns updated bundle queue list
+func (c *controller) addExistingBundleQueue(queue *s2hv1.Queue, list *s2hv1.QueueList) []s2hv1.Queue {
+	if queue.Spec.Bundle == "" {
+		return []s2hv1.Queue{}
+	}
+
+	updating := make([]s2hv1.Queue, len(list.Items))
+	var items []s2hv1.Queue
+	var containComp = false
+	for i, q := range list.Items {
+		if !containComp && q.ContainSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
+			// only add one `queue` to items
+			containComp = true
+			// update component of bundle
+		} else if q.Spec.Bundle == queue.Spec.Bundle {
+			var found bool
+			for j, qComp := range q.Spec.Components {
+				if qComp.Name == queue.Spec.Components[0].Name {
+					q.Spec.Components[j].Repository = queue.Spec.Components[0].Repository
+					q.Spec.Components[j].Version = queue.Spec.Components[0].Version
+					found = true
+					break
+				}
+			}
+
+			// add a new component to bundle
+			if !found {
+				q.Spec.Components = append(q.Spec.Components, queue.Spec.Components[0])
+			}
+
+			updating[i] = q
+		}
+
+		items = append(items, q)
+	}
+
+	list.Items = items
+	return updating
+}
+
+// removeAndUpdateSimilarQueue removes similar component/queue (same `component name` from queue) from QueueList
+func (c *controller) removeAndUpdateSimilarQueue(queue *s2hv1.Queue, list *s2hv1.QueueList) (
+	removing []s2hv1.Queue, updating []s2hv1.Queue) {
+
+	updating = make([]s2hv1.Queue, len(list.Items))
+	var items []s2hv1.Queue
+	var containComp = false
+
+	for i, q := range list.Items {
+		if !containComp && q.ContainSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
+			// only add one `queue` to items
+			containComp = true
+		} else {
+			newComps := make([]*s2hv1.QueueComponent, 0)
+			for _, qComp := range q.Spec.Components {
+				if qComp.Name == queue.Spec.Components[0].Name {
+					continue
+				}
+				newComps = append(newComps, qComp)
+			}
+
+			if len(newComps) == 0 {
+				removing = append(removing, q)
+				continue
+			}
+
+			if len(newComps) != len(q.Spec.Components) {
+				q.Spec.Components = newComps
+				updating[i] = q
+			}
+		}
+
+		items = append(items, q)
+	}
+
+	list.Items = items
+	return
 }
 
 func (c *controller) list(opts *client.ListOptions) (list *s2hv1.QueueList, err error) {
@@ -219,7 +425,12 @@ func (c *controller) list(opts *client.ListOptions) (list *s2hv1.QueueList, err 
 	return list, nil
 }
 
-func (c *controller) SetLastOrder(q *s2hv1.Queue) error {
+func (c *controller) SetLastOrder(obj runtime.Object) error {
+	q, ok := obj.(*s2hv1.Queue)
+	if !ok {
+		return s2herrors.ErrParsingRuntimeObject
+	}
+
 	queueList, err := c.list(nil)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
@@ -232,8 +443,14 @@ func (c *controller) SetLastOrder(q *s2hv1.Queue) error {
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) SetReverifyQueueAtFirst(q *s2hv1.Queue) error {
-	list, err := c.list(nil)
+func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
+	q, ok := obj.(*s2hv1.Queue)
+	if !ok {
+		return s2herrors.ErrParsingRuntimeObject
+	}
+
+	listOpts := &client.ListOptions{Namespace: q.Namespace}
+	list, err := c.list(listOpts)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
 		return err
@@ -250,8 +467,14 @@ func (c *controller) SetReverifyQueueAtFirst(q *s2hv1.Queue) error {
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) SetRetryQueue(q *s2hv1.Queue, noOfRetry int, nextAt time.Time) error {
-	list, err := c.list(nil)
+func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time) error {
+	q, ok := obj.(*s2hv1.Queue)
+	if !ok {
+		return s2herrors.ErrParsingRuntimeObject
+	}
+
+	listOpts := &client.ListOptions{Namespace: q.Namespace}
+	list, err := c.list(listOpts)
 	if err != nil {
 		logger.Error(err, "cannot list queue")
 		return err
@@ -295,16 +518,17 @@ func (c *controller) resetQueueOrderWithCurrentQueue(ql *s2hv1.QueueList, curren
 	}
 }
 
-// EnsurePreActiveComponents ensures that components with were deployed with `pre-active` config and tested
-func EnsurePreActiveComponents(c client.Client, teamName, namespace string) (q *s2hv1.Queue, err error) {
+// EnsurePreActiveComponents ensures that components were deployed with `pre-active` config and tested
+func EnsurePreActiveComponents(c client.Client, teamName, namespace string, skipTest bool) (q *s2hv1.Queue, err error) {
 	q = &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      string(s2hv1.EnvPreActive),
 			Namespace: namespace,
 		},
 		Spec: s2hv1.QueueSpec{
-			Type:     s2hv1.QueueTypePreActive,
-			TeamName: teamName,
+			Type:           s2hv1.QueueTypePreActive,
+			TeamName:       teamName,
+			SkipTestRunner: skipTest,
 		},
 	}
 
@@ -344,6 +568,29 @@ func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace strin
 	return
 }
 
+// EnsurePullRequestComponents ensures that pull request components were deployed with `pull-request` config and tested
+func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName, prCompName, prNumber string,
+	comps s2hv1.QueueComponents, noOfRetry int) (q *s2hv1.Queue, err error) {
+
+	q = &s2hv1.Queue{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      queueName,
+			Namespace: namespace,
+		},
+		Spec: s2hv1.QueueSpec{
+			Name:       prCompName,
+			Type:       s2hv1.QueueTypePullRequest,
+			TeamName:   teamName,
+			PRNumber:   prNumber,
+			Components: comps,
+			NoOfRetry:  noOfRetry,
+		},
+	}
+
+	err = ensureQueue(context.TODO(), c, q)
+	return
+}
+
 func DeletePreActiveQueue(c client.Client, ns string) error {
 	return deleteQueue(c, ns, string(s2hv1.EnvPreActive))
 }
@@ -354,6 +601,10 @@ func DeletePromoteToActiveQueue(c client.Client, ns string) error {
 
 func DeleteDemoteFromActiveQueue(c client.Client, ns string) error {
 	return deleteQueue(c, ns, string(s2hv1.EnvDeActive))
+}
+
+func DeletePullRequestQueue(c client.Client, ns, queueName string) error {
+	return deleteQueue(c, ns, queueName)
 }
 
 // deleteQueue removes Queue in target namespace by name
@@ -385,4 +636,113 @@ func ensureQueue(ctx context.Context, c client.Client, q *s2hv1.Queue) (err erro
 	q.Spec = fetched.Spec
 	q.Status = fetched.Status
 	return nil
+}
+
+func getQueueLabels(teamName, component string) map[string]string {
+	qLabels := internal.GetDefaultLabels(teamName)
+	qLabels["app"] = component
+	qLabels["component"] = component
+
+	return qLabels
+}
+
+func GetComponentUpgradeRPCFromQueue(
+	comStatus samsahairpc.ComponentUpgrade_UpgradeStatus,
+	queueHistName string,
+	queueHistNamespace string,
+	queue *s2hv1.Queue,
+	prQueueRPC *samsahairpc.TeamWithPullRequest,
+) *samsahairpc.ComponentUpgrade {
+
+	outImgList := make([]*samsahairpc.Image, 0)
+	for _, img := range queue.Status.ImageMissingList {
+		outImgList = append(outImgList, &samsahairpc.Image{Repository: img.Repository, Tag: img.Tag})
+	}
+
+	rpcComps := make([]*samsahairpc.Component, 0)
+	for _, qComp := range queue.Spec.Components {
+		rpcComps = append(rpcComps, &samsahairpc.Component{
+			Name: qComp.Name,
+			Image: &samsahairpc.Image{
+				Repository: qComp.Repository,
+				Tag:        qComp.Version,
+			},
+		})
+	}
+
+	isReverify := queue.IsReverify()
+	if prQueueRPC != nil && prQueueRPC.PRNumber != "" {
+		isReverify = int(prQueueRPC.MaxRetryQueue) >= queue.Spec.NoOfRetry
+	}
+
+	prNamespace := ""
+	if prQueueRPC != nil {
+		prNamespace = prQueueRPC.Namespace
+	}
+
+	comp := &samsahairpc.ComponentUpgrade{
+		Status:               comStatus,
+		Name:                 queue.Spec.Name,
+		TeamName:             queue.Spec.TeamName,
+		Components:           rpcComps,
+		IssueType:            getIssueTypeRPC(outImgList, queue),
+		QueueHistoryName:     queueHistName,
+		Namespace:            queueHistNamespace,
+		ImageMissingList:     outImgList,
+		Runs:                 int32(queue.Spec.NoOfRetry + 1),
+		IsReverify:           isReverify,
+		ReverificationStatus: getReverificationStatusRPC(queue),
+		DeploymentIssues:     getDeploymentIssuesRPC(queue),
+		PullRequestComponent: prQueueRPC,
+		PullRequestNamespace: prNamespace,
+	}
+
+	return comp
+}
+
+func getIssueTypeRPC(imageMissingList []*samsahairpc.Image, queue *s2hv1.Queue) samsahairpc.ComponentUpgrade_IssueType {
+	switch {
+	case len(imageMissingList) > 0:
+		return samsahairpc.ComponentUpgrade_IssueType_IMAGE_MISSING
+	case queue.IsReverify() && queue.IsDeploySuccess() && queue.IsTestSuccess():
+		return samsahairpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED
+	case queue.IsReverify() && (!queue.IsDeploySuccess() || !queue.IsTestSuccess()):
+		return samsahairpc.ComponentUpgrade_IssueType_ENVIRONMENT_ISSUE
+	default:
+		return samsahairpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED
+	}
+}
+
+func getReverificationStatusRPC(queue *s2hv1.Queue) samsahairpc.ComponentUpgrade_ReverificationStatus {
+	if !queue.IsReverify() {
+		return samsahairpc.ComponentUpgrade_ReverificationStatus_UNKNOWN
+	}
+
+	if queue.IsDeploySuccess() && queue.IsTestSuccess() {
+		return samsahairpc.ComponentUpgrade_ReverificationStatus_SUCCESS
+	}
+
+	return samsahairpc.ComponentUpgrade_ReverificationStatus_FAILURE
+}
+
+func getDeploymentIssuesRPC(queue *s2hv1.Queue) []*samsahairpc.DeploymentIssue {
+	deploymentIssues := make([]*samsahairpc.DeploymentIssue, 0)
+	for _, deploymentIssue := range queue.Status.DeploymentIssues {
+		failureComps := make([]*samsahairpc.FailureComponent, 0)
+		for _, failureComp := range deploymentIssue.FailureComponents {
+			failureComps = append(failureComps, &samsahairpc.FailureComponent{
+				ComponentName:             failureComp.ComponentName,
+				FirstFailureContainerName: failureComp.FirstFailureContainerName,
+				RestartCount:              failureComp.RestartCount,
+				NodeName:                  failureComp.NodeName,
+			})
+		}
+
+		deploymentIssues = append(deploymentIssues, &samsahairpc.DeploymentIssue{
+			IssueType:         string(deploymentIssue.IssueType),
+			FailureComponents: failureComps,
+		})
+	}
+
+	return deploymentIssues
 }

@@ -20,7 +20,7 @@ var _ = Describe("Plugin", func() {
 
 	pluginName := "example"
 
-	It("Should successfully load and verify plugin", func() {
+	It("should successfully load and verify plugin", func() {
 		plugin, err := New("./example-shell.sh")
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(plugin).NotTo(BeNil())
@@ -36,7 +36,7 @@ var _ = Describe("Plugin", func() {
 	})
 
 	Describe("get-version", func() {
-		It("Should correctly get version", func() {
+		It("should correctly get version", func() {
 			plugin, err := New("./example-shell.sh")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(plugin).NotTo(BeNil())

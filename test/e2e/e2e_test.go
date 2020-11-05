@@ -17,6 +17,7 @@ import (
 
 	_ "github.com/agoda-com/samsahai/test/e2e/checkers"
 	_ "github.com/agoda-com/samsahai/test/e2e/config"
+	_ "github.com/agoda-com/samsahai/test/e2e/pullrequest"
 	_ "github.com/agoda-com/samsahai/test/e2e/queue"
 	_ "github.com/agoda-com/samsahai/test/e2e/samsahai"
 	_ "github.com/agoda-com/samsahai/test/e2e/staging"

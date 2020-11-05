@@ -13,13 +13,13 @@ var logger = s2hlog.S2HLog.WithName("Outdated-util")
 
 type Outdated struct {
 	cfg                   *s2hv1.ConfigSpec
-	desiredCompsImageTime map[string]s2hv1.ImageCreatedTime
+	desiredCompsImageTime map[string]map[string]s2hv1.DesiredImageTime
 	currentActiveComps    map[string]s2hv1.StableComponent
 	nowTime               time.Time
 }
 
 func New(cfg *s2hv1.ConfigSpec,
-	desiredComps map[string]s2hv1.ImageCreatedTime,
+	desiredComps map[string]map[string]s2hv1.DesiredImageTime,
 	currentActiveComps map[string]s2hv1.StableComponent,
 ) *Outdated {
 	r := &Outdated{
@@ -41,7 +41,7 @@ func (o Outdated) SetOutdatedDuration(atpCompStatus *s2hv1.ActivePromotionStatus
 		stableCompSpec := activeComp.Spec
 		stableName := stableCompSpec.Name
 		stableImage := stringutils.ConcatImageString(stableCompSpec.Repository, stableCompSpec.Version)
-		desiredCompImageCreatedTime := o.desiredCompsImageTime[stableName].ImageCreatedTime
+		desiredCompImageCreatedTime := o.desiredCompsImageTime[stableName]
 		if len(desiredCompImageCreatedTime) == 0 {
 			logger.Info("no desired component created time list")
 			continue

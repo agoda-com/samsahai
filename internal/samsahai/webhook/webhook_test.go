@@ -68,6 +68,7 @@ var _ = Describe("Samsahai Webhook", func() {
 	teamName := "example"
 	athName := "activepromotion-history"
 	qhName := "test-history"
+	prQueueHistName := "pr-history"
 	namespace := "default"
 	g := NewWithT(GinkgoT())
 
@@ -117,9 +118,25 @@ var _ = Describe("Samsahai Webhook", func() {
 				},
 			},
 		}
+		prQueueHist := &s2hv1.PullRequestQueueHistory{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      prQueueHistName,
+				Namespace: namespace,
+			},
+			Spec: s2hv1.PullRequestQueueHistorySpec{
+				PullRequestQueue: &s2hv1.PullRequestQueue{
+					Status: s2hv1.PullRequestQueueStatus{
+						DeploymentQueue: &s2hv1.Queue{
+							Status: qh.Spec.Queue.Status,
+						},
+					},
+				},
+			},
+		}
 
 		Expect(c.Create(context.TODO(), qh)).NotTo(HaveOccurred())
 		Expect(c.Create(context.TODO(), ath)).NotTo(HaveOccurred())
+		Expect(c.Create(context.TODO(), prQueueHist)).NotTo(HaveOccurred())
 
 		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "test", "data", "team", "team.yaml"))
 		g.Expect(err).NotTo(HaveOccurred())
@@ -135,6 +152,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		team := &s2hv1.Team{}
 		qh := &s2hv1.QueueHistory{}
 		ath := &s2hv1.ActivePromotionHistory{}
+		prQueueHist := &s2hv1.PullRequestQueueHistory{}
 		ctx := context.TODO()
 		_ = c.Get(ctx, client.ObjectKey{Name: teamName, Namespace: namespace}, team)
 		_ = c.Delete(ctx, team)
@@ -142,10 +160,12 @@ var _ = Describe("Samsahai Webhook", func() {
 		_ = c.Delete(ctx, qh)
 		_ = c.Get(ctx, client.ObjectKey{Name: athName}, ath)
 		_ = c.Delete(ctx, ath)
+		_ = c.Get(ctx, client.ObjectKey{Name: prQueueHistName, Namespace: namespace}, prQueueHist)
+		_ = c.Delete(ctx, prQueueHist)
 		server.Close()
 	}, timeout)
 
-	It("Should successfully get version", func(done Done) {
+	It("should successfully get version", func(done Done) {
 		defer close(done)
 		_, data, err := http.Get(server.URL + s2h.URIVersion)
 		g.Expect(err).NotTo(HaveOccurred())
@@ -153,7 +173,7 @@ var _ = Describe("Samsahai Webhook", func() {
 		g.Expect(gjson.ValidBytes(data)).To(BeTrue())
 	}, timeout)
 
-	It("Should successfully get health check", func(done Done) {
+	It("should successfully get health check", func(done Done) {
 		defer close(done)
 		_, data, err := http.Get(server.URL + s2h.URIHealthz)
 		g.Expect(err).NotTo(HaveOccurred())
@@ -162,7 +182,7 @@ var _ = Describe("Samsahai Webhook", func() {
 	}, timeout)
 
 	Describe("Plugin", func() {
-		It("Should successfully receive webhook from plugin", func(done Done) {
+		It("should successfully receive webhook from plugin", func(done Done) {
 			defer close(done)
 			pluginName := "example"
 
@@ -178,7 +198,7 @@ var _ = Describe("Samsahai Webhook", func() {
 	})
 
 	Describe("Team", func() {
-		It("Should successfully list teams", func(done Done) {
+		It("should successfully list teams", func(done Done) {
 			defer close(done)
 			defer GinkgoRecover()
 
@@ -187,7 +207,7 @@ var _ = Describe("Samsahai Webhook", func() {
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
 
-		It("Should successfully get team", func(done Done) {
+		It("should successfully get team", func(done Done) {
 			defer close(done)
 
 			_, data, err := http.Get(server.URL + "/teams/" + teamName)
@@ -202,7 +222,7 @@ var _ = Describe("Samsahai Webhook", func() {
 			g.Expect(err).To(HaveOccurred())
 		}, timeout)
 
-		It("Should successfully get team configuration", func(done Done) {
+		It("should successfully get team configuration", func(done Done) {
 			defer close(done)
 
 			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/config")
@@ -210,7 +230,7 @@ var _ = Describe("Samsahai Webhook", func() {
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
 
-		It("Should successfully get team component", func(done Done) {
+		It("should successfully get team component", func(done Done) {
 			defer close(done)
 
 			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/components")
@@ -218,7 +238,7 @@ var _ = Describe("Samsahai Webhook", func() {
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
 
-		It("Should successfully get stable values from team", func(done Done) {
+		It("should successfully get stable values from team", func(done Done) {
 			defer close(done)
 
 			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/components/redis/values")
@@ -226,7 +246,7 @@ var _ = Describe("Samsahai Webhook", func() {
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
 
-		It("Should successfully get zip log from queue history", func(done Done) {
+		It("should successfully get zip log from queue history", func(done Done) {
 			defer close(done)
 
 			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/queue/histories/test-history/log")
@@ -234,17 +254,48 @@ var _ = Describe("Samsahai Webhook", func() {
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
 
-		It("Should successfully get zip log from active promotion history", func(done Done) {
+		It("should successfully delete active environment", func(done Done) {
+			defer close(done)
+			_, _, err := http.Delete(server.URL + "/teams/" + teamName + "/environment/active/delete")
+			g.Expect(err).NotTo(HaveOccurred())
+		}, timeout)
+	})
+
+	Describe("PullRequest", func() {
+		It("should successfully get pull request queues", func(done Done) {
 			defer close(done)
 
-			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions/histories/activepromotion-history/log")
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/pullrequest/queue")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
+		}, timeout)
+
+		It("should successfully pull request queue history", func(done Done) {
+			defer close(done)
+
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/pullrequest/queue/histories/pr-history")
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(data).NotTo(BeNil())
+		}, timeout)
+
+		It("should successfully get zip log from pull request queue history", func(done Done) {
+			defer close(done)
+
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/pullrequest/queue/histories/pr-history/log")
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(data).NotTo(BeNil())
+		}, timeout)
+
+		Specify("Pull request queue of unknown team", func(done Done) {
+			defer close(done)
+
+			_, _, err := http.Get(server.URL + "/teams/unknown/pullrequest/queue")
+			g.Expect(err).To(HaveOccurred())
 		}, timeout)
 	})
 
 	Describe("ActivePromotion", func() {
-		It("Should successfully list activepromotions", func(done Done) {
+		It("should successfully list activepromotions", func(done Done) {
 			defer close(done)
 			defer GinkgoRecover()
 
@@ -253,7 +304,7 @@ var _ = Describe("Samsahai Webhook", func() {
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
 
-		It("Should successfully get team activepromotion", func(done Done) {
+		It("should successfully get team activepromotion", func(done Done) {
 			defer close(done)
 
 			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions")
@@ -261,10 +312,18 @@ var _ = Describe("Samsahai Webhook", func() {
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
 
-		It("Should successfully get team activepromotion histories", func(done Done) {
+		It("should successfully get team activepromotion histories", func(done Done) {
 			defer close(done)
 
 			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions/histories")
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(data).NotTo(BeNil())
+		}, timeout)
+
+		It("should successfully get zip log from active promotion history", func(done Done) {
+			defer close(done)
+
+			_, data, err := http.Get(server.URL + "/teams/" + teamName + "/activepromotions/histories/activepromotion-history/log")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(data).NotTo(BeNil())
 		}, timeout)
@@ -361,6 +420,23 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 				&wordpressConfigComp,
 			},
 		},
+		Status: s2hv1.ConfigStatus{
+			Used: s2hv1.ConfigSpec{
+				Staging: &s2hv1.ConfigStaging{
+					MaxRetry:   3,
+					Deployment: &deployConfig,
+				},
+				ActivePromotion: &s2hv1.ConfigActivePromotion{
+					Timeout:          metav1.Duration{Duration: 10 * time.Minute},
+					TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
+					Deployment:       &deployConfig,
+				},
+				Components: []*s2hv1.Component{
+					&redisConfigComp,
+					&wordpressConfigComp,
+				},
+			},
+		},
 	}
 
 	return mockConfig, nil
@@ -370,9 +446,9 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1.Com
 	config, _ := c.Get(configName)
 
 	comps := map[string]*s2hv1.Component{
-		"redis":     config.Spec.Components[0],
-		"wordpress": config.Spec.Components[1],
-		"mariadb":   conf.Convert(config.Spec.Components[1].Dependencies[0], nil),
+		"redis":     config.Status.Used.Components[0],
+		"wordpress": config.Status.Used.Components[1],
+		"mariadb":   conf.Convert(config.Status.Used.Components[1].Dependencies[0], nil),
 	}
 
 	comps["mariadb"].Parent = "wordpress"
@@ -384,11 +460,31 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	config, _ := c.Get(configName)
 
 	comps := map[string]*s2hv1.Component{
-		"redis":     config.Spec.Components[0],
-		"wordpress": config.Spec.Components[1],
+		"redis":     config.Status.Used.Components[0],
+		"wordpress": config.Status.Used.Components[1],
 	}
 
 	return comps, nil
+}
+
+func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1.Component, error) {
+	return map[string]*s2hv1.Component{}, nil
+}
+
+func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1.ConfigBundles, error) {
+	return s2hv1.ConfigBundles{}, nil
+}
+
+func (c *mockConfigCtrl) GetPriorityQueues(configName string) ([]string, error) {
+	return nil, nil
+}
+
+func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1.ConfigPullRequest, error) {
+	return nil, nil
+}
+
+func (c *mockConfigCtrl) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
+	return nil, nil
 }
 
 func (c *mockConfigCtrl) Update(config *s2hv1.Config) error {
@@ -396,5 +492,9 @@ func (c *mockConfigCtrl) Update(config *s2hv1.Config) error {
 }
 
 func (c *mockConfigCtrl) Delete(configName string) error {
+	return nil
+}
+
+func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1.Config) error {
 	return nil
 }

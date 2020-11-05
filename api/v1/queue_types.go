@@ -47,6 +47,9 @@ const (
 	// QueueTypeDemoteFromActive components will deploy with latest stable + `tmp` env config
 	QueueTypeDemoteFromActive QueueType = "demote-from-active"
 
+	// QueueTypePullRequest
+	QueueTypePullRequest QueueType = "pull-request"
+
 	// QueueState
 	//
 	// Waiting waiting in queues
@@ -82,14 +85,16 @@ const (
 
 // QueueSpec defines the desired state of Queue
 type QueueSpec struct {
-	// Name represents Component name
+	// Name represents a Component name or bundle name if exist
 	Name string `json:"name"`
 
-	// Repository represents Docker image repository
-	Repository string `json:"repository"`
+	// Bundle represents a bundle name of component
+	// +optional
+	Bundle string `json:"bundle,omitempty"`
 
-	// Version represents Docker image tag version
-	Version string `json:"version"`
+	// Components represents a list of components which are deployed
+	// +optional
+	Components QueueComponents `json:"components,omitempty"`
 
 	// Type represents how we will process this queue
 	Type QueueType `json:"type"`
@@ -107,11 +112,32 @@ type QueueSpec struct {
 
 	// TeamName represents team owner of the queue
 	TeamName string `json:"teamName"`
+
+	// PRNumber represents a pull request number
+	// +optional
+	PRNumber string `json:"prNumber,omitempty"`
+
+	// SkipTestRunner represents a flag for skipping running test
+	// +optional
+	SkipTestRunner bool `json:"skipTestRunner,omitempty"`
 }
 
 type Image struct {
 	Repository string `json:"repository"`
 	Tag        string `json:"tag"`
+}
+
+type QueueComponents []*QueueComponent
+
+type QueueComponent struct {
+	// Name represents Component name
+	Name string `json:"name"`
+
+	// Repository represents Docker image repository
+	Repository string `json:"repository"`
+
+	// Version represents Docker image tag version
+	Version string `json:"version"`
 }
 
 type QueueCondition struct {
@@ -130,16 +156,59 @@ type TestRunner struct {
 }
 
 type Teamcity struct {
+	Branch      string `json:"branch,omitempty"`
 	BuildID     string `json:"buildID,omitempty"`
+	BuildNumber string `json:"buildNumber,omitempty"`
 	BuildTypeID string `json:"buildTypeID,omitempty"`
 	BuildURL    string `json:"buildURL,omitempty"`
 }
 
-func (t *Teamcity) SetTeamcity(buildID, buildTypeID, buildURL string) {
+func (t *Teamcity) SetTeamcity(branch, buildID, buildTypeID, buildURL string) {
+	t.Branch = branch
 	t.BuildID = buildID
 	t.BuildTypeID = buildTypeID
 	t.BuildURL = buildURL
 }
+
+type FailureComponent struct {
+	// ComponentName defines a name of component
+	ComponentName string `json:"componentName"`
+	// FirstFailureContainerName defines a first found failure container name
+	FirstFailureContainerName string `json:"firstFailureContainerName"`
+	// RestartCount defines the number of times the container has been restarted
+	RestartCount int32 `json:"restartCount"`
+	// NodeName defines the node name of pod
+	NodeName string `json:"nodeName"`
+}
+
+type DeploymentIssue struct {
+	// IssueType defines a deployment issue type
+	IssueType DeploymentIssueType `json:"issueType"`
+	// FailureComponents defines a list of failure components
+	FailureComponents []FailureComponent `json:"failureComponents"`
+}
+
+// DeploymentIssueType defines a deployment issue type
+type DeploymentIssueType string
+
+const (
+	// DeploymentIssueImagePullBackOff means the pod can not be started due to image not found
+	DeploymentIssueImagePullBackOff DeploymentIssueType = "ImagePullBackOff"
+	// DeploymentIssueCrashLoopBackOff means the pod failed to start container
+	DeploymentIssueCrashLoopBackOff DeploymentIssueType = "CrashLoopBackOff"
+	// DeploymentIssueReadinessProbeFailed means the pod cannot be run due to readiness probe failed (zero restart count)
+	DeploymentIssueReadinessProbeFailed DeploymentIssueType = "ReadinessProbeFailed"
+	// DeploymentIssueContainerCreating means the pod is being creating
+	DeploymentIssueContainerCreating DeploymentIssueType = "ContainerCreating"
+	// DeploymentIssuePending means the pod is waiting for assigning to node
+	DeploymentIssuePending DeploymentIssueType = "Pending"
+	// DeploymentIssueWaitForInitContainer means the container can not be start due to wait for finishing init container
+	DeploymentIssueWaitForInitContainer DeploymentIssueType = "WaitForInitContainer"
+	// DeploymentIssueJobNotComplete means the job is not completed
+	DeploymentIssueJobNotComplete DeploymentIssueType = "JobNotComplete"
+	// DeploymentIssueUndefined represents other issues
+	DeploymentIssueUndefined DeploymentIssueType = "Undefined"
+)
 
 type QueueConditionType string
 
@@ -191,9 +260,6 @@ type QueueStatus struct {
 	// NoOfProcessed represents how many time that this queue had been processed
 	NoOfProcessed int `json:"noOfProcessed,omitempty"`
 
-	// ReleaseName defines name of helmrelease
-	ReleaseName string `json:"releaseName"`
-
 	// Conditions contains observations of the resource's state e.g.,
 	// Queue deployed, being tested
 	// +optional
@@ -210,11 +276,19 @@ type QueueStatus struct {
 	// KubeZipLog defines log of k8s resources during deployment in base64 zip format
 	KubeZipLog string `json:"kubeZipLog"`
 
-	// ImageMissingList defines image missing list
+	// DeploymentIssues defines a list of deployment issue types
+	// +optional
+	DeploymentIssues []DeploymentIssue `json:"deploymentIssues,omitempty"`
+
+	// ImageMissingList defines image missing lists
 	ImageMissingList []Image `json:"imageMissingList,omitempty"`
 
 	// DeployEngine represents engine using during installation
 	DeployEngine string `json:"deployEngine,omitempty"`
+}
+
+func (qs *QueueStatus) SetDeploymentIssues(deploymentIssues []DeploymentIssue) {
+	qs.DeploymentIssues = deploymentIssues
 }
 
 func (qs *QueueStatus) SetImageMissingList(images []Image) {
@@ -269,10 +343,20 @@ type Queue struct {
 	Status QueueStatus `json:"status,omitempty"`
 }
 
-func (q *Queue) IsSame(d *Queue) bool {
-	return q.Spec.Name == d.Spec.Name &&
-		q.Spec.Repository == d.Spec.Repository &&
-		q.Spec.Version == d.Spec.Version
+func (q *Queue) ContainSameComponent(dName string, dComp *QueueComponent) bool {
+	if dName != q.Spec.Name {
+		return false
+	}
+
+	for _, qComp := range q.Spec.Components {
+		if qComp.Name == dComp.Name &&
+			qComp.Repository == dComp.Repository &&
+			qComp.Version == dComp.Version {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (q *Queue) SetState(state QueueState) {
@@ -299,6 +383,14 @@ func (q *Queue) IsActivePromotionQueue() bool {
 		q.Spec.Type == QueueTypeDemoteFromActive
 }
 
+func (q *Queue) IsComponentUpgradeQueue() bool {
+	return q.Spec.Type == QueueTypeUpgrade
+}
+
+func (q *Queue) IsPullRequestQueue() bool {
+	return q.Spec.Type == QueueTypePullRequest
+}
+
 // GetEnvType returns environment type for connection based on Queue.Spec.Type
 func (q *Queue) GetEnvType() string {
 	switch q.Spec.Type {
@@ -306,6 +398,8 @@ func (q *Queue) GetEnvType() string {
 		return "pre-active"
 	case QueueTypePromoteToActive:
 		return "active"
+	case QueueTypePullRequest:
+		return "pull-request"
 	default:
 		return "staging"
 	}
@@ -318,6 +412,8 @@ func (q *Queue) GetQueueType() string {
 		return "component-upgrade"
 	case QueueTypeReverify:
 		return "reverification"
+	case QueueTypePullRequest:
+		return "pull-request"
 	default:
 		return "active-promotion"
 	}
@@ -337,7 +433,7 @@ func (ql *QueueList) TopQueueOrder() int {
 	if len(ql.Items) == 0 {
 		return 1
 	}
-	sort.Sort(ByNoOfOrder(ql.Items))
+	sort.Sort(QueueByNoOfOrder(ql.Items))
 	return ql.Items[0].Spec.NoOfOrder - 1
 }
 
@@ -346,11 +442,11 @@ func (ql *QueueList) LastQueueOrder() int {
 	if len(ql.Items) == 0 {
 		return 1
 	}
-	sort.Sort(ByNoOfOrder(ql.Items))
+	sort.Sort(QueueByNoOfOrder(ql.Items))
 	return ql.Items[len(ql.Items)-1].Spec.NoOfOrder + 1
 }
 
-// Sort sorts items
+// First returns the first order of queues
 func (ql *QueueList) First() *Queue {
 	if len(ql.Items) == 0 {
 		return nil
@@ -378,15 +474,15 @@ func (ql *QueueList) First() *Queue {
 	return &ql.Items[0]
 }
 
-// Sort sorts items
+// Sort sorts queue items
 func (ql *QueueList) Sort() {
-	sort.Sort(ByNoOfOrder(ql.Items))
+	sort.Sort(QueueByNoOfOrder(ql.Items))
 }
 
-type ByNoOfOrder []Queue
+type QueueByNoOfOrder []Queue
 
-func (q ByNoOfOrder) Len() int { return len(q) }
-func (q ByNoOfOrder) Less(i, j int) bool {
+func (q QueueByNoOfOrder) Len() int { return len(q) }
+func (q QueueByNoOfOrder) Less(i, j int) bool {
 	now := metav1.Now()
 
 	if q[i].Spec.NoOfOrder == q[j].Spec.NoOfOrder {
@@ -417,7 +513,21 @@ func (q ByNoOfOrder) Less(i, j int) bool {
 	return q[i].Spec.NoOfOrder < q[j].Spec.NoOfOrder
 }
 
-func (q ByNoOfOrder) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
+func (q QueueByNoOfOrder) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
+
+// Sort sorts component items
+func (qc QueueComponents) Sort() {
+	sort.Sort(ComponentByName(qc))
+}
+
+type ComponentByName []*QueueComponent
+
+func (q ComponentByName) Len() int { return len(q) }
+func (q ComponentByName) Less(i, j int) bool {
+	return q[i].Name < q[j].Name
+}
+
+func (q ComponentByName) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
 
 func init() {
 	SchemeBuilder.Register(&Queue{}, &QueueList{})

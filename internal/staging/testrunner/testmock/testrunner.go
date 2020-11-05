@@ -34,7 +34,9 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 }
 
 // GetResult implements the staging testRunner GetResult function
-func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue *s2hv1.Queue) (isResultSuccess bool, isBuildFinished bool, err error) {
+func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue *s2hv1.Queue) (
+	isResultSuccess bool, isBuildFinished bool, err error) {
+
 	if testConfig == nil {
 		return false, false, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
 			"test configuration should not be nil. queue: %s", currentQueue.Name)

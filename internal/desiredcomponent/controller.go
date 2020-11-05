@@ -109,19 +109,43 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	if comp.Status.CreatedAt == nil {
 		comp.Status.CreatedAt = &now
 	}
+	if comp.Status.UpdatedAt == nil {
+		comp.Status.UpdatedAt = &now
+	}
 
 	logger.Debug(fmt.Sprintf("add %s (%s:%s) to queue", comp.Spec.Name, comp.Spec.Repository, comp.Spec.Version))
-	q := queue.NewUpgradeQueue(c.teamName, req.Namespace, comp.Spec.Name, comp.Spec.Repository, comp.Spec.Version)
-	err = c.queueCtrl.Add(q)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
 
 	headers := make(http.Header)
 	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
 	ctx, err = twirp.WithHTTPRequestHeaders(ctx, headers)
 	if err != nil {
 		logger.Error(err, "cannot set request header")
+	}
+
+	bundle, err := c.s2hClient.GetBundleName(ctx, &samsahairpc.TeamWithComponentName{
+		TeamName:      c.teamName,
+		ComponentName: comp.Spec.Name,
+	})
+	if err != nil {
+		logger.Error(err, "cannot get bundle name", "team", c.teamName, "component", comp.Spec.Name)
+	}
+
+	priorityQueues, err := c.s2hClient.GetPriorityQueues(ctx, &samsahairpc.TeamName{Name: c.teamName})
+	if err != nil {
+		logger.Error(err, "cannot get priority queues", "team", c.teamName)
+	}
+
+	comps := []*s2hv1.QueueComponent{
+		{
+			Name:       comp.Spec.Name,
+			Repository: comp.Spec.Repository,
+			Version:    comp.Spec.Version,
+		},
+	}
+	q := queue.NewQueue(c.teamName, req.Namespace, comp.Spec.Name, bundle.Name, comps, s2hv1.QueueTypeUpgrade)
+	err = c.queueCtrl.Add(q, priorityQueues.GetQueues())
+	if err != nil {
+		return reconcile.Result{}, err
 	}
 
 	rpcComp := &samsahairpc.ComponentUpgrade{
@@ -134,7 +158,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		}
 	}
 
-	comp.Status.UpdatedAt = &now
 	if err := c.client.Update(context.TODO(), comp); err != nil {
 		return reconcile.Result{}, err
 	}

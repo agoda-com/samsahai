@@ -95,6 +95,14 @@ const (
 	stateRunning = "running"
 )
 
+func (c *controller) appendStateLabel(atpComp *s2hv1.ActivePromotion, state string) {
+	if atpComp.Labels == nil {
+		atpComp.Labels = make(map[string]string)
+	}
+
+	atpComp.Labels["state"] = state
+}
+
 func (c *controller) getStateLabel(state string) map[string]string {
 	return map[string]string{"state": state}
 }

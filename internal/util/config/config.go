@@ -10,9 +10,10 @@ func Convert(dependency *s2hv1.Dependency,
 	}
 
 	c := &s2hv1.Component{
-		Name:   dependency.Name,
-		Image:  dependency.Image,
-		Source: dependency.Source,
+		Name:      dependency.Name,
+		Image:     dependency.Image,
+		Source:    dependency.Source,
+		Schedules: dependency.Schedules,
 	}
 
 	if parent != nil {
