@@ -421,6 +421,10 @@ func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
 		ns := c.namespace
 		refName := internal.GenReleaseName(ns, parentComp)
 		selectors := deployEngine.GetLabelSelectors(refName)
+		if len(selectors) == 0 {
+			continue
+		}
+
 		listOpt := &client.ListOptions{Namespace: ns, LabelSelector: labels.SelectorFromSet(selectors)}
 
 		pods := &corev1.PodList{}
