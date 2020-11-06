@@ -326,7 +326,7 @@ func withTeamActiveNamespaceStatus(namespace, promotedBy string, isDelete ...boo
 		teamComp.Status.Namespace.Active = namespace
 		if promotedBy != "" {
 			teamComp.Status.ActivePromotedBy = promotedBy
-			teamComp.Status.ActiveNamespaceDeleted = s2hv1beta1.ActiveNamespaceDeleted{}
+			teamComp.Status.ActiveDeletedBy = ""
 		}
 		if len(isDelete) > 0 && isDelete[0] {
 			teamComp.Status.Namespace.Active = ""
@@ -655,6 +655,19 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 		}
 	}
 
+	return nil
+}
+
+func (c *controller) sendDeletedActiveNamespace(teamName, activeNs, deletedBy string) error {
+	configCtrl := c.GetConfigController()
+	deletedAt := metav1.Now().Format("2006-01-02T15:04:05")
+	activeNsDeletedRpt := internal.NewDeletedActiveNamespaceReporter(teamName, activeNs, deletedBy, deletedAt)
+	for _, reporter := range c.reporters {
+		if err := reporter.SendDeletedActiveNamespace(configCtrl, activeNsDeletedRpt); err != nil {
+			logger.Error(err, "cannot send deleted active namespace report", "team", teamName)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -1247,18 +1260,28 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 		}
 	}
 
-	if teamComp.Status.ActiveNamespaceDeleted == (s2hv1beta1.ActiveNamespaceDeleted{}) {
-		now := metav1.Now()
-		teamComp.Status.ActiveNamespaceDeleted.ActiveDeletedAt = &now
-		teamComp.Status.ActiveNamespaceDeleted.ActiveDeletedBy = deletedBy
+	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamSentDeletedActiveNamespace) {
+		if err := c.sendDeletedActiveNamespace(teamName, namespace, deletedBy); err != nil {
+			teamComp.Status.SetCondition(
+				s2hv1beta1.TeamSentDeletedActiveNamespace,
+				corev1.ConditionFalse,
+				fmt.Sprintf("cannot sent deleted active namespace report"))
+		} else {
+			teamComp.Status.SetCondition(
+				s2hv1beta1.TeamSentDeletedActiveNamespace,
+				corev1.ConditionTrue,
+				fmt.Sprintf("deleted active namespace report has been sent successfully"))
+		}
 	}
-	teamComp.Status.SetCondition(
-		s2hv1beta1.TeamActiveEnvironmentDelete,
-		corev1.ConditionTrue,
-		fmt.Sprintf("%s namespace is deleting", namespace))
 
-	if err := c.updateTeam(teamComp); err != nil {
-		return errors.Wrap(err, "cannot update team conditions when active environment is deleting")
+	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDelete) {
+		if deletedBy != "" {
+			teamComp.Status.ActiveDeletedBy = deletedBy
+		}
+		teamComp.Status.SetCondition(
+			s2hv1beta1.TeamActiveEnvironmentDelete,
+			corev1.ConditionTrue,
+			fmt.Sprintf("%s namespace is deleting", namespace))
 	}
 
 	configCtrl := c.GetConfigController()
@@ -1282,7 +1305,7 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 	}
 
 	err = c.DestroyActiveEnvironment(teamName, namespace)
-	if err != nil && !errors.IsNamespaceStillExists(err) && errors.IsEnsuringStableComponentsDestroyed(err) {
+	if err != nil && !errors.IsNamespaceStillExists(err) {
 		teamComp.Status.SetCondition(
 			s2hv1beta1.TeamActiveEnvironmentDelete,
 			corev1.ConditionTrue,
@@ -1290,15 +1313,8 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 
 		if err := c.updateTeam(teamComp); err != nil {
 			logger.Error(err, "cannot update team conditions when active environment is deleting")
-			return nil
 		}
-	}
-
-	teamComp = &s2hv1beta1.Team{}
-	if err := c.getTeam(teamName, teamComp); err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil
-		}
+		return err
 	}
 
 	teamComp.Status.Namespace.Active = ""
@@ -1311,6 +1327,10 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 		s2hv1beta1.TeamNamespaceActiveCreated,
 		corev1.ConditionFalse,
 		fmt.Sprintf("%s namespace is destroyed", namespace))
+	teamComp.Status.SetCondition(
+		s2hv1beta1.TeamSentDeletedActiveNamespace,
+		corev1.ConditionFalse,
+		fmt.Sprintf("deleted active namespace report has been sent successfully"))
 
 	if err := c.updateTeam(teamComp); err != nil {
 		logger.Error(err, "cannot update team conditions when delete active environment completed")

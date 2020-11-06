@@ -49,3 +49,8 @@ func (r *reporterMock) SendImageMissing(configCtrl internal.ConfigController, im
 func (r *reporterMock) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
 	return nil
 }
+
+// SendDeletedActiveNamespace implements the reporter SendDeletedActiveNamespace function
+func (r *reporterMock) SendDeletedActiveNamespace(configCtrl internal.ConfigController, activeNsDeletedRpt *internal.DeletedActiveNamespaceReporter) error {
+	return nil
+}

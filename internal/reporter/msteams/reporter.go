@@ -206,6 +206,14 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return r.post(msTeamsConfig, message, internal.PullRequestTriggerType)
 }
 
+// SendDeletedActiveNamespace implements the reporter SendDeletedActiveNamespace function
+func (r *reporter) SendDeletedActiveNamespace(configCtrl internal.ConfigController,
+	activeNsDeletedRpt *internal.DeletedActiveNamespaceReporter) error {
+
+	// does not support
+	return nil
+}
+
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
 	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}`
 	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log`

@@ -12,11 +12,12 @@ import (
 type EventType string
 
 const (
-	ComponentUpgradeType   EventType = "ComponentUpgrade"
-	ActivePromotionType    EventType = "ActivePromotion"
-	ImageMissingType       EventType = "ImageMissing"
-	PullRequestTriggerType EventType = "PullRequestTrigger"
-	PullRequestQueueType   EventType = "PullRequestQueue"
+	ComponentUpgradeType       EventType = "ComponentUpgrade"
+	ActivePromotionType        EventType = "ActivePromotion"
+	ImageMissingType           EventType = "ImageMissing"
+	PullRequestTriggerType     EventType = "PullRequestTrigger"
+	PullRequestQueueType       EventType = "PullRequestQueue"
+	ActiveNamespaceDeletedType EventType = "ActiveNamespaceDeleted"
 )
 
 // ComponentUpgradeOption allows specifying various configuration
@@ -201,6 +202,26 @@ func NewPullRequestTriggerResultReporter(status s2hv1beta1.PullRequestTriggerSta
 	return c
 }
 
+// DeletedActiveNamespaceReporter manages active namespace deletion report
+type DeletedActiveNamespaceReporter struct {
+	TeamName        string `json:"teamName,omitempty"`
+	ActiveNamespace string `json:"activeNamespace,omitempty"`
+	DeletedBy       string `json:"deletedBy,omitempty"`
+	DeletedAt       string `json:"deletedAt,omitempty"`
+}
+
+// NewDeletedActiveNamespaceReporter creates deleted active namespace reporter object
+func NewDeletedActiveNamespaceReporter(teamname, activeNs, deletedBy, deleteAt string) *DeletedActiveNamespaceReporter {
+	c := &DeletedActiveNamespaceReporter{
+		TeamName:        teamname,
+		ActiveNamespace: activeNs,
+		DeletedBy:       deletedBy,
+		DeletedAt:       deleteAt,
+	}
+
+	return c
+}
+
 func convertIssueType(issueType rpc.ComponentUpgrade_IssueType) IssueType {
 	switch issueType {
 	case rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED:
@@ -252,4 +273,7 @@ type Reporter interface {
 
 	// SendPullRequestTriggerResult sends pull request trigger result information
 	SendPullRequestTriggerResult(configCtrl ConfigController, prTriggerRpt *PullRequestTriggerReporter) error
+
+	// SendDeletedActiveNamespace send active namespace deleted information
+	SendDeletedActiveNamespace(configCtrl ConfigController, activeNsDeletedRpt *DeletedActiveNamespaceReporter) error
 }

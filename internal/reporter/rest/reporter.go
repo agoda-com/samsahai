@@ -239,6 +239,14 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return nil
 }
 
+// SendDeletedActiveNamespace implements the reporter SendDeletedActiveNamespace function
+func (r *reporter) SendDeletedActiveNamespace(configCtrl internal.ConfigController,
+	activeNsDeletedRpt *internal.DeletedActiveNamespaceReporter) error {
+
+	// does not support
+	return nil
+}
+
 // send provides handling convert ReporterJSON to []byte and sent it via http POST
 func (r *reporter) send(url string, body []byte, event internal.EventType) error {
 	restCli := r.rest

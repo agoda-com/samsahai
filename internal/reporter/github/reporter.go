@@ -120,6 +120,14 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 	return nil
 }
 
+// SendDeletedActiveNamespace implements the reporter SendDeletedActiveNamespace function
+func (r *reporter) SendDeletedActiveNamespace(configCtrl internal.ConfigController,
+	activeNsDeletedRpt *internal.DeletedActiveNamespaceReporter) error {
+
+	// does not support
+	return nil
+}
+
 func (r *reporter) convertCommitStatus(rpcStatus rpc.ComponentUpgrade_UpgradeStatus) github.CommitStatus {
 	switch rpcStatus {
 	case rpc.ComponentUpgrade_UpgradeStatus_SUCCESS:

@@ -174,6 +174,28 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return nil
 }
 
+// SendDeletedActiveNamespace implement the reporter SendDeletedActiveNamespace function
+func (r *reporter) SendDeletedActiveNamespace(configCtrl internal.ConfigController, activeNsDeletedRpt *internal.DeletedActiveNamespaceReporter) error {
+	config, err := configCtrl.Get(activeNsDeletedRpt.TeamName)
+	if err != nil {
+		return err
+	}
+
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.ActiveNamespaceDeleted == nil {
+		return nil
+	}
+
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.ActiveNamespaceDeleted.Command,
+		config.Status.Used.Reporter.Shell.ActiveNamespaceDeleted.Args, activeNsDeletedRpt)
+	if err := r.execute(cmdObj, internal.ActiveNamespaceDeletedType); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *reporter) execute(cmdObj *s2hv1beta1.CommandAndArgs, event internal.EventType) error {
 	logger.Debug("start executing command", "event", event)
 

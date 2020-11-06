@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+
+	"github.com/agoda-com/samsahai/internal/errors"
 )
 
 // deleteTeamActiveEnvironment godoc
@@ -34,7 +36,8 @@ func (h *handler) deleteTeamActiveEnvironment(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := h.samsahai.DeleteTeamActiveEnvironment(team.Name, activeNamespace, deletedBy); err != nil {
+	if err := h.samsahai.DeleteTeamActiveEnvironment(team.Name, activeNamespace, deletedBy); err != nil &&
+		!errors.IsEnsuringStableComponentsDestroyed(err) {
 		logger.Error(err, "error while delete active environment", "team", team.Name)
 		h.errorf(w, http.StatusInternalServerError, "delete active environment failed, %v", err)
 		return
