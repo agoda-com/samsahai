@@ -660,7 +660,7 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 
 func (c *controller) sendDeletedActiveNamespace(teamName, activeNs, deletedBy string) error {
 	configCtrl := c.GetConfigController()
-	deletedAt := metav1.Now().Format("2006-01-02T15:04:05")
+	deletedAt := metav1.Now().UTC().Format("2006-01-02T15:04:05")
 	activeNsDeletedRpt := internal.NewDeletedActiveNamespaceReporter(teamName, activeNs, deletedBy, deletedAt)
 	for _, reporter := range c.reporters {
 		if err := reporter.SendDeletedActiveNamespace(configCtrl, activeNsDeletedRpt); err != nil {
