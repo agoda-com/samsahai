@@ -108,7 +108,7 @@ func setupStaging(namespace string) (internal.StagingController, internal.QueueC
 	return stagingCtrl, prQueueCtrl
 }
 
-var _ = Describe("[e2e] Pull request controller", func() {
+var _ = FDescribe("[e2e] Pull request controller", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
 		chStop = make(chan struct{})

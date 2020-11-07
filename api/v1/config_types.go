@@ -503,10 +503,6 @@ type ConfigList struct {
 	Items           []Config `json:"items"`
 }
 
-// +k8s:deepcopy-gen=false
-//ComponentValues represents values of a component chart
-type ComponentValues map[string]interface{}
-
 func (cs *ConfigStatus) IsConditionTrue(cond ConfigConditionType) bool {
 	for i, c := range cs.Conditions {
 		if c.Type == cond {
@@ -534,6 +530,10 @@ func (cs *ConfigStatus) SetCondition(cond ConfigConditionType, status corev1.Con
 		Message:            message,
 	})
 }
+
+// +k8s:deepcopy-gen=false
+//ComponentValues represents values of a component chart
+type ComponentValues map[string]interface{}
 
 func (in *ComponentValues) DeepCopyInto(out *ComponentValues) {
 	if in == nil {
