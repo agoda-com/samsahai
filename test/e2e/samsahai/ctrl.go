@@ -1067,7 +1067,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Trigger delete active environment error")
 
 		By("Active environment should be deleted")
-		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 			team := s2hv1beta1.Team{}
 			if err := client.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
 				return false, nil
@@ -1090,7 +1090,7 @@ var _ = Describe("[e2e] Main controller", func() {
 			return false, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Delete active environment error")
-	}, 60)
+	}, 75)
 
 	It("should be error when creating team if config does not exist", func(done Done) {
 		defer close(done)
