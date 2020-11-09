@@ -1547,7 +1547,7 @@ func (c *controller) ensureTriggerChildrenTeam(name string) error {
 	return nil
 }
 
-func (c *controller) ValidateTeamRequiredField(teamComp *s2hv1beta1.Team) error {
+func (c *controller) validateTeamRequiredField(teamComp *s2hv1beta1.Team) error {
 	emptyStagingCtrl := s2hv1beta1.StagingCtrl{}
 	if teamComp.Status.Used.StagingCtrl == &emptyStagingCtrl ||
 		len(teamComp.Status.Used.Owners) == 0 {
@@ -1620,6 +1620,15 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	c.addFinalizer(teamComp)
 
+	if teamComp.Status.Namespace.Active != "" && teamComp.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDelete) {
+		activeNamespace := teamComp.Status.Namespace.Active
+		if err := c.DeleteTeamActiveEnvironment(teamComp.Name, activeNamespace, ""); err != nil &&
+			!errors.IsNamespaceStillExists(err) {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
 	if err := c.ensureAndUpdateConfig(teamComp); err != nil {
 		teamComp.Status.SetCondition(
 			s2hv1beta1.TeamConfigExisted,
@@ -1666,7 +1675,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, err
 	}
 
-	if err := c.ValidateTeamRequiredField(teamComp); err != nil {
+	if err := c.validateTeamRequiredField(teamComp); err != nil {
 		teamComp.Status.SetCondition(
 			s2hv1beta1.TeamRequiredFieldsValidated,
 			corev1.ConditionFalse,
@@ -1687,15 +1696,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is valid")
-		}
-		return reconcile.Result{}, nil
-	}
-
-	if teamComp.Status.Namespace.Active != "" && teamComp.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDelete) {
-		activeNamespace := teamComp.Status.Namespace.Active
-		if err := c.DeleteTeamActiveEnvironment(teamComp.Name, activeNamespace, ""); err != nil &&
-			!errors.IsNamespaceStillExists(err) {
-			return reconcile.Result{}, err
 		}
 		return reconcile.Result{}, nil
 	}
