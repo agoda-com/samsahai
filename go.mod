@@ -3,10 +3,7 @@ module github.com/agoda-com/samsahai
 go 1.13
 
 require (
-	github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
-	github.com/bitly/go-simplejson v0.5.0 // indirect
-	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/bshuster-repo/logrus-logstash-hook v1.0.0 // indirect
 	github.com/bugsnag/bugsnag-go v1.5.4 // indirect
 	github.com/bugsnag/panicwrap v1.2.0 // indirect
@@ -17,12 +14,10 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-chi/chi v4.0.2+incompatible // indirect
 	github.com/go-logr/logr v0.2.1
-	github.com/go-logr/zapr v0.2.0 // indirect
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
 	github.com/golang/protobuf v1.4.2
-	github.com/google/go-cmp v0.4.1
+	github.com/google/go-cmp v0.5.2
 	github.com/google/uuid v1.1.1
-	github.com/googleapis/gnostic v0.5.1 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/imdario/mergo v0.3.11
 	github.com/julienschmidt/httprouter v1.2.0
@@ -31,8 +26,8 @@ require (
 	github.com/lusis/slack-test v0.0.0-20180109053238-3c758769bfa6 // indirect
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/nlopes/slack v0.5.0
-	github.com/onsi/ginkgo v1.12.1
-	github.com/onsi/gomega v1.10.1
+	github.com/onsi/ginkgo v1.14.1
+	github.com/onsi/gomega v1.10.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
 	github.com/spf13/cobra v1.0.0
@@ -46,7 +41,7 @@ require (
 	github.com/yvasiyarov/go-metrics v0.0.0-20150112132944-c25f46c4b940 // indirect
 	github.com/yvasiyarov/gorelic v0.0.7 // indirect
 	github.com/yvasiyarov/newrelic_platform_go v0.0.0-20160601141957-9c099fbc30e9 // indirect
-	go.uber.org/zap v1.13.0
+	go.uber.org/zap v1.15.0
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
 	google.golang.org/protobuf v1.24.0
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
@@ -56,21 +51,7 @@ require (
 	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v0.19.2
 	rsc.io/letsencrypt v0.0.3 // indirect
-	sigs.k8s.io/controller-runtime v0.5.11
+	sigs.k8s.io/controller-runtime v0.7.0-alpha.6.0.20201106193838-8d0107636985
 )
 
-replace (
-	github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
-
-	github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309
-
-	k8s.io/api => k8s.io/api v0.19.2 // kubernetes-1.19.2
-
-	k8s.io/apimachinery => k8s.io/apimachinery v0.19.2 // kubernetes-1.19.2
-
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.19.2 // kubernetes-1.19.2
-
-	k8s.io/client-go => k8s.io/client-go v0.19.2 // kubernetes-1.19.2
-
-	sigs.k8s.io/controller-tools => github.com/phantomnat/controller-tools v0.2.4-1
-)
+replace sigs.k8s.io/controller-tools => github.com/phantomnat/controller-tools v0.2.4-1

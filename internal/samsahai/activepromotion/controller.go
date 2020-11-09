@@ -291,9 +291,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 // and what is in the ActivePromotion.Spec
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=activepromotions,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=activepromotions/status,verbs=get;update;patch
-func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
-	ctx := context.TODO()
-
+func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	atpComp := &s2hv1.ActivePromotion{}
 	if err := c.client.Get(ctx, req.NamespacedName, atpComp); err != nil {
 		if k8serrors.IsNotFound(err) {

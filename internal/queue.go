@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // QueueController manages updating component queue through CRD
@@ -18,7 +19,7 @@ type QueueController interface {
 	First(namespace string) (runtime.Object, error)
 
 	// Remove removes Queue
-	Remove(q runtime.Object) error
+	Remove(q client.Object) error
 
 	// Size returns no of queues
 	Size(namespace string) int

@@ -116,7 +116,7 @@ func (c *controller) First(namespace string) (runtime.Object, error) {
 	return nil, nil
 }
 
-func (c *controller) Remove(obj runtime.Object) error {
+func (c *controller) Remove(obj client.Object) error {
 	return c.client.Delete(context.TODO(), obj)
 }
 

@@ -816,8 +816,7 @@ func applyConfigTemplate(config, configTemplate *s2hv1.Config) error {
 	return nil
 }
 
-func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
-	ctx := context.Background()
+func (c *controller) Reconcile(ctx context.Context, req cr.Request) (cr.Result, error) {
 	configComp := &s2hv1.Config{}
 	if err := c.client.Get(ctx, req.NamespacedName, configComp); err != nil {
 		if k8serrors.IsNotFound(err) {

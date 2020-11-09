@@ -193,7 +193,6 @@ func (e *engine) GetReleases() ([]*release.Release, error) {
 func (e *engine) helmUninstall(refName string, disableHooks bool) error {
 	client := action.NewUninstall(e.actionSettings)
 	client.Timeout = DefaultUninstallTimeout
-	client.DisableVerify = true
 	client.DisableHooks = disableHooks
 
 	logger.Debug("deleting release", "refName", refName)
@@ -240,7 +239,7 @@ func (e *engine) helmInstall(
 	client.ChartPathOptions = cpo
 	client.Namespace = e.namespace
 	client.ReleaseName = refName
-	client.DisableVerify = true
+	client.DisableOpenAPIValidation = true
 	if deployTimeout != nil {
 		client.Timeout = *deployTimeout
 		client.Wait = true
@@ -276,7 +275,7 @@ func (e *engine) helmUpgrade(
 	client.ChartPathOptions = cpo
 	client.Namespace = e.namespace
 	client.Atomic = true
-	client.DisableVerify = true
+	client.DisableOpenAPIValidation = true
 	if deployTimeout != nil {
 		client.Timeout = *deployTimeout
 		client.Wait = true

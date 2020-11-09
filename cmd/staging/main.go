@@ -156,11 +156,9 @@ func startCtrlCmd() *cobra.Command {
 				prqueuectrl.WithClient(runtimeClient))
 			_ = prtriggerctrl.New(teamName, mgr, prQueueCtrl, authToken, samsahaiClient)
 
-			logger.Info("setup signal handler")
-			stop := signals.SetupSignalHandler()
-
 			logger.Info("starting controller")
-			go stagingCtrl.Start(stop)
+			chStop := make(chan struct{})
+			go stagingCtrl.Start(chStop)
 
 			logger.Info("initializing http routes")
 
@@ -173,8 +171,11 @@ func startCtrlCmd() *cobra.Command {
 				}
 			}()
 
+			logger.Info("setup signal handler")
+			ctx := signals.SetupSignalHandler()
+
 			logger.Info("starting manager")
-			if err := mgr.Start(stop); err != nil {
+			if err := mgr.Start(ctx); err != nil {
 				logger.Error(err, "unable to run the manager")
 				os.Exit(1)
 			}

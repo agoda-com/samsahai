@@ -190,9 +190,6 @@ func startCtrlCmd() *cobra.Command {
 			activepromotion.New(mgr, s2hCtrl, configs)
 			stablecomponent.New(mgr, s2hCtrl)
 
-			logger.Info("setup signal handler")
-			stop := signals.SetupSignalHandler()
-
 			// setup http server
 			logger.Info("setup http server")
 			mux := http.NewServeMux()
@@ -216,10 +213,14 @@ func startCtrlCmd() *cobra.Command {
 				}
 			}()
 
-			go s2hCtrl.Start(stop)
+			chStop := make(chan struct{})
+			go s2hCtrl.Start(chStop)
+
+			logger.Info("setup signal handler")
+			ctx := signals.SetupSignalHandler()
 
 			logger.Info("starting manager")
-			if err := mgr.Start(stop); err != nil {
+			if err := mgr.Start(ctx); err != nil {
 				logger.Error(err, "unable to run the manager")
 				os.Exit(1)
 			}
