@@ -181,7 +181,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		prNs := corev1.Namespace{}
 		err = client.Get(s2hCtx, types.NamespacedName{Name: prNamespace}, &prNs)
 		if err != nil && k8serrors.IsNotFound(err) {
-			_ = client.Delete(context.TODO(), &prNs)
+			_ = client.Delete(s2hCtx, &prNs)
 			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 				namespace := corev1.Namespace{}
 				err = client.Get(s2hCtx, types.NamespacedName{Name: prNamespace}, &namespace)
@@ -193,7 +193,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		}
 
 		By("Deleting all PullRequestQueues")
-		err = client.DeleteAllOf(context.TODO(), &s2hv1.PullRequestQueue{}, rclient.InNamespace(stgNamespace))
+		err = client.DeleteAllOf(s2hCtx, &s2hv1.PullRequestQueue{}, rclient.InNamespace(stgNamespace))
 		Expect(err).NotTo(HaveOccurred())
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			prQueueList := s2hv1.PullRequestQueueList{}
@@ -211,7 +211,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 		By("Deleting Secret")
 		secret := mockSecret
-		Expect(client.Delete(context.TODO(), &secret)).NotTo(HaveOccurred())
+		Expect(client.Delete(s2hCtx, &secret)).NotTo(HaveOccurred())
 
 		By("Deleting Config")
 		Expect(samsahaiCtrl.GetConfigController().Delete(teamName)).NotTo(HaveOccurred())

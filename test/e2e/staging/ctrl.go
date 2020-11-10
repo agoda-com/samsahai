@@ -24,7 +24,6 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -56,6 +55,9 @@ var _ = Describe("[e2e] Staging controller", func() {
 		chStop      chan struct{}
 		mgr         manager.Manager
 		err         error
+
+		ctx    context.Context
+		cancel context.CancelFunc
 	)
 
 	logger := s2hlog.Log.WithName(fmt.Sprintf("%s-test", internal.StagingCtrlName))
@@ -351,18 +353,18 @@ var _ = Describe("[e2e] Staging controller", func() {
 		cfgCtrl = configctrl.New(mgr)
 		Expect(cfgCtrl).ToNot(BeNil())
 
+		ctx, cancel = context.WithCancel(context.TODO())
 		wgStop = &sync.WaitGroup{}
 		wgStop.Add(1)
 		go func() {
 			defer GinkgoRecover()
 			defer wgStop.Done()
-			Expect(mgr.Start(signals.SetupSignalHandler())).To(BeNil())
+			Expect(mgr.Start(ctx)).To(BeNil())
 		}()
 	}, 10)
 
 	AfterEach(func(done Done) {
 		defer close(done)
-		ctx := context.Background()
 
 		By("Deleting nginx deployment")
 		deploy := &deployNginx
@@ -410,7 +412,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Deleting active namespace")
 		atvNs := activeNamespace
-		_ = client.Delete(context.TODO(), &atvNs)
+		_ = client.Delete(ctx, &atvNs)
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			err = client.Get(ctx, types.NamespacedName{Name: atvNamespace}, &namespace)
@@ -433,12 +435,12 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		ql := &s2hv1.QueueList{}
-		err = client.List(context.Background(), ql, &rclient.ListOptions{Namespace: namespace})
+		err = client.List(ctx, ql, &rclient.ListOptions{Namespace: namespace})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(ql.Items).To(BeEmpty())
 
 		sl := &s2hv1.StableComponentList{}
-		err = client.List(context.Background(), sl, &rclient.ListOptions{Namespace: namespace})
+		err = client.List(ctx, sl, &rclient.ListOptions{Namespace: namespace})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sl.Items).To(BeEmpty())
 
@@ -447,12 +449,12 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		close(chStop)
+		cancel()
 		wgStop.Wait()
 	}, 90)
 
 	It("should successfully start and stop", func(done Done) {
 		defer close(done)
-		ctx := context.Background()
 
 		By("Creating Config")
 		config := mockConfig
@@ -494,7 +496,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify config error")
 
 		swp := stableWordPress
-		Expect(client.Create(context.TODO(), &swp)).To(BeNil())
+		Expect(client.Create(ctx, &swp)).To(BeNil())
 
 		By("Creating 2 Queue")
 		redisQueue := queue.NewQueue(teamName, namespace, bundleName, bundleName,
@@ -512,7 +514,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			queue := &s2hv1.Queue{}
 			// bundle queue
-			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: redisQueue.Name}, queue)
+			err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: redisQueue.Name}, queue)
 			if err != nil {
 				return false, nil
 			}
@@ -534,14 +536,14 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Collecting")
 		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
 			redisStableComp := &s2hv1.StableComponent{}
-			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: redisCompName},
+			err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: redisCompName},
 				redisStableComp)
 			if err != nil {
 				return false, nil
 			}
 
 			mariaDBStableComp := &s2hv1.StableComponent{}
-			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: mariaDBCompName},
+			err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: mariaDBCompName},
 				mariaDBStableComp)
 			if err != nil {
 				return false, nil
@@ -554,9 +556,9 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Updating Config to deploy only one component")
 		config = s2hv1.Config{}
-		err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: teamName}, &config)
+		err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: teamName}, &config)
 		config.Status.Used.Components = []*s2hv1.Component{&configCompRedis}
-		Expect(client.Update(context.TODO(), &config)).To(BeNil())
+		Expect(client.Update(ctx, &config)).To(BeNil())
 
 		By("Ensure Pre Active Components")
 		redisServiceName := fmt.Sprintf("%s-redis-master", namespace)
@@ -574,7 +576,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 			}
 
 			svc := corev1.Service{}
-			err = client.Get(context.TODO(), rclient.ObjectKey{Name: redisServiceName, Namespace: namespace}, &svc)
+			err = client.Get(ctx, rclient.ObjectKey{Name: redisServiceName, Namespace: namespace}, &svc)
 			if err != nil {
 				return
 			}
@@ -644,7 +646,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	It("should successfully deploy pull request type", func(done Done) {
 		defer close(done)
-		ctx := context.Background()
 
 		authToken := "12345"
 		s2hConfig := internal.SamsahaiConfig{
@@ -690,7 +691,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Deploy service into active namespaces")
 		svc := mockService
-		Expect(client.Create(context.TODO(), &svc)).To(BeNil(), "Create mock service error")
+		Expect(client.Create(ctx, &svc)).To(BeNil(), "Create mock service error")
 
 		cfg, err := cfgCtrl.Get(teamName)
 		Expect(err).NotTo(HaveOccurred())
@@ -736,7 +737,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	It("should create error log in case of deploy failed", func(done Done) {
 		defer close(done)
-		ctx := context.Background()
 
 		By("Creating Config")
 		config := mockConfig
@@ -747,7 +747,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Creating Team")
 		team := mockTeam
-		Expect(client.Create(context.TODO(), &team)).To(BeNil())
+		Expect(client.Create(ctx, &team)).To(BeNil())
 
 		authToken := "12345"
 		s2hConfig := internal.SamsahaiConfig{SamsahaiCredential: internal.SamsahaiCredential{InternalAuthToken: authToken}}
@@ -768,11 +768,11 @@ var _ = Describe("[e2e] Staging controller", func() {
 			s2hv1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
 			s2hv1.QueueTypeUpgrade,
 		)
-		Expect(client.Create(context.TODO(), redis)).To(BeNil())
+		Expect(client.Create(ctx, redis)).To(BeNil())
 
 		qhl := &s2hv1.QueueHistoryList{}
 		err = wait.PollImmediate(1*time.Second, 120*time.Second, func() (ok bool, err error) {
-			err = client.List(context.TODO(), qhl, &rclient.ListOptions{Namespace: namespace})
+			err = client.List(ctx, qhl, &rclient.ListOptions{Namespace: namespace})
 			if err != nil || len(qhl.Items) < 1 {
 				return false, nil
 			}
@@ -788,7 +788,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
 			q := &s2hv1.Queue{}
-			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: "redis"}, q)
+			err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "redis"}, q)
 			if err != nil || q.Status.State != s2hv1.Waiting || q.Spec.Type != s2hv1.QueueTypeUpgrade {
 				return false, nil
 			}

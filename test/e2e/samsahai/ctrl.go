@@ -188,7 +188,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Deleting active namespace")
 		atvNs := activeNamespace
-		_ = client.Delete(context.TODO(), &atvNs)
+		_ = client.Delete(ctx, &atvNs)
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			err = client.Get(ctx, types.NamespacedName{Name: atvNamespace}, &namespace)
@@ -230,7 +230,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Deleting Secret")
 		secret := mockSecret
-		Expect(client.Delete(context.TODO(), &secret)).NotTo(HaveOccurred())
+		Expect(client.Delete(ctx, &secret)).NotTo(HaveOccurred())
 
 		By("Deleting Config")
 		Expect(samsahaiCtrl.GetConfigController().Delete(teamName)).NotTo(HaveOccurred())

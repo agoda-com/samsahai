@@ -147,7 +147,7 @@ var _ = Describe("[e2e] Config controller", func() {
 		By("Get Config")
 		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
 			config = &s2hv1.Config{}
-			err = client.Get(context.TODO(), types.NamespacedName{Name: teamTest}, config)
+			err = client.Get(ctx, types.NamespacedName{Name: teamTest}, config)
 			if err != nil {
 				return false, nil
 			}
@@ -189,7 +189,7 @@ var _ = Describe("[e2e] Config controller", func() {
 		By("Config should be deleted")
 		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
 			config = &s2hv1.Config{}
-			err = client.Get(context.TODO(), types.NamespacedName{Name: teamTest}, config)
+			err = client.Get(ctx, types.NamespacedName{Name: teamTest}, config)
 			if err != nil && errors.IsNotFound(err) {
 				return true, nil
 			}
@@ -230,7 +230,7 @@ var _ = Describe("[e2e] Config controller", func() {
 		By("Verifying config template updated")
 		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
 			configUsingTemplate = &s2hv1.Config{}
-			err = client.Get(context.TODO(), types.NamespacedName{Name: teamTest2}, configUsingTemplate)
+			err = client.Get(ctx, types.NamespacedName{Name: teamTest2}, configUsingTemplate)
 			if err != nil {
 				return false, nil
 			}
@@ -244,7 +244,7 @@ var _ = Describe("[e2e] Config controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verifying config template updated errors")
 
 		configUsingTemplate = &s2hv1.Config{}
-		err = client.Get(context.TODO(), types.NamespacedName{Name: teamTest2}, configUsingTemplate)
+		err = client.Get(ctx, types.NamespacedName{Name: teamTest2}, configUsingTemplate)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(len(configUsingTemplate.Status.Used.Components)).To(Equal(2))
 		Expect(len(configUsingTemplate.Status.Used.Envs)).To(Equal(4))
