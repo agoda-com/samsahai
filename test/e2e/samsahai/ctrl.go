@@ -1076,7 +1076,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				return false, nil
 			}
 
-			if team.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDelete) {
+			if team.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDeleted) {
 				return false, nil
 			}
 

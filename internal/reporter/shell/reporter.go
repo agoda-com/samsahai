@@ -174,8 +174,8 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return nil
 }
 
-// SendDeletedActiveNamespace implement the reporter SendDeletedActiveNamespace function
-func (r *reporter) SendDeletedActiveNamespace(configCtrl internal.ConfigController, activeNsDeletedRpt *internal.DeletedActiveNamespaceReporter) error {
+// SendDeletedActiveEnvironment implement the reporter SendDeletedActiveEnvironment function
+func (r *reporter) SendDeletedActiveEnvironment(configCtrl internal.ConfigController, activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
 	config, err := configCtrl.Get(activeNsDeletedRpt.TeamName)
 	if err != nil {
 		return err
@@ -183,13 +183,13 @@ func (r *reporter) SendDeletedActiveNamespace(configCtrl internal.ConfigControll
 
 	if config.Status.Used.Reporter == nil ||
 		config.Status.Used.Reporter.Shell == nil ||
-		config.Status.Used.Reporter.Shell.ActiveNamespaceDeleted == nil {
+		config.Status.Used.Reporter.Shell.ActiveEnvironmentDeleted == nil {
 		return nil
 	}
 
-	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.ActiveNamespaceDeleted.Command,
-		config.Status.Used.Reporter.Shell.ActiveNamespaceDeleted.Args, activeNsDeletedRpt)
-	if err := r.execute(cmdObj, internal.ActiveNamespaceDeletedType); err != nil {
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.ActiveEnvironmentDeleted.Command,
+		config.Status.Used.Reporter.Shell.ActiveEnvironmentDeleted.Args, activeNsDeletedRpt)
+	if err := r.execute(cmdObj, internal.ActiveEnvironmentDeletedType); err != nil {
 		return err
 	}
 

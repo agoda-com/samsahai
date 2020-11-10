@@ -239,9 +239,9 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return nil
 }
 
-// SendDeletedActiveNamespace implements the reporter SendDeletedActiveNamespace function
-func (r *reporter) SendDeletedActiveNamespace(configCtrl internal.ConfigController,
-	activeNsDeletedRpt *internal.DeletedActiveNamespaceReporter) error {
+// SendDeletedActiveEnvironment implements the reporter SendDeletedActiveEnvironment function
+func (r *reporter) SendDeletedActiveEnvironment(configCtrl internal.ConfigController,
+	activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
 
 	// does not support
 	return nil

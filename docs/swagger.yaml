@@ -1025,7 +1025,7 @@ definitions:
     type: object
   v1beta1.ReporterShell:
     properties:
-      activeNamespaceDeleted:
+      activeEnvironmentDeleted:
         $ref: '#/definitions/v1beta1.CommandAndArgs'
         description: +optional
         type: object

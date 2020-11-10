@@ -2139,8 +2139,8 @@ func (in *ReporterShell) DeepCopyInto(out *ReporterShell) {
 		*out = new(CommandAndArgs)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.ActiveNamespaceDeleted != nil {
-		in, out := &in.ActiveNamespaceDeleted, &out.ActiveNamespaceDeleted
+	if in.ActiveEnvironmentDeleted != nil {
+		in, out := &in.ActiveEnvironmentDeleted, &out.ActiveEnvironmentDeleted
 		*out = new(CommandAndArgs)
 		(*in).DeepCopyInto(*out)
 	}

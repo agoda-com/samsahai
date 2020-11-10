@@ -139,9 +139,9 @@ var _ = Describe("shell command reporter", func() {
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
 			configCtrl := newMockConfigCtrl("")
 
-			activeNsDeleted := internal.NewDeletedActiveNamespaceReporter(
+			activeNsDeleted := internal.NewDeletedActiveEnvironmentReporter(
 				"teamtest", "s2h-active-ns-test", "user", "2020-11-06T05:14:23")
-			err := r.SendDeletedActiveNamespace(configCtrl, activeNsDeleted)
+			err := r.SendDeletedActiveEnvironment(configCtrl, activeNsDeleted)
 			g.Expect(err).NotTo(HaveOccurred())
 
 			g.Expect(testCmdObj.Command).To(Equal([]string{"/bin/sh", "-c"}))
@@ -275,7 +275,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 								Command: []string{"/bin/sh", "-c"},
 								Args:    []string{"echo pull request trigger of {{ .PRNumber }}: {{ .Result }}"},
 							},
-							ActiveNamespaceDeleted: &s2hv1beta1.CommandAndArgs{
+							ActiveEnvironmentDeleted: &s2hv1beta1.CommandAndArgs{
 								Command: []string{"/bin/sh", "-c"},
 								Args:    []string{"echo executing deleted active namespace command of {{ .TeamName }} , namespace : {{ .ActiveNamespace }} ,deleted-by : {{ .DeletedBy }}, deleted-at : {{ .DeletedAt }}"},
 							},

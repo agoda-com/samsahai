@@ -2036,7 +2036,7 @@
         "v1beta1.ReporterShell": {
             "type": "object",
             "properties": {
-                "activeNamespaceDeleted": {
+                "activeEnvironmentDeleted": {
                     "description": "+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1beta1.CommandAndArgs"
