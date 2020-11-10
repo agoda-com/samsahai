@@ -206,8 +206,8 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return r.post(msTeamsConfig, message, internal.PullRequestTriggerType)
 }
 
-// SendDeletedActiveEnvironment implements the reporter SendDeletedActiveEnvironment function
-func (r *reporter) SendDeletedActiveEnvironment(configCtrl internal.ConfigController,
+// SendActiveEnvironmentDeleted implements the reporter SendActiveEnvironmentDeleted function
+func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController,
 	activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
 
 	// does not support

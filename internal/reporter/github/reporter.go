@@ -120,8 +120,8 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 	return nil
 }
 
-// SendDeletedActiveEnvironment implements the reporter SendDeletedActiveEnvironment function
-func (r *reporter) SendDeletedActiveEnvironment(configCtrl internal.ConfigController,
+// SendActiveEnvironmentDeleted implements the reporter SendActiveEnvironmentDeleted function
+func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController,
 	activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
 
 	// does not support

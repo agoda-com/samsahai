@@ -50,7 +50,7 @@ func (r *reporterMock) SendPullRequestTriggerResult(configCtrl internal.ConfigCo
 	return nil
 }
 
-// SendDeletedActiveEnvironment implements the reporter SendDeletedActiveEnvironment function
-func (r *reporterMock) SendDeletedActiveEnvironment(configCtrl internal.ConfigController, activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
+// SendActiveEnvironmentDeleted implements the reporter SendActiveEnvironmentDeleted function
+func (r *reporterMock) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController, activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
 	return nil
 }

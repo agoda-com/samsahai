@@ -174,8 +174,8 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return nil
 }
 
-// SendDeletedActiveEnvironment implement the reporter SendDeletedActiveEnvironment function
-func (r *reporter) SendDeletedActiveEnvironment(configCtrl internal.ConfigController, activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
+// SendActiveEnvironmentDeleted implement the reporter SendActiveEnvironmentDeleted function
+func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController, activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
 	config, err := configCtrl.Get(activeNsDeletedRpt.TeamName)
 	if err != nil {
 		return err

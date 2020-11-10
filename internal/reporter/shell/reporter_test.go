@@ -139,9 +139,9 @@ var _ = Describe("shell command reporter", func() {
 			r := shell.New(shell.WithExecCommand(mockExecCommand))
 			configCtrl := newMockConfigCtrl("")
 
-			activeNsDeleted := internal.NewDeletedActiveEnvironmentReporter(
+			activeNsDeleted := internal.NewActiveEnvironmentDeletedReporter(
 				"teamtest", "s2h-active-ns-test", "user", "2020-11-06T05:14:23")
-			err := r.SendDeletedActiveEnvironment(configCtrl, activeNsDeleted)
+			err := r.SendActiveEnvironmentDeleted(configCtrl, activeNsDeleted)
 			g.Expect(err).NotTo(HaveOccurred())
 
 			g.Expect(testCmdObj.Command).To(Equal([]string{"/bin/sh", "-c"}))

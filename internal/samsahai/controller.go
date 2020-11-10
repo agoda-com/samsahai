@@ -658,12 +658,12 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 	return nil
 }
 
-func (c *controller) sendDeletedActiveEnvironment(teamName, activeNs, deletedBy string) error {
+func (c *controller) sendActiveEnvironmentDeleted(teamName, activeNs, deletedBy string) error {
 	configCtrl := c.GetConfigController()
 	deletedAt := metav1.Now().UTC().Format("2006-01-02T15:04:05")
-	activeNsDeletedRpt := internal.NewDeletedActiveEnvironmentReporter(teamName, activeNs, deletedBy, deletedAt)
+	activeNsDeletedRpt := internal.NewActiveEnvironmentDeletedReporter(teamName, activeNs, deletedBy, deletedAt)
 	for _, reporter := range c.reporters {
-		if err := reporter.SendDeletedActiveEnvironment(configCtrl, activeNsDeletedRpt); err != nil {
+		if err := reporter.SendActiveEnvironmentDeleted(configCtrl, activeNsDeletedRpt); err != nil {
 			logger.Error(err, "cannot send deleted active namespace report", "team", teamName)
 			return err
 		}
@@ -1261,7 +1261,7 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 	}
 
 	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamActiveEnvironmentDeletedReportSent) {
-		if err := c.sendDeletedActiveEnvironment(teamName, namespace, deletedBy); err != nil {
+		if err := c.sendActiveEnvironmentDeleted(teamName, namespace, deletedBy); err != nil {
 			teamComp.Status.SetCondition(
 				s2hv1beta1.TeamActiveEnvironmentDeletedReportSent,
 				corev1.ConditionFalse,

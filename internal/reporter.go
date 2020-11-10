@@ -210,8 +210,8 @@ type ActiveEnvironmentDeletedReporter struct {
 	DeletedAt       string `json:"deletedAt,omitempty"`
 }
 
-// NewDeletedActiveEnvironmentReporter creates deleted active namespace reporter object
-func NewDeletedActiveEnvironmentReporter(teamname, activeNs, deletedBy, deleteAt string) *ActiveEnvironmentDeletedReporter {
+// NewActiveEnvironmentDeletedReporter creates deleted active namespace reporter object
+func NewActiveEnvironmentDeletedReporter(teamname, activeNs, deletedBy, deleteAt string) *ActiveEnvironmentDeletedReporter {
 	c := &ActiveEnvironmentDeletedReporter{
 		TeamName:        teamname,
 		ActiveNamespace: activeNs,
@@ -274,6 +274,6 @@ type Reporter interface {
 	// SendPullRequestTriggerResult sends pull request trigger result information
 	SendPullRequestTriggerResult(configCtrl ConfigController, prTriggerRpt *PullRequestTriggerReporter) error
 
-	// SendDeletedActiveEnvironment send active namespace deleted information
-	SendDeletedActiveEnvironment(configCtrl ConfigController, activeNsDeletedRpt *ActiveEnvironmentDeletedReporter) error
+	// SendActiveEnvironmentDeleted send active namespace deleted information
+	SendActiveEnvironmentDeleted(configCtrl ConfigController, activeNsDeletedRpt *ActiveEnvironmentDeletedReporter) error
 }
