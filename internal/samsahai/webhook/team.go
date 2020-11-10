@@ -46,7 +46,6 @@ type teamJSON struct {
 	TeamConnections  teamEnvConnections `json:"connections"`
 	TeamStatus       v1.TeamStatus      `json:"status"`
 	TeamSpec         v1.TeamSpec        `json:"spec"`
-	//TeamQueue             teamQueueJSON          `json:"queue"`
 }
 
 type teamQueueJSON struct {

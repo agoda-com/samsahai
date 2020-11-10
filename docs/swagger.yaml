@@ -1243,8 +1243,10 @@ definitions:
         type: array
       desiredComponentImageCreatedTime:
         description: |-
-          DesiredComponents represents mapping of desired component image and created time
+          DesiredComponentImageCreatedTime represents mapping of desired component image and created time
+          map[componentName][repository:tag] = image and createdTime
           +optional
+          +kubebuilder:pruning:PreserveUnknownFields
         type: object
       namespace:
         $ref: '#/definitions/v1.TeamNamespace'

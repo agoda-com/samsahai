@@ -263,7 +263,7 @@ const (
 	TeamNamespacePreviousActiveCreated    TeamConditionType = "TeamNamespacePreviousActiveCreated"
 	TeamNamespaceActiveCreated            TeamConditionType = "TeamNamespaceActiveCreated"
 	TeamNamespacePullRequestCreated       TeamConditionType = "TeamNamespacePullRequestCreated"
-	TeamConfigExisted                     TeamConditionType = "TeamConfigExist"
+	TeamConfigExisted                     TeamConditionType = "TeamConfigExisted"
 	TeamPostStagingNamespaceCreationRun   TeamConditionType = "TeamPostStagingNamespaceCreationRun"
 	TeamPostPreActiveNamespaceCreationRun TeamConditionType = "TeamPostPreActiveNamespaceCreationRun"
 	TeamFirstNotifyComponentChanged       TeamConditionType = "TeamFirstNotifyComponentChanged"
