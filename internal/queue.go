@@ -16,7 +16,7 @@ type QueueController interface {
 	AddTop(q runtime.Object) error
 
 	// First returns first component in Queue or current running Queue
-	First(namespace string) (runtime.Object, error)
+	First(namespace string) (client.Object, error)
 
 	// Remove removes Queue
 	Remove(q client.Object) error

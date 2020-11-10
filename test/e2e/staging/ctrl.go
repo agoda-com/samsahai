@@ -24,6 +24,7 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -355,7 +356,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		go func() {
 			defer GinkgoRecover()
 			defer wgStop.Done()
-			Expect(mgr.Start(chStop)).To(BeNil())
+			Expect(mgr.Start(signals.SetupSignalHandler())).To(BeNil())
 		}()
 	}, 10)
 

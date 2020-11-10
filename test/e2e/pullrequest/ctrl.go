@@ -24,6 +24,7 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -71,7 +72,7 @@ func setupSamsahai() {
 	wgStop.Add(1)
 	go func() {
 		defer wgStop.Done()
-		Expect(mgr.Start(chStop)).To(BeNil())
+		Expect(mgr.Start(signals.SetupSignalHandler())).To(BeNil())
 	}()
 
 	mux := http.NewServeMux()
@@ -102,7 +103,7 @@ func setupStaging(namespace string) (internal.StagingController, internal.QueueC
 
 	go func() {
 		defer GinkgoRecover()
-		Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())
+		Expect(stagingMgr.Start(signals.SetupSignalHandler())).NotTo(HaveOccurred())
 	}()
 
 	return stagingCtrl, prQueueCtrl

@@ -20,6 +20,7 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -39,7 +40,6 @@ var (
 	samsahaiCtrl internal.SamsahaiController
 	configCtrl   internal.ConfigController
 	wgStop       *sync.WaitGroup
-	chStop       chan struct{}
 	mgr          manager.Manager
 	client       rclient.Client
 	namespace    string
@@ -58,14 +58,13 @@ func setupSamsahai() {
 	wgStop.Add(1)
 	go func() {
 		defer wgStop.Done()
-		Expect(mgr.Start(chStop)).To(BeNil())
+		Expect(mgr.Start(signals.SetupSignalHandler())).To(BeNil())
 	}()
 }
 
 var _ = Describe("[e2e] Config controller", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
-		chStop = make(chan struct{})
 
 		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")

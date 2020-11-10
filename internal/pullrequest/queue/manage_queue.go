@@ -40,7 +40,7 @@ func (c *controller) Size(namespace string) int {
 }
 
 // does not support first queue
-func (c *controller) First(namespace string) (runtime.Object, error) {
+func (c *controller) First(namespace string) (client.Object, error) {
 	return &s2hv1.PullRequestQueue{}, nil
 }
 

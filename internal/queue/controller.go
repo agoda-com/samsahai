@@ -91,7 +91,7 @@ func (c *controller) Size(namespace string) int {
 	return len(list.Items)
 }
 
-func (c *controller) First(namespace string) (runtime.Object, error) {
+func (c *controller) First(namespace string) (client.Object, error) {
 	listOpts := &client.ListOptions{Namespace: namespace}
 	list, err := c.list(listOpts)
 	if err != nil {

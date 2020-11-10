@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"context"
 	"log"
 	"os"
 	"path/filepath"
@@ -29,8 +30,12 @@ func TestExporter(t *testing.T) {
 	unittest.InitGinkgo(t, "Samsahai Exporter")
 }
 
-var cfg *rest.Config
-var c client.Client
+var (
+	cfg *rest.Config
+
+	ctx    context.Context
+	cancel context.CancelFunc
+)
 
 func TestMain(m *testing.M) {
 	var err error
@@ -48,7 +53,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	if c, err = client.New(cfg, client.Options{Scheme: scheme.Scheme}); err != nil {
+	if _, err := client.New(cfg, client.Options{Scheme: scheme.Scheme}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -129,16 +134,18 @@ var _ = Describe("Samsahai Exporter", func() {
 		SetActivePromotionMetric(activePromotion)
 		SetHealthStatusMetric("9.9.9.8", "777888999", 234000)
 
+		ctx, cancel = context.WithCancel(context.TODO())
 		wgStop = &sync.WaitGroup{}
 		wgStop.Add(1)
 		go func() {
 			defer wgStop.Done()
-			Expect(mgr.Start(chStop)).To(BeNil())
+			Expect(mgr.Start(ctx)).To(BeNil())
 		}()
 	}, timeout)
 
 	AfterEach(func(done Done) {
 		defer close(done)
+		cancel()
 		close(chStop)
 		wgStop.Wait()
 	}, timeout)
