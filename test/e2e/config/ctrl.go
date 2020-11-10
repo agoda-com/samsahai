@@ -20,7 +20,6 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -43,6 +42,9 @@ var (
 	mgr          manager.Manager
 	client       rclient.Client
 	namespace    string
+
+	ctx    context.Context
+	cancel context.CancelFunc
 )
 
 func setupSamsahai() {
@@ -54,11 +56,12 @@ func setupSamsahai() {
 	configCtrl = configctrl.New(mgr, configctrl.WithClient(client), configctrl.WithS2hCtrl(samsahaiCtrl))
 	Expect(configCtrl).NotTo(BeNil(), "Should successfully init Config controller")
 
+	ctx, cancel = context.WithCancel(context.TODO())
 	wgStop = &sync.WaitGroup{}
 	wgStop.Add(1)
 	go func() {
 		defer wgStop.Done()
-		Expect(mgr.Start(signals.SetupSignalHandler())).To(BeNil())
+		Expect(mgr.Start(ctx)).To(BeNil())
 	}()
 }
 
@@ -87,7 +90,7 @@ var _ = Describe("[e2e] Config controller", func() {
 
 	AfterEach(func(done Done) {
 		defer close(done)
-		ctx := context.TODO()
+		defer cancel()
 
 		By("Deleting all Teams")
 		err := client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
@@ -132,7 +135,6 @@ var _ = Describe("[e2e] Config controller", func() {
 	It("should successfully get/delete Config", func(done Done) {
 		defer close(done)
 		setupSamsahai()
-		ctx := context.TODO()
 
 		By("Creating Config")
 		yamlTeam, err := ioutil.ReadFile(path.Join("..", "data", "wordpress-redis", "config.yaml"))
@@ -200,7 +202,6 @@ var _ = Describe("[e2e] Config controller", func() {
 	It("Should successfully apply/update config template", func(done Done) {
 		defer close(done)
 		setupSamsahai()
-		ctx := context.TODO()
 
 		By("Creating Config")
 		yamlTeam, err := ioutil.ReadFile(path.Join("..", "data", "wordpress-redis", "config.yaml"))

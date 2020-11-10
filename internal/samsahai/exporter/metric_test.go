@@ -67,7 +67,6 @@ var _ = Describe("Samsahai Exporter", func() {
 	namespace := "default"
 	g := NewWithT(GinkgoT())
 	var wgStop *sync.WaitGroup
-	var chStop chan struct{}
 	var configCtrl internal.ConfigController
 	var err error
 
@@ -80,8 +79,6 @@ var _ = Describe("Samsahai Exporter", func() {
 		configCtrl = newMockConfigCtrl()
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(configCtrl).NotTo(BeNil())
-
-		chStop = make(chan struct{})
 
 		mgr, err := manager.New(cfg, manager.Options{Namespace: namespace, MetricsBindAddress: ":8008"})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
@@ -146,7 +143,6 @@ var _ = Describe("Samsahai Exporter", func() {
 	AfterEach(func(done Done) {
 		defer close(done)
 		cancel()
-		close(chStop)
 		wgStop.Wait()
 	}, timeout)
 
