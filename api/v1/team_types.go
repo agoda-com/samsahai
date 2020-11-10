@@ -106,8 +106,10 @@ type TeamStatus struct {
 	// +patchStrategy=merge
 	Conditions []TeamCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 
-	// DesiredComponents represents mapping of desired component image and created time
+	// DesiredComponentImageCreatedTime represents mapping of desired component image and created time
+	// map[componentName][repository:tag] = image and createdTime
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	DesiredComponentImageCreatedTime map[string]map[string]DesiredImageTime `json:"desiredComponentImageCreatedTime,omitempty"`
 
 	// ActivePromotedBy represents a person who promoted the ActivePromotion

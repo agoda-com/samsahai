@@ -26,7 +26,6 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -65,6 +64,9 @@ var (
 	samsahaiClient samsahairpc.RPC
 	restCfg        *rest.Config
 	err            error
+
+	ctx    context.Context
+	cancel context.CancelFunc
 )
 
 func setupSamsahai(isPromoteOnTeamCreationDisabled bool) {
@@ -86,7 +88,7 @@ func setupSamsahai(isPromoteOnTeamCreationDisabled bool) {
 	wgStop.Add(1)
 	go func() {
 		defer wgStop.Done()
-		Expect(mgr.Start(signals.SetupSignalHandler())).To(BeNil())
+		Expect(mgr.Start(ctx)).To(BeNil())
 	}()
 
 	mux := http.NewServeMux()
@@ -100,6 +102,7 @@ var _ = Describe("[e2e] Main controller", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
 		chStop = make(chan struct{})
+		ctx, cancel = context.WithCancel(context.TODO())
 
 		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
@@ -114,7 +117,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(os.Setenv("S2H_CONFIG_PATH", "../data/application.yaml")).NotTo(HaveOccurred(),
 			"should sent samsahai file config path successfully")
 
-		ctx := context.TODO()
 		By("Creating Secret")
 		secret := mockSecret
 		_ = client.Create(ctx, &secret)
@@ -122,7 +124,6 @@ var _ = Describe("[e2e] Main controller", func() {
 
 	AfterEach(func(done Done) {
 		defer close(done)
-		ctx := context.TODO()
 
 		By("Deleting all Teams")
 		err = client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
@@ -235,6 +236,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(samsahaiCtrl.GetConfigController().Delete(teamName)).NotTo(HaveOccurred())
 
 		close(chStop)
+		cancel()
 		samsahaiServer.Close()
 		wgStop.Wait()
 	}, 90)
@@ -242,7 +244,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully promote an active environment without doing retry", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfig
@@ -379,6 +380,8 @@ var _ = Describe("[e2e] Main controller", func() {
 		err = client.Get(ctx, types.NamespacedName{Name: atp.Name}, &atpRes)
 		Expect(err).NotTo(HaveOccurred(), "Get active promotion error")
 
+		stagingCtx, stagingCancel := context.WithCancel(context.TODO())
+		defer stagingCancel()
 		By("Start staging controller for pre-active")
 		preActiveNs := atpRes.Status.TargetNamespace
 		{
@@ -397,7 +400,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				internal.StagingConfig{})
 			go func() {
 				defer GinkgoRecover()
-				Expect(stagingMgr.Start(signals.SetupSignalHandler())).NotTo(HaveOccurred())
+				Expect(stagingMgr.Start(stagingCtx)).NotTo(HaveOccurred())
 			}()
 			go stagingPreActiveCtrl.Start(chStop)
 		}
@@ -457,7 +460,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("ActivePromotionHistory should be created")
 		atpHists := &s2hv1.ActivePromotionHistoryList{}
 		listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
-		err = client.List(context.TODO(), atpHists, listOpt)
+		err = client.List(ctx, atpHists, listOpt)
 		Expect(err).To(BeNil())
 		Expect(len(atpHists.Items)).To(Equal(2))
 		Expect(atpHists.Items[0].Name).ToNot(Equal(atpHist.Name + "-1"))
@@ -508,7 +511,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully promote an active environment even demote timeout", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfig
@@ -567,7 +569,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully add/remove/run active promotion from queue", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Creating Team for Q1")
 		team1 := mockTeam
@@ -670,7 +671,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Deleting ActivePromotion Q2 from queue")
 		atpCompQ2 := s2hv1.ActivePromotion{}
 		Expect(client.Get(ctx, types.NamespacedName{Name: teamForQ2}, &atpCompQ2)).To(BeNil())
-		Expect(client.Delete(context.TODO(), &atpCompQ2)).NotTo(HaveOccurred())
+		Expect(client.Delete(ctx, &atpCompQ2)).NotTo(HaveOccurred())
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			atpTemp := s2hv1.ActivePromotion{}
 			err = client.Get(ctx, types.NamespacedName{Name: teamForQ2}, &atpTemp)
@@ -689,7 +690,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Deleting ActivePromotion Q1")
 		atpCompQ1 := s2hv1.ActivePromotion{}
 		Expect(client.Get(ctx, types.NamespacedName{Name: teamForQ1}, &atpCompQ1)).To(BeNil())
-		Expect(client.Delete(context.TODO(), &atpCompQ1)).NotTo(HaveOccurred())
+		Expect(client.Delete(ctx, &atpCompQ1)).NotTo(HaveOccurred())
 
 		By("Creating mock de-active Q1")
 		preActiveNs := atpCompQ1.Status.TargetNamespace
@@ -729,7 +730,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should do retry if active promotion fail", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfig
@@ -791,7 +791,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully rollback and delete active promotion", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfig
@@ -856,7 +855,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Delete ActivePromotion")
 		atpComp = s2hv1.ActivePromotion{}
 		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &atpComp))
-		Expect(client.Delete(context.TODO(), &atpComp)).To(BeNil())
+		Expect(client.Delete(ctx, &atpComp)).To(BeNil())
 
 		By("Creating mock active queue for active namespace")
 		activeQ := mockActiveQueue
@@ -896,7 +895,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		atpHists := &s2hv1.ActivePromotionHistoryList{}
 		listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
-		err = client.List(context.TODO(), atpHists, listOpt)
+		err = client.List(ctx, atpHists, listOpt)
 		Expect(err).To(BeNil())
 		Expect(len(atpHists.Items)).To(Equal(1))
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())
@@ -905,7 +904,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should rollback active environment timeout", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfig
@@ -956,7 +954,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully delete config when delete team", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfig
@@ -1008,7 +1005,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully delete active environment", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Starting Samsahai internal process")
 		go samsahaiCtrl.Start(chStop)
@@ -1096,7 +1092,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should be error when creating team if config does not exist", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Creating Team")
 		team := mockTeam
@@ -1125,7 +1120,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should detect image missing and not create desired component", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Starting Samsahai internal process")
 		go samsahaiCtrl.Start(chStop)
@@ -1237,7 +1231,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		ctx := context.TODO()
 		By("Creating Config")
 		config := mockConfig
 		Expect(client.Create(ctx, &config)).To(BeNil())
@@ -1298,8 +1291,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
 		server := httptest.NewServer(mux)
 		defer server.Close()
-
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfig
@@ -1450,7 +1441,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully create outdated component when no any active namespace left but there are active components in team", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfigOnlyRedis
@@ -1522,7 +1512,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Delete ActivePromotion")
 		atpComp = s2hv1.ActivePromotion{}
 		Expect(client.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp))
-		Expect(client.Delete(context.TODO(), &atpComp)).To(BeNil())
+		Expect(client.Delete(ctx, &atpComp)).To(BeNil())
 
 		By("Pre-active namespace should be deleted")
 		preActiveNs := atpComp.Status.TargetNamespace
@@ -1552,7 +1542,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("ActivePromotionHistory should be created")
 		atpHists := &s2hv1.ActivePromotionHistoryList{}
 		listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
-		err = client.List(context.TODO(), atpHists, listOpt)
+		err = client.List(ctx, atpHists, listOpt)
 		Expect(err).To(BeNil())
 		Expect(len(atpHists.Items)).To(Equal(1))
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())
@@ -1561,7 +1551,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully notify component changed and promote active after creating team", func(done Done) {
 		defer close(done)
 		setupSamsahai(false)
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfigOnlyRedis
@@ -1622,7 +1611,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully set new active namespace when success promotion on team creation", func(done Done) {
 		defer close(done)
 		setupSamsahai(false)
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfigOnlyRedis
@@ -1678,6 +1666,8 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
 		Expect(atpRes.Status.PreviousActiveNamespace).To(BeEmpty())
 
+		stagingCtx, stagingCancel := context.WithCancel(context.TODO())
+		defer stagingCancel()
 		By("Start staging controller for pre-active")
 		preActiveNs := atpRes.Status.TargetNamespace
 		{
@@ -1695,7 +1685,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				internal.StagingConfig{})
 			go func() {
 				defer GinkgoRecover()
-				Expect(stagingMgr.Start(signals.SetupSignalHandler())).NotTo(HaveOccurred())
+				Expect(stagingMgr.Start(stagingCtx)).NotTo(HaveOccurred())
 			}()
 			go stagingPreActiveCtrl.Start(chStop)
 		}
@@ -1736,7 +1726,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("ActivePromotionHistory should be created")
 		atpHists := &s2hv1.ActivePromotionHistoryList{}
 		listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
-		err = client.List(context.TODO(), atpHists, listOpt)
+		err = client.List(ctx, atpHists, listOpt)
 		Expect(err).To(BeNil())
 		Expect(len(atpHists.Items)).To(Equal(1))
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).To(BeNil())
@@ -1769,7 +1759,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully not set active namespace when failed promotion on team creation", func(done Done) {
 		defer close(done)
 		setupSamsahai(false)
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfigOnlyRedis
@@ -1850,7 +1839,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Delete ActivePromotion")
 		atpComp = s2hv1.ActivePromotion{}
 		Expect(client.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp))
-		Expect(client.Delete(context.TODO(), &atpComp)).To(BeNil())
+		Expect(client.Delete(ctx, &atpComp)).To(BeNil())
 
 		By("Pre-active namespace should be deleted")
 		preActiveNs := atpComp.Status.TargetNamespace
@@ -1879,7 +1868,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		atpHists := &s2hv1.ActivePromotionHistoryList{}
 		listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
-		err = client.List(context.TODO(), atpHists, listOpt)
+		err = client.List(ctx, atpHists, listOpt)
 		Expect(err).To(BeNil())
 		Expect(len(atpHists.Items)).To(Equal(1))
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).To(BeNil())
@@ -1899,7 +1888,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully create cronjob", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Creating Config that have Scheduler")
 		configRedis := mockConfigOnlyRedis
@@ -1969,7 +1957,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	It("should successfully apply/update team template", func(done Done) {
 		defer close(done)
 		setupSamsahai(true)
-		ctx := context.TODO()
 
 		By("Creating Config")
 		config := mockConfig
@@ -1991,10 +1978,10 @@ var _ = Describe("[e2e] Main controller", func() {
 		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
 			team := s2hv1.Team{}
 			teamUsingTemplate := s2hv1.Team{}
-			if err = client.Get(context.TODO(), types.NamespacedName{Name: mockTeam.Name}, &team); err != nil {
+			if err = client.Get(ctx, types.NamespacedName{Name: mockTeam.Name}, &team); err != nil {
 				return false, nil
 			}
-			if err = client.Get(context.TODO(), types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err != nil {
+			if err = client.Get(ctx, types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err != nil {
 				return false, nil
 			}
 			if teamUsingTemplate.Status.Used.Credential == team.Status.Used.Credential ||
@@ -2011,14 +1998,14 @@ var _ = Describe("[e2e] Main controller", func() {
 		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
 			team := s2hv1.Team{}
 			teamUsingTemplate := s2hv1.Team{}
-			if err = client.Get(context.TODO(), types.NamespacedName{Name: mockTeam.Name}, &team); err != nil {
+			if err = client.Get(ctx, types.NamespacedName{Name: mockTeam.Name}, &team); err != nil {
 				return false, nil
 			}
 			team.Spec.StagingCtrl.Endpoint = stagingCtrlEndpoint
-			if err = client.Update(context.TODO(), &team); err != nil {
+			if err = client.Update(ctx, &team); err != nil {
 				return false, nil
 			}
-			if err = client.Get(context.TODO(), types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err != nil {
+			if err = client.Get(ctx, types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err != nil {
 				return false, nil
 			}
 			if teamUsingTemplate.Status.Used.StagingCtrl.Endpoint == stagingCtrlEndpoint &&
@@ -2106,7 +2093,6 @@ var (
 						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 					},
 				},
-
 				wordpressCompName: {
 					stringutils.ConcatImageString("bitnami/wordpress", "5.2.4-debian-9-r18"): s2hv1.DesiredImageTime{
 						Image:       &s2hv1.Image{Repository: "bitnami/wordpress", Tag: "5.2.4-debian-9-r18"},

@@ -56,7 +56,6 @@ func setupSamsahai() {
 	configCtrl = configctrl.New(mgr, configctrl.WithClient(client), configctrl.WithS2hCtrl(samsahaiCtrl))
 	Expect(configCtrl).NotTo(BeNil(), "Should successfully init Config controller")
 
-	ctx, cancel = context.WithCancel(context.TODO())
 	wgStop = &sync.WaitGroup{}
 	wgStop.Add(1)
 	go func() {
@@ -68,6 +67,7 @@ func setupSamsahai() {
 var _ = Describe("[e2e] Config controller", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
+		ctx, cancel = context.WithCancel(context.TODO())
 
 		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")

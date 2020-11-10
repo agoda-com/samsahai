@@ -72,7 +72,6 @@ func setupSamsahai() {
 	samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig)
 	Expect(samsahaiCtrl).ToNot(BeNil())
 
-	s2hCtx, s2hCancel = context.WithCancel(context.TODO())
 	wgStop = &sync.WaitGroup{}
 	wgStop.Add(1)
 	go func() {
@@ -106,7 +105,6 @@ func setupStaging(namespace string) (internal.StagingController, internal.QueueC
 		prqueuectrl.WithClient(client))
 	_ = prtriggerctrl.New(teamName, stagingMgr, prQueueCtrl, samsahaiAuthToken, samsahaiClient)
 
-	stagingCtx, stagingCancel = context.WithCancel(context.TODO())
 	go func() {
 		defer GinkgoRecover()
 		Expect(stagingMgr.Start(stagingCtx)).NotTo(HaveOccurred())
@@ -119,6 +117,8 @@ var _ = Describe("[e2e] Pull request controller", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
 		chStop = make(chan struct{})
+		s2hCtx, s2hCancel = context.WithCancel(context.TODO())
+		stagingCtx, stagingCancel = context.WithCancel(context.TODO())
 
 		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
@@ -135,7 +135,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 		By("Creating Secret")
 		secret := mockSecret
-		_ = client.Create(context.TODO(), &secret)
+		_ = client.Create(s2hCtx, &secret)
 	}, 60)
 
 	AfterEach(func(done Done) {

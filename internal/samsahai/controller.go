@@ -687,7 +687,8 @@ func deployStagingCtrl(c client.Client, obj client.Object) error {
 	}
 
 	if k8sobject.IsK8sObjectChanged(obj, target) {
-		logger.Debug(fmt.Sprintf("%s of %s namespace has some changes", obj.GetObjectKind().GroupVersionKind(), objKey.Namespace))
+		logger.Debug(fmt.Sprintf("%s of %s namespace has some changes",
+			obj.GetObjectKind().GroupVersionKind(), objKey.Namespace))
 		if err := c.Update(ctx, obj); err != nil {
 			return err
 		}
