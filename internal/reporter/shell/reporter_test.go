@@ -129,6 +129,25 @@ var _ = Describe("shell command reporter", func() {
 			g.Expect(testCmdObj.Args).To(Equal([]string{"echo pull request trigger of 1234: Failure"}))
 		})
 
+		It("should correctly execute deleted active namespace", func() {
+			testCmdObj := &s2hv1.CommandAndArgs{}
+			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1.CommandAndArgs) ([]byte, error) {
+				testCmdObj = cmdObj
+				return []byte{}, nil
+			}
+
+			r := shell.New(shell.WithExecCommand(mockExecCommand))
+			configCtrl := newMockConfigCtrl("")
+
+			activeNsDeleted := internal.NewActiveEnvironmentDeletedReporter(
+				"teamtest", "s2h-active-ns-test", "user", "2020-11-06T05:14:23")
+			err := r.SendActiveEnvironmentDeleted(configCtrl, activeNsDeleted)
+			g.Expect(err).NotTo(HaveOccurred())
+
+			g.Expect(testCmdObj.Command).To(Equal([]string{"/bin/sh", "-c"}))
+			g.Expect(testCmdObj.Args).To(Equal([]string{"echo executing deleted active namespace command of teamtest , namespace : s2h-active-ns-test ,deleted-by : user, deleted-at : 2020-11-06T05:14:23"}))
+		})
+
 		It("should correctly execute command with environment variables", func() {
 			testCmdObj := &s2hv1.CommandAndArgs{}
 			mockExecCommand := func(ctx context.Context, configPath string, cmdObj *s2hv1.CommandAndArgs) ([]byte, error) {
@@ -255,6 +274,10 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 							PullRequestTrigger: &s2hv1.CommandAndArgs{
 								Command: []string{"/bin/sh", "-c"},
 								Args:    []string{"echo pull request trigger of {{ .PRNumber }}: {{ .Result }}"},
+							},
+							ActiveEnvironmentDeleted: &s2hv1.CommandAndArgs{
+								Command: []string{"/bin/sh", "-c"},
+								Args:    []string{"echo executing deleted active namespace command of {{ .TeamName }} , namespace : {{ .ActiveNamespace }} ,deleted-by : {{ .DeletedBy }}, deleted-at : {{ .DeletedAt }}"},
 							},
 						},
 					},

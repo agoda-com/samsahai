@@ -421,6 +421,15 @@ spec:
           - |
             "echo pull request trigger of {{ .PRNumber }}: {{ .Result }}"
 
+      # active environment deleted external command line
+      # check support values format from
+      # https://raw.githubusercontent.com/agoda-com/samsahai/master/internal/reporter.go#ActiveEnvironmentDeletedReporter
+      activeEnvironmentDeleted:
+        command: [ "/bin/sh", "-c" ]
+        args:
+          - |
+            echo active namespace deleted of {{ .TeamName }} , namespace : {{ .ActiveNamespace }} ,deleted-by : {{ .DeletedBy }}, deleted-at : {{ .DeletedAt }}
+
   # values file urls of parent component per environment
   envs:
     # base environment will be applied every running except pull-request queue type

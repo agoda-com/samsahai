@@ -1056,6 +1056,10 @@ definitions:
     type: object
   v1.ReporterShell:
     properties:
+      activeEnvironmentDeleted:
+        $ref: '#/definitions/v1.CommandAndArgs'
+        description: +optional
+        type: object
       activePromotion:
         $ref: '#/definitions/v1.CommandAndArgs'
         description: +optional
@@ -1226,6 +1230,11 @@ definitions:
           ActiveComponents represents a list of stable components in active namespace
           +optional
         type: object
+      activeDeletedBy:
+        description: |-
+          ActiveDeletedBy represents a person who deleted the Active environment
+          +optional
+        type: string
       activePromotedBy:
         description: |-
           ActivePromotedBy represents a person who promoted the ActivePromotion
@@ -1816,6 +1825,10 @@ paths:
         in: path
         name: team
         required: true
+        type: string
+      - description: Delete by
+        in: query
+        name: deleted_by
         type: string
       responses:
         "200":

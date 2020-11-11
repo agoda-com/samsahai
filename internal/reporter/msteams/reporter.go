@@ -206,6 +206,14 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return r.post(msTeamsConfig, message, internal.PullRequestTriggerType)
 }
 
+// SendActiveEnvironmentDeleted implements the reporter SendActiveEnvironmentDeleted function
+func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController,
+	activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
+
+	// does not support
+	return nil
+}
+
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
 	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}`
 	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log`
