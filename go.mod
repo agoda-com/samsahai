@@ -14,6 +14,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-chi/chi v4.0.2+incompatible // indirect
 	github.com/go-logr/logr v0.2.1
+	github.com/go-logr/zapr v0.2.0 // indirect
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.2
@@ -46,12 +47,17 @@ require (
 	google.golang.org/protobuf v1.24.0
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
-	helm.sh/helm/v3 v3.4.0
+	helm.sh/helm/v3 v3.3.4
 	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v0.19.2
 	rsc.io/letsencrypt v0.0.3 // indirect
-	sigs.k8s.io/controller-runtime v0.7.0-alpha.6.0.20201106193838-8d0107636985
+	sigs.k8s.io/controller-runtime v0.6.3
 )
 
-replace sigs.k8s.io/controller-tools => github.com/phantomnat/controller-tools v0.2.4-1
+replace (
+	k8s.io/api => k8s.io/api v0.18.10
+	k8s.io/apimachinery => k8s.io/apimachinery v0.18.10
+	k8s.io/client-go => k8s.io/client-go v0.18.10
+	sigs.k8s.io/controller-tools => github.com/phantomnat/controller-tools v0.2.4-1
+)

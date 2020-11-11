@@ -39,12 +39,10 @@ var (
 	samsahaiCtrl internal.SamsahaiController
 	configCtrl   internal.ConfigController
 	wgStop       *sync.WaitGroup
+	chStop       chan struct{}
 	mgr          manager.Manager
 	client       rclient.Client
 	namespace    string
-
-	ctx    context.Context
-	cancel context.CancelFunc
 )
 
 func setupSamsahai() {
@@ -60,14 +58,14 @@ func setupSamsahai() {
 	wgStop.Add(1)
 	go func() {
 		defer wgStop.Done()
-		Expect(mgr.Start(ctx)).To(BeNil())
+		Expect(mgr.Start(chStop)).To(BeNil())
 	}()
 }
 
 var _ = Describe("[e2e] Config controller", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
-		ctx, cancel = context.WithCancel(context.TODO())
+		chStop = make(chan struct{})
 
 		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
@@ -90,7 +88,6 @@ var _ = Describe("[e2e] Config controller", func() {
 
 	AfterEach(func(done Done) {
 		defer close(done)
-		defer cancel()
 
 		By("Deleting all Teams")
 		err := client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
@@ -269,6 +266,8 @@ var _ = Describe("[e2e] Config controller", func() {
 })
 
 var (
+	ctx = context.TODO()
+
 	samsahaiAuthToken = "1234567890_"
 	samsahaiConfig    = internal.SamsahaiConfig{
 		ActivePromotion: internal.ActivePromotionConfig{

@@ -1,7 +1,6 @@
 package exporter
 
 import (
-	"context"
 	"log"
 	"os"
 	"path/filepath"
@@ -30,12 +29,7 @@ func TestExporter(t *testing.T) {
 	unittest.InitGinkgo(t, "Samsahai Exporter")
 }
 
-var (
-	cfg *rest.Config
-
-	ctx    context.Context
-	cancel context.CancelFunc
-)
+var cfg *rest.Config
 
 func TestMain(m *testing.M) {
 	var err error
@@ -66,9 +60,12 @@ var _ = Describe("Samsahai Exporter", func() {
 	timeout := float64(3000)
 	namespace := "default"
 	g := NewWithT(GinkgoT())
-	var wgStop *sync.WaitGroup
-	var configCtrl internal.ConfigController
-	var err error
+	var (
+		wgStop     *sync.WaitGroup
+		chStop     chan struct{}
+		configCtrl internal.ConfigController
+		err        error
+	)
 
 	RegisterMetrics()
 
@@ -131,18 +128,18 @@ var _ = Describe("Samsahai Exporter", func() {
 		SetActivePromotionMetric(activePromotion)
 		SetHealthStatusMetric("9.9.9.8", "777888999", 234000)
 
-		ctx, cancel = context.WithCancel(context.TODO())
+		chStop = make(chan struct{})
 		wgStop = &sync.WaitGroup{}
 		wgStop.Add(1)
 		go func() {
 			defer wgStop.Done()
-			Expect(mgr.Start(ctx)).To(BeNil())
+			Expect(mgr.Start(chStop)).To(BeNil())
 		}()
 	}, timeout)
 
 	AfterEach(func(done Done) {
 		defer close(done)
-		cancel()
+		close(chStop)
 		wgStop.Wait()
 	}, timeout)
 

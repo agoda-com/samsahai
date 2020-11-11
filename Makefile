@@ -19,11 +19,11 @@ KUBEBUILDER_VERSION     ?= 2.2.0
 KUBEBULIDER_FILENAME    = kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
 KUBEBUILDER_PATH        ?= /usr/local/kubebuilder/
 GORELEASER_VERSION      ?= 0.124.1
-K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.19.3-k3s2
+K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.18.10-k3s2
 KUBECONFIG              = /tmp/s2h/k3s-kubeconfig
 K3S_DOCKER_NAME         ?= s2h-k3s-server
 K3S_PORT                ?= 7443
-K8S_VERSION             ?= 1.19.3
+K8S_VERSION             ?= 1.18.10
 KUSTOMIZE_VERSION       ?= 3.8.6
 HELM_VERSION            ?= 3.0.2
 POD_NAMESPACE           ?= default
@@ -474,7 +474,7 @@ endif
 		github.com/golang/protobuf/protoc-gen-go \
 		github.com/twitchtv/twirp/protoc-gen-twirp
 
-# Produce CRDs that work back to Kubernetes 1.19 (no version conversion)
+# Produce CRDs that work back to Kubernetes 1.18 (no version conversion)
 CRD_OPTIONS ?= "crd"
 
 CONTROLLER_GEN=go run $$GOPATH/pkg/mod/github.com/phantomnat/controller-tools@v0.2.4-1/cmd/controller-gen/main.go

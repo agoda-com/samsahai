@@ -621,7 +621,7 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1.Team, namespace st
 		},
 	}
 
-	k8sObjects := []client.Object{
+	k8sObjects := []runtime.Object{
 		k8sobject.GetService(c.scheme, teamComp, namespace),
 		k8sobject.GetServiceAccount(teamComp, namespace),
 		k8sobject.GetRole(teamComp, namespace),
@@ -674,10 +674,14 @@ func setPostNamespaceCreationCondition(teamComp *s2hv1.Team, nsConditionType s2h
 	}
 }
 
-func deployStagingCtrl(c client.Client, obj client.Object) error {
+func deployStagingCtrl(c client.Client, obj runtime.Object) error {
 	ctx := context.TODO()
 	target := obj.DeepCopyObject()
-	objKey := client.ObjectKeyFromObject(obj)
+	objKey, err := client.ObjectKeyFromObject(obj)
+	if err != nil {
+		return err
+	}
+
 	if err := c.Get(ctx, objKey, obj); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return c.Create(ctx, obj)
@@ -1560,7 +1564,9 @@ func applyTeamTemplate(teamComp, teamTemplate *s2hv1.Team) error {
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=queuehistories/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=stablecomponents,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=stablecomponents/status,verbs=get;update;patch
-func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
+	ctx := context.TODO()
+
 	teamComp := &s2hv1.Team{}
 	err := c.client.Get(ctx, types.NamespacedName{Name: req.NamespacedName.Name}, teamComp)
 	if err != nil {

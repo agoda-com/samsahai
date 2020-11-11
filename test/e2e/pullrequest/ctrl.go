@@ -59,11 +59,6 @@ var (
 	samsahaiClient samsahairpc.RPC
 	restCfg        *rest.Config
 	err            error
-
-	s2hCtx        context.Context
-	s2hCancel     context.CancelFunc
-	stagingCtx    context.Context
-	stagingCancel context.CancelFunc
 )
 
 func setupSamsahai() {
@@ -76,7 +71,7 @@ func setupSamsahai() {
 	wgStop.Add(1)
 	go func() {
 		defer wgStop.Done()
-		Expect(mgr.Start(s2hCtx)).To(BeNil())
+		Expect(mgr.Start(chStop)).To(BeNil())
 	}()
 
 	mux := http.NewServeMux()
@@ -107,7 +102,7 @@ func setupStaging(namespace string) (internal.StagingController, internal.QueueC
 
 	go func() {
 		defer GinkgoRecover()
-		Expect(stagingMgr.Start(stagingCtx)).NotTo(HaveOccurred())
+		Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())
 	}()
 
 	return stagingCtrl, prQueueCtrl
@@ -117,8 +112,6 @@ var _ = Describe("[e2e] Pull request controller", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
 		chStop = make(chan struct{})
-		s2hCtx, s2hCancel = context.WithCancel(context.TODO())
-		stagingCtx, stagingCancel = context.WithCancel(context.TODO())
 
 		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
@@ -135,19 +128,19 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 		By("Creating Secret")
 		secret := mockSecret
-		_ = client.Create(s2hCtx, &secret)
+		_ = client.Create(ctx, &secret)
 	}, 60)
 
 	AfterEach(func(done Done) {
 		defer close(done)
 
 		By("Deleting all Teams")
-		err = client.DeleteAllOf(s2hCtx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
+		err = client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
 		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 			teamList := s2hv1.TeamList{}
 			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
-			err = client.List(s2hCtx, &teamList, listOpt)
+			err = client.List(ctx, &teamList, listOpt)
 			if err != nil && k8serrors.IsNotFound(err) {
 				return true, nil
 			}
@@ -160,12 +153,12 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete all Teams error")
 
 		By("Deleting all Configs")
-		err = client.DeleteAllOf(s2hCtx, &s2hv1.Config{}, rclient.MatchingLabels(testLabels))
+		err = client.DeleteAllOf(ctx, &s2hv1.Config{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			configList := s2hv1.ConfigList{}
 			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
-			err = client.List(s2hCtx, &configList, listOpt)
+			err = client.List(ctx, &configList, listOpt)
 			if err != nil && k8serrors.IsNotFound(err) {
 				return true, nil
 			}
@@ -179,12 +172,12 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 		By("Deleting pull request namespace")
 		prNs := corev1.Namespace{}
-		err = client.Get(s2hCtx, types.NamespacedName{Name: prNamespace}, &prNs)
+		err = client.Get(ctx, types.NamespacedName{Name: prNamespace}, &prNs)
 		if err != nil && k8serrors.IsNotFound(err) {
-			_ = client.Delete(s2hCtx, &prNs)
+			_ = client.Delete(ctx, &prNs)
 			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 				namespace := corev1.Namespace{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prNamespace}, &namespace)
+				err = client.Get(ctx, types.NamespacedName{Name: prNamespace}, &namespace)
 				if err != nil && k8serrors.IsNotFound(err) {
 					return true, nil
 				}
@@ -193,11 +186,11 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		}
 
 		By("Deleting all PullRequestQueues")
-		err = client.DeleteAllOf(s2hCtx, &s2hv1.PullRequestQueue{}, rclient.InNamespace(stgNamespace))
+		err = client.DeleteAllOf(ctx, &s2hv1.PullRequestQueue{}, rclient.InNamespace(stgNamespace))
 		Expect(err).NotTo(HaveOccurred())
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			prQueueList := s2hv1.PullRequestQueueList{}
-			err = client.List(s2hCtx, &prQueueList, &rclient.ListOptions{Namespace: stgNamespace})
+			err = client.List(ctx, &prQueueList, &rclient.ListOptions{Namespace: stgNamespace})
 			if err != nil && k8serrors.IsNotFound(err) {
 				return true, nil
 			}
@@ -211,13 +204,11 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 		By("Deleting Secret")
 		secret := mockSecret
-		Expect(client.Delete(s2hCtx, &secret)).NotTo(HaveOccurred())
+		Expect(client.Delete(ctx, &secret)).NotTo(HaveOccurred())
 
 		By("Deleting Config")
 		Expect(samsahaiCtrl.GetConfigController().Delete(teamName)).NotTo(HaveOccurred())
 
-		stagingCancel()
-		s2hCancel()
 		close(chStop)
 		samsahaiServer.Close()
 		wgStop.Wait()
@@ -237,21 +228,21 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 			By("Creating Config")
 			config := mockConfig
-			Expect(client.Create(s2hCtx, &config)).To(BeNil())
+			Expect(client.Create(ctx, &config)).To(BeNil())
 
 			By("Creating Team")
 			teamComp := mockTeam
-			Expect(client.Create(s2hCtx, &teamComp)).To(BeNil())
+			Expect(client.Create(ctx, &teamComp)).To(BeNil())
 
 			By("Verifying namespace and config have been created")
 			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 				namespace := corev1.Namespace{}
-				if err := client.Get(s2hCtx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 					return false, nil
 				}
 
 				config := s2hv1.Config{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: teamComp.Name}, &config)
+				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
 				if err != nil {
 					return false, nil
 				}
@@ -279,7 +270,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
 				_, _, _ = utilhttp.Post(apiURL, jsonPRData)
 				prTrigger := s2hv1.PullRequestTrigger{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prTrigger)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prTrigger)
 				if err != nil {
 					return false, nil
 				}
@@ -291,13 +282,13 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
 			err = wait.PollImmediate(verifyTime1s, verifyTime45s, func() (ok bool, err error) {
 				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
 				if err != nil {
 					return false, nil
 				}
 
 				prTrigger := s2hv1.PullRequestTrigger{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prTrigger)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prTrigger)
 				if err != nil && k8serrors.IsNotFound(err) {
 					return true, nil
 				}
@@ -308,7 +299,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 			By("Updating Team mock active components")
 			teamComp = s2hv1.Team{}
-			Expect(client.Get(s2hCtx, types.NamespacedName{Name: teamName}, &teamComp)).NotTo(HaveOccurred())
+			Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &teamComp)).NotTo(HaveOccurred())
 			teamComp.Status.ActiveComponents = map[string]s2hv1.StableComponent{
 				prDepCompName: {
 					Spec: s2hv1.StableComponentSpec{
@@ -318,13 +309,13 @@ var _ = Describe("[e2e] Pull request controller", func() {
 					},
 				},
 			}
-			Expect(client.Update(s2hCtx, &teamComp)).NotTo(HaveOccurred(),
+			Expect(client.Update(ctx, &teamComp)).NotTo(HaveOccurred(),
 				"Team active components updated error")
 
 			By("Verifying PullRequestQueue has been running and Team status has been updated")
 			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
 				if err != nil {
 					return false, nil
 				}
@@ -339,7 +330,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				}
 
 				teamComp := s2hv1.Team{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: teamName}, &teamComp)
+				err = client.Get(ctx, types.NamespacedName{Name: teamName}, &teamComp)
 				if err != nil {
 					return false, nil
 				}
@@ -359,7 +350,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			By("Verifying Queue component dependencies have been updated")
 			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 				queue := s2hv1.Queue{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: prNamespace}, &queue)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: prNamespace}, &queue)
 				if err != nil {
 					return false, nil
 				}
@@ -369,7 +360,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			Expect(err).NotTo(HaveOccurred(), "Get pull-request Queue type error")
 
 			queue := s2hv1.Queue{}
-			err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: prNamespace}, &queue)
+			err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: prNamespace}, &queue)
 			Expect(err).NotTo(HaveOccurred(), "Queue component dependencies should have been updated")
 			Expect(queue.Spec.Components).To(HaveLen(2))
 			Expect(queue.Spec.Components[0].Name).To(Equal(prComps[0].Name))
@@ -383,13 +374,13 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			queue.Status.State = s2hv1.Finished
 			queue.Status.SetCondition(s2hv1.QueueDeployed, corev1.ConditionTrue, "")
 			queue.Status.SetCondition(s2hv1.QueueTested, corev1.ConditionTrue, "")
-			Expect(client.Update(s2hCtx, &queue)).NotTo(HaveOccurred(),
+			Expect(client.Update(ctx, &queue)).NotTo(HaveOccurred(),
 				"pull-request Queue type updated error")
 
 			By("Verifying PullRequestQueue has been deleted and PullRequestQueueHistory has been created")
 			err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 				prQueueHistList := s2hv1.PullRequestQueueHistoryList{}
-				err = client.List(s2hCtx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})
+				err = client.List(ctx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})
 				if err != nil {
 					return false, nil
 				}
@@ -403,7 +394,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				}
 
 				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: prNamespace}, &prQueue)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: prNamespace}, &prQueue)
 				if err != nil && k8serrors.IsNotFound(err) {
 					return true, nil
 				}
@@ -415,7 +406,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 			By("Verifying PullRequestQueueHistory result")
 			prQueueHistList := s2hv1.PullRequestQueueHistoryList{}
-			Expect(client.List(s2hCtx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})).NotTo(HaveOccurred())
+			Expect(client.List(ctx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})).NotTo(HaveOccurred())
 			Expect(prQueueHistList.Items).To(HaveLen(1))
 			Expect(strings.Contains(prQueueHistList.Items[0].Name, prTriggerName)).To(BeTrue())
 			Expect(prQueueHistList.Items[0].Spec.PullRequestQueue).NotTo(BeNil())
@@ -435,16 +426,16 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 			By("Creating Config")
 			config := mockConfig
-			Expect(client.Create(s2hCtx, &config)).To(BeNil())
+			Expect(client.Create(ctx, &config)).To(BeNil())
 
 			By("Creating Team")
 			teamComp := mockTeam
-			Expect(client.Create(s2hCtx, &teamComp)).To(BeNil())
+			Expect(client.Create(ctx, &teamComp)).To(BeNil())
 
 			By("Verifying namespace and config have been created")
 			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 				namespace := corev1.Namespace{}
-				if err := client.Get(s2hCtx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 					return false, nil
 				}
 
@@ -453,7 +444,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				}
 
 				config := s2hv1.Config{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: teamComp.Name}, &config)
+				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
 				if err != nil {
 					return false, nil
 				}
@@ -497,7 +488,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			By("Verifying one PullRequestQueue has been running and another has been waiting")
 			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
 				if err != nil {
 					return false, nil
 				}
@@ -507,7 +498,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				}
 
 				prQueue2 := s2hv1.PullRequestQueue{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prQueueName2, Namespace: stgNamespace}, &prQueue2)
+				err = client.Get(ctx, types.NamespacedName{Name: prQueueName2, Namespace: stgNamespace}, &prQueue2)
 				if err != nil {
 					return false, nil
 				}
@@ -522,15 +513,15 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 			By("Deleting running PullRequestQueue")
 			prQueue = s2hv1.PullRequestQueue{}
-			err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
+			err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
 			Expect(err).NotTo(HaveOccurred(), "Get running PullRequestQueue error")
-			Expect(client.Delete(s2hCtx, &prQueue)).NotTo(HaveOccurred(),
+			Expect(client.Delete(ctx, &prQueue)).NotTo(HaveOccurred(),
 				"Delete running PullRequestQueue error")
 
 			By("Verify running PullRequestQueue has been deleted and waiting PullRequestQueue has been being run")
 			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 				prQueue2 = s2hv1.PullRequestQueue{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prQueueName2, Namespace: stgNamespace}, &prQueue2)
+				err = client.Get(ctx, types.NamespacedName{Name: prQueueName2, Namespace: stgNamespace}, &prQueue2)
 				if err != nil && k8serrors.IsNotFound(err) {
 					return true, nil
 				}
@@ -540,7 +531,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				}
 
 				prQueue = s2hv1.PullRequestQueue{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
 				if err != nil && k8serrors.IsNotFound(err) {
 					return true, nil
 				}
@@ -563,16 +554,16 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 			By("Creating Config")
 			config := mockConfig
-			Expect(client.Create(s2hCtx, &config)).To(BeNil())
+			Expect(client.Create(ctx, &config)).To(BeNil())
 
 			By("Creating Team")
 			teamComp := mockTeam
-			Expect(client.Create(s2hCtx, &teamComp)).To(BeNil())
+			Expect(client.Create(ctx, &teamComp)).To(BeNil())
 
 			By("Verifying namespace and config have been created")
 			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 				namespace := corev1.Namespace{}
-				if err := client.Get(s2hCtx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 					return false, nil
 				}
 
@@ -581,7 +572,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				}
 
 				config := s2hv1.Config{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: teamComp.Name}, &config)
+				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
 				if err != nil {
 					return false, nil
 				}
@@ -619,7 +610,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			By("Verifying one PullRequestQueue has been updated")
 			err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
 				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
 				if err != nil {
 					return false, nil
 				}
@@ -633,7 +624,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue updated error")
 
 			prQueue = s2hv1.PullRequestQueue{}
-			err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
+			err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prQueue.Spec.CommitSHA).To(Equal(upComingCommitSHA))
 			Expect(prQueue.Spec.NoOfRetry).To(Equal(0))
@@ -653,21 +644,21 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			By("Creating Config")
 			config := mockConfig
 			config.Status.Used.PullRequest.Components[0].Image.Repository = "missing"
-			Expect(client.Create(s2hCtx, &config)).To(BeNil())
+			Expect(client.Create(ctx, &config)).To(BeNil())
 
 			By("Creating Team")
 			teamComp := mockTeam
-			Expect(client.Create(s2hCtx, &teamComp)).To(BeNil())
+			Expect(client.Create(ctx, &teamComp)).To(BeNil())
 
 			By("Verifying namespace and config have been created")
 			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 				namespace := corev1.Namespace{}
-				if err := client.Get(s2hCtx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 					return false, nil
 				}
 
 				config := s2hv1.Config{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: teamComp.Name}, &config)
+				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
 				if err != nil {
 					return false, nil
 				}
@@ -695,7 +686,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
 				_, _, _ = utilhttp.Post(apiURL, jsonPRData)
 				prTrigger := s2hv1.PullRequestTrigger{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prTrigger)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prTrigger)
 				if err != nil {
 					return false, nil
 				}
@@ -711,7 +702,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			By("Verifying PullRequestTrigger has been deleted")
 			err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 				prTrigger := s2hv1.PullRequestTrigger{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prTrigger)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prTrigger)
 				if err != nil && k8serrors.IsNotFound(err) {
 					return true, nil
 				}
@@ -734,16 +725,16 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 			By("Creating Config")
 			config := mockConfig
-			Expect(client.Create(s2hCtx, &config)).To(BeNil())
+			Expect(client.Create(ctx, &config)).To(BeNil())
 
 			By("Creating Team")
 			teamComp := mockTeam
-			Expect(client.Create(s2hCtx, &teamComp)).To(BeNil())
+			Expect(client.Create(ctx, &teamComp)).To(BeNil())
 
 			By("Verifying namespace and config have been created")
 			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 				namespace := corev1.Namespace{}
-				if err := client.Get(s2hCtx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 					return false, nil
 				}
 
@@ -752,7 +743,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				}
 
 				config := s2hv1.Config{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: teamComp.Name}, &config)
+				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
 				if err != nil {
 					return false, nil
 				}
@@ -779,12 +770,12 @@ var _ = Describe("[e2e] Pull request controller", func() {
 					PullRequestNamespace: prNamespace,
 				},
 			}
-			Expect(client.Create(s2hCtx, &prQueue)).NotTo(HaveOccurred(), "Mock queue created error")
+			Expect(client.Create(ctx, &prQueue)).NotTo(HaveOccurred(), "Mock queue created error")
 
 			By("Verifying PullRequestQueue has been updated")
 			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
 				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(s2hCtx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
+				err = client.Get(ctx, types.NamespacedName{Name: prTriggerName, Namespace: stgNamespace}, &prQueue)
 				if err != nil {
 					return false, nil
 				}
@@ -805,6 +796,8 @@ var _ = Describe("[e2e] Pull request controller", func() {
 })
 
 var (
+	ctx = context.TODO()
+
 	samsahaiAuthToken = "1234567890_"
 	samsahaiSystemNs  = "samsahai-system"
 	samsahaiConfig    = internal.SamsahaiConfig{

@@ -55,12 +55,11 @@ var _ = Describe("[e2e] Staging controller", func() {
 		chStop      chan struct{}
 		mgr         manager.Manager
 		err         error
-
-		ctx    context.Context
-		cancel context.CancelFunc
 	)
 
 	logger := s2hlog.Log.WithName(fmt.Sprintf("%s-test", internal.StagingCtrlName))
+
+	ctx := context.TODO()
 
 	redisCompName := "redis"
 	mariaDBCompName := "mariadb"
@@ -353,13 +352,12 @@ var _ = Describe("[e2e] Staging controller", func() {
 		cfgCtrl = configctrl.New(mgr)
 		Expect(cfgCtrl).ToNot(BeNil())
 
-		ctx, cancel = context.WithCancel(context.TODO())
 		wgStop = &sync.WaitGroup{}
 		wgStop.Add(1)
 		go func() {
 			defer GinkgoRecover()
 			defer wgStop.Done()
-			Expect(mgr.Start(ctx)).To(BeNil())
+			Expect(mgr.Start(chStop)).To(BeNil())
 		}()
 	}, 10)
 
@@ -449,7 +447,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		close(chStop)
-		cancel()
 		wgStop.Wait()
 	}, 90)
 

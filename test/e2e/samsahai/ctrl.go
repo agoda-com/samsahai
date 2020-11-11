@@ -64,9 +64,6 @@ var (
 	samsahaiClient samsahairpc.RPC
 	restCfg        *rest.Config
 	err            error
-
-	ctx    context.Context
-	cancel context.CancelFunc
 )
 
 func setupSamsahai(isPromoteOnTeamCreationDisabled bool) {
@@ -88,7 +85,7 @@ func setupSamsahai(isPromoteOnTeamCreationDisabled bool) {
 	wgStop.Add(1)
 	go func() {
 		defer wgStop.Done()
-		Expect(mgr.Start(ctx)).To(BeNil())
+		Expect(mgr.Start(chStop)).To(BeNil())
 	}()
 
 	mux := http.NewServeMux()
@@ -102,7 +99,6 @@ var _ = Describe("[e2e] Main controller", func() {
 	BeforeEach(func(done Done) {
 		defer close(done)
 		chStop = make(chan struct{})
-		ctx, cancel = context.WithCancel(context.TODO())
 
 		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
@@ -236,7 +232,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(samsahaiCtrl.GetConfigController().Delete(teamName)).NotTo(HaveOccurred())
 
 		close(chStop)
-		cancel()
 		samsahaiServer.Close()
 		wgStop.Wait()
 	}, 90)
@@ -380,8 +375,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		err = client.Get(ctx, types.NamespacedName{Name: atp.Name}, &atpRes)
 		Expect(err).NotTo(HaveOccurred(), "Get active promotion error")
 
-		stagingCtx, stagingCancel := context.WithCancel(context.TODO())
-		defer stagingCancel()
 		By("Start staging controller for pre-active")
 		preActiveNs := atpRes.Status.TargetNamespace
 		{
@@ -400,7 +393,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				internal.StagingConfig{})
 			go func() {
 				defer GinkgoRecover()
-				Expect(stagingMgr.Start(stagingCtx)).NotTo(HaveOccurred())
+				Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())
 			}()
 			go stagingPreActiveCtrl.Start(chStop)
 		}
@@ -1666,8 +1659,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
 		Expect(atpRes.Status.PreviousActiveNamespace).To(BeEmpty())
 
-		stagingCtx, stagingCancel := context.WithCancel(context.TODO())
-		defer stagingCancel()
 		By("Start staging controller for pre-active")
 		preActiveNs := atpRes.Status.TargetNamespace
 		{
@@ -1685,7 +1676,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				internal.StagingConfig{})
 			go func() {
 				defer GinkgoRecover()
-				Expect(stagingMgr.Start(stagingCtx)).NotTo(HaveOccurred())
+				Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())
 			}()
 			go stagingPreActiveCtrl.Start(chStop)
 		}
@@ -2020,6 +2011,8 @@ var _ = Describe("[e2e] Main controller", func() {
 })
 
 var (
+	ctx = context.TODO()
+
 	samsahaiAuthToken = "1234567890_"
 	samsahaiSystemNs  = "samsahai-system"
 	samsahaiConfig    = internal.SamsahaiConfig{

@@ -85,7 +85,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=pullrequesttriggers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=pullrequestqueues,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=pullrequestqueues/status,verbs=get;update;patch
-func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
+	ctx := context.TODO()
+
 	now := metav1.Now()
 	prTrigger := &s2hv1.PullRequestTrigger{}
 	err := c.client.Get(ctx, req.NamespacedName, prTrigger)
