@@ -172,10 +172,10 @@ func startCtrlCmd() *cobra.Command {
 			}()
 
 			logger.Info("setup signal handler")
-			ctx := signals.SetupSignalHandler()
+			stop := signals.SetupSignalHandler()
 
 			logger.Info("starting manager")
-			if err := mgr.Start(ctx); err != nil {
+			if err := mgr.Start(stop); err != nil {
 				logger.Error(err, "unable to run the manager")
 				os.Exit(1)
 			}
