@@ -15,18 +15,18 @@ GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
 endif
-KUBEBUILDER_VERSION 	?= 2.2.0
-KUBEBULIDER_FILENAME	= kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
-KUBEBUILDER_PATH		?= /usr/local/kubebuilder/
-GORELEASER_VERSION		?= 0.124.1
-K3S_DOCKER_IMAGE 		?= rancher/k3s:v1.19.3-k3s2
-KUBECONFIG 				= /tmp/s2h/k3s-kubeconfig
-K3S_DOCKER_NAME			?= s2h-k3s-server
-K3S_PORT				?= 7443
-K8S_VERSION				?= 1.19.3
-KUSTOMIZE_VERSION		?= 3.5.3
-HELM_VERSION			?= 3.0.2
-POD_NAMESPACE			?= default
+KUBEBUILDER_VERSION     ?= 2.2.0
+KUBEBULIDER_FILENAME    = kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
+KUBEBUILDER_PATH        ?= /usr/local/kubebuilder/
+GORELEASER_VERSION      ?= 0.124.1
+K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.19.3-k3s2
+KUBECONFIG              = /tmp/s2h/k3s-kubeconfig
+K3S_DOCKER_NAME         ?= s2h-k3s-server
+K3S_PORT                ?= 7443
+K8S_VERSION             ?= 1.19.3
+KUSTOMIZE_VERSION       ?= 3.8.6
+HELM_VERSION            ?= 3.0.2
+POD_NAMESPACE           ?= default
 
 GO111MODULE 			:= on
 SUDO 					?=
