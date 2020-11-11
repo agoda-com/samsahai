@@ -190,6 +190,14 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return r.post(slackConfig, message, internal.PullRequestTriggerType)
 }
 
+// SendActiveEnvironmentDeleted implements the reporter SendActiveEnvironmentDeleted function
+func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController,
+	activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
+
+	// does not support
+	return nil
+}
+
 func convertRPCImageListToK8SImageList(images []*rpc.Image) []s2hv1beta1.Image {
 	k8sImages := make([]s2hv1beta1.Image, 0)
 	for _, img := range images {

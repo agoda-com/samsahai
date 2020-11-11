@@ -12,11 +12,12 @@ import (
 type EventType string
 
 const (
-	ComponentUpgradeType   EventType = "ComponentUpgrade"
-	ActivePromotionType    EventType = "ActivePromotion"
-	ImageMissingType       EventType = "ImageMissing"
-	PullRequestTriggerType EventType = "PullRequestTrigger"
-	PullRequestQueueType   EventType = "PullRequestQueue"
+	ComponentUpgradeType         EventType = "ComponentUpgrade"
+	ActivePromotionType          EventType = "ActivePromotion"
+	ImageMissingType             EventType = "ImageMissing"
+	PullRequestTriggerType       EventType = "PullRequestTrigger"
+	PullRequestQueueType         EventType = "PullRequestQueue"
+	ActiveEnvironmentDeletedType EventType = "ActiveEnvironmentDeleted"
 )
 
 // ComponentUpgradeOption allows specifying various configuration
@@ -151,8 +152,8 @@ type ImageMissingReporter struct {
 	TeamName      string `json:"teamName,omitempty"`
 	ComponentName string `json:"componentName,omitempty"`
 	// Reason represents error reason
-	Reason        string `json:"reason,omitempty"`
-	Envs          map[string]string
+	Reason string `json:"reason,omitempty"`
+	Envs   map[string]string
 	s2hv1beta1.Image
 	SamsahaiConfig
 }
@@ -196,6 +197,26 @@ func NewPullRequestTriggerResultReporter(status s2hv1beta1.PullRequestTriggerSta
 		Result:                   result,
 		Image:                    image,
 		SamsahaiConfig:           s2hConfig,
+	}
+
+	return c
+}
+
+// ActiveEnvironmentDeletedReporter manages active namespace deletion report
+type ActiveEnvironmentDeletedReporter struct {
+	TeamName        string `json:"teamName,omitempty"`
+	ActiveNamespace string `json:"activeNamespace,omitempty"`
+	DeletedBy       string `json:"deletedBy,omitempty"`
+	DeletedAt       string `json:"deletedAt,omitempty"`
+}
+
+// NewActiveEnvironmentDeletedReporter creates deleted active namespace reporter object
+func NewActiveEnvironmentDeletedReporter(teamname, activeNs, deletedBy, deleteAt string) *ActiveEnvironmentDeletedReporter {
+	c := &ActiveEnvironmentDeletedReporter{
+		TeamName:        teamname,
+		ActiveNamespace: activeNs,
+		DeletedBy:       deletedBy,
+		DeletedAt:       deleteAt,
 	}
 
 	return c
@@ -252,4 +273,7 @@ type Reporter interface {
 
 	// SendPullRequestTriggerResult sends pull request trigger result information
 	SendPullRequestTriggerResult(configCtrl ConfigController, prTriggerRpt *PullRequestTriggerReporter) error
+
+	// SendActiveEnvironmentDeleted send active namespace deleted information
+	SendActiveEnvironmentDeleted(configCtrl ConfigController, activeNsDeletedRpt *ActiveEnvironmentDeletedReporter) error
 }

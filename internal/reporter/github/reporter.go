@@ -120,6 +120,14 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 	return nil
 }
 
+// SendActiveEnvironmentDeleted implements the reporter SendActiveEnvironmentDeleted function
+func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController,
+	activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
+
+	// does not support
+	return nil
+}
+
 func (r *reporter) convertCommitStatus(rpcStatus rpc.ComponentUpgrade_UpgradeStatus) github.CommitStatus {
 	switch rpcStatus {
 	case rpc.ComponentUpgrade_UpgradeStatus_SUCCESS:

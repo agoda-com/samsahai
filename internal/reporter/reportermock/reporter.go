@@ -49,3 +49,8 @@ func (r *reporterMock) SendImageMissing(configCtrl internal.ConfigController, im
 func (r *reporterMock) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
 	return nil
 }
+
+// SendActiveEnvironmentDeleted implements the reporter SendActiveEnvironmentDeleted function
+func (r *reporterMock) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController, activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
+	return nil
+}

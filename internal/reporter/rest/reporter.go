@@ -239,6 +239,14 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return nil
 }
 
+// SendActiveEnvironmentDeleted implements the reporter SendActiveEnvironmentDeleted function
+func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController,
+	activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
+
+	// does not support
+	return nil
+}
+
 // send provides handling convert ReporterJSON to []byte and sent it via http POST
 func (r *reporter) send(url string, body []byte, event internal.EventType) error {
 	restCli := r.rest
