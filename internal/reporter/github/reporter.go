@@ -101,7 +101,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 
 	// send pull request history URL
 	prHistURL := r.getPRHistoryURL(comp)
-	prHistDesc := fmt.Sprintf("Samsahai pull request deployment history")
+	prHistDesc := "Samsahai pull request deployment history"
 	err = r.post(githubConfig, repository, commitSHA, LabelNameHistory, prHistURL, prHistDesc, commitStatus,
 		internal.PullRequestQueueType)
 	if err != nil {
@@ -110,7 +110,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 
 	// send pull request logs URL
 	prLogsURL := r.getPRLogsURL(comp)
-	prLogsDesc := fmt.Sprintf("Samsahai pull request deployment logs")
+	prLogsDesc := "Samsahai pull request deployment logs"
 	err = r.post(githubConfig, repository, commitSHA, LabelNameLogs, prLogsURL, prLogsDesc, commitStatus,
 		internal.PullRequestQueueType)
 	if err != nil {

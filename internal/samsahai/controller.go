@@ -556,7 +556,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1.Team, teamNsOpt TeamN
 			teamComp.Status.SetCondition(
 				s2hv1.TeamFirstNotifyComponentChanged,
 				corev1.ConditionTrue,
-				fmt.Sprintf("notified component changed successfully"))
+				"notified component changed successfully")
 		}
 
 		if c.configs.ActivePromotion.PromoteOnTeamCreation &&
@@ -573,7 +573,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1.Team, teamNsOpt TeamN
 			teamComp.Status.SetCondition(
 				s2hv1.TeamFirstActivePromotionRun,
 				corev1.ConditionTrue,
-				fmt.Sprintf("triggered active promotion successfully"))
+				"triggered active promotion successfully")
 		}
 	}
 
@@ -1266,12 +1266,12 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 			teamComp.Status.SetCondition(
 				s2hv1.TeamActiveEnvironmentDeletedReportSent,
 				corev1.ConditionFalse,
-				fmt.Sprintf("cannot sent deleted active namespace report"))
+				"cannot sent deleted active namespace report")
 		} else {
 			teamComp.Status.SetCondition(
 				s2hv1.TeamActiveEnvironmentDeletedReportSent,
 				corev1.ConditionTrue,
-				fmt.Sprintf("deleted active namespace report has been sent successfully"))
+				"deleted active namespace report has been sent successfully")
 		}
 	}
 
@@ -1331,7 +1331,7 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 	teamComp.Status.SetCondition(
 		s2hv1.TeamActiveEnvironmentDeletedReportSent,
 		corev1.ConditionFalse,
-		fmt.Sprintf("deleted active namespace report has been sent successfully"))
+		"deleted active namespace report has been sent successfully")
 
 	if err := c.updateTeam(teamComp); err != nil {
 		logger.Error(err, "cannot update team conditions when delete active environment completed")

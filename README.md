@@ -143,7 +143,7 @@ This flow is for checking pull request image in a registry.
 3. Install [minikube driver](https://minikube.sigs.k8s.io/docs/reference/drivers/)
    > Note: In our guideline, we use `HyperKit` driver.
 4. Install [helm3](https://helm.sh/docs/intro/install/)
-5. Install [Go v1.13](https://golang.org/doc/install#install)
+5. Install [Go v1.15](https://golang.org/doc/install#install)
 
 ### Environment Setup
 - [Configuration](#configuration)

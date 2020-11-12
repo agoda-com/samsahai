@@ -6,14 +6,16 @@ DOCKER_PASSWORD			?=
 GITHUB_API_URL			?= https://api.github.com
 GITHUB_TOKEN			?=
 GITHUB_REPO				?= agoda-com/samsahai
-GO_VERSION          	?= 1.13.6
-GOLANGCI_LINT_VERSION 	?= 1.22.2
+GO_VERSION          	?= 1.15.4
+GOLANGCI_LINT_VERSION 	?= 1.32.2
+
+GO                      ?= go
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
+ifeq (,$(shell $(GO) env GOBIN))
+GOBIN=$(shell $(GO) env GOPATH)/bin
 else
-GOBIN=$(shell go env GOBIN)
+GOBIN=$(shell $(GO) env GOBIN)
 endif
 KUBEBUILDER_VERSION     ?= 2.2.0
 KUBEBULIDER_FILENAME    = kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
@@ -25,7 +27,7 @@ K3S_DOCKER_NAME         ?= s2h-k3s-server
 K3S_PORT                ?= 7443
 K8S_VERSION             ?= 1.18.10
 KUSTOMIZE_VERSION       ?= 3.8.6
-HELM_VERSION            ?= 3.0.2
+HELM_VERSION            ?= 3.3.4
 POD_NAMESPACE           ?= default
 
 GO111MODULE 			:= on
@@ -83,7 +85,7 @@ lint: format tidy
 
 .PHONY: tidy
 tidy:
-	GO111MODULE=on go mod tidy
+	GO111MODULE=on $(GO) mod tidy
 
 .PHONY: golangci-lint-check-version
 golangci-lint-check-version:
@@ -177,10 +179,10 @@ prepare-env-e2e:
 	echo done!
 
 coverage-html:
-	go tool cover -html=coverage.txt -o coverage.html
+	$(GO) tool cover -html=coverage.txt -o coverage.html
 
 overall-coverage:
-	 @echo "Overall Coverage: $$(go tool cover -func=coverage.txt|tail -1|awk '{print $$3}')"
+	 @echo "Overall Coverage: $$($(GO) tool cover -func=coverage.txt|tail -1|awk '{print $$3}')"
 
 
 #
@@ -246,7 +248,7 @@ endif
 		export GORELEASER_FLAGS="--skip-publish"; \
 	fi; \
 	export GITHUB_TOKEN=$(GITHUB_TOKEN); \
-	export GO_PACKAGE="$(shell go list ./internal)"; \
+	export GO_PACKAGE="$(shell $(GO) list ./internal)"; \
 	export DOCKER_REPO=$(DOCKER_REPO); \
 	export http_proxy="$(http_proxy)"; \
 	export https_proxy="$(https_proxy)"; \
@@ -283,9 +285,9 @@ endif
 #
 
 generate-rpc:
-	echo $$(go list)
+	echo $$($(GO) list)
 	export PROTO_SRC_PATH=.; \
-	export IMPORT_PREFIX="$$(go list)"; \
+	export IMPORT_PREFIX="$$($(GO) list)"; \
 	$(PROTOC) \
     		--proto_path=$$PROTO_SRC_PATH/:./bin/include/ \
     		--twirp_out=$$PROTO_SRC_PATH \
@@ -469,7 +471,7 @@ endif
 
 .install-gotools:
 	@echo installing gotools
-	@GO111MODULE=off go get -u \
+	@GO111MODULE=off $(GO) get -u \
 		golang.org/x/tools/cmd/goimports \
 		github.com/golang/protobuf/protoc-gen-go \
 		github.com/twitchtv/twirp/protoc-gen-twirp
@@ -477,11 +479,11 @@ endif
 # Produce CRDs that work back to Kubernetes 1.18 (no version conversion)
 CRD_OPTIONS ?= "crd"
 
-CONTROLLER_GEN=go run $$GOPATH/pkg/mod/github.com/phantomnat/controller-tools@v0.2.4-1/cmd/controller-gen/main.go
+CONTROLLER_GEN=$(GO) run $$GOPATH/pkg/mod/github.com/phantomnat/controller-tools@v0.2.4-1/cmd/controller-gen/main.go
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	go get sigs.k8s.io/controller-tools
+	$(GO) get sigs.k8s.io/controller-tools
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." crd:crdVersions=v1 output:crd:artifacts:config=config/crds output:none
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." crd:crdVersions=v1beta1 output:crd:artifacts:config=test/data/crds output:none
 
@@ -492,5 +494,5 @@ generate: controller-gen
 # find or download controller-gen
 # download controller-gen if necessary
 controller-gen:
-	@go get sigs.k8s.io/controller-tools
+	@$(GO) get sigs.k8s.io/controller-tools
 

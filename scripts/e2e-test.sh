@@ -4,10 +4,12 @@ set -eux
 
 export GO111MODULE=on
 
-cover_pkgs=$(go list ./... | grep -v /cmd | grep -v /vendor | grep -v /test | tr "\n" ",")
+GO=${GO:-"go"}
+
+cover_pkgs=$($GO list ./... | grep -v /cmd | grep -v /vendor | grep -v /test | tr "\n" ",")
 
 # install ginkgo cli
-go install github.com/onsi/ginkgo/ginkgo
+eval $GO install github.com/onsi/ginkgo/ginkgo
 
 ginkgo \
   --progress --noColor --v \

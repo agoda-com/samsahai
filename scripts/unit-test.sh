@@ -4,12 +4,14 @@ set -eux
 
 export GO111MODULE=on
 
+GO=${GO:-"go"}
+
 echo 'mode: atomic' > coverage.txt
 touch ./coverage.out
 
-cover_pkgs=$(go list ./... | grep -v /cmd | grep -v /vendor | grep -v /test | tr "\n" ",")
+cover_pkgs=$($GO list ./... | grep -v /cmd | grep -v /vendor | grep -v /test | tr "\n" ",")
 
-go test \
+eval $GO test \
   -race \
   -covermode=atomic \
   -coverprofile=coverage.out \
@@ -18,7 +20,7 @@ go test \
 tail -n +2 coverage.out >> coverage.txt || exit 255
 rm coverage.out
 
-go test \
+eval $GO test \
   -race \
   -covermode=atomic \
   -coverprofile=coverage.out \

@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -39,7 +38,7 @@ var pluginWebhookFunc = func(h *handler, plugin internal.Plugin) func(w http.Res
 		compName := plugin.GetComponentName(jsonData.Component)
 
 		if compName != "" {
-			logger.Debug(fmt.Sprintf("webhook request"),
+			logger.Debug("webhook request",
 				"plugin", plugin.GetName(),
 				"reqData", string(data),
 				"component", jsonData.Component,
