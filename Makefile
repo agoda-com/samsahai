@@ -1,13 +1,13 @@
-DOCKER_REPO				?= "quay.io/samsahai/samsahai"
-DOCKER_REGISTRY			?= "quay.io"
-DOCKER_USER				?=
-DOCKER_PASSWORD			?=
+DOCKER_REPO             ?= "quay.io/samsahai/samsahai"
+DOCKER_REGISTRY         ?= "quay.io"
+DOCKER_USER             ?=
+DOCKER_PASSWORD         ?=
 
-GITHUB_API_URL			?= https://api.github.com
-GITHUB_TOKEN			?=
-GITHUB_REPO				?= agoda-com/samsahai
-GO_VERSION          	?= 1.15.4
-GOLANGCI_LINT_VERSION 	?= 1.32.2
+GITHUB_API_URL          ?= https://api.github.com
+GITHUB_TOKEN            ?=
+GITHUB_REPO             ?= agoda-com/samsahai
+GO_VERSION              ?= 1.15.4
+GOLANGCI_LINT_VERSION   ?= 1.32.2
 
 GO                      ?= go
 
@@ -30,41 +30,41 @@ KUSTOMIZE_VERSION       ?= 3.8.6
 HELM_VERSION            ?= 3.3.4
 POD_NAMESPACE           ?= default
 
-GO111MODULE 			:= on
-SUDO 					?=
-INSTALL_DIR 			?= $(PWD)/bin/
-OS 						= $$(echo `uname`|tr '[:upper:]' '[:lower:]')
-OS2 					= $$(if [ "$$(uname|tr '[:upper:]' '[:lower:]')" = "linux" ]; then echo linux; elif [ "$$(uname|tr '[:upper:]' '[:lower:]')" = "darwin" ]; then echo osx; fi)
-ARCH					= $$(if [ "$$(uname -m)" = "x86" ]; then echo 386; elif [ "$$(uname -m)" = "x86_64" ]; then echo amd64; fi)
-ARCHx86					= $$(if [ "$$(uname -m)" = "x86" ]; then echo x86_32; elif [ "$$(uname -m)" = "x86_64" ]; then echo x86_64; fi)
-DEBUG					?=
-ARCHIVE_EXT				?= .tar.gz
-TMP_DIR					?= /tmp/samsahai
+GO111MODULE             := on
+SUDO                    ?=
+INSTALL_DIR             ?= $(PWD)/bin/
+OS                      = $$(echo `uname`|tr '[:upper:]' '[:lower:]')
+OS2                     = $$(if [ "$$(uname|tr '[:upper:]' '[:lower:]')" = "linux" ]; then echo linux; elif [ "$$(uname|tr '[:upper:]' '[:lower:]')" = "darwin" ]; then echo osx; fi)
+ARCH                    = $$(if [ "$$(uname -m)" = "x86" ]; then echo 386; elif [ "$$(uname -m)" = "x86_64" ]; then echo amd64; fi)
+ARCHx86                 = $$(if [ "$$(uname -m)" = "x86" ]; then echo x86_32; elif [ "$$(uname -m)" = "x86_64" ]; then echo x86_64; fi)
+DEBUG                   ?=
+ARCHIVE_EXT             ?= .tar.gz
+TMP_DIR                 ?= /tmp/samsahai
 
-MV 						= $(SUDO)mv
-RM 						= $(SUDO)rm
-MKDIR					= $(SUDO)mkdir
-CHMOD					= $(SUDO)chmod
-CHOWN 					= $(SUDO)chown
-CURL					= $(SUDO)curl
-TAR						= $(SUDO)tar
-DOCKER					?= docker
-K3S_EXEC				= $(DOCKER) exec -i $(K3S_DOCKER_NAME)
-KUBECTL					= $(INSTALL_DIR)kubectl
-KUSTOMIZE				= $(INSTALL_DIR)kustomize
-HELM					= $(INSTALL_DIR)helm
-PROTOC					= $(INSTALL_DIR)protoc
-GORELEASER				= $(INSTALL_DIR)goreleaser
-KUBEBUILDER				= $(KUBEBUILDER_PATH)bin/kubebuilder
-GOLANGCI_LINT			= $(INSTALL_DIR)golangci-lint
-PROTOC					= $(INSTALL_DIR)protoc
-SWAG					= $(INSTALL_DIR)swag
+MV                      = $(SUDO)mv
+RM                      = $(SUDO)rm
+MKDIR                   = $(SUDO)mkdir
+CHMOD                   = $(SUDO)chmod
+CHOWN                   = $(SUDO)chown
+CURL                    = $(SUDO)curl
+TAR                     = $(SUDO)tar
+DOCKER                  ?= docker
+K3S_EXEC                = $(DOCKER) exec -i $(K3S_DOCKER_NAME)
+KUBECTL                 = $(INSTALL_DIR)kubectl
+KUSTOMIZE               = $(INSTALL_DIR)kustomize
+HELM                    = $(INSTALL_DIR)helm
+PROTOC                  = $(INSTALL_DIR)protoc
+GORELEASER              = $(INSTALL_DIR)goreleaser
+KUBEBUILDER             = $(KUBEBUILDER_PATH)bin/kubebuilder
+GOLANGCI_LINT           = $(INSTALL_DIR)golangci-lint
+PROTOC                  = $(INSTALL_DIR)protoc
+SWAG                    = $(INSTALL_DIR)swag
 
-PASS_PROXY 	?=
+PASS_PROXY              ?=
 ifdef PASS_PROXY
-K3S_DOCKER_ARGS			?= -e http_proxy=$(http_proxy) -e https_proxy=$(https_proxy) -e no_proxy=$(no_proxy)
+K3S_DOCKER_ARGS         ?= -e http_proxy=$(http_proxy) -e https_proxy=$(https_proxy) -e no_proxy=$(no_proxy)
 else
-K3S_DOCKER_ARGS			?=
+K3S_DOCKER_ARGS         ?=
 endif
 
 .PHONY: init
