@@ -12,6 +12,7 @@ jobs:
     name: Build & Test & Release
     runs-on: ubuntu-16.04
     env:
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       CI: true
       KUBECONFIG: /tmp/s2h/k3s-kubeconfig
       POD_NAMESPACE: default
