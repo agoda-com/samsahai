@@ -167,6 +167,7 @@ prepare-env-e2e:
 	echo install helm and helm-operator; \
 	\
 	$(HELM) repo add stable https://kubernetes-charts.storage.googleapis.com; \
+	$(HELM) repo add bitnami https://charts.bitnami.com/bitnami; \
 	$(HELM) repo add incubator https://kubernetes-charts-incubator.storage.googleapis.com; \
 	\
 	echo create sa,clusterrole,clusterrolebinding for samsahai; \

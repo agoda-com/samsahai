@@ -2286,7 +2286,7 @@ var (
 				"replication": map[string]interface{}{
 					"enabled": false,
 				},
-				"master": map[string]interface{}{
+				"primary": map[string]interface{}{
 					"persistence": map[string]interface{}{
 						"enabled": false,
 					},

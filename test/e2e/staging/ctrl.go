@@ -72,7 +72,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		},
 		Spec: s2hv1.StableComponentSpec{
 			Name:       wordpressCompName,
-			Version:    "5.3.2-debian-10-r32",
+			Version:    "5.5.3-debian-10-r24",
 			Repository: "bitnami/wordpress",
 		},
 	}
@@ -165,7 +165,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 	configCompRedis := s2hv1.Component{
 		Name: redisCompName,
 		Chart: s2hv1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Repository: "https://charts.bitnami.com/bitnami",
 			Name:       redisCompName,
 		},
 		Image: s2hv1.ComponentImage{
@@ -193,12 +193,12 @@ var _ = Describe("[e2e] Staging controller", func() {
 	configCompWordpress := s2hv1.Component{
 		Name: wordpressCompName,
 		Chart: s2hv1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Repository: "https://charts.bitnami.com/bitnami",
 			Name:       wordpressCompName,
 		},
 		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/wordpress",
-			Pattern:    "5\\.2.*debian-9.*",
+			Pattern:    "5\\.5.*debian-10.*",
 		},
 		Source: &compSource,
 		Dependencies: []*s2hv1.Dependency{
@@ -206,7 +206,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 				Name: mariaDBCompName,
 				Image: s2hv1.ComponentImage{
 					Repository: "bitnami/mariadb",
-					Pattern:    "10\\.3.*debian-9.*",
+					Pattern:    "10\\.5.*debian-10.*",
 				},
 			},
 		},
@@ -220,10 +220,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 			},
 			"mariadb": map[string]interface{}{
 				"enabled": true,
-				"replication": map[string]interface{}{
-					"enabled": false,
-				},
-				"master": map[string]interface{}{
+				"primary": map[string]interface{}{
 					"persistence": map[string]interface{}{
 						"enabled": false,
 					},
@@ -501,7 +498,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 			s2hv1.QueueTypeUpgrade,
 		)
 		mariaDBQueue := queue.NewQueue(teamName, namespace, bundleName, bundleName,
-			s2hv1.QueueComponents{{Name: mariaDBCompName, Repository: "bitnami/mariadb", Version: "10.3.18-debian-9-r32"}},
+			s2hv1.QueueComponents{{Name: mariaDBCompName, Repository: "bitnami/mariadb", Version: "10.5.8-debian-10-r0"}},
 			s2hv1.QueueTypeUpgrade,
 		)
 		Expect(queueCtrl.Add(redisQueue, nil)).To(BeNil())

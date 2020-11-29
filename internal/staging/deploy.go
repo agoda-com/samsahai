@@ -718,10 +718,6 @@ func (c *controller) isPodsReady(listOpt *client.ListOptions) (bool, error) {
 		return false, err
 	}
 
-	if len(pods.Items) == 0 {
-		return false, nil
-	}
-
 	for _, pod := range pods.Items {
 		isReady := false
 		for _, podRef := range pod.OwnerReferences {

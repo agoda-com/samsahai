@@ -8,6 +8,6 @@ mariadb:
   enabled: true
   replication:
     enabled: false
-  master:
+  primary:
     persistence:
       enabled: false
