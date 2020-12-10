@@ -353,6 +353,15 @@ func GetRole(teamComp *s2hv1.Team, namespaceName string) runtime.Object {
 			},
 			{
 				APIGroups: []string{
+					"networking.istio.io",
+				},
+				Resources: []string{
+					"virtualservices",
+				},
+				Verbs: []string{"*"},
+			},
+			{
+				APIGroups: []string{
 					"",
 				},
 				Resources: []string{
