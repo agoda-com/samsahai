@@ -116,6 +116,8 @@ func (c *controller) deployEnvironment(queue *s2hv1.Queue) error {
 
 	if len(releases) != 0 && queue.IsPullRequestQueue() {
 		if err := c.deployActiveServicesIntoPullRequestEnvironment(); err != nil {
+			logger.Error(err, "cannot deploy active services into pull request environment",
+				"queue", queue.Name)
 			return err
 		}
 	}
@@ -194,7 +196,17 @@ func (c *controller) getParentAndQueueCompsFromQueueType(q *s2hv1.Queue) (
 
 		if comp.Parent != "" {
 			delete(queueParentComps, qComp.Name)
-			queueParentComps[comp.Parent] = comps[comp.Parent]
+			if _, ok := comps[comp.Parent]; !ok {
+				var parentComps map[string]*s2hv1.Component
+				configCtrl := c.getConfigController()
+				parentComps, err = configCtrl.GetParentComponents(c.teamName)
+				if err != nil {
+					return
+				}
+				queueParentComps[comp.Parent] = parentComps[comp.Parent]
+			} else {
+				queueParentComps[comp.Parent] = comps[comp.Parent]
+			}
 		}
 	}
 
@@ -569,14 +581,20 @@ func (c *controller) deployQueueComponent(
 	defer cancelFunc()
 
 	// deploy current queue
-	for name, parentComp := range queueParentComps {
-		go func(name string, parentComp *s2hv1.Component) {
+	for parentName, parentComp := range queueParentComps {
+		go func(parentName string, parentComp *s2hv1.Component) {
+			if parentComp == nil {
+				errCh <- fmt.Errorf("parent components should not be empty, component: %s", parentName)
+				return
+			}
+
 			envType := s2hv1.EnvBase
 			if queue.IsPullRequestQueue() {
 				envType = s2hv1.EnvPullRequest
 			}
 
-			baseValues, err := configctrl.GetEnvComponentValues(cfg, name, c.teamName, envType)
+			// get parent values from queue type
+			parentBaseValues, err := configctrl.GetEnvComponentValues(cfg, parentName, c.teamName, envType)
 			if err != nil {
 				errCh <- err
 				return
@@ -585,7 +603,7 @@ func (c *controller) deployQueueComponent(
 			values := valuesutil.GenStableComponentValues(
 				parentComp,
 				stableMap,
-				baseValues,
+				parentBaseValues,
 			)
 
 			if queue.IsComponentUpgradeQueue() || queue.IsPullRequestQueue() {
@@ -601,6 +619,13 @@ func (c *controller) deployQueueComponent(
 							comp.Name: v,
 						})
 					}
+
+					envValues, err := configctrl.GetEnvComponentValues(cfg, comp.Name, c.teamName, envType)
+					if err != nil {
+						errCh <- err
+						return
+					}
+					values = valuesutil.MergeValues(values, envValues)
 				}
 			}
 
@@ -612,7 +637,7 @@ func (c *controller) deployQueueComponent(
 			}
 
 			errCh <- nil
-		}(name, parentComp)
+		}(parentName, parentComp)
 	}
 
 	for i := 0; i < len(queueParentComps); i++ {

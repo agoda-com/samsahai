@@ -366,8 +366,16 @@ func withTeamPullRequestNamespaceStatus(namespace string, resources corev1.Resou
 			teamComp.Status.Namespace.PullRequests = newPRNamespaces
 		}
 
-		return namespace, resources, s2hv1.TeamNamespacePullRequestCreated
+		return namespace, resources, getPullRequestNamespaceCreatedConditionType(namespace)
 	}
+}
+
+func getPullRequestNamespaceCreatedConditionType(namespace string) s2hv1.TeamConditionType {
+	return s2hv1.TeamNamespacePullRequestCreated + s2hv1.TeamConditionType("-"+namespace)
+}
+
+func getPostPullRequestNamespaceRunConditionType(namespace string) s2hv1.TeamConditionType {
+	return s2hv1.TeamPostPullRequestNamespaceCreationRun + s2hv1.TeamConditionType("-"+namespace)
 }
 
 func (c *controller) CreateStagingEnvironment(teamName, namespace string) error {
@@ -506,7 +514,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1.Team, teamNsOpt TeamN
 
 			if c.configs.PostNamespaceCreation != nil {
 				setPostNamespaceCreationCondition(teamComp, nsConditionType, corev1.ConditionFalse,
-					"namespace has been being created")
+					namespace, "namespace has been being created")
 			}
 
 			return errors.ErrTeamNamespaceStillCreating
@@ -529,8 +537,10 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1.Team, teamNsOpt TeamN
 				!teamComp.Status.IsConditionTrue(s2hv1.TeamPostStagingNamespaceCreationRun)
 			postPreActiveNsNotRun := nsConditionType == s2hv1.TeamNamespacePreActiveCreated &&
 				!teamComp.Status.IsConditionTrue(s2hv1.TeamPostPreActiveNamespaceCreationRun)
+			postPullRequestNsNotRun := nsConditionType == getPullRequestNamespaceCreatedConditionType(namespace) &&
+				!teamComp.Status.IsConditionTrue(getPostPullRequestNamespaceRunConditionType(namespace))
 
-			if postStagingNsNotRun || postPreActiveNsNotRun {
+			if postStagingNsNotRun || postPreActiveNsNotRun || postPullRequestNsNotRun {
 				logger.Debug("start executing command after creating namespace",
 					"team", teamComp.Name, "namespace", namespace)
 				if err := c.runPostNamespaceCreation(namespace, teamComp); err != nil {
@@ -539,7 +549,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1.Team, teamNsOpt TeamN
 				}
 
 				setPostNamespaceCreationCondition(teamComp, nsConditionType, corev1.ConditionTrue,
-					"post namespace creation has been executed successfully")
+					namespace, "post namespace creation has been executed successfully")
 			}
 		}
 	}
@@ -672,7 +682,7 @@ func (c *controller) sendActiveEnvironmentDeleted(teamName, activeNs, deletedBy 
 }
 
 func setPostNamespaceCreationCondition(teamComp *s2hv1.Team, nsConditionType s2hv1.TeamConditionType,
-	cond corev1.ConditionStatus, message string) {
+	cond corev1.ConditionStatus, namespace, message string) {
 
 	switch nsConditionType {
 	case s2hv1.TeamNamespaceStagingCreated:
@@ -683,6 +693,11 @@ func setPostNamespaceCreationCondition(teamComp *s2hv1.Team, nsConditionType s2h
 	case s2hv1.TeamNamespacePreActiveCreated:
 		teamComp.Status.SetCondition(
 			s2hv1.TeamPostPreActiveNamespaceCreationRun,
+			cond,
+			message)
+	case getPullRequestNamespaceCreatedConditionType(namespace):
+		teamComp.Status.SetCondition(
+			getPostPullRequestNamespaceRunConditionType(namespace),
 			cond,
 			message)
 	}

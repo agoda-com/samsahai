@@ -262,20 +262,21 @@ type TeamCondition struct {
 type TeamConditionType string
 
 const (
-	TeamNamespaceStagingCreated            TeamConditionType = "TeamNamespaceStagingCreated"
-	TeamNamespacePreActiveCreated          TeamConditionType = "TeamNamespacePreActiveCreated"
-	TeamNamespacePreviousActiveCreated     TeamConditionType = "TeamNamespacePreviousActiveCreated"
-	TeamNamespaceActiveCreated             TeamConditionType = "TeamNamespaceActiveCreated"
-	TeamNamespacePullRequestCreated        TeamConditionType = "TeamNamespacePullRequestCreated"
-	TeamConfigExisted                      TeamConditionType = "TeamConfigExisted"
-	TeamPostStagingNamespaceCreationRun    TeamConditionType = "TeamPostStagingNamespaceCreationRun"
-	TeamPostPreActiveNamespaceCreationRun  TeamConditionType = "TeamPostPreActiveNamespaceCreationRun"
-	TeamFirstNotifyComponentChanged        TeamConditionType = "TeamFirstNotifyComponentChanged"
-	TeamFirstActivePromotionRun            TeamConditionType = "TeamFirstActivePromotionRun"
-	TeamUsedUpdated                        TeamConditionType = "TeamUsedUpdated"
-	TeamRequiredFieldsValidated            TeamConditionType = "TeamRequiredFieldsValidated"
-	TeamActiveEnvironmentDeleted           TeamConditionType = "TeamActiveEnvironmentDeleted"
-	TeamActiveEnvironmentDeletedReportSent TeamConditionType = "TeamActiveEnvironmentDeletedReportSent"
+	TeamNamespaceStagingCreated             TeamConditionType = "TeamNamespaceStagingCreated"
+	TeamNamespacePreActiveCreated           TeamConditionType = "TeamNamespacePreActiveCreated"
+	TeamNamespacePreviousActiveCreated      TeamConditionType = "TeamNamespacePreviousActiveCreated"
+	TeamNamespaceActiveCreated              TeamConditionType = "TeamNamespaceActiveCreated"
+	TeamNamespacePullRequestCreated         TeamConditionType = "TeamNamespacePullRequestCreated"
+	TeamConfigExisted                       TeamConditionType = "TeamConfigExisted"
+	TeamPostStagingNamespaceCreationRun     TeamConditionType = "TeamPostStagingNamespaceCreationRun"
+	TeamPostPreActiveNamespaceCreationRun   TeamConditionType = "TeamPostPreActiveNamespaceCreationRun"
+	TeamPostPullRequestNamespaceCreationRun TeamConditionType = "TeamPostPullRequestNamespaceCreationRun"
+	TeamFirstNotifyComponentChanged         TeamConditionType = "TeamFirstNotifyComponentChanged"
+	TeamFirstActivePromotionRun             TeamConditionType = "TeamFirstActivePromotionRun"
+	TeamUsedUpdated                         TeamConditionType = "TeamUsedUpdated"
+	TeamRequiredFieldsValidated             TeamConditionType = "TeamRequiredFieldsValidated"
+	TeamActiveEnvironmentDeleted            TeamConditionType = "TeamActiveEnvironmentDeleted"
+	TeamActiveEnvironmentDeletedReportSent  TeamConditionType = "TeamActiveEnvironmentDeletedReportSent"
 )
 
 func (ts *TeamStatus) IsConditionTrue(cond TeamConditionType) bool {

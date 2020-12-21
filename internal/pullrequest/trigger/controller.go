@@ -217,6 +217,10 @@ func (c *controller) fillEmptyData(prTrigger *s2hv1.PullRequestTrigger, prCompSo
 		prTrigger.Spec.Image.Repository = prCompSource.Image.Repository
 		changed = true
 	}
+	if prTrigger.Spec.Image.Tag == "" {
+		prTrigger.Spec.Image.Tag = prCompSource.Image.Tag
+		changed = true
+	}
 	if prTrigger.Spec.Pattern == "" {
 		prTrigger.Spec.Pattern = prCompSource.Pattern
 		changed = true
@@ -224,6 +228,10 @@ func (c *controller) fillEmptyData(prTrigger *s2hv1.PullRequestTrigger, prCompSo
 	if prTrigger.Spec.Source == "" {
 		prTrigger.Spec.Source = s2hv1.UpdatingSource(prCompSource.Source)
 		changed = true
+	}
+
+	if prTrigger.Spec.Image.Tag == "" {
+		prTrigger.Spec.Image.Tag = prTrigger.Spec.Pattern
 	}
 
 	return
