@@ -649,13 +649,11 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1.Team, namespace st
 		k8sObjects = append(k8sObjects, deploymentObj)
 	}
 
-	if len(teamComp.Status.Used.Resources) > 0 {
-		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, nil)
-		k8sObjects = append(k8sObjects, quotaObj)
-	}
-
 	if len(resources) > 0 {
 		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, resources)
+		k8sObjects = append(k8sObjects, quotaObj)
+	} else if len(teamComp.Status.Used.Resources) > 0 {
+		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, nil)
 		k8sObjects = append(k8sObjects, quotaObj)
 	}
 

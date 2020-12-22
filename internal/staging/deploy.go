@@ -609,6 +609,15 @@ func (c *controller) deployQueueComponent(
 			if queue.IsComponentUpgradeQueue() || queue.IsPullRequestQueue() {
 				// merge stable only matched component or dependencies
 				for _, comp := range queueComps {
+					if queue.IsPullRequestQueue() {
+						envValues, err := configctrl.GetEnvComponentValues(cfg, comp.Name, c.teamName, envType)
+						if err != nil {
+							errCh <- err
+							return
+						}
+						values = valuesutil.MergeValues(values, envValues)
+					}
+
 					v := genCompValueFromQueue(comp.Name, queue.Spec.Components)
 					if comp.Name == parentComp.Name {
 						// queue is parent
@@ -619,13 +628,6 @@ func (c *controller) deployQueueComponent(
 							comp.Name: v,
 						})
 					}
-
-					envValues, err := configctrl.GetEnvComponentValues(cfg, comp.Name, c.teamName, envType)
-					if err != nil {
-						errCh <- err
-						return
-					}
-					values = valuesutil.MergeValues(values, envValues)
 				}
 			}
 
