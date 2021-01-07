@@ -174,7 +174,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 	redisConfigComp := s2hv1.Component{
 		Name: "redis",
 		Chart: s2hv1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Repository: "https://charts.helm.sh/stable",
 			Name:       "redis",
 		},
 		Image: s2hv1.ComponentImage{
@@ -201,7 +201,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 	wordpressConfigComp := s2hv1.Component{
 		Name: "wordpress",
 		Chart: s2hv1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Repository: "https://charts.helm.sh/stable",
 			Name:       "wordpress",
 		},
 		Image: s2hv1.ComponentImage{

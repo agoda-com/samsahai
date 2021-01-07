@@ -34,7 +34,7 @@ var _ = Describe("Config Controller", func() {
 	redisConfigComp := s2hv1.Component{
 		Name: redisCompName,
 		Chart: s2hv1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Repository: "https://charts.helm.sh/stable",
 			Name:       redisCompName,
 		},
 		Image: s2hv1.ComponentImage{
@@ -158,7 +158,7 @@ wordpress:
 		redisConfigComp := s2hv1.Component{
 			Name: redisCompName,
 			Chart: s2hv1.ComponentChart{
-				Repository: "https://kubernetes-charts.storage.googleapis.com",
+				Repository: "https://charts.helm.sh/stable",
 				Name:       redisCompName,
 			},
 			Image: s2hv1.ComponentImage{
