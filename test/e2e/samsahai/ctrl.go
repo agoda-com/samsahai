@@ -1584,7 +1584,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
 
 		By("Waiting TeamFirstNotifyComponentChanged and TeamFirstActivePromotionRun conditions have been set")
-		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
 			teamComp := s2hv1.Team{}
 			if err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
 				return false, nil
@@ -1640,22 +1640,33 @@ var _ = Describe("[e2e] Main controller", func() {
 				return false, nil
 			}
 
-			if atpTemp.Status.IsConditionTrue(s2hv1.ActivePromotionCondPreActiveCreated) {
-				return true, nil
+			if !atpTemp.Status.IsConditionTrue(s2hv1.ActivePromotionCondPreActiveCreated) {
+				return false, nil
 			}
 
-			return false, nil
+			teamComp := s2hv1.Team{}
+			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+			if err != nil {
+				return false, nil
+			}
+
+			if teamComp.Status.Namespace.PreActive == "" {
+				return false, nil
+			}
+
+			return true, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
 
 		By("Checking pre-active namespace has been set")
 		teamComp = s2hv1.Team{}
-		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
-		Expect(teamComp.Status.Namespace.PreActive).ToNot(BeEmpty())
+		err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+		Expect(err).NotTo(HaveOccurred(), "Get team error")
 
 		atpRes := s2hv1.ActivePromotion{}
 		err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &atpRes)
 		Expect(err).NotTo(HaveOccurred(), "Get active promotion error")
+
 		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
 		Expect(atpRes.Status.PreviousActiveNamespace).To(BeEmpty())
 
