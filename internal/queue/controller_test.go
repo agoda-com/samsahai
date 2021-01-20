@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
 
@@ -24,40 +24,40 @@ var _ = Describe("Queue Controller", func() {
 			c := controller{}
 			name := "alpine"
 
-			queue := &v1beta1.Queue{
-				Spec: v1beta1.QueueSpec{Name: name, Bundle: name,
-					Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
+			queue := &s2hv1.Queue{
+				Spec: s2hv1.QueueSpec{Name: name, Bundle: name,
+					Components: s2hv1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
 				},
-				Status: v1beta1.QueueStatus{},
+				Status: s2hv1.QueueStatus{},
 			}
-			queueList := &v1beta1.QueueList{
-				Items: []v1beta1.Queue{
+			queueList := &s2hv1.QueueList{
+				Items: []s2hv1.Queue{
 					{
-						Spec: v1beta1.QueueSpec{Name: name,
-							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.0"}},
+						Spec: s2hv1.QueueSpec{Name: name,
+							Components: s2hv1.QueueComponents{{Name: name, Repository: name, Version: "3.9.0"}},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 					{
-						Spec: v1beta1.QueueSpec{Name: name,
-							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.1"}},
+						Spec: s2hv1.QueueSpec{Name: name,
+							Components: s2hv1.QueueComponents{{Name: name, Repository: name, Version: "3.9.1"}},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 					{
-						Spec: v1beta1.QueueSpec{Name: "group", Bundle: "group",
-							Components: v1beta1.QueueComponents{
+						Spec: s2hv1.QueueSpec{Name: "group", Bundle: "group",
+							Components: s2hv1.QueueComponents{
 								{Name: name, Repository: name, Version: "3.9.1"},
 								{Name: "ubuntu", Repository: "ubuntu", Version: "18.04"},
 							},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 					{
-						Spec: v1beta1.QueueSpec{Name: "ubuntu",
-							Components: v1beta1.QueueComponents{{Name: "ubuntu", Repository: "ubuntu", Version: "18.04"}},
+						Spec: s2hv1.QueueSpec{Name: "ubuntu",
+							Components: s2hv1.QueueComponents{{Name: "ubuntu", Repository: "ubuntu", Version: "18.04"}},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 				},
 			}
@@ -79,19 +79,19 @@ var _ = Describe("Queue Controller", func() {
 			c := controller{}
 			name := "alpine"
 
-			queue := &v1beta1.Queue{
-				Spec: v1beta1.QueueSpec{Name: name,
-					Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
+			queue := &s2hv1.Queue{
+				Spec: s2hv1.QueueSpec{Name: name,
+					Components: s2hv1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
 				},
-				Status: v1beta1.QueueStatus{},
+				Status: s2hv1.QueueStatus{},
 			}
-			queueList := &v1beta1.QueueList{
-				Items: []v1beta1.Queue{
+			queueList := &s2hv1.QueueList{
+				Items: []s2hv1.Queue{
 					{
-						Spec: v1beta1.QueueSpec{Name: name,
-							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
+						Spec: s2hv1.QueueSpec{Name: name,
+							Components: s2hv1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 				},
 			}
@@ -115,25 +115,25 @@ var _ = Describe("Queue Controller", func() {
 			alpine := "alpine"
 			ubuntu := "ubuntu"
 
-			queue := &v1beta1.Queue{
-				Spec: v1beta1.QueueSpec{Name: "group", Bundle: "group",
-					Components: v1beta1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
+			queue := &s2hv1.Queue{
+				Spec: s2hv1.QueueSpec{Name: "group", Bundle: "group",
+					Components: s2hv1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
 				},
-				Status: v1beta1.QueueStatus{},
+				Status: s2hv1.QueueStatus{},
 			}
-			queueList := &v1beta1.QueueList{
-				Items: []v1beta1.Queue{
+			queueList := &s2hv1.QueueList{
+				Items: []s2hv1.Queue{
 					{
-						Spec: v1beta1.QueueSpec{Name: alpine,
-							Components: v1beta1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
+						Spec: s2hv1.QueueSpec{Name: alpine,
+							Components: s2hv1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 					{
-						Spec: v1beta1.QueueSpec{Name: alpine, Bundle: "group",
-							Components: v1beta1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.1"}},
+						Spec: s2hv1.QueueSpec{Name: alpine, Bundle: "group",
+							Components: s2hv1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.1"}},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 				},
 			}
@@ -154,19 +154,19 @@ var _ = Describe("Queue Controller", func() {
 			c := controller{}
 			name := "alpine"
 
-			queue := &v1beta1.Queue{
-				Spec: v1beta1.QueueSpec{Name: name,
-					Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
+			queue := &s2hv1.Queue{
+				Spec: s2hv1.QueueSpec{Name: name,
+					Components: s2hv1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
 				},
-				Status: v1beta1.QueueStatus{},
+				Status: s2hv1.QueueStatus{},
 			}
-			queueList := &v1beta1.QueueList{
-				Items: []v1beta1.Queue{
+			queueList := &s2hv1.QueueList{
+				Items: []s2hv1.Queue{
 					{
-						Spec: v1beta1.QueueSpec{Name: name,
-							Components: v1beta1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
+						Spec: s2hv1.QueueSpec{Name: name,
+							Components: s2hv1.QueueComponents{{Name: name, Repository: name, Version: "3.9.4"}},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 				},
 			}
@@ -191,21 +191,21 @@ var _ = Describe("Queue Controller", func() {
 
 			priorityQueues := []string{"ubuntu", "alpine"}
 
-			queue := &v1beta1.Queue{
-				Spec: v1beta1.QueueSpec{Name: ubuntu,
-					Components: v1beta1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
+			queue := &s2hv1.Queue{
+				Spec: s2hv1.QueueSpec{Name: ubuntu,
+					Components: s2hv1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
 				},
-				Status: v1beta1.QueueStatus{},
+				Status: s2hv1.QueueStatus{},
 			}
-			queueList := &v1beta1.QueueList{
-				Items: []v1beta1.Queue{
+			queueList := &s2hv1.QueueList{
+				Items: []s2hv1.Queue{
 					{
-						Spec: v1beta1.QueueSpec{
+						Spec: s2hv1.QueueSpec{
 							Name:       alpine,
 							NoOfOrder:  1,
-							Components: v1beta1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
+							Components: s2hv1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 				},
 			}
@@ -232,21 +232,21 @@ var _ = Describe("Queue Controller", func() {
 
 			priorityQueues := []string{"alpine", "ubuntu"}
 
-			queue := &v1beta1.Queue{
-				Spec: v1beta1.QueueSpec{Name: ubuntu,
-					Components: v1beta1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
+			queue := &s2hv1.Queue{
+				Spec: s2hv1.QueueSpec{Name: ubuntu,
+					Components: s2hv1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
 				},
-				Status: v1beta1.QueueStatus{},
+				Status: s2hv1.QueueStatus{},
 			}
-			queueList := &v1beta1.QueueList{
-				Items: []v1beta1.Queue{
+			queueList := &s2hv1.QueueList{
+				Items: []s2hv1.Queue{
 					{
-						Spec: v1beta1.QueueSpec{
+						Spec: s2hv1.QueueSpec{
 							Name:       alpine,
 							NoOfOrder:  1,
-							Components: v1beta1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
+							Components: s2hv1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 				},
 			}
@@ -272,33 +272,33 @@ var _ = Describe("Queue Controller", func() {
 
 			priorityQueues := []string{"group", "alpine"}
 
-			queue := &v1beta1.Queue{
-				Spec: v1beta1.QueueSpec{Name: "group", Bundle: "group",
-					Components: v1beta1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
+			queue := &s2hv1.Queue{
+				Spec: s2hv1.QueueSpec{Name: "group", Bundle: "group",
+					Components: s2hv1.QueueComponents{{Name: ubuntu, Repository: ubuntu, Version: "3.9.4"}},
 				},
-				Status: v1beta1.QueueStatus{},
+				Status: s2hv1.QueueStatus{},
 			}
-			queueList := &v1beta1.QueueList{
-				Items: []v1beta1.Queue{
+			queueList := &s2hv1.QueueList{
+				Items: []s2hv1.Queue{
 					{
-						Spec: v1beta1.QueueSpec{
+						Spec: s2hv1.QueueSpec{
 							Name:       alpine,
 							NoOfOrder:  1,
-							Components: v1beta1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
+							Components: s2hv1.QueueComponents{{Name: alpine, Repository: alpine, Version: "3.9.0"}},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 					{
-						Spec: v1beta1.QueueSpec{
+						Spec: s2hv1.QueueSpec{
 							Name:      "group",
 							Bundle:    "group",
 							NoOfOrder: 2,
-							Components: v1beta1.QueueComponents{
+							Components: s2hv1.QueueComponents{
 								{Name: stretch, Repository: stretch, Version: "3.9.1"},
 								{Name: ubuntu, Repository: ubuntu, Version: "3.9.2"},
 							},
 						},
-						Status: v1beta1.QueueStatus{},
+						Status: s2hv1.QueueStatus{},
 					},
 				},
 			}
@@ -324,23 +324,23 @@ var _ = Describe("Queue Controller", func() {
 
 			c := controller{}
 
-			queue := &v1beta1.Queue{
+			queue := &s2hv1.Queue{
 				ObjectMeta: metav1.ObjectMeta{Name: "comp1"},
-				Spec:       v1beta1.QueueSpec{NoOfOrder: 4},
+				Spec:       s2hv1.QueueSpec{NoOfOrder: 4},
 			}
-			queueList := &v1beta1.QueueList{
-				Items: []v1beta1.Queue{
+			queueList := &s2hv1.QueueList{
+				Items: []s2hv1.Queue{
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "comp1"},
-						Spec:       v1beta1.QueueSpec{NoOfOrder: 4},
+						Spec:       s2hv1.QueueSpec{NoOfOrder: 4},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "comp2"},
-						Spec:       v1beta1.QueueSpec{NoOfOrder: -1},
+						Spec:       s2hv1.QueueSpec{NoOfOrder: -1},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{Name: "comp3"},
-						Spec:       v1beta1.QueueSpec{NoOfOrder: 10},
+						Spec:       s2hv1.QueueSpec{NoOfOrder: 10},
 					},
 				},
 			}
@@ -349,29 +349,29 @@ var _ = Describe("Queue Controller", func() {
 
 			g.Expect(len(queueList.Items)).To(Equal(3))
 			g.Expect(queueList.Items).To(ContainElement(
-				v1beta1.Queue{
+				s2hv1.Queue{
 					ObjectMeta: metav1.ObjectMeta{Name: "comp1"},
-					Spec:       v1beta1.QueueSpec{NoOfOrder: 1},
+					Spec:       s2hv1.QueueSpec{NoOfOrder: 1},
 				},
 			))
 			g.Expect(queueList.Items).To(ContainElement(
-				v1beta1.Queue{
+				s2hv1.Queue{
 					ObjectMeta: metav1.ObjectMeta{Name: "comp2"},
-					Spec:       v1beta1.QueueSpec{NoOfOrder: 2},
+					Spec:       s2hv1.QueueSpec{NoOfOrder: 2},
 				},
 			))
 			g.Expect(queueList.Items).To(ContainElement(
-				v1beta1.Queue{
+				s2hv1.Queue{
 					ObjectMeta: metav1.ObjectMeta{Name: "comp3"},
-					Spec:       v1beta1.QueueSpec{NoOfOrder: 3},
+					Spec:       s2hv1.QueueSpec{NoOfOrder: 3},
 				},
 			))
 		})
 	})
 })
 
-func getNonEmptyQueue(queues []v1beta1.Queue) []v1beta1.Queue {
-	out := make([]v1beta1.Queue, 0)
+func getNonEmptyQueue(queues []s2hv1.Queue) []s2hv1.Queue {
+	out := make([]s2hv1.Queue, 0)
 	for _, q := range queues {
 		if q.Spec.Name != "" {
 			out = append(out, q)

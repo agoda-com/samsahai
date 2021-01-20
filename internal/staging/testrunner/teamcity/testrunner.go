@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -110,7 +110,7 @@ func (t *testRunner) GetName() string {
 }
 
 // Trigger implements the staging testRunner Trigger function
-func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) error {
+func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s2hv1.Queue) error {
 	if testConfig == nil {
 		return errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
@@ -223,7 +223,7 @@ func (t *testRunner) Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue 
 }
 
 // GetResult implements the staging testRunner GetResult function
-func (t *testRunner) GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) (
+func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue *s2hv1.Queue) (
 	isResultSuccess bool, isBuildFinished bool, err error) {
 
 	if testConfig == nil {

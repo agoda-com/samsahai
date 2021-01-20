@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
@@ -24,15 +24,15 @@ var _ = Describe("S2H Controller", func() {
 			plugins:  map[string]internal.Plugin{},
 		}
 		pluginName := "example"
-		mockTeam := s2hv1beta1.Team{
-			Spec: s2hv1beta1.TeamSpec{
+		mockTeam := s2hv1.Team{
+			Spec: s2hv1.TeamSpec{
 				Owners: []string{"teamTest@samsahai.io"},
-				StagingCtrl: &s2hv1beta1.StagingCtrl{
+				StagingCtrl: &s2hv1.StagingCtrl{
 					IsDeploy: false,
 				},
 			},
 		}
-		mockTeamUsingTemplate := s2hv1beta1.Team{}
+		mockTeamUsingTemplate := s2hv1.Team{}
 
 		It("should successfully load plugins", func() {
 			ctrl.loadPlugins("plugin")

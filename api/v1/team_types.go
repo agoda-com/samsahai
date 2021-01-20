@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
 	"sort"
@@ -109,6 +109,7 @@ type TeamStatus struct {
 	// DesiredComponentImageCreatedTime represents mapping of desired component image and created time
 	// map[componentName][repository:tag] = image and createdTime
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	DesiredComponentImageCreatedTime map[string]map[string]DesiredImageTime `json:"desiredComponentImageCreatedTime,omitempty"`
 
 	// ActivePromotedBy represents a person who promoted the ActivePromotion
@@ -261,20 +262,21 @@ type TeamCondition struct {
 type TeamConditionType string
 
 const (
-	TeamNamespaceStagingCreated            TeamConditionType = "TeamNamespaceStagingCreated"
-	TeamNamespacePreActiveCreated          TeamConditionType = "TeamNamespacePreActiveCreated"
-	TeamNamespacePreviousActiveCreated     TeamConditionType = "TeamNamespacePreviousActiveCreated"
-	TeamNamespaceActiveCreated             TeamConditionType = "TeamNamespaceActiveCreated"
-	TeamNamespacePullRequestCreated        TeamConditionType = "TeamNamespacePullRequestCreated"
-	TeamConfigExisted                      TeamConditionType = "TeamConfigExist"
-	TeamPostStagingNamespaceCreationRun    TeamConditionType = "TeamPostStagingNamespaceCreationRun"
-	TeamPostPreActiveNamespaceCreationRun  TeamConditionType = "TeamPostPreActiveNamespaceCreationRun"
-	TeamFirstNotifyComponentChanged        TeamConditionType = "TeamFirstNotifyComponentChanged"
-	TeamFirstActivePromotionRun            TeamConditionType = "TeamFirstActivePromotionRun"
-	TeamUsedUpdated                        TeamConditionType = "TeamUsedUpdated"
-	TeamRequiredFieldsValidated            TeamConditionType = "TeamRequiredFieldsValidated"
-	TeamActiveEnvironmentDeleted           TeamConditionType = "TeamActiveEnvironmentDeleted"
-	TeamActiveEnvironmentDeletedReportSent TeamConditionType = "TeamActiveEnvironmentDeletedReportSent"
+	TeamNamespaceStagingCreated             TeamConditionType = "TeamNamespaceStagingCreated"
+	TeamNamespacePreActiveCreated           TeamConditionType = "TeamNamespacePreActiveCreated"
+	TeamNamespacePreviousActiveCreated      TeamConditionType = "TeamNamespacePreviousActiveCreated"
+	TeamNamespaceActiveCreated              TeamConditionType = "TeamNamespaceActiveCreated"
+	TeamNamespacePullRequestCreated         TeamConditionType = "TeamNamespacePullRequestCreated"
+	TeamConfigExisted                       TeamConditionType = "TeamConfigExisted"
+	TeamPostStagingNamespaceCreationRun     TeamConditionType = "TeamPostStagingNamespaceCreationRun"
+	TeamPostPreActiveNamespaceCreationRun   TeamConditionType = "TeamPostPreActiveNamespaceCreationRun"
+	TeamPostPullRequestNamespaceCreationRun TeamConditionType = "TeamPostPullRequestNamespaceCreationRun"
+	TeamFirstNotifyComponentChanged         TeamConditionType = "TeamFirstNotifyComponentChanged"
+	TeamFirstActivePromotionRun             TeamConditionType = "TeamFirstActivePromotionRun"
+	TeamUsedUpdated                         TeamConditionType = "TeamUsedUpdated"
+	TeamRequiredFieldsValidated             TeamConditionType = "TeamRequiredFieldsValidated"
+	TeamActiveEnvironmentDeleted            TeamConditionType = "TeamActiveEnvironmentDeleted"
+	TeamActiveEnvironmentDeletedReportSent  TeamConditionType = "TeamActiveEnvironmentDeletedReportSent"
 )
 
 func (ts *TeamStatus) IsConditionTrue(cond TeamConditionType) bool {

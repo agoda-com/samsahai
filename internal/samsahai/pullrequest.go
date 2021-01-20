@@ -7,7 +7,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 )
 
@@ -15,28 +15,28 @@ import (
 func (c *controller) TriggerPullRequestDeployment(teamName, component, tag, prNumber, commitSHA string) error {
 	ctx := context.TODO()
 
-	teamComp := s2hv1beta1.Team{}
+	teamComp := s2hv1.Team{}
 	if err := c.GetTeam(teamName, &teamComp); err != nil {
 		return err
 	}
 
 	namespace := teamComp.Status.Namespace.Staging
 	prTriggerName := internal.GenPullRequestComponentName(component, prNumber)
-	prTrigger := s2hv1beta1.PullRequestTrigger{}
+	prTrigger := s2hv1.PullRequestTrigger{}
 	err := c.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: prTriggerName}, &prTrigger)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			prTrigger := s2hv1beta1.PullRequestTrigger{
+			prTrigger := s2hv1.PullRequestTrigger{
 				ObjectMeta: v1.ObjectMeta{
 					Name:      prTriggerName,
 					Namespace: namespace,
 					Labels:    getPullRequestTriggerLabels(teamName, component, prNumber),
 				},
-				Spec: s2hv1beta1.PullRequestTriggerSpec{
+				Spec: s2hv1.PullRequestTriggerSpec{
 					Component: component,
 					PRNumber:  prNumber,
 					CommitSHA: commitSHA,
-					Image:     &s2hv1beta1.Image{Tag: tag},
+					Image:     &s2hv1.Image{Tag: tag},
 				},
 			}
 
@@ -52,7 +52,7 @@ func (c *controller) TriggerPullRequestDeployment(teamName, component, tag, prNu
 	}
 
 	if prTrigger.Spec.Image == nil {
-		prTrigger.Spec.Image = &s2hv1beta1.Image{}
+		prTrigger.Spec.Image = &s2hv1.Image{}
 	}
 
 	prTrigger.Spec.Image.Tag = tag

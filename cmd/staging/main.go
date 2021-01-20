@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2h "github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	desiredctrl "github.com/agoda-com/samsahai/internal/desiredcomponent"
@@ -68,7 +68,7 @@ func init() {
 	cobra.OnInitialize(util.InitViper)
 
 	_ = clientgoscheme.AddToScheme(scheme)
-	_ = s2hv1beta1.AddToScheme(scheme)
+	_ = s2hv1.AddToScheme(scheme)
 
 	cmd.PersistentFlags().Bool(s2h.VKDebug, false, "More debugging log.")
 
@@ -156,11 +156,9 @@ func startCtrlCmd() *cobra.Command {
 				prqueuectrl.WithClient(runtimeClient))
 			_ = prtriggerctrl.New(teamName, mgr, prQueueCtrl, authToken, samsahaiClient)
 
-			logger.Info("setup signal handler")
-			stop := signals.SetupSignalHandler()
-
 			logger.Info("starting controller")
-			go stagingCtrl.Start(stop)
+			chStop := make(chan struct{})
+			go stagingCtrl.Start(chStop)
 
 			logger.Info("initializing http routes")
 
@@ -172,6 +170,9 @@ func startCtrlCmd() *cobra.Command {
 					logger.Error(err, "cannot start web server")
 				}
 			}()
+
+			logger.Info("setup signal handler")
+			stop := signals.SetupSignalHandler()
 
 			logger.Info("starting manager")
 			if err := mgr.Start(stop); err != nil {

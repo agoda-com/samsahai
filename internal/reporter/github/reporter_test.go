@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hgithub "github.com/agoda-com/samsahai/internal/reporter/github"
 	"github.com/agoda-com/samsahai/internal/util/github"
@@ -152,22 +152,22 @@ func newMockConfigCtrl(configType string) internal.ConfigController {
 	}
 }
 
-func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 	switch c.configType {
 	case "empty":
-		return &s2hv1beta1.Config{}, nil
+		return &s2hv1.Config{}, nil
 	case "failure":
-		return &s2hv1beta1.Config{
-			Status: s2hv1beta1.ConfigStatus{
-				Used: s2hv1beta1.ConfigSpec{
-					Reporter: &s2hv1beta1.ConfigReporter{
-						Github: &s2hv1beta1.ReporterGithub{
+		return &s2hv1.Config{
+			Status: s2hv1.ConfigStatus{
+				Used: s2hv1.ConfigSpec{
+					Reporter: &s2hv1.ConfigReporter{
+						Github: &s2hv1.ReporterGithub{
 							Enabled: true,
 							BaseURL: "https://github.com",
 						},
 					},
-					PullRequest: &s2hv1beta1.ConfigPullRequest{
-						Components: []*s2hv1beta1.PullRequestComponent{
+					PullRequest: &s2hv1.ConfigPullRequest{
+						Components: []*s2hv1.PullRequestComponent{
 							{
 								Name:          "pr-comp1",
 								GitRepository: "error",
@@ -178,17 +178,17 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 			},
 		}, nil
 	default:
-		return &s2hv1beta1.Config{
-			Status: s2hv1beta1.ConfigStatus{
-				Used: s2hv1beta1.ConfigSpec{
-					Reporter: &s2hv1beta1.ConfigReporter{
-						Github: &s2hv1beta1.ReporterGithub{
+		return &s2hv1.Config{
+			Status: s2hv1.ConfigStatus{
+				Used: s2hv1.ConfigSpec{
+					Reporter: &s2hv1.ConfigReporter{
+						Github: &s2hv1.ReporterGithub{
 							Enabled: true,
 							BaseURL: "https://github.com",
 						},
 					},
-					PullRequest: &s2hv1beta1.ConfigPullRequest{
-						Components: []*s2hv1beta1.PullRequestComponent{
+					PullRequest: &s2hv1.ConfigPullRequest{
+						Components: []*s2hv1.PullRequestComponent{
 							{
 								Name:          "pr-comp1",
 								GitRepository: "samsahai/samsahai",
@@ -201,27 +201,27 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 	}
 }
 
-func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
-	return map[string]*s2hv1beta1.Component{}, nil
+func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1.Component, error) {
+	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
-	return map[string]*s2hv1beta1.Component{}, nil
+func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1.Component, error) {
+	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
-	return map[string]*s2hv1beta1.Component{}, nil
+func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1.Component, error) {
+	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
-	return s2hv1beta1.ConfigBundles{}, nil
+func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1.ConfigBundles, error) {
+	return s2hv1.ConfigBundles{}, nil
 }
 
 func (c *mockConfigCtrl) GetPriorityQueues(configName string) ([]string, error) {
 	return nil, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1beta1.ConfigPullRequest, error) {
+func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1.ConfigPullRequest, error) {
 	return nil, nil
 }
 
@@ -229,7 +229,7 @@ func (c *mockConfigCtrl) GetPullRequestComponentDependencies(configName, prCompN
 	return nil, nil
 }
 
-func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+func (c *mockConfigCtrl) Update(config *s2hv1.Config) error {
 	return nil
 }
 
@@ -237,6 +237,6 @@ func (c *mockConfigCtrl) Delete(configName string) error {
 	return nil
 }
 
-func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) error {
+func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1.Config) error {
 	return nil
 }

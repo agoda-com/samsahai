@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -71,7 +71,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to PullRequestTrigger
-	err = c.Watch(&source.Kind{Type: &s2hv1beta1.PullRequestTrigger{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &s2hv1.PullRequestTrigger{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -87,8 +87,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=pullrequestqueues/status,verbs=get;update;patch
 func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.TODO()
+
 	now := metav1.Now()
-	prTrigger := &s2hv1beta1.PullRequestTrigger{}
+	prTrigger := &s2hv1.PullRequestTrigger{}
 	err := c.client.Get(ctx, req.NamespacedName, prTrigger)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -167,8 +168,8 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			*prTrigger.Status.NoOfRetry++
 		}
 
-		prTrigger.Status.SetCondition(s2hv1beta1.PullRequestTriggerCondFailed, corev1.ConditionTrue, err.Error())
-		prTrigger.Status.SetResult(s2hv1beta1.PullRequestTriggerFailure)
+		prTrigger.Status.SetCondition(s2hv1.PullRequestTriggerCondFailed, corev1.ConditionTrue, err.Error())
+		prTrigger.Status.SetResult(s2hv1.PullRequestTriggerFailure)
 
 		if err := c.client.Update(context.TODO(), prTrigger); err != nil {
 			return reconcile.Result{}, err
@@ -178,7 +179,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	// successfully get component version from image registry
-	prTrigger.Status.SetResult(s2hv1beta1.PullRequestTriggerSuccess)
+	prTrigger.Status.SetResult(s2hv1.PullRequestTriggerSuccess)
 
 	comp := prTrigger.Spec.Component
 	imgRepo := prTrigger.Spec.Image.Repository
@@ -196,7 +197,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	return reconcile.Result{}, nil
 }
 
-func (c *controller) fillEmptyData(prTrigger *s2hv1beta1.PullRequestTrigger, prCompSource *samsahairpc.ComponentSource) (changed bool) {
+func (c *controller) fillEmptyData(prTrigger *s2hv1.PullRequestTrigger, prCompSource *samsahairpc.ComponentSource) (changed bool) {
 	now := metav1.Now()
 
 	if prTrigger.Status.CreatedAt == nil {
@@ -209,11 +210,15 @@ func (c *controller) fillEmptyData(prTrigger *s2hv1beta1.PullRequestTrigger, prC
 	}
 
 	if prTrigger.Spec.Image == nil {
-		prTrigger.Spec.Image = &s2hv1beta1.Image{}
+		prTrigger.Spec.Image = &s2hv1.Image{}
 		changed = true
 	}
 	if prTrigger.Spec.Image.Repository == "" {
 		prTrigger.Spec.Image.Repository = prCompSource.Image.Repository
+		changed = true
+	}
+	if prTrigger.Spec.Image.Tag == "" {
+		prTrigger.Spec.Image.Tag = prCompSource.Image.Tag
 		changed = true
 	}
 	if prTrigger.Spec.Pattern == "" {
@@ -221,14 +226,18 @@ func (c *controller) fillEmptyData(prTrigger *s2hv1beta1.PullRequestTrigger, prC
 		changed = true
 	}
 	if prTrigger.Spec.Source == "" {
-		prTrigger.Spec.Source = s2hv1beta1.UpdatingSource(prCompSource.Source)
+		prTrigger.Spec.Source = s2hv1.UpdatingSource(prCompSource.Source)
 		changed = true
+	}
+
+	if prTrigger.Spec.Image.Tag == "" {
+		prTrigger.Spec.Image.Tag = prTrigger.Spec.Pattern
 	}
 
 	return
 }
 
-func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger *s2hv1beta1.PullRequestTrigger) (*samsahairpc.ComponentSource, error) {
+func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger *s2hv1.PullRequestTrigger) (*samsahairpc.ComponentSource, error) {
 	compName := prTrigger.Spec.Component
 	prCompSource, err := c.s2hClient.GetPullRequestComponentSource(ctx, &samsahairpc.TeamWithPullRequest{
 		TeamName:      c.teamName,
@@ -264,7 +273,7 @@ func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger
 }
 
 func (c *controller) createPullRequestQueue(namespace, compName, compRepo, compVersion, prNumber, commitSHA string) error {
-	comps := s2hv1beta1.QueueComponents{
+	comps := s2hv1.QueueComponents{
 		{
 			Name:       compName,
 			Repository: compRepo,
@@ -280,7 +289,7 @@ func (c *controller) createPullRequestQueue(namespace, compName, compRepo, compV
 	return nil
 }
 
-func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context, prTrigger *s2hv1beta1.PullRequestTrigger) error {
+func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context, prTrigger *s2hv1.PullRequestTrigger) error {
 	prTriggerRPC := &samsahairpc.PullRequestTrigger{
 		Name:      prTrigger.Name,
 		Namespace: prTrigger.Namespace,

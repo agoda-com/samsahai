@@ -3,7 +3,7 @@ package github
 import (
 	"fmt"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -101,7 +101,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 
 	// send pull request history URL
 	prHistURL := r.getPRHistoryURL(comp)
-	prHistDesc := fmt.Sprintf("Samsahai pull request deployment history")
+	prHistDesc := "Samsahai pull request deployment history"
 	err = r.post(githubConfig, repository, commitSHA, LabelNameHistory, prHistURL, prHistDesc, commitStatus,
 		internal.PullRequestQueueType)
 	if err != nil {
@@ -110,7 +110,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 
 	// send pull request logs URL
 	prLogsURL := r.getPRLogsURL(comp)
-	prLogsDesc := fmt.Sprintf("Samsahai pull request deployment logs")
+	prLogsDesc := "Samsahai pull request deployment logs"
 	err = r.post(githubConfig, repository, commitSHA, LabelNameLogs, prLogsURL, prLogsDesc, commitStatus,
 		internal.PullRequestQueueType)
 	if err != nil {
@@ -171,7 +171,7 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return nil
 }
 
-func (r *reporter) post(githubConfig *s2hv1beta1.ReporterGithub,
+func (r *reporter) post(githubConfig *s2hv1.ReporterGithub,
 	repository, commitSHA, labelName, targetURL, description string,
 	commitStatus github.CommitStatus, event internal.EventType) error {
 
@@ -198,7 +198,7 @@ func (r *reporter) post(githubConfig *s2hv1beta1.ReporterGithub,
 }
 
 func (r *reporter) getGithubConfig(teamName string, configCtrl internal.ConfigController) (
-	*s2hv1beta1.ReporterGithub, error) {
+	*s2hv1.ReporterGithub, error) {
 
 	config, err := configCtrl.Get(teamName)
 	if err != nil {
@@ -241,7 +241,7 @@ func (r *reporter) getGithubRepository(comp *internal.ComponentUpgradeReporter,
 }
 
 func (r *reporter) overrideGithubCredential(comp *internal.ComponentUpgradeReporter,
-	githubConfig *s2hv1beta1.ReporterGithub) {
+	githubConfig *s2hv1.ReporterGithub) {
 
 	if comp.Credential.Github != nil && comp.Credential.Github.Token != "" {
 		r.githubToken = comp.Credential.Github.Token

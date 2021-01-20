@@ -3,6 +3,7 @@ package k8sobject
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -14,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 )
@@ -38,7 +39,7 @@ func getDefaultLabelsWithVersion(teamName string) map[string]string {
 	return defaultLabelsWithVersion
 }
 
-func GetResourceQuota(teamComp *s2hv1beta1.Team, namespaceName string, resources corev1.ResourceList) runtime.Object {
+func GetResourceQuota(teamComp *s2hv1.Team, namespaceName string, resources corev1.ResourceList) runtime.Object {
 	cpuResource := teamComp.Status.Used.Resources.Cpu()
 	memoryResource := teamComp.Status.Used.Resources.Memory()
 
@@ -69,7 +70,9 @@ func GetResourceQuota(teamComp *s2hv1beta1.Team, namespaceName string, resources
 	return &resourceQuota
 }
 
-func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceName string, configs *internal.SamsahaiConfig) runtime.Object {
+func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName string,
+	configs *internal.SamsahaiConfig) runtime.Object {
+
 	teamName := teamComp.GetName()
 
 	samsahaiImage := configs.SamsahaiImage
@@ -203,7 +206,7 @@ func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceN
 	return &deployment
 }
 
-func GetService(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
+func GetService(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName string) runtime.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	service := corev1.Service{
@@ -233,7 +236,7 @@ func GetService(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceName
 	return &service
 }
 
-func GetRole(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
+func GetRole(teamComp *s2hv1.Team, namespaceName string) runtime.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	role := rbacv1.Role{
@@ -351,6 +354,15 @@ func GetRole(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
 			},
 			{
 				APIGroups: []string{
+					"networking.istio.io",
+				},
+				Resources: []string{
+					"virtualservices",
+				},
+				Verbs: []string{"*"},
+			},
+			{
+				APIGroups: []string{
 					"",
 				},
 				Resources: []string{
@@ -376,7 +388,7 @@ func GetRole(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
 	return &role
 }
 
-func GetRoleBinding(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
+func GetRoleBinding(teamComp *s2hv1.Team, namespaceName string) runtime.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	roleBinding := rbacv1.RoleBinding{
@@ -402,7 +414,7 @@ func GetRoleBinding(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Obj
 	return &roleBinding
 }
 
-func GetClusterRole(teamComp *s2hv1beta1.Team, namespace string) runtime.Object {
+func GetClusterRole(teamComp *s2hv1.Team, namespace string) runtime.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	role := rbacv1.ClusterRole{
@@ -431,13 +443,22 @@ func GetClusterRole(teamComp *s2hv1beta1.Team, namespace string) runtime.Object 
 				},
 				Verbs: []string{"*"},
 			},
+			{
+				APIGroups: []string{
+					"policy",
+				},
+				Resources: []string{
+					"podsecuritypolicies",
+				},
+				Verbs: []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+			},
 		},
 	}
 
 	return &role
 }
 
-func GetClusterRoleBinding(teamComp *s2hv1beta1.Team, namespace string) runtime.Object {
+func GetClusterRoleBinding(teamComp *s2hv1.Team, namespace string) runtime.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	roleBinding := rbacv1.ClusterRoleBinding{
@@ -462,7 +483,7 @@ func GetClusterRoleBinding(teamComp *s2hv1beta1.Team, namespace string) runtime.
 	return &roleBinding
 }
 
-func GetServiceAccount(teamComp *s2hv1beta1.Team, namespaceName string) runtime.Object {
+func GetServiceAccount(teamComp *s2hv1.Team, namespaceName string) runtime.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	serviceAccount := corev1.ServiceAccount{
@@ -481,7 +502,7 @@ type KeyValue struct {
 	Value intstr.IntOrString
 }
 
-func GetSecret(scheme *runtime.Scheme, teamComp *s2hv1beta1.Team, namespaceName string, kvs ...KeyValue) runtime.Object {
+func GetSecret(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName string, kvs ...KeyValue) runtime.Object {
 	teamName := teamComp.GetName()
 	data := map[string][]byte{}
 	for i := range kvs {
@@ -542,14 +563,14 @@ func isDeploymentChanged(found, target interface{}) bool {
 	var isObjChanged bool
 	foundLabels := found.(*appsv1.Deployment).Labels
 	targetLabels := target.(*appsv1.Deployment).Labels
-	if deepEqual(foundLabels, targetLabels) {
+	if !deepEqual(foundLabels, targetLabels) {
 		isObjChanged = true
 		found.(*appsv1.Deployment).Labels = targetLabels
 	}
 
 	foundSpecTmplLabels := found.(*appsv1.Deployment).Spec.Template.Labels
 	targetSpecTmplLabels := target.(*appsv1.Deployment).Spec.Template.Labels
-	if deepEqual(foundSpecTmplLabels, targetSpecTmplLabels) {
+	if !deepEqual(foundSpecTmplLabels, targetSpecTmplLabels) {
 		isObjChanged = true
 		found.(*appsv1.Deployment).Spec.Template.Labels = targetSpecTmplLabels
 	}
@@ -558,7 +579,8 @@ func isDeploymentChanged(found, target interface{}) bool {
 	for i := 0; i < containersLen; i++ {
 		foundTmplContainer := found.(*appsv1.Deployment).Spec.Template.Spec.Containers[i]
 		targetTmplContainer := target.(*appsv1.Deployment).Spec.Template.Spec.Containers[i]
-		if deepEqual(foundTmplContainer, targetTmplContainer) {
+
+		if !areContainersEqual(foundTmplContainer, targetTmplContainer) {
 			isObjChanged = true
 			found.(*appsv1.Deployment).Spec.Template.Spec.Containers[i] = targetTmplContainer
 		}
@@ -567,10 +589,26 @@ func isDeploymentChanged(found, target interface{}) bool {
 	return isObjChanged
 }
 
+func areContainersEqual(firstContainer, secondContainer corev1.Container) bool {
+	if len(firstContainer.Env) > 0 {
+		sort.SliceStable(firstContainer.Env, func(i, j int) bool {
+			return firstContainer.Env[i].Name < firstContainer.Env[j].Name
+		})
+	}
+
+	if len(secondContainer.Env) > 0 {
+		sort.SliceStable(secondContainer.Env, func(i, j int) bool {
+			return secondContainer.Env[i].Name < secondContainer.Env[j].Name
+		})
+	}
+
+	return deepEqual(firstContainer, secondContainer)
+}
+
 func isResourceQuotaChanged(found, target interface{}) bool {
 	foundSpec := found.(*corev1.ResourceQuota).Spec
 	targetSpec := target.(*corev1.ResourceQuota).Spec
-	if deepEqual(foundSpec, targetSpec) {
+	if !deepEqual(foundSpec, targetSpec) {
 		found.(*corev1.ResourceQuota).Spec = targetSpec
 		return true
 	}
@@ -582,14 +620,14 @@ func isRoleChanged(found, target interface{}) bool {
 	var isObjChanged bool
 	foundLabels := found.(*rbacv1.Role).Labels
 	targetLabels := target.(*rbacv1.Role).Labels
-	if deepEqual(foundLabels, targetLabels) {
+	if !deepEqual(foundLabels, targetLabels) {
 		isObjChanged = true
 		found.(*rbacv1.Role).Labels = targetLabels
 	}
 
 	foundRules := found.(*rbacv1.Role).Rules
 	targetRules := target.(*rbacv1.Role).Rules
-	if deepEqual(foundRules, targetRules) {
+	if !deepEqual(foundRules, targetRules) {
 		isObjChanged = true
 		found.(*rbacv1.Role).Rules = targetRules
 	}
@@ -601,14 +639,14 @@ func isRoleBindingChanged(found, target interface{}) bool {
 	var isObjChanged bool
 	foundLabels := found.(*rbacv1.RoleBinding).Labels
 	targetLabels := target.(*rbacv1.RoleBinding).Labels
-	if deepEqual(foundLabels, targetLabels) {
+	if !deepEqual(foundLabels, targetLabels) {
 		isObjChanged = true
 		found.(*rbacv1.RoleBinding).Labels = targetLabels
 	}
 
 	foundSubjects := found.(*rbacv1.RoleBinding).Subjects
 	targetSubjects := target.(*rbacv1.RoleBinding).Subjects
-	if deepEqual(foundSubjects, targetSubjects) {
+	if !deepEqual(foundSubjects, targetSubjects) {
 		isObjChanged = true
 		found.(*rbacv1.RoleBinding).Subjects = targetSubjects
 	}
@@ -620,14 +658,14 @@ func isSecretChanged(found, target interface{}) bool {
 	var isObjChanged bool
 	foundLabels := found.(*corev1.Secret).Labels
 	targetLabels := target.(*corev1.Secret).Labels
-	if deepEqual(foundLabels, targetLabels) {
+	if !deepEqual(foundLabels, targetLabels) {
 		isObjChanged = true
 		found.(*corev1.Secret).Labels = targetLabels
 	}
 
 	foundData := found.(*corev1.Secret).Data
 	targetData := target.(*corev1.Secret).Data
-	if deepEqual(foundData, targetData) {
+	if !deepEqual(foundData, targetData) {
 		isObjChanged = true
 		found.(*corev1.Secret).Data = targetData
 	}
@@ -639,21 +677,21 @@ func isServiceChanged(found, target interface{}) bool {
 	var isObjChanged bool
 	foundLabels := found.(*corev1.Service).Labels
 	targetLabels := target.(*corev1.Service).Labels
-	if deepEqual(foundLabels, targetLabels) {
+	if !deepEqual(foundLabels, targetLabels) {
 		isObjChanged = true
 		found.(*corev1.Service).Labels = targetLabels
 	}
 
 	foundSpecPorts := found.(*corev1.Service).Spec.Ports
 	targetSpecPorts := target.(*corev1.Service).Spec.Ports
-	if deepEqual(foundSpecPorts, targetSpecPorts) {
+	if !deepEqual(foundSpecPorts, targetSpecPorts) {
 		isObjChanged = true
 		found.(*corev1.Service).Spec.Ports = targetSpecPorts
 	}
 
 	foundSpecSelector := found.(*corev1.Service).Spec.Selector
 	targetSpecSelector := target.(*corev1.Service).Spec.Selector
-	if deepEqual(foundSpecSelector, targetSpecSelector) {
+	if !deepEqual(foundSpecSelector, targetSpecSelector) {
 		isObjChanged = true
 		found.(*corev1.Service).Spec.Selector = targetSpecSelector
 	}
@@ -665,7 +703,7 @@ func isServiceAccountChanged(found, target interface{}) bool {
 	var isObjChanged bool
 	foundLabels := found.(*corev1.ServiceAccount).Labels
 	targetLabels := target.(*corev1.ServiceAccount).Labels
-	if deepEqual(foundLabels, targetLabels) {
+	if !deepEqual(foundLabels, targetLabels) {
 		isObjChanged = true
 		found.(*corev1.ServiceAccount).Labels = targetLabels
 	}
@@ -674,5 +712,5 @@ func isServiceAccountChanged(found, target interface{}) bool {
 }
 
 func deepEqual(found, target interface{}) bool {
-	return !reflect.DeepEqual(found, target)
+	return reflect.DeepEqual(found, target)
 }

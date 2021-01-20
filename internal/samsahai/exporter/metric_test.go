@@ -18,8 +18,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
+	conf "github.com/agoda-com/samsahai/internal/util/config"
 	"github.com/agoda-com/samsahai/internal/util/http"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
@@ -29,15 +30,14 @@ func TestExporter(t *testing.T) {
 }
 
 var cfg *rest.Config
-var c client.Client
 
 func TestMain(m *testing.M) {
 	var err error
 	t := &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "crds")},
+		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "test", "data", "crds")},
 	}
 
-	err = s2hv1beta1.SchemeBuilder.AddToScheme(scheme.Scheme)
+	err = s2hv1.SchemeBuilder.AddToScheme(scheme.Scheme)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	if c, err = client.New(cfg, client.Options{Scheme: scheme.Scheme}); err != nil {
+	if _, err := client.New(cfg, client.Options{Scheme: scheme.Scheme}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -60,10 +60,12 @@ var _ = Describe("Samsahai Exporter", func() {
 	timeout := float64(3000)
 	namespace := "default"
 	g := NewWithT(GinkgoT())
-	var wgStop *sync.WaitGroup
-	var chStop chan struct{}
-	var configCtrl internal.ConfigController
-	var err error
+	var (
+		wgStop     *sync.WaitGroup
+		chStop     chan struct{}
+		configCtrl internal.ConfigController
+		err        error
+	)
 
 	RegisterMetrics()
 
@@ -75,13 +77,11 @@ var _ = Describe("Samsahai Exporter", func() {
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(configCtrl).NotTo(BeNil())
 
-		chStop = make(chan struct{})
-
 		mgr, err := manager.New(cfg, manager.Options{Namespace: namespace, MetricsBindAddress: ":8008"})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
-		teamList := &s2hv1beta1.TeamList{
-			Items: []s2hv1beta1.Team{
+		teamList := &s2hv1.TeamList{
+			Items: []s2hv1.Team{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "testQTeamName1",
@@ -89,14 +89,14 @@ var _ = Describe("Samsahai Exporter", func() {
 				},
 			},
 		}
-		queue := &s2hv1beta1.Queue{
+		queue := &s2hv1.Queue{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "group",
 				Namespace: namespace,
 			},
-			Spec: s2hv1beta1.QueueSpec{
+			Spec: s2hv1.QueueSpec{
 				TeamName: "testQTeamName1",
-				Components: s2hv1beta1.QueueComponents{
+				Components: s2hv1.QueueComponents{
 					{
 						Name:    "qName1",
 						Version: "10.9.8.7",
@@ -108,18 +108,18 @@ var _ = Describe("Samsahai Exporter", func() {
 				},
 				NoOfOrder: 0,
 			},
-			Status: s2hv1beta1.QueueStatus{
+			Status: s2hv1.QueueStatus{
 				NoOfProcessed: 1,
 				State:         "waiting",
 			},
 		}
-		activePromotion := &s2hv1beta1.ActivePromotion{
+		activePromotion := &s2hv1.ActivePromotion{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "testAPName1",
 				Namespace: namespace,
 			},
-			Status: s2hv1beta1.ActivePromotionStatus{
-				State: s2hv1beta1.ActivePromotionWaiting,
+			Status: s2hv1.ActivePromotionStatus{
+				State: s2hv1.ActivePromotionWaiting,
 			},
 		}
 
@@ -128,6 +128,7 @@ var _ = Describe("Samsahai Exporter", func() {
 		SetActivePromotionMetric(activePromotion)
 		SetHealthStatusMetric("9.9.9.8", "777888999", 234000)
 
+		chStop = make(chan struct{})
 		wgStop = &sync.WaitGroup{}
 		wgStop.Add(1)
 		go func() {
@@ -184,30 +185,30 @@ func newMockConfigCtrl() internal.ConfigController {
 	return &mockConfigCtrl{}
 }
 
-func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 	engine := "helm3"
-	deployConfig := s2hv1beta1.ConfigDeploy{
+	deployConfig := s2hv1.ConfigDeploy{
 		Timeout: metav1.Duration{Duration: 5 * time.Minute},
 		Engine:  &engine,
-		TestRunner: &s2hv1beta1.ConfigTestRunner{
-			TestMock: &s2hv1beta1.ConfigTestMock{
+		TestRunner: &s2hv1.ConfigTestRunner{
+			TestMock: &s2hv1.ConfigTestMock{
 				Result: true,
 			},
 		},
 	}
-	compSource := s2hv1beta1.UpdatingSource("public-registry")
-	redisConfigComp := s2hv1beta1.Component{
+	compSource := s2hv1.UpdatingSource("public-registry")
+	redisConfigComp := s2hv1.Component{
 		Name: "redis",
-		Chart: s2hv1beta1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
+		Chart: s2hv1.ComponentChart{
+			Repository: "https://charts.helm.sh/stable",
 			Name:       "redis",
 		},
-		Image: s2hv1beta1.ComponentImage{
+		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/redis",
 			Pattern:    "5.*debian-9.*",
 		},
 		Source: &compSource,
-		Values: s2hv1beta1.ComponentValues{
+		Values: s2hv1.ComponentValues{
 			"image": map[string]interface{}{
 				"repository": "bitnami/redis",
 				"pullPolicy": "IfNotPresent",
@@ -223,21 +224,21 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 			},
 		},
 	}
-	wordpressConfigComp := s2hv1beta1.Component{
+	wordpressConfigComp := s2hv1.Component{
 		Name: "wordpress",
-		Chart: s2hv1beta1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
+		Chart: s2hv1.ComponentChart{
+			Repository: "https://charts.helm.sh/stable",
 			Name:       "wordpress",
 		},
-		Image: s2hv1beta1.ComponentImage{
+		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/wordpress",
 			Pattern:    "5\\.2.*debian-9.*",
 		},
 		Source: &compSource,
-		Dependencies: []*s2hv1beta1.Component{
+		Dependencies: []*s2hv1.Dependency{
 			{
 				Name: "mariadb",
-				Image: s2hv1beta1.ComponentImage{
+				Image: s2hv1.ComponentImage{
 					Repository: "bitnami/mariadb",
 					Pattern:    "10\\.3.*debian-9.*",
 				},
@@ -245,34 +246,34 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 		},
 	}
 
-	mockConfig := &s2hv1beta1.Config{
-		Spec: s2hv1beta1.ConfigSpec{
-			Staging: &s2hv1beta1.ConfigStaging{
+	mockConfig := &s2hv1.Config{
+		Spec: s2hv1.ConfigSpec{
+			Staging: &s2hv1.ConfigStaging{
 				MaxRetry:   3,
 				Deployment: &deployConfig,
 			},
-			ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+			ActivePromotion: &s2hv1.ConfigActivePromotion{
 				Timeout:          metav1.Duration{Duration: 10 * time.Minute},
 				TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
 				Deployment:       &deployConfig,
 			},
-			Components: []*s2hv1beta1.Component{
+			Components: []*s2hv1.Component{
 				&redisConfigComp,
 				&wordpressConfigComp,
 			},
 		},
-		Status: s2hv1beta1.ConfigStatus{
-			Used: s2hv1beta1.ConfigSpec{
-				Staging: &s2hv1beta1.ConfigStaging{
+		Status: s2hv1.ConfigStatus{
+			Used: s2hv1.ConfigSpec{
+				Staging: &s2hv1.ConfigStaging{
 					MaxRetry:   3,
 					Deployment: &deployConfig,
 				},
-				ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+				ActivePromotion: &s2hv1.ConfigActivePromotion{
 					Timeout:          metav1.Duration{Duration: 10 * time.Minute},
 					TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
 					Deployment:       &deployConfig,
 				},
-				Components: []*s2hv1beta1.Component{
+				Components: []*s2hv1.Component{
 					&redisConfigComp,
 					&wordpressConfigComp,
 				},
@@ -283,13 +284,13 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 	return mockConfig, nil
 }
 
-func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1.Component, error) {
 	config, _ := c.Get(configName)
 
-	comps := map[string]*s2hv1beta1.Component{
+	comps := map[string]*s2hv1.Component{
 		"redis":     config.Status.Used.Components[0],
 		"wordpress": config.Status.Used.Components[1],
-		"mariadb":   config.Status.Used.Components[1].Dependencies[0],
+		"mariadb":   conf.Convert(config.Spec.Components[1].Dependencies[0], nil),
 	}
 
 	comps["mariadb"].Parent = "wordpress"
@@ -297,23 +298,23 @@ func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta
 	return comps, nil
 }
 
-func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
-	return map[string]*s2hv1beta1.Component{}, nil
+func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1.Component, error) {
+	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
-	return map[string]*s2hv1beta1.Component{}, nil
+func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1.Component, error) {
+	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
-	return s2hv1beta1.ConfigBundles{}, nil
+func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1.ConfigBundles, error) {
+	return s2hv1.ConfigBundles{}, nil
 }
 
 func (c *mockConfigCtrl) GetPriorityQueues(configName string) ([]string, error) {
 	return nil, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1beta1.ConfigPullRequest, error) {
+func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1.ConfigPullRequest, error) {
 	return nil, nil
 }
 
@@ -321,7 +322,7 @@ func (c *mockConfigCtrl) GetPullRequestComponentDependencies(configName, prCompN
 	return nil, nil
 }
 
-func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+func (c *mockConfigCtrl) Update(config *s2hv1.Config) error {
 	return nil
 }
 
@@ -329,6 +330,6 @@ func (c *mockConfigCtrl) Delete(configName string) error {
 	return nil
 }
 
-func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) error {
+func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1.Config) error {
 	return nil
 }

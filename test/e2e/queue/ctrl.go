@@ -10,7 +10,7 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/queue"
 )
@@ -49,7 +49,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		defer close(done)
 
 		q := queue.NewQueue(teamName, namespace, "alpine", "",
-			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.3"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "alpine", Version: "3.9.3"}}, s2hv1.QueueTypeUpgrade,
 		)
 
 		var err = controller.Add(q, nil)
@@ -60,7 +60,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		first, err := controller.First(namespace)
 		Expect(err).To(BeNil())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent(q.Name, q.Spec.Components[0])).To(BeTrue())
+		Expect(first.(*s2hv1.Queue).ContainSameComponent(q.Name, q.Spec.Components[0])).To(BeTrue())
 
 		err = controller.Remove(first)
 		Expect(err).To(BeNil())
@@ -75,16 +75,16 @@ var _ = Describe("[e2e] Queue controller", func() {
 		var err error
 		var first runtime.Object
 		var alpine390 = queue.NewQueue(teamName, namespace, "alpine", "",
-			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.0"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "alpine", Version: "3.9.0"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var alpine391 = queue.NewQueue(teamName, namespace, "alpine", "",
-			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.1"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "alpine", Version: "3.9.1"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var alpine392 = queue.NewQueue(teamName, namespace, "alpine", "",
-			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.2"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "alpine", Version: "3.9.2"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var ubuntu = queue.NewQueue(teamName, namespace, "ubuntu", "",
-			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "18.04"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "ubuntu", Version: "18.04"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var size int
 
@@ -97,7 +97,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		err = controller.Add(ubuntu, nil)
 		Expect(err).To(BeNil())
 		err = controller.Add(queue.NewQueue(teamName, namespace, "node", "",
-			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.0"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "node", Version: "11.0.0"}}, s2hv1.QueueTypeUpgrade,
 		), nil)
 		Expect(err).To(BeNil())
 		size = controller.Size(namespace)
@@ -105,7 +105,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		first, err = controller.First(namespace)
 		Expect(err).To(BeNil())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent(alpine390.Name, alpine390.Spec.Components[0])).To(BeTrue())
+		Expect(first.(*s2hv1.Queue).ContainSameComponent(alpine390.Name, alpine390.Spec.Components[0])).To(BeTrue())
 
 		By("Adding alpine 3.9.1")
 
@@ -113,7 +113,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(err).To(BeNil())
 		first, err = controller.First(namespace)
 		Expect(err).To(BeNil())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent(ubuntu.Name, ubuntu.Spec.Components[0])).To(BeTrue(),
+		Expect(first.(*s2hv1.Queue).ContainSameComponent(ubuntu.Name, ubuntu.Spec.Components[0])).To(BeTrue(),
 			"ubuntu should be on top of queue")
 		size = controller.Size(namespace)
 		Expect(size).To(Equal(3), "size of queue should remain 3")
@@ -124,7 +124,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(err).To(BeNil())
 		first, err = controller.First(namespace)
 		Expect(err).To(BeNil())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent(alpine392.Name, alpine392.Spec.Components[0])).To(BeTrue(),
+		Expect(first.(*s2hv1.Queue).ContainSameComponent(alpine392.Name, alpine392.Spec.Components[0])).To(BeTrue(),
 			"alpine 3.9.2 should be on top of queue")
 		size = controller.Size(namespace)
 		Expect(size).To(Equal(3), "size of queue should remain 3")
@@ -135,7 +135,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(err).To(BeNil())
 		first, err = controller.First(namespace)
 		Expect(err).To(BeNil())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent(ubuntu.Name, ubuntu.Spec.Components[0])).To(BeTrue(),
+		Expect(first.(*s2hv1.Queue).ContainSameComponent(ubuntu.Name, ubuntu.Spec.Components[0])).To(BeTrue(),
 			"ubuntu should be on top of queue")
 
 		By("Removing all queues")
@@ -152,13 +152,13 @@ var _ = Describe("[e2e] Queue controller", func() {
 		var err error
 		var first runtime.Object
 		var alpine = queue.NewQueue(teamName, namespace, "group", "group",
-			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.0"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "alpine", Version: "3.9.0"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var ubuntu = queue.NewQueue(teamName, namespace, "ubuntu", "",
-			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "18.04"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "ubuntu", Version: "18.04"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var node = queue.NewQueue(teamName, namespace, "group", "group",
-			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.0"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "node", Version: "11.0.0"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var size int
 
@@ -180,9 +180,9 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		first, err = controller.First(namespace)
 		Expect(err).To(BeNil())
-		Expect(len(first.(*s2hv1beta1.Queue).Spec.Components)).To(Equal(2))
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent("group", alpine.Spec.Components[0])).To(BeTrue())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent("group", node.Spec.Components[0])).To(BeTrue())
+		Expect(len(first.(*s2hv1.Queue).Spec.Components)).To(Equal(2))
+		Expect(first.(*s2hv1.Queue).ContainSameComponent("group", alpine.Spec.Components[0])).To(BeTrue())
+		Expect(first.(*s2hv1.Queue).ContainSameComponent("group", node.Spec.Components[0])).To(BeTrue())
 
 		By("Removing all queues")
 
@@ -198,16 +198,16 @@ var _ = Describe("[e2e] Queue controller", func() {
 		var err error
 		var first runtime.Object
 		var application = queue.NewQueue(teamName, namespace, "group", "group",
-			s2hv1beta1.QueueComponents{
+			s2hv1.QueueComponents{
 				{Name: "alpine", Version: "3.9.0"},
 				{Name: "node", Version: "11.0.0"},
-			}, s2hv1beta1.QueueTypeUpgrade,
+			}, s2hv1.QueueTypeUpgrade,
 		)
 		var ubuntu = queue.NewQueue(teamName, namespace, "ubuntu", "",
-			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "18.04"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "ubuntu", Version: "18.04"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var node = queue.NewQueue(teamName, namespace, "group", "group",
-			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.2"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "node", Version: "11.0.2"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var size int
 
@@ -229,9 +229,9 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		first, err = controller.First(namespace)
 		Expect(err).To(BeNil())
-		Expect(len(first.(*s2hv1beta1.Queue).Spec.Components)).To(Equal(2))
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent("group", application.Spec.Components[0])).To(BeTrue())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent("group", node.Spec.Components[0])).To(BeTrue())
+		Expect(len(first.(*s2hv1.Queue).Spec.Components)).To(Equal(2))
+		Expect(first.(*s2hv1.Queue).ContainSameComponent("group", application.Spec.Components[0])).To(BeTrue())
+		Expect(first.(*s2hv1.Queue).ContainSameComponent("group", node.Spec.Components[0])).To(BeTrue())
 
 		By("Removing all queues")
 
@@ -247,16 +247,16 @@ var _ = Describe("[e2e] Queue controller", func() {
 		var err error
 		var first runtime.Object
 		var application = queue.NewQueue(teamName, namespace, "group", "group",
-			s2hv1beta1.QueueComponents{
+			s2hv1.QueueComponents{
 				{Name: "alpine", Version: "3.9.0"},
 				{Name: "node", Version: "11.0.0"},
-			}, s2hv1beta1.QueueTypeUpgrade,
+			}, s2hv1.QueueTypeUpgrade,
 		)
 		var duplicatedNode = queue.NewQueue(teamName, namespace, "node", "",
-			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.1"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "node", Version: "11.0.1"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var node = queue.NewQueue(teamName, namespace, "node", "",
-			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.2"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "node", Version: "11.0.2"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var size int
 
@@ -278,8 +278,8 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		first, err = controller.First(namespace)
 		Expect(err).To(BeNil())
-		Expect(len(first.(*s2hv1beta1.Queue).Spec.Components)).To(Equal(1))
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent("group", application.Spec.Components[0])).To(BeTrue())
+		Expect(len(first.(*s2hv1.Queue).Spec.Components)).To(Equal(1))
+		Expect(first.(*s2hv1.Queue).ContainSameComponent("group", application.Spec.Components[0])).To(BeTrue())
 
 		By("Removing all queues")
 
@@ -297,16 +297,16 @@ var _ = Describe("[e2e] Queue controller", func() {
 		var err error
 		var size int
 		var alpine = queue.NewQueue(teamName, namespace, "group", "group",
-			s2hv1beta1.QueueComponents{{Name: "alpine", Version: "3.9.1"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "alpine", Version: "3.9.1"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var ubuntu16 = queue.NewQueue(teamName, namespace, "ubuntu", "",
-			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "16.04"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "ubuntu", Version: "16.04"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var ubuntu18 = queue.NewQueue(teamName, namespace, "ubuntu", "",
-			s2hv1beta1.QueueComponents{{Name: "ubuntu", Version: "18.04"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "ubuntu", Version: "18.04"}}, s2hv1.QueueTypeUpgrade,
 		)
 		var node = queue.NewQueue(teamName, namespace, "group", "group",
-			s2hv1beta1.QueueComponents{{Name: "node", Version: "11.0.0"}}, s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: "node", Version: "11.0.0"}}, s2hv1.QueueTypeUpgrade,
 		)
 
 		Expect(controller.Size(namespace)).To(Equal(0), "should start with empty queue")
@@ -326,7 +326,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		first, err := controller.First(namespace)
 		Expect(err).To(BeNil())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent(ubuntu16.Name, ubuntu16.Spec.Components[0])).To(BeTrue())
+		Expect(first.(*s2hv1.Queue).ContainSameComponent(ubuntu16.Name, ubuntu16.Spec.Components[0])).To(BeTrue())
 
 		By("Create 1 bundle queue with the highest priority")
 
@@ -338,8 +338,8 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		first, err = controller.First(namespace)
 		Expect(err).To(BeNil())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent(alpine.Name, alpine.Spec.Components[0])).To(BeTrue())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent(node.Name, node.Spec.Components[0])).To(BeTrue())
+		Expect(first.(*s2hv1.Queue).ContainSameComponent(alpine.Name, alpine.Spec.Components[0])).To(BeTrue())
+		Expect(first.(*s2hv1.Queue).ContainSameComponent(node.Name, node.Spec.Components[0])).To(BeTrue())
 
 		By("Create 1 queue with lower priority")
 
@@ -351,8 +351,8 @@ var _ = Describe("[e2e] Queue controller", func() {
 
 		first, err = controller.First(namespace)
 		Expect(err).To(BeNil())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent(alpine.Name, alpine.Spec.Components[0])).To(BeTrue())
-		Expect(first.(*s2hv1beta1.Queue).ContainSameComponent(node.Name, node.Spec.Components[0])).To(BeTrue())
+		Expect(first.(*s2hv1.Queue).ContainSameComponent(alpine.Name, alpine.Spec.Components[0])).To(BeTrue())
+		Expect(first.(*s2hv1.Queue).ContainSameComponent(node.Name, node.Spec.Components[0])).To(BeTrue())
 
 		By("Removing all queues")
 

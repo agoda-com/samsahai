@@ -1,4 +1,4 @@
-apiVersion: env.samsahai.io/v1beta1
+apiVersion: env.samsahai.io/v1
 kind: ActivePromotion
 metadata:
   # team name has to be the same as specifying

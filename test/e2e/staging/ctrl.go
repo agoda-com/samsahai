@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -59,27 +59,30 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	logger := s2hlog.Log.WithName(fmt.Sprintf("%s-test", internal.StagingCtrlName))
 
+	ctx := context.TODO()
+
 	redisCompName := "redis"
 	mariaDBCompName := "mariadb"
 	wordpressCompName := "wordpress"
 
-	stableWordPress := s2hv1beta1.StableComponent{
+	stableWordPress := s2hv1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      wordpressCompName,
 			Namespace: namespace,
 		},
-		Spec: s2hv1beta1.StableComponentSpec{
+		Spec: s2hv1.StableComponentSpec{
 			Name:       wordpressCompName,
-			Version:    "5.3.2-debian-10-r32",
+			Version:    "5.5.3-debian-10-r24",
 			Repository: "bitnami/wordpress",
 		},
 	}
-	stableMariaDB := s2hv1beta1.StableComponent{
+
+	stableMariaDB := s2hv1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mariaDBCompName,
 			Namespace: namespace,
 		},
-		Spec: s2hv1beta1.StableComponentSpec{
+		Spec: s2hv1.StableComponentSpec{
 			Name:       mariaDBCompName,
 			Version:    "10.3.16-debian-9-r9",
 			Repository: "bitnami/mariadb",
@@ -121,26 +124,26 @@ var _ = Describe("[e2e] Staging controller", func() {
 		"created-for": "s2h-testing",
 	}
 	teamName := "teamtest"
-	mockTeam := s2hv1beta1.Team{
+	mockTeam := s2hv1.Team{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
 			Labels: testLabels,
 		},
-		Spec: s2hv1beta1.TeamSpec{
+		Spec: s2hv1.TeamSpec{
 			Description: "team for testing",
 			Owners:      []string{"samsahai@samsahai.io"},
-			StagingCtrl: &s2hv1beta1.StagingCtrl{
+			StagingCtrl: &s2hv1.StagingCtrl{
 				IsDeploy: false,
 			},
 		},
-		Status: s2hv1beta1.TeamStatus{
-			Namespace: s2hv1beta1.TeamNamespace{
+		Status: s2hv1.TeamStatus{
+			Namespace: s2hv1.TeamNamespace{
 				Staging: "s2h-teamtest",
 			},
-			Used: s2hv1beta1.TeamSpec{
+			Used: s2hv1.TeamSpec{
 				Description: "team for testing",
 				Owners:      []string{"samsahai@samsahai.io"},
-				StagingCtrl: &s2hv1beta1.StagingCtrl{
+				StagingCtrl: &s2hv1.StagingCtrl{
 					IsDeploy: false,
 				},
 			},
@@ -148,29 +151,29 @@ var _ = Describe("[e2e] Staging controller", func() {
 	}
 
 	engine := "helm3"
-	deployConfig := s2hv1beta1.ConfigDeploy{
+	deployConfig := s2hv1.ConfigDeploy{
 		Timeout:                 metav1.Duration{Duration: 5 * time.Minute},
 		ComponentCleanupTimeout: metav1.Duration{Duration: 2 * time.Second},
 		Engine:                  &engine,
-		TestRunner: &s2hv1beta1.ConfigTestRunner{
-			TestMock: &s2hv1beta1.ConfigTestMock{
+		TestRunner: &s2hv1.ConfigTestRunner{
+			TestMock: &s2hv1.ConfigTestMock{
 				Result: true,
 			},
 		},
 	}
-	compSource := s2hv1beta1.UpdatingSource("public-registry")
-	configCompRedis := s2hv1beta1.Component{
+	compSource := s2hv1.UpdatingSource("public-registry")
+	configCompRedis := s2hv1.Component{
 		Name: redisCompName,
-		Chart: s2hv1beta1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
+		Chart: s2hv1.ComponentChart{
+			Repository: "https://charts.bitnami.com/bitnami",
 			Name:       redisCompName,
 		},
-		Image: s2hv1beta1.ComponentImage{
+		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/redis",
 			Pattern:    "5.*debian-9.*",
 		},
 		Source: &compSource,
-		Values: s2hv1beta1.ComponentValues{
+		Values: s2hv1.ComponentValues{
 			"image": map[string]interface{}{
 				"repository": "bitnami/redis",
 				"pullPolicy": "IfNotPresent",
@@ -187,27 +190,27 @@ var _ = Describe("[e2e] Staging controller", func() {
 		},
 	}
 
-	configCompWordpress := s2hv1beta1.Component{
+	configCompWordpress := s2hv1.Component{
 		Name: wordpressCompName,
-		Chart: s2hv1beta1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
+		Chart: s2hv1.ComponentChart{
+			Repository: "https://charts.bitnami.com/bitnami",
 			Name:       wordpressCompName,
 		},
-		Image: s2hv1beta1.ComponentImage{
+		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/wordpress",
-			Pattern:    "5\\.2.*debian-9.*",
+			Pattern:    "5\\.5.*debian-10.*",
 		},
 		Source: &compSource,
-		Dependencies: []*s2hv1beta1.Component{
+		Dependencies: []*s2hv1.Dependency{
 			{
 				Name: mariaDBCompName,
-				Image: s2hv1beta1.ComponentImage{
+				Image: s2hv1.ComponentImage{
 					Repository: "bitnami/mariadb",
-					Pattern:    "10\\.3.*debian-9.*",
+					Pattern:    "10\\.5.*debian-10.*",
 				},
 			},
 		},
-		Values: s2hv1beta1.ComponentValues{
+		Values: s2hv1.ComponentValues{
 			"resources": nil,
 			"service": map[string]interface{}{
 				"type": "NodePort",
@@ -217,10 +220,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 			},
 			"mariadb": map[string]interface{}{
 				"enabled": true,
-				"replication": map[string]interface{}{
-					"enabled": false,
-				},
-				"master": map[string]interface{}{
+				"primary": map[string]interface{}{
 					"persistence": map[string]interface{}{
 						"enabled": false,
 					},
@@ -229,12 +229,12 @@ var _ = Describe("[e2e] Staging controller", func() {
 		},
 	}
 
-	prImage := s2hv1beta1.ComponentImage{
+	prImage := s2hv1.ComponentImage{
 		Repository: "bitnami/redis",
 	}
 
-	configPR := s2hv1beta1.ConfigPullRequest{
-		Components: []*s2hv1beta1.PullRequestComponent{
+	configPR := s2hv1.ConfigPullRequest{
+		Components: []*s2hv1.PullRequestComponent{
 			{
 				Name:       redisCompName,
 				Image:      prImage,
@@ -245,8 +245,8 @@ var _ = Describe("[e2e] Staging controller", func() {
 	}
 
 	bundleName := "db"
-	configSpec := s2hv1beta1.ConfigSpec{
-		Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
+	configSpec := s2hv1.ConfigSpec{
+		Envs: map[s2hv1.EnvType]s2hv1.ChartValuesURLs{
 			"base": map[string][]string{
 				wordpressCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/base/wordpress.yaml"},
 			},
@@ -263,32 +263,32 @@ var _ = Describe("[e2e] Staging controller", func() {
 				redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/pull-request/redis.yaml"},
 			},
 		},
-		Staging: &s2hv1beta1.ConfigStaging{
+		Staging: &s2hv1.ConfigStaging{
 			Deployment: &deployConfig,
 		},
-		ActivePromotion: &s2hv1beta1.ConfigActivePromotion{
+		ActivePromotion: &s2hv1.ConfigActivePromotion{
 			Timeout:          metav1.Duration{Duration: 5 * time.Minute},
 			TearDownDuration: metav1.Duration{Duration: 10 * time.Second},
 			Deployment:       &deployConfig,
 		},
-		Reporter: &s2hv1beta1.ConfigReporter{
+		Reporter: &s2hv1.ConfigReporter{
 			ReportMock: true,
 		},
-		Bundles: s2hv1beta1.ConfigBundles{
+		Bundles: s2hv1.ConfigBundles{
 			bundleName: []string{redisCompName, mariaDBCompName},
 		},
 		PriorityQueues: []string{wordpressCompName, redisCompName},
-		Components:     []*s2hv1beta1.Component{&configCompRedis, &configCompWordpress},
+		Components:     []*s2hv1.Component{&configCompRedis, &configCompWordpress},
 		PullRequest:    &configPR,
 	}
 
-	mockConfig := s2hv1beta1.Config{
+	mockConfig := s2hv1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamName,
 			Labels: testLabels,
 		},
 		Spec: configSpec,
-		Status: s2hv1beta1.ConfigStatus{
+		Status: s2hv1.ConfigStatus{
 			Used: configSpec,
 		},
 	}
@@ -301,7 +301,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		},
 	}
 
-	prComps := []*s2hv1beta1.QueueComponent{
+	prComps := []*s2hv1.QueueComponent{
 		{
 			Name:       redisCompName,
 			Repository: "bitnami/redis",
@@ -363,7 +363,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Deleting nginx deployment")
 		deploy := &deployNginx
-		ctx := context.Background()
 		_ = client.Delete(ctx, deploy)
 
 		By("Deleting service")
@@ -371,10 +370,10 @@ var _ = Describe("[e2e] Staging controller", func() {
 		_ = client.Delete(ctx, svc)
 
 		By("Deleting all teams")
-		err = client.DeleteAllOf(ctx, &s2hv1beta1.Team{}, rclient.MatchingLabels(testLabels))
+		err = client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
 		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
-			teamList := s2hv1beta1.TeamList{}
+			teamList := s2hv1.TeamList{}
 			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = client.List(ctx, &teamList, listOpt)
 			if err != nil && errors.IsNotFound(err) {
@@ -389,10 +388,10 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete all teams error")
 
 		By("Deleting all Configs")
-		err = client.DeleteAllOf(ctx, &s2hv1beta1.Config{}, rclient.MatchingLabels(testLabels))
+		err = client.DeleteAllOf(ctx, &s2hv1.Config{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
 		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
-			configList := s2hv1beta1.ConfigList{}
+			configList := s2hv1.ConfigList{}
 			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = client.List(ctx, &configList, listOpt)
 			if err != nil && errors.IsNotFound(err) {
@@ -408,7 +407,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Deleting active namespace")
 		atvNs := activeNamespace
-		_ = client.Delete(context.TODO(), &atvNs)
+		_ = client.Delete(ctx, &atvNs)
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			namespace := corev1.Namespace{}
 			err = client.Get(ctx, types.NamespacedName{Name: atvNamespace}, &namespace)
@@ -419,24 +418,24 @@ var _ = Describe("[e2e] Staging controller", func() {
 		})
 
 		By("Deleting all StableComponents")
-		err = client.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, rclient.InNamespace(namespace))
+		err = client.DeleteAllOf(ctx, &s2hv1.StableComponent{}, rclient.InNamespace(namespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Deleting all Queues")
-		err = client.DeleteAllOf(ctx, &s2hv1beta1.Queue{}, rclient.InNamespace(namespace))
+		err = client.DeleteAllOf(ctx, &s2hv1.Queue{}, rclient.InNamespace(namespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Deleting all QueueHistories")
-		err = client.DeleteAllOf(ctx, &s2hv1beta1.QueueHistory{}, rclient.InNamespace(namespace))
+		err = client.DeleteAllOf(ctx, &s2hv1.QueueHistory{}, rclient.InNamespace(namespace))
 		Expect(err).NotTo(HaveOccurred())
 
-		ql := &s2hv1beta1.QueueList{}
-		err = client.List(context.Background(), ql, &rclient.ListOptions{Namespace: namespace})
+		ql := &s2hv1.QueueList{}
+		err = client.List(ctx, ql, &rclient.ListOptions{Namespace: namespace})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(ql.Items).To(BeEmpty())
 
-		sl := &s2hv1beta1.StableComponentList{}
-		err = client.List(context.Background(), sl, &rclient.ListOptions{Namespace: namespace})
+		sl := &s2hv1.StableComponentList{}
+		err = client.List(ctx, sl, &rclient.ListOptions{Namespace: namespace})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sl.Items).To(BeEmpty())
 
@@ -450,7 +449,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	It("should successfully start and stop", func(done Done) {
 		defer close(done)
-		ctx := context.Background()
 
 		By("Creating Config")
 		config := mockConfig
@@ -458,7 +456,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Verifying config has been created")
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-			config := &s2hv1beta1.Config{}
+			config := &s2hv1.Config{}
 			err = client.Get(ctx, types.NamespacedName{Name: teamName}, config)
 			if err != nil {
 				return false, nil
@@ -492,30 +490,30 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify config error")
 
 		swp := stableWordPress
-		Expect(client.Create(context.TODO(), &swp)).To(BeNil())
+		Expect(client.Create(ctx, &swp)).To(BeNil())
 
 		By("Creating 2 Queue")
 		redisQueue := queue.NewQueue(teamName, namespace, bundleName, bundleName,
-			s2hv1beta1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
-			s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
+			s2hv1.QueueTypeUpgrade,
 		)
 		mariaDBQueue := queue.NewQueue(teamName, namespace, bundleName, bundleName,
-			s2hv1beta1.QueueComponents{{Name: mariaDBCompName, Repository: "bitnami/mariadb", Version: "10.3.18-debian-9-r32"}},
-			s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: mariaDBCompName, Repository: "bitnami/mariadb", Version: "10.5.8-debian-10-r0"}},
+			s2hv1.QueueTypeUpgrade,
 		)
 		Expect(queueCtrl.Add(redisQueue, nil)).To(BeNil())
 		Expect(queueCtrl.Add(mariaDBQueue, nil)).To(BeNil())
 
 		By("Deploying")
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
-			queue := &s2hv1beta1.Queue{}
+			queue := &s2hv1.Queue{}
 			// bundle queue
-			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: redisQueue.Name}, queue)
+			err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: redisQueue.Name}, queue)
 			if err != nil {
 				return false, nil
 			}
 
-			if queue.Status.IsConditionTrue(s2hv1beta1.QueueDeployStarted) {
+			if queue.Status.IsConditionTrue(s2hv1.QueueDeployStarted) {
 				ok = true
 				return
 			}
@@ -531,15 +529,15 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Collecting")
 		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
-			redisStableComp := &s2hv1beta1.StableComponent{}
-			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: redisCompName},
+			redisStableComp := &s2hv1.StableComponent{}
+			err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: redisCompName},
 				redisStableComp)
 			if err != nil {
 				return false, nil
 			}
 
-			mariaDBStableComp := &s2hv1beta1.StableComponent{}
-			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: mariaDBCompName},
+			mariaDBStableComp := &s2hv1.StableComponent{}
+			err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: mariaDBCompName},
 				mariaDBStableComp)
 			if err != nil {
 				return false, nil
@@ -551,10 +549,10 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Collecting error")
 
 		By("Updating Config to deploy only one component")
-		config = s2hv1beta1.Config{}
-		err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: teamName}, &config)
-		config.Status.Used.Components = []*s2hv1beta1.Component{&configCompRedis}
-		Expect(client.Update(context.TODO(), &config)).To(BeNil())
+		config = s2hv1.Config{}
+		err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: teamName}, &config)
+		config.Status.Used.Components = []*s2hv1.Component{&configCompRedis}
+		Expect(client.Update(ctx, &config)).To(BeNil())
 
 		By("Ensure Pre Active Components")
 		redisServiceName := fmt.Sprintf("%s-redis-master", namespace)
@@ -567,12 +565,12 @@ var _ = Describe("[e2e] Staging controller", func() {
 				return false, nil
 			}
 
-			if queue.Status.State != s2hv1beta1.Finished {
+			if queue.Status.State != s2hv1.Finished {
 				return
 			}
 
 			svc := corev1.Service{}
-			err = client.Get(context.TODO(), rclient.ObjectKey{Name: redisServiceName, Namespace: namespace}, &svc)
+			err = client.Get(ctx, rclient.ObjectKey{Name: redisServiceName, Namespace: namespace}, &svc)
 			if err != nil {
 				return
 			}
@@ -604,7 +602,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 				return false, nil
 			}
 
-			if queue.Status.State != s2hv1beta1.Finished {
+			if queue.Status.State != s2hv1.Finished {
 				return
 			}
 
@@ -625,7 +623,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 				return false, nil
 			}
 
-			if queue.Status.State != s2hv1beta1.Finished {
+			if queue.Status.State != s2hv1.Finished {
 				return
 			}
 
@@ -642,7 +640,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	It("should successfully deploy pull request type", func(done Done) {
 		defer close(done)
-		ctx := context.Background()
 
 		authToken := "12345"
 		s2hConfig := internal.SamsahaiConfig{
@@ -672,7 +669,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Verifying config has been created")
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-			config := &s2hv1beta1.Config{}
+			config := &s2hv1.Config{}
 			err = client.Get(ctx, types.NamespacedName{Name: teamName}, config)
 			if err != nil {
 				return false, nil
@@ -688,7 +685,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Deploy service into active namespaces")
 		svc := mockService
-		Expect(client.Create(context.TODO(), &svc)).To(BeNil(), "Create mock service error")
+		Expect(client.Create(ctx, &svc)).To(BeNil(), "Create mock service error")
 
 		cfg, err := cfgCtrl.Get(teamName)
 		Expect(err).NotTo(HaveOccurred())
@@ -712,7 +709,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 				return false, nil
 			}
 
-			if queue.Status.State != s2hv1beta1.Finished {
+			if queue.Status.State != s2hv1.Finished {
 				return false, nil
 			}
 
@@ -734,7 +731,6 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	It("should create error log in case of deploy failed", func(done Done) {
 		defer close(done)
-		ctx := context.Background()
 
 		By("Creating Config")
 		config := mockConfig
@@ -745,7 +741,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Creating Team")
 		team := mockTeam
-		Expect(client.Create(context.TODO(), &team)).To(BeNil())
+		Expect(client.Create(ctx, &team)).To(BeNil())
 
 		authToken := "12345"
 		s2hConfig := internal.SamsahaiConfig{SamsahaiCredential: internal.SamsahaiCredential{InternalAuthToken: authToken}}
@@ -763,14 +759,14 @@ var _ = Describe("[e2e] Staging controller", func() {
 		go stagingCtrl.Start(chStop)
 
 		redis := queue.NewQueue(teamName, namespace, redisCompName, "",
-			s2hv1beta1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
-			s2hv1beta1.QueueTypeUpgrade,
+			s2hv1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"}},
+			s2hv1.QueueTypeUpgrade,
 		)
-		Expect(client.Create(context.TODO(), redis)).To(BeNil())
+		Expect(client.Create(ctx, redis)).To(BeNil())
 
-		qhl := &s2hv1beta1.QueueHistoryList{}
+		qhl := &s2hv1.QueueHistoryList{}
 		err = wait.PollImmediate(1*time.Second, 120*time.Second, func() (ok bool, err error) {
-			err = client.List(context.TODO(), qhl, &rclient.ListOptions{Namespace: namespace})
+			err = client.List(ctx, qhl, &rclient.ListOptions{Namespace: namespace})
 			if err != nil || len(qhl.Items) < 1 {
 				return false, nil
 			}
@@ -785,9 +781,9 @@ var _ = Describe("[e2e] Staging controller", func() {
 			"Should have deployment issue defined")
 
 		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
-			q := &s2hv1beta1.Queue{}
-			err = client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: redisCompName}, q)
-			if err != nil || q.Status.State != s2hv1beta1.Waiting || q.Spec.Type != s2hv1beta1.QueueTypeUpgrade {
+			q := &s2hv1.Queue{}
+			err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "redis"}, q)
+			if err != nil || q.Status.State != s2hv1.Waiting || q.Spec.Type != s2hv1.QueueTypeUpgrade {
 				return false, nil
 			}
 			return true, nil

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -33,11 +33,29 @@ type Component struct {
 	Chart  ComponentChart `json:"chart"`
 	Image  ComponentImage `json:"image,omitempty"`
 	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Values ComponentValues `json:"values,omitempty"`
 	// +optional
 	Source *UpdatingSource `json:"source,omitempty"`
 	// +optional
-	Dependencies []*Component `json:"dependencies,omitempty"`
+	Schedules []string `json:"schedules,omitempty"`
+	// +optional
+	Dependencies []*Dependency `json:"dependencies,omitempty"`
+}
+
+// Dependency represents a chart of dependency
+type Dependency struct {
+	// +optional
+	Parent string `json:"parent,omitempty"`
+	Name   string `json:"name"`
+	// +optional
+	Chart ComponentChart `json:"chart"`
+	Image ComponentImage `json:"image,omitempty"`
+	// +optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Values ComponentValues `json:"values,omitempty"`
+	// +optional
+	Source *UpdatingSource `json:"source,omitempty"`
 	// +optional
 	Schedules []string `json:"schedules,omitempty"`
 }
@@ -469,7 +487,6 @@ type ConfigConditionType string
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
-
 // Config is the Schema for the configs API
 type Config struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -481,17 +498,12 @@ type Config struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
-
 // ConfigList contains a list of Config
 type ConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Config `json:"items"`
 }
-
-// +k8s:deepcopy-gen=false
-//ComponentValues represents values of a component chart
-type ComponentValues map[string]interface{}
 
 func (cs *ConfigStatus) IsConditionTrue(cond ConfigConditionType) bool {
 	for i, c := range cs.Conditions {
@@ -520,6 +532,10 @@ func (cs *ConfigStatus) SetCondition(cond ConfigConditionType, status corev1.Con
 		Message:            message,
 	})
 }
+
+// +k8s:deepcopy-gen=false
+//ComponentValues represents values of a component chart
+type ComponentValues map[string]interface{}
 
 func (in *ComponentValues) DeepCopyInto(out *ComponentValues) {
 	if in == nil {

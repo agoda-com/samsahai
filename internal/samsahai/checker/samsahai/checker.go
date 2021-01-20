@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -75,7 +75,7 @@ func (c *checker) GetVersion(repository, name, pattern string) (string, error) {
 		}
 
 		// Get team
-		team := &v1beta1.Team{}
+		team := &s2hv1.Team{}
 		if err = c.samsahai.GetTeam(teamComp.Name, team); err != nil {
 			if k8serrors.IsNotFound(err) {
 				// ignore team not found

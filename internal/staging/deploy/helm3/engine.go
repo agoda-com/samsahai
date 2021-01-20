@@ -19,7 +19,7 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -84,8 +84,8 @@ func (e *engine) IsMocked() bool {
 
 func (e *engine) Create(
 	refName string,
-	_ *v1beta1.Component,
-	parentComp *v1beta1.Component,
+	_ *s2hv1.Component,
+	parentComp *s2hv1.Component,
 	values map[string]interface{},
 	deployTimeout *time.Duration,
 ) error {
@@ -193,7 +193,6 @@ func (e *engine) GetReleases() ([]*release.Release, error) {
 func (e *engine) helmUninstall(refName string, disableHooks bool) error {
 	client := action.NewUninstall(e.actionSettings)
 	client.Timeout = DefaultUninstallTimeout
-	client.DisableVerify = true
 	client.DisableHooks = disableHooks
 
 	logger.Debug("deleting release", "refName", refName)
@@ -240,7 +239,7 @@ func (e *engine) helmInstall(
 	client.ChartPathOptions = cpo
 	client.Namespace = e.namespace
 	client.ReleaseName = refName
-	client.DisableVerify = true
+	client.DisableOpenAPIValidation = true
 	if deployTimeout != nil {
 		client.Timeout = *deployTimeout
 		client.Wait = true
@@ -276,7 +275,7 @@ func (e *engine) helmUpgrade(
 	client.ChartPathOptions = cpo
 	client.Namespace = e.namespace
 	client.Atomic = true
-	client.DisableVerify = true
+	client.DisableOpenAPIValidation = true
 	if deployTimeout != nil {
 		client.Timeout = *deployTimeout
 		client.Wait = true

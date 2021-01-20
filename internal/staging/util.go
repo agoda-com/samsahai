@@ -11,17 +11,17 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-func (c *controller) getDeployConfiguration(queue *s2hv1beta1.Queue) *s2hv1beta1.ConfigDeploy {
+func (c *controller) getDeployConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigDeploy {
 	cfg, err := c.getConfiguration()
 	if err != nil {
 		logger.Error(err, "cannot get configuration", "team", c.teamName)
-		return &s2hv1beta1.ConfigDeploy{}
+		return &s2hv1.ConfigDeploy{}
 	}
 
 	switch {
@@ -29,7 +29,7 @@ func (c *controller) getDeployConfiguration(queue *s2hv1beta1.Queue) *s2hv1beta1
 		if cfg.ActivePromotion != nil && cfg.ActivePromotion.Deployment != nil {
 			return cfg.ActivePromotion.Deployment
 		}
-		return &s2hv1beta1.ConfigDeploy{}
+		return &s2hv1.ConfigDeploy{}
 	case queue.IsPullRequestQueue():
 		if cfg.PullRequest != nil && len(cfg.PullRequest.Components) > 0 {
 			for _, comp := range cfg.PullRequest.Components {
@@ -38,16 +38,16 @@ func (c *controller) getDeployConfiguration(queue *s2hv1beta1.Queue) *s2hv1beta1
 				}
 			}
 		}
-		return &s2hv1beta1.ConfigDeploy{}
+		return &s2hv1.ConfigDeploy{}
 	default:
 		if cfg.Staging != nil {
 			return cfg.Staging.Deployment
 		}
-		return &s2hv1beta1.ConfigDeploy{}
+		return &s2hv1.ConfigDeploy{}
 	}
 }
 
-func (c *controller) getTestConfiguration(queue *s2hv1beta1.Queue) *s2hv1beta1.ConfigTestRunner {
+func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestRunner {
 	deployConfig := c.getDeployConfiguration(queue)
 	if deployConfig == nil {
 		return nil
@@ -56,7 +56,7 @@ func (c *controller) getTestConfiguration(queue *s2hv1beta1.Queue) *s2hv1beta1.C
 	return deployConfig.TestRunner
 }
 
-func (c *controller) getDeployEngine(queue *s2hv1beta1.Queue) internal.DeployEngine {
+func (c *controller) getDeployEngine(queue *s2hv1.Queue) internal.DeployEngine {
 	// Try to get DeployEngine from Queue
 	if _, ok := c.deployEngines[queue.Status.DeployEngine]; queue.Status.DeployEngine != "" && ok {
 		return c.deployEngines[queue.Status.DeployEngine]
@@ -85,20 +85,20 @@ func (c *controller) clearCurrentQueue() {
 	c.currentQueue = nil
 }
 
-func (c *controller) getCurrentQueue() *s2hv1beta1.Queue {
+func (c *controller) getCurrentQueue() *s2hv1.Queue {
 	c.mtQueue.Lock()
 	defer c.mtQueue.Unlock()
 	return c.currentQueue
 }
 
-func (c *controller) updateQueue(queue *s2hv1beta1.Queue) error {
+func (c *controller) updateQueue(queue *s2hv1.Queue) error {
 	if err := c.client.Update(context.TODO(), queue); err != nil {
 		return errors.Wrap(err, "updating queue error")
 	}
 	return nil
 }
 
-func (c *controller) deleteQueue(q *s2hv1beta1.Queue) error {
+func (c *controller) deleteQueue(q *s2hv1.Queue) error {
 	// update queue history before processing next queue
 	if err := c.updateQueueHistory(q); err != nil {
 		return errors.Wrap(err, "updating queuehistory error")
@@ -155,7 +155,7 @@ func (c *controller) deleteQueue(q *s2hv1beta1.Queue) error {
 	return nil
 }
 
-func (c *controller) updateQueueWithState(q *s2hv1beta1.Queue, state s2hv1beta1.QueueState) error {
+func (c *controller) updateQueueWithState(q *s2hv1.Queue, state s2hv1.QueueState) error {
 	headers := make(http.Header)
 	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
 	ctx := context.TODO()
@@ -180,15 +180,15 @@ func (c *controller) updateQueueWithState(q *s2hv1beta1.Queue, state s2hv1beta1.
 	return c.updateQueue(q)
 }
 
-func (c *controller) genReleaseName(comp *s2hv1beta1.Component) string {
+func (c *controller) genReleaseName(comp *s2hv1.Component) string {
 	return internal.GenReleaseName(c.namespace, comp.Name)
 }
 
-func (c *controller) updateQueueHistory(q *s2hv1beta1.Queue) error {
+func (c *controller) updateQueueHistory(q *s2hv1.Queue) error {
 	ctx := context.TODO()
 
 	qHistName := q.Status.QueueHistoryName
-	fetched := &s2hv1beta1.QueueHistory{}
+	fetched := &s2hv1.QueueHistory{}
 	err := c.client.Get(ctx, types.NamespacedName{Name: qHistName, Namespace: c.namespace}, fetched)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -203,7 +203,7 @@ func (c *controller) updateQueueHistory(q *s2hv1beta1.Queue) error {
 		return err
 	}
 
-	fetched.Spec.Queue = &s2hv1beta1.Queue{
+	fetched.Spec.Queue = &s2hv1.Queue{
 		Spec:   q.Spec,
 		Status: q.Status,
 	}

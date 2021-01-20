@@ -1,4 +1,4 @@
-apiVersion: env.samsahai.io/v1beta1
+apiVersion: env.samsahai.io/v1
 kind: Config
 metadata:
   name: example
@@ -82,7 +82,7 @@ spec:
   components:
     - name: redis
       chart:
-        repository: https://kubernetes-charts.storage.googleapis.com
+        repository: https://charts.helm.sh/stable
         name: redis
       image:
         repository: bitnami/redis
@@ -100,7 +100,7 @@ spec:
             enabled: false
     - name: wordpress
       chart:
-        repository: https://kubernetes-charts.storage.googleapis.com
+        repository: https://charts.helm.sh/stable
         name: wordpress
       image:
         repository: bitnami/wordpress

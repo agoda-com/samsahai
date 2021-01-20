@@ -9,13 +9,13 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 )
 
-func (c *controller) manageQueue(ctx context.Context, currentAtpComp *s2hv1beta1.ActivePromotion) (
+func (c *controller) manageQueue(ctx context.Context, currentAtpComp *s2hv1.ActivePromotion) (
 	skipReconcile bool, err error) {
 
-	runningAtpComps := s2hv1beta1.ActivePromotionList{}
+	runningAtpComps := s2hv1.ActivePromotionList{}
 	listOpts := client.ListOptions{LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateRunning))}
 	if err = c.client.List(ctx, &runningAtpComps, &listOpts); err != nil {
 		err = errors.Wrap(err, "cannot list activepromotions")
@@ -27,7 +27,7 @@ func (c *controller) manageQueue(ctx context.Context, currentAtpComp *s2hv1beta1
 		return
 	}
 
-	waitingAtpComps := s2hv1beta1.ActivePromotionList{}
+	waitingAtpComps := s2hv1.ActivePromotionList{}
 	listOpts = client.ListOptions{LabelSelector: labels.SelectorFromSet(c.getStateLabel(stateWaiting))}
 	if err = c.client.List(ctx, &waitingAtpComps, &listOpts); err != nil {
 		err = errors.Wrap(err, "cannot list activepromotions")
@@ -45,9 +45,9 @@ func (c *controller) manageQueue(ctx context.Context, currentAtpComp *s2hv1beta1
 		logger.Info("start active promotion process", "team", waitingAtpComps.Items[0].Name)
 
 		c.addFinalizer(&waitingAtpComps.Items[0])
-		waitingAtpComps.Items[0].SetState(s2hv1beta1.ActivePromotionCreatingPreActive,
+		waitingAtpComps.Items[0].SetState(s2hv1.ActivePromotionCreatingPreActive,
 			"Creating pre-active environment")
-		waitingAtpComps.Items[0].Status.SetCondition(s2hv1beta1.ActivePromotionCondStarted, corev1.ConditionTrue,
+		waitingAtpComps.Items[0].Status.SetCondition(s2hv1.ActivePromotionCondStarted, corev1.ConditionTrue,
 			"Active promotion has been started")
 		c.appendStateLabel(&waitingAtpComps.Items[0], stateRunning)
 		if err = c.updateActivePromotion(ctx, &waitingAtpComps.Items[0]); err != nil {
@@ -64,10 +64,10 @@ func (c *controller) manageQueue(ctx context.Context, currentAtpComp *s2hv1beta1
 	return
 }
 
-func (c *controller) checkRetryQueue(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) (
+func (c *controller) checkRetryQueue(ctx context.Context, atpComp *s2hv1.ActivePromotion) (
 	skipReconcile bool, err error) {
 
-	if atpComp.Status.State == s2hv1beta1.ActivePromotionFinished && atpComp.IsActivePromotionFailure() {
+	if atpComp.Status.State == s2hv1.ActivePromotionFinished && atpComp.IsActivePromotionFailure() {
 		maxRetry := c.getMaxActivePromotionRetry(atpComp.Name)
 		if atpComp.Spec.NoOfRetry < maxRetry {
 			atpComp.Spec.NoOfRetry++
@@ -83,9 +83,9 @@ func (c *controller) checkRetryQueue(ctx context.Context, atpComp *s2hv1beta1.Ac
 	return
 }
 
-func (c *controller) setRetryQueue(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) setRetryQueue(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	now := metav1.Now()
-	atpComp.Status = s2hv1beta1.ActivePromotionStatus{
+	atpComp.Status = s2hv1.ActivePromotionStatus{
 		StartedAt: &now,
 		UpdatedAt: &now,
 	}
