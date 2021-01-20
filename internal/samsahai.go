@@ -8,7 +8,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2hrpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -78,7 +78,7 @@ type SamsahaiConfig struct {
 
 	// PostNamespaceCreation defines commands executing after creating s2h namespace
 	PostNamespaceCreation *struct {
-		s2hv1beta1.CommandAndArgs
+		s2hv1.CommandAndArgs
 	} `json:"postNamespaceCreation,omitempty" yaml:"postNamespaceCreation,omitempty"`
 
 	// StagingEnvs defines environment variables of staging controller
@@ -148,7 +148,7 @@ type SamsahaiController interface {
 	QueueLen() int
 
 	// GetTeam returns Team CRD
-	GetTeam(teamName string, teamComp *s2hv1beta1.Team) error
+	GetTeam(teamName string, teamComp *s2hv1.Team) error
 
 	// GetConfigController returns samsahai configuration from config crd
 	GetConfigController() ConfigController
@@ -160,10 +160,10 @@ type SamsahaiController interface {
 	GetActivePromotionDeployEngine(teamName, ns string) DeployEngine
 
 	// EnsureTeamTemplateChanged  updates team if template changed
-	EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error
+	EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error
 
 	// LoadTeamSecret loads team secret from main namespace
-	LoadTeamSecret(teamComp *s2hv1beta1.Team) error
+	LoadTeamSecret(teamComp *s2hv1.Team) error
 
 	// CreateStagingEnvironment creates staging environment
 	CreateStagingEnvironment(teamName, namespace string) error
@@ -172,7 +172,7 @@ type SamsahaiController interface {
 	CreatePreActiveEnvironment(teamName, namespace string) error
 
 	// PromoteActiveEnvironment switches environment from pre-active to active and stores current active components
-	PromoteActiveEnvironment(teamComp *s2hv1beta1.Team, namespace, promotedBy string, comps map[string]s2hv1beta1.StableComponent) error
+	PromoteActiveEnvironment(teamComp *s2hv1.Team, namespace, promotedBy string, comps map[string]s2hv1.StableComponent) error
 
 	// DestroyActiveEnvironment destroys active environment when active demotion is failure.
 	DestroyActiveEnvironment(teamName, namespace string) error
@@ -184,13 +184,13 @@ type SamsahaiController interface {
 	DestroyPreviousActiveEnvironment(teamName, namespace string) error
 
 	// SetPreviousActiveNamespace updates previous active namespace to team status
-	SetPreviousActiveNamespace(teamComp *s2hv1beta1.Team, namespace string) error
+	SetPreviousActiveNamespace(teamComp *s2hv1.Team, namespace string) error
 
 	// SetPreActiveNamespace updates pre-active namespace to team status
-	SetPreActiveNamespace(teamComp *s2hv1beta1.Team, namespace string) error
+	SetPreActiveNamespace(teamComp *s2hv1.Team, namespace string) error
 
 	// SetActiveNamespace updates active namespace to team status
-	SetActiveNamespace(teamComp *s2hv1beta1.Team, namespace string) error
+	SetActiveNamespace(teamComp *s2hv1.Team, namespace string) error
 
 	// NotifyComponentChanged adds Component to queue for checking new version
 	NotifyComponentChanged(name, repository, teamName string)
@@ -207,40 +207,40 @@ type SamsahaiController interface {
 	GetConnections(namespace string) (map[string][]Connection, error)
 
 	// GetTeams returns list of teams in Samsahai
-	GetTeams() (*s2hv1beta1.TeamList, error)
+	GetTeams() (*s2hv1.TeamList, error)
 
 	// GetQueueHistories returns QueueHistoryList of the namespace
-	GetQueueHistories(namespace string) (*s2hv1beta1.QueueHistoryList, error)
+	GetQueueHistories(namespace string) (*s2hv1.QueueHistoryList, error)
 
 	// GetQueueHistory returns Queue by name and namespace
-	GetQueueHistory(name, namespace string) (*s2hv1beta1.QueueHistory, error)
+	GetQueueHistory(name, namespace string) (*s2hv1.QueueHistory, error)
 
 	// GetQueues returns QueueList of the namespace
-	GetQueues(namespace string) (*s2hv1beta1.QueueList, error)
+	GetQueues(namespace string) (*s2hv1.QueueList, error)
 
 	// GetPullRequestQueueHistories returns PullRequestQueueHistoryList of the namespace
-	GetPullRequestQueueHistories(namespace string) (*s2hv1beta1.PullRequestQueueHistoryList, error)
+	GetPullRequestQueueHistories(namespace string) (*s2hv1.PullRequestQueueHistoryList, error)
 
 	// GetQueueHistory returns PullRequestQueue by name and namespace
-	GetPullRequestQueueHistory(name, namespace string) (*s2hv1beta1.PullRequestQueueHistory, error)
+	GetPullRequestQueueHistory(name, namespace string) (*s2hv1.PullRequestQueueHistory, error)
 
 	// GetQueues returns PullRequestQueueList of the namespace
-	GetPullRequestQueues(namespace string) (*s2hv1beta1.PullRequestQueueList, error)
+	GetPullRequestQueues(namespace string) (*s2hv1.PullRequestQueueList, error)
 
 	// GetStableValues returns Stable Values of parent component in team
-	GetStableValues(team *s2hv1beta1.Team, comp *s2hv1beta1.Component) (s2hv1beta1.ComponentValues, error)
+	GetStableValues(team *s2hv1.Team, comp *s2hv1.Component) (s2hv1.ComponentValues, error)
 
 	// GetActivePromotions returns ActivePromotionList by labels
-	GetActivePromotions() (*s2hv1beta1.ActivePromotionList, error)
+	GetActivePromotions() (*s2hv1.ActivePromotionList, error)
 
 	// GetActivePromotion returns ActivePromotion by name
-	GetActivePromotion(name string) (v *s2hv1beta1.ActivePromotion, err error)
+	GetActivePromotion(name string) (v *s2hv1.ActivePromotion, err error)
 
 	// GetActivePromotionHistories returns ActivePromotionList by labels
-	GetActivePromotionHistories(selectors map[string]string) (*s2hv1beta1.ActivePromotionHistoryList, error)
+	GetActivePromotionHistories(selectors map[string]string) (*s2hv1.ActivePromotionHistoryList, error)
 
 	// GetActivePromotionHistory returns ActivePromotion by name
-	GetActivePromotionHistory(name string) (*s2hv1beta1.ActivePromotionHistory, error)
+	GetActivePromotionHistory(name string) (*s2hv1.ActivePromotionHistory, error)
 
 	// DeleteTeamActiveEnvironment deletes all component in namespace and namespace object
 	DeleteTeamActiveEnvironment(teamName, namespace, deletedBy string) error
@@ -273,8 +273,8 @@ type GitInfo struct {
 // PostNamespaceCreation represents a struct for running post namespace creation
 type PostNamespaceCreation struct {
 	// Namespace defines a creating namespace
-	Namespace string          `json:"namespace"`
-	Team      s2hv1beta1.Team `json:"team"`
+	Namespace string     `json:"namespace"`
+	Team      s2hv1.Team `json:"team"`
 	SamsahaiConfig
 }
 
@@ -295,7 +295,7 @@ type PullRequestData struct {
 }
 
 // GenConfigHashID generates config hash from Config status.used
-func GenConfigHashID(configStatus s2hv1beta1.ConfigStatus) string {
+func GenConfigHashID(configStatus s2hv1.ConfigStatus) string {
 	configUsed := configStatus.Used
 	bytesConfigComp, _ := json.Marshal(&configUsed)
 	bytesHashID := md5.Sum(bytesConfigComp)
@@ -305,7 +305,7 @@ func GenConfigHashID(configStatus s2hv1beta1.ConfigStatus) string {
 }
 
 // GenTeamHashID generates team hash from Team status.used
-func GenTeamHashID(teamStatus s2hv1beta1.TeamStatus) string {
+func GenTeamHashID(teamStatus s2hv1.TeamStatus) string {
 	teamUsed := teamStatus.Used
 	bytesTeamComp, _ := json.Marshal(teamUsed)
 	bytesHashID := md5.Sum(bytesTeamComp)

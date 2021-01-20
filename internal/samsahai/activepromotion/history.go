@@ -11,11 +11,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 )
 
-func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) (string, error) {
+func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *s2hv1.ActivePromotion) (string, error) {
 	defaultLabels := internal.GetDefaultLabels(atpComp.Name)
 	if err := c.deleteActivePromotionHistoryOutOfRange(ctx, atpComp.Name, defaultLabels); err != nil {
 		return "", err
@@ -25,14 +25,14 @@ func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *
 	atpLabels := internal.GetDefaultLabels(atpComp.Name)
 	atpLabels["namespace"] = c.getTargetNamespace(atpComp)
 
-	history := &s2hv1beta1.ActivePromotionHistory{
+	history := &s2hv1.ActivePromotionHistory{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   generateHistoryName(atpComp.Name, atpComp.CreationTimestamp, atpComp.Spec.NoOfRetry),
 			Labels: atpLabels,
 		},
-		Spec: s2hv1beta1.ActivePromotionHistorySpec{
+		Spec: s2hv1.ActivePromotionHistorySpec{
 			TeamName: atpComp.Name,
-			ActivePromotion: &s2hv1beta1.ActivePromotion{
+			ActivePromotion: &s2hv1.ActivePromotion{
 				Spec:   atpComp.Spec,
 				Status: atpComp.Status,
 			},
@@ -48,13 +48,13 @@ func (c *controller) createActivePromotionHistory(ctx context.Context, atpComp *
 	return history.Name, nil
 }
 
-func (c *controller) updateActivePromotionHistory(ctx context.Context, histName string, atpComp *s2hv1beta1.ActivePromotion) error {
-	atpHist := &s2hv1beta1.ActivePromotionHistory{}
+func (c *controller) updateActivePromotionHistory(ctx context.Context, histName string, atpComp *s2hv1.ActivePromotion) error {
+	atpHist := &s2hv1.ActivePromotionHistory{}
 	if err := c.client.Get(ctx, types.NamespacedName{Name: histName}, atpHist); err != nil {
 		return err
 	}
 
-	atpHist.Spec.ActivePromotion = &s2hv1beta1.ActivePromotion{
+	atpHist.Spec.ActivePromotion = &s2hv1.ActivePromotion{
 		Spec:   atpComp.Spec,
 		Status: atpComp.Status,
 	}
@@ -67,7 +67,7 @@ func (c *controller) updateActivePromotionHistory(ctx context.Context, histName 
 }
 
 func (c *controller) deleteActivePromotionHistoryOutOfRange(ctx context.Context, teamName string, selectors map[string]string) error {
-	atpHists := s2hv1beta1.ActivePromotionHistoryList{}
+	atpHists := s2hv1.ActivePromotionHistoryList{}
 	listOpt := client.ListOptions{LabelSelector: labels.SelectorFromSet(selectors)}
 	if err := c.client.List(ctx, &atpHists, &listOpt); err != nil {
 		if k8serrors.IsNotFound(err) {

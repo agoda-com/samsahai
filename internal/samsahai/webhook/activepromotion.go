@@ -8,13 +8,13 @@ import (
 	"github.com/julienschmidt/httprouter"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	v1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 )
 
 type activePromotion struct {
 	// +Optional
-	Running []v1beta1.ActivePromotion `json:"running"`
+	Running []v1.ActivePromotion `json:"running"`
 
 	// +Optional
 	InQueues []string `json:"inQueues" example:"team1,team2"`
@@ -37,11 +37,11 @@ func (h *handler) getActivePromotions(w http.ResponseWriter, r *http.Request, pa
 
 	atpList.SortASC()
 
-	runningList := make([]v1beta1.ActivePromotion, 0)
+	runningList := make([]v1.ActivePromotion, 0)
 	waitingList := make([]string, 0)
 	if len(atpList.Items) > 0 {
 		for _, atp := range atpList.Items {
-			if atp.Status.State == v1beta1.ActivePromotionWaiting {
+			if atp.Status.State == v1.ActivePromotionWaiting {
 				waitingList = append(waitingList, atp.Name)
 				continue
 			}
@@ -59,7 +59,7 @@ func (h *handler) getActivePromotions(w http.ResponseWriter, r *http.Request, pa
 
 type teamActivePromotion struct {
 	// +Optional
-	Current *v1beta1.ActivePromotion `json:"current"`
+	Current *v1.ActivePromotion `json:"current"`
 
 	// +Optional
 	Histories []string `json:"historyNames" example:"team1-20191010-080000,team1-20191009-080000"`
@@ -111,7 +111,7 @@ func (h *handler) getTeamActivePromotions(w http.ResponseWriter, r *http.Request
 	h.JSON(w, http.StatusOK, data)
 }
 
-type activePromotionHistories []v1beta1.ActivePromotionHistory
+type activePromotionHistories []v1.ActivePromotionHistory
 
 // getTeamActivePromotion godoc
 // @Summary get active promotion histories by team name
@@ -239,7 +239,7 @@ func (h *handler) getTeamActivePromotionHistoryLog(w http.ResponseWriter, r *htt
 	_, _ = w.Write(data)
 }
 
-func (h *handler) getActivePromotionHistoryListByDESC(teamName string) (*v1beta1.ActivePromotionHistoryList, error) {
+func (h *handler) getActivePromotionHistoryListByDESC(teamName string) (*v1.ActivePromotionHistoryList, error) {
 	labels := internal.GetDefaultLabels(teamName)
 	atpHistList, err := h.samsahai.GetActivePromotionHistories(labels)
 	if err != nil {

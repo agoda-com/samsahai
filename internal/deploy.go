@@ -5,7 +5,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/release"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 )
 
 type DeployEngine interface {
@@ -16,7 +16,7 @@ type DeployEngine interface {
 	GetValues() (map[string][]byte, error)
 
 	// Create creates environment
-	Create(refName string, comp *v1beta1.Component, parentComp *v1beta1.Component, values map[string]interface{}, deployTimeout *time.Duration) error
+	Create(refName string, comp *s2hv1.Component, parentComp *s2hv1.Component, values map[string]interface{}, deployTimeout *time.Duration) error
 
 	// Rollback rollback helm release
 	Rollback(refName string, revision int) error

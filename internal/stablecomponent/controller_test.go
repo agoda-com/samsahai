@@ -8,7 +8,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
 
@@ -28,68 +28,68 @@ var _ = Describe("Stable component Controller", func() {
 			wordpressName := "wordpress"
 			mariadbName := "mariadb"
 
-			queueRedis := s2hv1beta1.Queue{
-				Spec: s2hv1beta1.QueueSpec{Name: redisName,
-					Components: s2hv1beta1.QueueComponents{{Name: redisName, Repository: redisName, Version: "1.0.1"}},
+			queueRedis := s2hv1.Queue{
+				Spec: s2hv1.QueueSpec{Name: redisName,
+					Components: s2hv1.QueueComponents{{Name: redisName, Repository: redisName, Version: "1.0.1"}},
 				},
 			}
-			queueMariadb := s2hv1beta1.Queue{
-				Spec: s2hv1beta1.QueueSpec{Name: mariadbName,
-					Components: s2hv1beta1.QueueComponents{{Name: mariadbName, Repository: mariadbName, Version: "2.0.1"}},
+			queueMariadb := s2hv1.Queue{
+				Spec: s2hv1.QueueSpec{Name: mariadbName,
+					Components: s2hv1.QueueComponents{{Name: mariadbName, Repository: mariadbName, Version: "2.0.1"}},
 				},
 			}
-			queueBundle := s2hv1beta1.Queue{
-				Spec: s2hv1beta1.QueueSpec{Name: "db", Bundle: "group",
-					Components: s2hv1beta1.QueueComponents{
+			queueBundle := s2hv1.Queue{
+				Spec: s2hv1.QueueSpec{Name: "db", Bundle: "group",
+					Components: s2hv1.QueueComponents{
 						{Name: mariadbName, Repository: mariadbName, Version: "2.0.1"},
 						{Name: wordpressName, Repository: wordpressName, Version: "3.0.1"},
 					},
 				},
 			}
-			queueList := &s2hv1beta1.QueueList{
-				Items: []s2hv1beta1.Queue{
+			queueList := &s2hv1.QueueList{
+				Items: []s2hv1.Queue{
 					queueRedis, queueBundle,
 				},
 			}
 
-			stableComponentRedis := &s2hv1beta1.StableComponent{
+			stableComponentRedis := &s2hv1.StableComponent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: redisName,
 				},
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       redisName,
 					Repository: redisName,
 					Version:    "1.0.0",
 				},
 			}
 
-			stableComponentWordpress := &s2hv1beta1.StableComponent{
+			stableComponentWordpress := &s2hv1.StableComponent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: wordpressName,
 				},
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       wordpressName,
 					Repository: wordpressName,
 					Version:    "2.0.0",
 				},
 			}
 
-			desiredComponentRedis := &s2hv1beta1.DesiredComponent{
+			desiredComponentRedis := &s2hv1.DesiredComponent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: redisName,
 				},
-				Spec: s2hv1beta1.DesiredComponentSpec{
+				Spec: s2hv1.DesiredComponentSpec{
 					Name:       redisName,
 					Repository: redisName,
 					Version:    "1.0.0",
 				},
 			}
 
-			desiredComponentWordpress := &s2hv1beta1.DesiredComponent{
+			desiredComponentWordpress := &s2hv1.DesiredComponent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: wordpressName,
 				},
-				Spec: s2hv1beta1.DesiredComponentSpec{
+				Spec: s2hv1.DesiredComponentSpec{
 					Name:       wordpressName,
 					Repository: wordpressName,
 					Version:    "2.0.0",
@@ -97,13 +97,13 @@ var _ = Describe("Stable component Controller", func() {
 			}
 
 			removeQueue, updateQueue := c.removeSameVersionQueue(queueList, stableComponentRedis, desiredComponentRedis)
-			g.Expect(updateQueue).To(Equal(s2hv1beta1.Queue{}))
-			g.Expect(removeQueue).NotTo(Equal(s2hv1beta1.Queue{}))
+			g.Expect(updateQueue).To(Equal(s2hv1.Queue{}))
+			g.Expect(removeQueue).NotTo(Equal(s2hv1.Queue{}))
 			g.Expect(removeQueue).To(Equal(queueRedis))
 
 			removeQueue, updateQueue = c.removeSameVersionQueue(queueList, stableComponentWordpress, desiredComponentWordpress)
-			g.Expect(updateQueue).NotTo(Equal(s2hv1beta1.Queue{}))
-			g.Expect(removeQueue).To(Equal(s2hv1beta1.Queue{}))
+			g.Expect(updateQueue).NotTo(Equal(s2hv1.Queue{}))
+			g.Expect(removeQueue).To(Equal(s2hv1.Queue{}))
 			g.Expect(updateQueue.Spec.Components).To(Equal(queueMariadb.Spec.Components))
 
 		})

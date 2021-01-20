@@ -41,7 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	docs2 "github.com/agoda-com/samsahai/docs"
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -74,8 +74,7 @@ func init() {
 	cobra.OnInitialize(util.InitViper)
 
 	_ = clientgoscheme.AddToScheme(scheme)
-	_ = s2hv1beta1.AddToScheme(scheme)
-	//_ = appv1beta1.AddToScheme(scheme)
+	_ = s2hv1.AddToScheme(scheme)
 
 	cmd.PersistentFlags().Bool(s2h.VKDebug, false, "More debugging log.")
 
@@ -191,9 +190,6 @@ func startCtrlCmd() *cobra.Command {
 			activepromotion.New(mgr, s2hCtrl, configs)
 			stablecomponent.New(mgr, s2hCtrl)
 
-			logger.Info("setup signal handler")
-			stop := signals.SetupSignalHandler()
-
 			// setup http server
 			logger.Info("setup http server")
 			mux := http.NewServeMux()
@@ -217,7 +213,11 @@ func startCtrlCmd() *cobra.Command {
 				}
 			}()
 
-			go s2hCtrl.Start(stop)
+			chStop := make(chan struct{})
+			go s2hCtrl.Start(chStop)
+
+			logger.Info("setup signal handler")
+			stop := signals.SetupSignalHandler()
 
 			logger.Info("starting manager")
 			if err := mgr.Start(stop); err != nil {

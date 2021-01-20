@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -124,7 +124,7 @@ func (p *plugin) executeCmd(ctx context.Context, commandAndArgs ...string) (stri
 	errCh := make(chan error)
 
 	go func() {
-		data, err := cmd.ExecuteCommand(ctx, p.cwd, &s2hv1beta1.CommandAndArgs{
+		data, err := cmd.ExecuteCommand(ctx, p.cwd, &s2hv1.CommandAndArgs{
 			Command: []string{p.path},
 			Args:    commandAndArgs,
 		})
@@ -157,7 +157,7 @@ func (p *plugin) verify() (string, error) {
 	defer cancel()
 
 	// get name
-	data, err := cmd.ExecuteCommand(ctx, p.cwd, &s2hv1beta1.CommandAndArgs{
+	data, err := cmd.ExecuteCommand(ctx, p.cwd, &s2hv1.CommandAndArgs{
 		Command: []string{p.path},
 		Args:    []string{CmdGetNameArg},
 	})

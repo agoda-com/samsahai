@@ -27,13 +27,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/queue"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
+func (c *controller) collectResult(queue *s2hv1.Queue) error {
 	// check deploy and test result
 	if queue.Status.KubeZipLog == "" {
 		logZip, err := c.createDeploymentZipLogs(queue)
@@ -54,7 +54,7 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 
 	// Queue will finished if type are Active promotion related
 	if queue.IsActivePromotionQueue() || queue.IsPullRequestQueue() {
-		return c.updateQueueWithState(queue, s2hv1beta1.Finished)
+		return c.updateQueueWithState(queue, s2hv1.Finished)
 	}
 
 	// Create queue history
@@ -66,14 +66,14 @@ func (c *controller) collectResult(queue *s2hv1beta1.Queue) error {
 		return err
 	}
 
-	queue.Status.SetCondition(s2hv1beta1.QueueCleaningAfterStarted, corev1.ConditionTrue,
+	queue.Status.SetCondition(s2hv1.QueueCleaningAfterStarted, corev1.ConditionTrue,
 		"starts cleaning the namespace after running task")
 
 	// made queue to clean after state
-	return c.updateQueueWithState(queue, s2hv1beta1.CleaningAfter)
+	return c.updateQueueWithState(queue, s2hv1.CleaningAfter)
 }
 
-func (c *controller) setStableAndSendReport(queue *s2hv1beta1.Queue) error {
+func (c *controller) setStableAndSendReport(queue *s2hv1.Queue) error {
 	isDeploySuccess, isTestSuccess, isReverify := queue.IsDeploySuccess(), queue.IsTestSuccess(), queue.IsReverify()
 
 	compUpgradeStatus := rpc.ComponentUpgrade_UpgradeStatus_FAILURE
@@ -94,7 +94,7 @@ func (c *controller) setStableAndSendReport(queue *s2hv1beta1.Queue) error {
 	return nil
 }
 
-func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
+func (c *controller) createQueueHistory(q *s2hv1.Queue) error {
 	ctx := context.TODO()
 
 	if err := c.deleteQueueHistoryOutOfRange(ctx, c.namespace); err != nil {
@@ -102,8 +102,8 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 	}
 
 	now := metav1.Now()
-	spec := s2hv1beta1.QueueHistorySpec{
-		Queue: &s2hv1beta1.Queue{
+	spec := s2hv1.QueueHistorySpec{
+		Queue: &s2hv1.Queue{
 			Spec:   q.Spec,
 			Status: q.Status,
 		},
@@ -115,7 +115,7 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 		CreatedAt:        &now,
 	}
 
-	history := &s2hv1beta1.QueueHistory{
+	history := &s2hv1.QueueHistory{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      q.Status.QueueHistoryName,
 			Namespace: c.namespace,
@@ -124,7 +124,7 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 		Spec: spec,
 	}
 
-	fetched := &s2hv1beta1.QueueHistory{}
+	fetched := &s2hv1.QueueHistory{}
 	err := c.client.Get(ctx, types.NamespacedName{Name: history.Name, Namespace: history.Namespace}, fetched)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -143,7 +143,7 @@ func (c *controller) createQueueHistory(q *s2hv1beta1.Queue) error {
 }
 
 func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace string) error {
-	queueHists := s2hv1beta1.QueueHistoryList{}
+	queueHists := s2hv1.QueueHistoryList{}
 	if err := c.client.List(ctx, &queueHists, &client.ListOptions{Namespace: namespace}); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil
@@ -195,11 +195,11 @@ func (c *controller) deleteQueueHistoryOutOfRange(ctx context.Context, namespace
 }
 
 // setStableComponent creates or updates StableComponent to match with Queue
-func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
+func (c *controller) setStableComponent(queue *s2hv1.Queue) (err error) {
 	const updatedBy = "samsahai"
 
 	for _, qComp := range queue.Spec.Components {
-		stableComp := &s2hv1beta1.StableComponent{}
+		stableComp := &s2hv1.StableComponent{}
 		err = c.client.Get(
 			context.TODO(),
 			types.NamespacedName{Namespace: queue.GetNamespace(), Name: qComp.Name},
@@ -208,19 +208,19 @@ func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 			now := metav1.Now()
 			stableLabels := internal.GetDefaultLabels(c.teamName)
 			stableLabels["app"] = qComp.Name
-			stableComp := &s2hv1beta1.StableComponent{
+			stableComp := &s2hv1.StableComponent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      qComp.Name,
 					Namespace: queue.Namespace,
 					Labels:    stableLabels,
 				},
-				Spec: s2hv1beta1.StableComponentSpec{
+				Spec: s2hv1.StableComponentSpec{
 					Name:       qComp.Name,
 					Version:    qComp.Version,
 					Repository: qComp.Repository,
 					UpdatedBy:  updatedBy,
 				},
-				Status: s2hv1beta1.StableComponentStatus{
+				Status: s2hv1.StableComponentStatus{
 					CreatedAt: &now,
 					UpdatedAt: &now,
 				},
@@ -261,7 +261,7 @@ func (c *controller) setStableComponent(queue *s2hv1beta1.Queue) (err error) {
 // createDeploymentZipLogs creates log files in zip format
 //
 // output is base64 encoded string of the zif file
-func (c *controller) createDeploymentZipLogs(q *s2hv1beta1.Queue) (string, error) {
+func (c *controller) createDeploymentZipLogs(q *s2hv1.Queue) (string, error) {
 	pods := &corev1.PodList{}
 	err := c.client.List(context.TODO(), pods, &client.ListOptions{})
 	if err != nil {
@@ -385,7 +385,7 @@ func execCommand(cmd string, args ...string) []byte {
 	return out
 }
 
-func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_UpgradeStatus, q *s2hv1beta1.Queue) error {
+func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_UpgradeStatus, q *s2hv1.Queue) error {
 	var err error
 	headers := make(http.Header)
 	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
@@ -408,7 +408,7 @@ func (c *controller) sendComponentUpgradeReport(status rpc.ComponentUpgrade_Upgr
 	return nil
 }
 
-func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
+func (c *controller) setDeploymentIssues(queue *s2hv1.Queue) error {
 	// set deployment issues matching with release label
 	deployEngine := c.getDeployEngine(queue)
 	parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
@@ -416,7 +416,7 @@ func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
 		return err
 	}
 
-	deploymentIssuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+	deploymentIssuesMaps := make(map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent)
 	for parentComp := range parentComps {
 		ns := c.namespace
 		refName := internal.GenReleaseName(ns, parentComp)
@@ -449,11 +449,11 @@ func (c *controller) setDeploymentIssues(queue *s2hv1beta1.Queue) error {
 }
 
 func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1.JobList,
-	issuesMaps map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent) {
+	issuesMaps map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent) {
 
 	for _, pod := range pods.Items {
 		compName := c.extractComponentNameFromPod(pod)
-		failureComp := s2hv1beta1.FailureComponent{
+		failureComp := s2hv1.FailureComponent{
 			ComponentName: compName,
 			NodeName:      pod.Spec.NodeName,
 		}
@@ -475,7 +475,7 @@ func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1
 				if !initContainerStatus.Ready {
 					failureComp.FirstFailureContainerName = initContainerStatus.Name
 					failureComp.RestartCount = initContainerStatus.RestartCount
-					c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueWaitForInitContainer, failureComp, issuesMaps)
+					c.appendDeploymentIssues(s2hv1.DeploymentIssueWaitForInitContainer, failureComp, issuesMaps)
 					initFound = true
 					break
 				}
@@ -496,15 +496,15 @@ func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1
 						switch waitingState.Reason {
 						// check ImagePullBackOff issue
 						case "ImagePullBackOff", "ErrImagePull":
-							c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueImagePullBackOff, failureComp, issuesMaps)
+							c.appendDeploymentIssues(s2hv1.DeploymentIssueImagePullBackOff, failureComp, issuesMaps)
 							found = true
 
 						case "CrashLoopBackOff", "Error":
-							c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueCrashLoopBackOff, failureComp, issuesMaps)
+							c.appendDeploymentIssues(s2hv1.DeploymentIssueCrashLoopBackOff, failureComp, issuesMaps)
 							found = true
 
 						case "ContainerCreating":
-							c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueContainerCreating, failureComp, issuesMaps)
+							c.appendDeploymentIssues(s2hv1.DeploymentIssueContainerCreating, failureComp, issuesMaps)
 							found = true
 						}
 					}
@@ -519,16 +519,16 @@ func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1
 
 						// if running 0/1, count as CrashLoopBackOff
 						if containerStatus.RestartCount > 0 {
-							c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueCrashLoopBackOff, failureComp, issuesMaps)
+							c.appendDeploymentIssues(s2hv1.DeploymentIssueCrashLoopBackOff, failureComp, issuesMaps)
 							break
 						}
 
-						c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueReadinessProbeFailed, failureComp, issuesMaps)
+						c.appendDeploymentIssues(s2hv1.DeploymentIssueReadinessProbeFailed, failureComp, issuesMaps)
 						found = true
 						break
 					}
 
-					c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueUndefined, failureComp, issuesMaps)
+					c.appendDeploymentIssues(s2hv1.DeploymentIssueUndefined, failureComp, issuesMaps)
 					found = true
 					break
 				}
@@ -540,13 +540,13 @@ func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1
 
 			// check pod pending issue
 			if pod.Status.Phase == corev1.PodPending {
-				c.appendDeploymentIssues(s2hv1beta1.DeploymentIssuePending, failureComp, issuesMaps)
+				c.appendDeploymentIssues(s2hv1.DeploymentIssuePending, failureComp, issuesMaps)
 				continue
 			}
 
 			// for other not running pod will be shown as undefined type
 			if pod.Status.Phase != corev1.PodRunning {
-				c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueUndefined, failureComp, issuesMaps)
+				c.appendDeploymentIssues(s2hv1.DeploymentIssueUndefined, failureComp, issuesMaps)
 				continue
 			}
 		}
@@ -554,13 +554,13 @@ func (c *controller) extractDeploymentIssues(pods *corev1.PodList, jobs *batchv1
 
 	// check job not complete issue
 	for _, job := range jobs.Items {
-		failureComp := s2hv1beta1.FailureComponent{
+		failureComp := s2hv1.FailureComponent{
 			ComponentName: job.Name,
 		}
 
 		if job.Status.CompletionTime == nil {
 			failureComp.RestartCount = job.Status.Failed
-			c.appendDeploymentIssues(s2hv1beta1.DeploymentIssueJobNotComplete, failureComp, issuesMaps)
+			c.appendDeploymentIssues(s2hv1.DeploymentIssueJobNotComplete, failureComp, issuesMaps)
 		}
 	}
 }
@@ -591,25 +591,25 @@ func (c *controller) extractComponentNameFromPod(pod corev1.Pod) string {
 }
 
 func (c *controller) appendDeploymentIssues(
-	issueType s2hv1beta1.DeploymentIssueType,
-	failureComp s2hv1beta1.FailureComponent,
-	issuesMaps map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent,
+	issueType s2hv1.DeploymentIssueType,
+	failureComp s2hv1.FailureComponent,
+	issuesMaps map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent,
 ) {
 
 	if _, ok := issuesMaps[issueType]; !ok {
-		issuesMaps[issueType] = []s2hv1beta1.FailureComponent{failureComp}
+		issuesMaps[issueType] = []s2hv1.FailureComponent{failureComp}
 	} else {
 		issuesMaps[issueType] = append(issuesMaps[issueType], failureComp)
 	}
 }
 
 func (c *controller) convertToDeploymentIssues(
-	issuesMaps map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent,
-) (issues []s2hv1beta1.DeploymentIssue) {
+	issuesMaps map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent,
+) (issues []s2hv1.DeploymentIssue) {
 
-	issues = make([]s2hv1beta1.DeploymentIssue, 0)
+	issues = make([]s2hv1.DeploymentIssue, 0)
 	for issueType, failureComps := range issuesMaps {
-		issues = append(issues, s2hv1beta1.DeploymentIssue{
+		issues = append(issues, s2hv1.DeploymentIssue{
 			IssueType:         issueType,
 			FailureComponents: failureComps,
 		})

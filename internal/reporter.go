@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -24,7 +24,7 @@ const (
 type ComponentUpgradeOption func(*ComponentUpgradeReporter)
 
 // WithTestRunner specifies test runner to override when creating component upgrade reporter object
-func WithTestRunner(tr s2hv1beta1.TestRunner) ComponentUpgradeOption {
+func WithTestRunner(tr s2hv1.TestRunner) ComponentUpgradeOption {
 	return func(c *ComponentUpgradeReporter) {
 		c.TestRunner = tr
 	}
@@ -49,7 +49,7 @@ func WithNamespace(ns string) ComponentUpgradeOption {
 }
 
 // WithComponentUpgradeOptCredential specifies credential to override when create component upgrade reporter object
-func WithComponentUpgradeOptCredential(creds s2hv1beta1.Credential) ComponentUpgradeOption {
+func WithComponentUpgradeOptCredential(creds s2hv1.Credential) ComponentUpgradeOption {
 	return func(c *ComponentUpgradeReporter) {
 		c.Credential = creds
 	}
@@ -57,11 +57,11 @@ func WithComponentUpgradeOptCredential(creds s2hv1beta1.Credential) ComponentUpg
 
 // ComponentUpgradeReporter manages component upgrade report
 type ComponentUpgradeReporter struct {
-	IssueTypeStr IssueType             `json:"issueTypeStr,omitempty"`
-	StatusStr    StatusType            `json:"statusStr,omitempty"`
-	StatusInt    int32                 `json:"statusInt,omitempty"`
-	TestRunner   s2hv1beta1.TestRunner `json:"testRunner,omitempty"`
-	Credential   s2hv1beta1.Credential `json:"credential,omitempty"`
+	IssueTypeStr IssueType        `json:"issueTypeStr,omitempty"`
+	StatusStr    StatusType       `json:"statusStr,omitempty"`
+	StatusInt    int32            `json:"statusInt,omitempty"`
+	TestRunner   s2hv1.TestRunner `json:"testRunner,omitempty"`
+	Credential   s2hv1.Credential `json:"credential,omitempty"`
 	Envs         map[string]string
 
 	*rpc.ComponentUpgrade
@@ -110,7 +110,7 @@ type ActivePromotionOption func(*ActivePromotionReporter)
 
 // TODO: should override tc credential per team
 // WithActivePromotionOptCredential specifies credential to override when create active promotion reporter object
-func WithActivePromotionOptCredential(creds s2hv1beta1.Credential) ActivePromotionOption {
+func WithActivePromotionOptCredential(creds s2hv1.Credential) ActivePromotionOption {
 	return func(c *ActivePromotionReporter) {
 		c.Credential = creds
 	}
@@ -118,17 +118,17 @@ func WithActivePromotionOptCredential(creds s2hv1beta1.Credential) ActivePromoti
 
 // ActivePromotionReporter manages active promotion report
 type ActivePromotionReporter struct {
-	TeamName               string                `json:"teamName,omitempty"`
-	CurrentActiveNamespace string                `json:"currentActiveNamespace,omitempty"`
-	Runs                   int                   `json:"runs,omitempty"`
-	Credential             s2hv1beta1.Credential `json:"credential,omitempty"`
+	TeamName               string           `json:"teamName,omitempty"`
+	CurrentActiveNamespace string           `json:"currentActiveNamespace,omitempty"`
+	Runs                   int              `json:"runs,omitempty"`
+	Credential             s2hv1.Credential `json:"credential,omitempty"`
 	Envs                   map[string]string
-	s2hv1beta1.ActivePromotionStatus
+	s2hv1.ActivePromotionStatus
 	SamsahaiConfig
 }
 
 // NewActivePromotionReporter creates active promotion reporter object
-func NewActivePromotionReporter(status s2hv1beta1.ActivePromotionStatus, s2hConfig SamsahaiConfig,
+func NewActivePromotionReporter(status s2hv1.ActivePromotionStatus, s2hConfig SamsahaiConfig,
 	teamName, currentNs string, runs int, opts ...ActivePromotionOption) *ActivePromotionReporter {
 	c := &ActivePromotionReporter{
 		SamsahaiConfig:         s2hConfig,
@@ -154,12 +154,12 @@ type ImageMissingReporter struct {
 	// Reason represents error reason
 	Reason string `json:"reason,omitempty"`
 	Envs   map[string]string
-	s2hv1beta1.Image
+	s2hv1.Image
 	SamsahaiConfig
 }
 
 // NewImageMissingReporter creates image missing reporter object
-func NewImageMissingReporter(image s2hv1beta1.Image, s2hConfig SamsahaiConfig,
+func NewImageMissingReporter(image s2hv1.Image, s2hConfig SamsahaiConfig,
 	teamName, compName, reason string) *ImageMissingReporter {
 
 	c := &ImageMissingReporter{
@@ -176,18 +176,18 @@ func NewImageMissingReporter(image s2hv1beta1.Image, s2hConfig SamsahaiConfig,
 
 // PullRequestTriggerReporter manages pull request trigger report
 type PullRequestTriggerReporter struct {
-	TeamName      string            `json:"teamName,omitempty"`
-	ComponentName string            `json:"componentName,omitempty"`
-	PRNumber      string            `json:"prNumber,omitempty"`
-	Result        string            `json:"result,omitempty"`
-	Image         *s2hv1beta1.Image `json:"image,omitempty"`
-	s2hv1beta1.PullRequestTriggerStatus
+	TeamName      string       `json:"teamName,omitempty"`
+	ComponentName string       `json:"componentName,omitempty"`
+	PRNumber      string       `json:"prNumber,omitempty"`
+	Result        string       `json:"result,omitempty"`
+	Image         *s2hv1.Image `json:"image,omitempty"`
+	s2hv1.PullRequestTriggerStatus
 	SamsahaiConfig
 }
 
 // NewPullRequestTriggerResultReporter creates pull request trigger result reporter object
-func NewPullRequestTriggerResultReporter(status s2hv1beta1.PullRequestTriggerStatus, s2hConfig SamsahaiConfig,
-	teamName, compName, prNumber, result string, image *s2hv1beta1.Image) *PullRequestTriggerReporter {
+func NewPullRequestTriggerResultReporter(status s2hv1.PullRequestTriggerStatus, s2hConfig SamsahaiConfig,
+	teamName, compName, prNumber, result string, image *s2hv1.Image) *PullRequestTriggerReporter {
 
 	c := &PullRequestTriggerReporter{
 		PullRequestTriggerStatus: status,

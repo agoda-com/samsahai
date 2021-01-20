@@ -6,7 +6,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/release"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 )
@@ -17,7 +17,7 @@ const (
 	EngineName = "mock"
 )
 
-type CreateCallbackFn func(refName string, comp *v1beta1.Component, parentComp *v1beta1.Component, values map[string]interface{}, deployTimeout *time.Duration)
+type CreateCallbackFn func(refName string, comp *s2hv1.Component, parentComp *s2hv1.Component, values map[string]interface{}, deployTimeout *time.Duration)
 type DeleteCallbackFn func(refName string)
 
 type engine struct {
@@ -40,8 +40,8 @@ func NewWithCallback(creFn CreateCallbackFn, delFn DeleteCallbackFn) internal.De
 
 func (e *engine) Create(
 	refName string,
-	comp *v1beta1.Component,
-	parentComp *v1beta1.Component,
+	comp *s2hv1.Component,
+	parentComp *s2hv1.Component,
 	values map[string]interface{},
 	deployTimeout *time.Duration,
 ) error {

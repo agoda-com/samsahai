@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	v1 "github.com/agoda-com/samsahai/api/v1"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
 
@@ -26,10 +26,10 @@ type teamPRQueueJSON struct {
 	NoOfQueue int `json:"noOfQueue"`
 
 	// +Optional
-	Current *v1beta1.PullRequestQueue `json:"current"`
+	Current *v1.PullRequestQueue `json:"current"`
 
 	// +Optional
-	Queues []v1beta1.PullRequestQueue `json:"queues"`
+	Queues []v1.PullRequestQueue `json:"queues"`
 
 	Histories []string `json:"historyNames"`
 }
@@ -106,7 +106,7 @@ func (h *handler) getTeamPullRequestQueue(w http.ResponseWriter, r *http.Request
 		}
 	}
 	for i, prQueue := range prQueues.Items {
-		if prQueue.Status.State != v1beta1.PullRequestQueueWaiting {
+		if prQueue.Status.State != v1.PullRequestQueueWaiting {
 			data.Current = &prQueues.Items[i]
 		}
 	}
@@ -120,7 +120,7 @@ func (h *handler) getTeamPullRequestQueue(w http.ResponseWriter, r *http.Request
 // @Tags GET
 // @Param team path string true "Team name"
 // @Param queue path string true "pull request queue history name"
-// @Success 200 {object} v1beta1.PullRequestQueueHistory
+// @Success 200 {object} v1.PullRequestQueueHistory
 // @Failure 404 {object} errResp "Team not found"
 // @Failure 404 {object} errResp "pull request queue history not found"
 // @Failure 500 {object} errResp
@@ -158,7 +158,7 @@ func (h *handler) getTeamPullRequestQueueHistory(w http.ResponseWriter, r *http.
 // @Tags GET
 // @Param team path string true "Team name"
 // @Param queue path string true "pull request queue history name"
-// @Success 200 {object} v1beta1.PullRequestQueueHistory
+// @Success 200 {object} v1.PullRequestQueueHistory
 // @Failure 404 {object} errResp "Team not found"
 // @Failure 404 {object} errResp "pull request queue history not found"
 // @Failure 500 {object} errResp

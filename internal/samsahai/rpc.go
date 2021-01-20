@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
@@ -39,7 +39,7 @@ func (c *controller) GetTeamActiveNamespace(ctx context.Context, teamName *rpc.T
 		return nil, err
 	}
 
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamName.Name, teamComp); err != nil {
 		return nil, errors.Wrapf(err, "cannot get of team %s", teamComp.Name)
 	}
@@ -55,12 +55,12 @@ func (c *controller) GetMissingVersions(ctx context.Context, teamInfo *rpc.TeamW
 		return nil, err
 	}
 
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamInfo.TeamName, teamComp); err != nil {
 		return nil, errors.Wrapf(err, "cannot get of team %s", teamComp.Name)
 	}
 
-	stableList := &s2hv1beta1.StableComponentList{}
+	stableList := &s2hv1.StableComponentList{}
 
 	if teamComp.Status.Namespace.Staging == "" {
 		return nil, errors.Wrap(fmt.Errorf("staging namespace of %s is empty", teamInfo.TeamName),
@@ -117,7 +117,7 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 		return nil, err
 	}
 
-	queueHist := &s2hv1beta1.QueueHistory{}
+	queueHist := &s2hv1.QueueHistory{}
 	queueHistName := comp.QueueHistoryName
 	namespace := comp.Namespace
 	err := c.client.Get(context.TODO(), types.NamespacedName{Name: queueHistName, Namespace: namespace}, queueHist)
@@ -141,7 +141,7 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 	}
 
 	// Add metric updateQueueMetric & histories
-	queue := &s2hv1beta1.Queue{}
+	queue := &s2hv1.Queue{}
 	err = c.client.Get(context.TODO(), types.NamespacedName{Name: queueHistName, Namespace: namespace}, queue)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
@@ -161,7 +161,7 @@ func (c *controller) RunPostPullRequestQueue(ctx context.Context, comp *rpc.Comp
 
 	prQueueHistName := comp.QueueHistoryName
 	prQueueHistNamespace := comp.Namespace
-	prQueueHist := &s2hv1beta1.PullRequestQueueHistory{}
+	prQueueHist := &s2hv1.PullRequestQueueHistory{}
 	err := c.client.Get(context.TODO(), types.NamespacedName{
 		Name:      prQueueHistName,
 		Namespace: prQueueHistNamespace,
@@ -187,7 +187,7 @@ func (c *controller) RunPostPullRequestTrigger(ctx context.Context, prTriggerRPC
 
 	prTriggerName := prTriggerRPC.Name
 	prTriggerNamespace := prTriggerRPC.Namespace
-	prTrigger := &s2hv1beta1.PullRequestTrigger{}
+	prTrigger := &s2hv1.PullRequestTrigger{}
 	err := c.client.Get(context.TODO(), types.NamespacedName{
 		Name:      prTriggerName,
 		Namespace: prTriggerNamespace,
@@ -208,7 +208,7 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 
 	queueName := comp.GetName()
 	if queueName != "" {
-		queue := &s2hv1beta1.Queue{}
+		queue := &s2hv1.Queue{}
 		err := c.client.Get(context.TODO(), types.NamespacedName{
 			Namespace: comp.GetNamespace(),
 			Name:      queueName}, queue)
@@ -251,7 +251,7 @@ func (c *controller) GetPullRequestComponentDependencies(
 	compName := teamWithCompName.ComponentName
 	deps, _ := c.GetConfigController().GetPullRequestComponentDependencies(teamName, compName)
 
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamName, teamComp); err != nil {
 		return nil, err
 	}
@@ -456,7 +456,7 @@ func (c *controller) DeployActiveServicesIntoPullRequestEnvironment(ctx context.
 
 	teamName := teamWithNS.TeamName
 	prNamespace := teamWithNS.Namespace
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamName, teamComp); err != nil {
 		return nil, err
 	}
@@ -543,7 +543,7 @@ func (c *controller) DestroyPullRequestEnvironment(ctx context.Context, teamWith
 
 }
 
-func (c *controller) detectAndAddImageMissing(source s2hv1beta1.UpdatingSource, repo, name, version string, imgList *rpc.ImageList) {
+func (c *controller) detectAndAddImageMissing(source s2hv1.UpdatingSource, repo, name, version string, imgList *rpc.ImageList) {
 	checker, err := c.getComponentChecker(string(source))
 	if err != nil {
 		logger.Error(err, "cannot get component checker", "source", string(source))
@@ -565,7 +565,7 @@ func (c *controller) detectAndAddImageMissing(source s2hv1beta1.UpdatingSource, 
 	}
 }
 
-func (c *controller) getImageSource(comps map[string]*s2hv1beta1.Component, name string) (*s2hv1beta1.UpdatingSource, bool) {
+func (c *controller) getImageSource(comps map[string]*s2hv1.Component, name string) (*s2hv1.UpdatingSource, bool) {
 	if _, ok := comps[name]; !ok {
 		return nil, false
 	}
@@ -582,10 +582,10 @@ func (c *controller) getImageSource(comps map[string]*s2hv1beta1.Component, name
 	return source, true
 }
 
-func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv1beta1.Queue, comp *rpc.ComponentUpgrade) error {
+func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv1.Queue, comp *rpc.ComponentUpgrade) error {
 	configCtrl := c.GetConfigController()
 
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	err := c.getTeam(comp.TeamName, teamComp)
 	if err != nil {
 		return err
@@ -597,7 +597,7 @@ func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv
 	}
 
 	for _, reporter := range c.reporters {
-		testRunner := s2hv1beta1.TestRunner{}
+		testRunner := s2hv1.TestRunner{}
 		if queue != nil {
 			testRunner = queue.Status.TestRunner
 		}
@@ -627,24 +627,24 @@ func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv
 	return nil
 }
 
-func (c *controller) listQueueHistory(selectors map[string]string) (*s2hv1beta1.QueueHistoryList, error) {
-	queueHists := &s2hv1beta1.QueueHistoryList{}
+func (c *controller) listQueueHistory(selectors map[string]string) (*s2hv1.QueueHistoryList, error) {
+	queueHists := &s2hv1.QueueHistoryList{}
 	listOpt := &client.ListOptions{LabelSelector: labels.SelectorFromSet(selectors)}
 	err := c.client.List(context.TODO(), queueHists, listOpt)
 	queueHists.SortDESC()
 	return queueHists, err
 }
 
-func (c *controller) getLatestFailureQueueHistory(comp *rpc.ComponentUpgrade) (*s2hv1beta1.QueueHistory, error) {
+func (c *controller) getLatestFailureQueueHistory(comp *rpc.ComponentUpgrade) (*s2hv1.QueueHistory, error) {
 	qLabels := s2h.GetDefaultLabels(comp.TeamName)
 	qLabels["app"] = comp.Name
 	qHists, err := c.listQueueHistory(qLabels)
 	if err != nil {
-		return &s2hv1beta1.QueueHistory{}, errors.Wrapf(err,
+		return &s2hv1.QueueHistory{}, errors.Wrapf(err,
 			"cannot list queue history, labels: %+v, namespace: %s", qLabels, comp.Namespace)
 	}
 
-	qHist := &s2hv1beta1.QueueHistory{}
+	qHist := &s2hv1.QueueHistory{}
 	if len(qHists.Items) > 1 {
 		qHist = &qHists.Items[1]
 	}
@@ -701,7 +701,7 @@ func (c *controller) replaceServiceFromReleaseName(svcName, prNamespace, activeN
 }
 
 func (c *controller) ensureTeamPullRequestNamespaceUpdated(teamName, targetNs string) error {
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamName, teamComp); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil
@@ -720,7 +720,7 @@ func (c *controller) ensureTeamPullRequestNamespaceUpdated(teamName, targetNs st
 	return nil
 }
 
-func (c *controller) sendPullRequestTriggerReport(prTrigger *s2hv1beta1.PullRequestTrigger, prTriggerRPC *rpc.PullRequestTrigger) {
+func (c *controller) sendPullRequestTriggerReport(prTrigger *s2hv1.PullRequestTrigger, prTriggerRPC *rpc.PullRequestTrigger) {
 	configCtrl := c.GetConfigController()
 
 	compName := prTrigger.Spec.Component

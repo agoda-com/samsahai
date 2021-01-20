@@ -8,7 +8,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 )
 
 func (c *controller) getRuntimeClient() (client.Client, error) {
@@ -27,8 +27,8 @@ func (c *controller) getRuntimeClient() (client.Client, error) {
 	return runtimeClient, nil
 }
 
-func (c *controller) listPullRequestQueues(opts *client.ListOptions, namespace string) (list *s2hv1beta1.PullRequestQueueList, err error) {
-	list = &s2hv1beta1.PullRequestQueueList{}
+func (c *controller) listPullRequestQueues(opts *client.ListOptions, namespace string) (list *s2hv1.PullRequestQueueList, err error) {
+	list = &s2hv1.PullRequestQueueList{}
 	if opts == nil {
 		opts = &client.ListOptions{Namespace: namespace}
 	}
@@ -38,7 +38,7 @@ func (c *controller) listPullRequestQueues(opts *client.ListOptions, namespace s
 	return list, nil
 }
 
-func (c *controller) updatePullRequestQueue(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
+func (c *controller) updatePullRequestQueue(ctx context.Context, prQueue *s2hv1.PullRequestQueue) error {
 	if err := c.client.Update(ctx, prQueue); err != nil {
 		return errors.Wrapf(err, "cannot update pull request queue %s", prQueue.Name)
 	}
@@ -46,7 +46,7 @@ func (c *controller) updatePullRequestQueue(ctx context.Context, prQueue *s2hv1b
 	return nil
 }
 
-func (c *controller) deletePullRequestQueue(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
+func (c *controller) deletePullRequestQueue(ctx context.Context, prQueue *s2hv1.PullRequestQueue) error {
 	logger.Info("deleting pull request queue",
 		"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PRNumber)
 

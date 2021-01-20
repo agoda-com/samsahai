@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
@@ -23,14 +23,14 @@ var _ = Describe("Teamcity Test Runner", func() {
 
 	var server *httptest.Server
 
-	mockQueue := s2hv1beta1.Queue{
-		Spec: s2hv1beta1.QueueSpec{
+	mockQueue := s2hv1.Queue{
+		Spec: s2hv1.QueueSpec{
 			Name: "test",
 		},
 	}
 
-	mockTestConfig := s2hv1beta1.ConfigTestRunner{
-		Teamcity: &s2hv1beta1.ConfigTeamcity{
+	mockTestConfig := s2hv1.ConfigTestRunner{
+		Teamcity: &s2hv1.ConfigTeamcity{
 			Branch: "<default>",
 		},
 	}

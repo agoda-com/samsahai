@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -143,19 +143,19 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 
 	message += "<br/>"
 
-	isDemotionFailed := atpRpt.DemotionStatus == s2hv1beta1.ActivePromotionDemotionFailure
+	isDemotionFailed := atpRpt.DemotionStatus == s2hv1.ActivePromotionDemotionFailure
 	if isDemotionFailed {
 		message += "<br/>"
 		message += r.makeActiveDemotingFailureReport()
 	}
 
-	if atpRpt.RollbackStatus == s2hv1beta1.ActivePromotionRollbackFailure {
+	if atpRpt.RollbackStatus == s2hv1.ActivePromotionRollbackFailure {
 		message += "<br/>"
 		message += r.makeActivePromotionRollbackFailureReport()
 	}
 
 	hasPreviousActiveNamespace := atpRpt.PreviousActiveNamespace != ""
-	if atpRpt.Result == s2hv1beta1.ActivePromotionSuccess && hasPreviousActiveNamespace && !isDemotionFailed {
+	if atpRpt.Result == s2hv1.ActivePromotionSuccess && hasPreviousActiveNamespace && !isDemotionFailed {
 		message += "<br/>"
 		message += r.makeDestroyedPreviousActiveTimeReport(&atpRpt.ActivePromotionStatus)
 	}
@@ -163,10 +163,10 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 	return r.post(msTeamsConfig, message, internal.ActivePromotionType)
 }
 
-func convertRPCImageListToK8SImageList(images []*rpc.Image) []s2hv1beta1.Image {
-	k8sImages := make([]s2hv1beta1.Image, 0)
+func convertRPCImageListToK8SImageList(images []*rpc.Image) []s2hv1.Image {
+	k8sImages := make([]s2hv1.Image, 0)
 	for _, img := range images {
-		k8sImages = append(k8sImages, s2hv1beta1.Image{
+		k8sImages = append(k8sImages, s2hv1.Image{
 			Repository: img.Repository,
 			Tag:        img.Tag,
 		})
@@ -182,7 +182,7 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 		return nil
 	}
 
-	message := r.makeImageMissingListReport([]s2hv1beta1.Image{imageMissingRpt.Image}, imageMissingRpt.Reason)
+	message := r.makeImageMissingListReport([]s2hv1.Image{imageMissingRpt.Image}, imageMissingRpt.Reason)
 
 	return r.post(msTeamsConfig, message, internal.ImageMissingType)
 }
@@ -279,7 +279,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 <b>Active Promotion:</b> <span {{ if eq .Result "Success" }}` + styleInfo + `{{ else if eq .Result "Failure" }}` + styleDanger + `{{ end }}>{{ .Result }}</span>
 {{- if ne .Result "Success" }}
 {{- range .Conditions }}
- {{- if eq .Type "` + string(s2hv1beta1.ActivePromotionCondActivePromoted) + `" }}
+ {{- if eq .Type "` + string(s2hv1.ActivePromotionCondActivePromoted) + `" }}
 <br/><b>Reason:</b> {{ .Message }}
  {{- end }}
 {{- end }}
@@ -311,7 +311,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 	return strings.TrimSpace(template.TextRender("MSTeamsActivePromotionStatus", message, comp))
 }
 
-func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1beta1.OutdatedComponent) string {
+func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1.OutdatedComponent) string {
 	var message = `
 <b>Outdated Components:</b>
 {{- range $name, $component := .Components }}
@@ -326,7 +326,7 @@ func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1beta1.Outd
 `
 
 	ocObj := struct {
-		Components map[string]s2hv1beta1.OutdatedComponent
+		Components map[string]s2hv1.OutdatedComponent
 	}{Components: comps}
 	return strings.TrimSpace(template.TextRender("MSTeamsOutdatedComponents", message, ocObj))
 }
@@ -351,13 +351,13 @@ func (r *reporter) makeActiveDemotingFailureReport() string {
 	return strings.TrimSpace(template.TextRender("DemotionFailure", message, ""))
 }
 
-func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.ActivePromotionStatus) string {
+func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1.ActivePromotionStatus) string {
 	var message = "<b " + styleWarning + ">NOTES:</b> previous active namespace <code>{{ .PreviousActiveNamespace }}</code> will be destroyed at <code>{{ .DestroyedTime | TimeFormat }}</code>"
 
 	return strings.TrimSpace(template.TextRender("DestroyedTime", message, status))
 }
 
-func (r *reporter) makeImageMissingListReport(images []s2hv1beta1.Image, reason string) string {
+func (r *reporter) makeImageMissingListReport(images []s2hv1.Image, reason string) string {
 	var reasonMsg string
 	if reason != "" {
 		reasonMsg = fmt.Sprintf("   <code>%s</code>", reason)
@@ -371,7 +371,7 @@ func (r *reporter) makeImageMissingListReport(images []s2hv1beta1.Image, reason 
 {{- end }}
 `
 
-	imagesObj := struct{ Images []s2hv1beta1.Image }{Images: images}
+	imagesObj := struct{ Images []s2hv1.Image }{Images: images}
 	return strings.TrimSpace(template.TextRender("MSTeamsImageMissingList", message, imagesObj))
 }
 
@@ -389,7 +389,7 @@ func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.Pul
 	return strings.TrimSpace(template.TextRender("SlackPullRequestTriggerResult", message, prTriggerRpt))
 }
 
-func (r *reporter) post(msTeamsConfig *s2hv1beta1.ReporterMSTeams, message string, event internal.EventType) error {
+func (r *reporter) post(msTeamsConfig *s2hv1.ReporterMSTeams, message string, event internal.EventType) error {
 	logger.Debug("start sending message to Microsoft Teams groups and channels",
 		"event", event, "groups", msTeamsConfig.Groups)
 
@@ -430,7 +430,7 @@ func (r *reporter) post(msTeamsConfig *s2hv1beta1.ReporterMSTeams, message strin
 	return globalErr
 }
 
-func (r *reporter) getMSTeamsConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1beta1.ReporterMSTeams, error) {
+func (r *reporter) getMSTeamsConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1.ReporterMSTeams, error) {
 	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return nil, err
