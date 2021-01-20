@@ -160,7 +160,8 @@ func (c *controller) GetPullRequestComponents(configName string) (map[string]*s2
 		return map[string]*s2hv1.Component{}, err
 	}
 
-	if config.Status.Used.PullRequest == nil || config.Status.Used.PullRequest.Components == nil {
+	// TODO: pohfy, update here
+	if config.Status.Used.PullRequest == nil || config.Status.Used.PullRequest.Bundles == nil {
 		return map[string]*s2hv1.Component{}, nil
 	}
 
@@ -170,6 +171,7 @@ func (c *controller) GetPullRequestComponents(configName string) (map[string]*s2
 	}
 
 	filteredPRComps := map[string]*s2hv1.Component{}
+	//// TODO: pohfy, update here
 	prComps := config.Status.Used.PullRequest.Components
 	for compName, comp := range filteredComps {
 		for _, prComp := range prComps {
@@ -226,6 +228,7 @@ func (c *controller) GetPullRequestComponentDependencies(configName, prCompName 
 
 	prDeps := make([]string, 0)
 	if config.Status.Used.PullRequest != nil {
+		//// TODO: pohfy, update here
 		for _, prComp := range config.Status.Used.PullRequest.Components {
 			if prComp.Name == prCompName {
 				prDeps = prComp.Dependencies

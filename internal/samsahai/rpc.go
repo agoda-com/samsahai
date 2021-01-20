@@ -361,6 +361,7 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 		maxRetryVerification = prConfig.MaxRetry
 	}
 
+	//// TODO: pohfy, update here
 	if len(prConfig.Components) > 0 {
 		for _, comp := range prConfig.Components {
 			if comp.Name == teamWithComp.ComponentName {
@@ -511,6 +512,7 @@ func (c *controller) CreatePullRequestEnvironment(ctx context.Context, teamWithP
 	}
 
 	resources := prConfig.Resources
+	//// TODO: pohfy, update here
 	for _, comp := range prConfig.Components {
 		if comp.Name == teamWithPR.ComponentName {
 			if comp.Resources != nil {

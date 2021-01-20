@@ -335,6 +335,13 @@ spec:
         # use 'both' for sending slack notification whether pull request queue is success or failure
         criteria: failure
 
+      pullRequestTrigger:
+        # a criteria of sending pull request trigger notification
+        # use 'success' for sending slack notification when pull request trigger is success only
+        # use 'failure' for sending slack notification when pull request trigger is failure only <default>
+        # use 'both' for sending slack notification whether pull request trigger is success or failure
+        criteria: failure
+
     # sending notification via Microsoft Teams
     msTeams:
       groups:

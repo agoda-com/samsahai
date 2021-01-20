@@ -356,6 +356,25 @@ const (
 // ChartValuesURLs represents values file URL of each chart
 type ChartValuesURLs map[string][]string
 
+// PullRequestBundle represents a bundle of pull request components configuration
+type PullRequestBundle struct {
+	// Name defines a bundle component name, can be any name
+	Name string `json:"name"`
+	// Components represents a list of pull request components which are deployed together as a bundle
+	Components []*PullRequestComponent `json:"components"`
+	// Deployment represents configuration about deploy
+	// +optional
+	Deployment *ConfigDeploy `json:"deployment,omitempty"`
+	// Dependencies defines a list of components which are required to be deployed together with the main component
+	// +optional
+	Dependencies []string `json:"dependencies,omitempty"`
+	// GitRepository represents a string of git "<owner>/<repository>" e.g., agoda-com/samsahai
+	// used for publishing commit status
+	// +optional
+	GitRepository          string `json:"gitRepository,omitempty"`
+	PullRequestExtraConfig `json:",inline"`
+}
+
 // PullRequestComponent represents a pull request component configuration
 type PullRequestComponent struct {
 	// Name defines a main component name which is deployed per pull request
@@ -366,6 +385,7 @@ type PullRequestComponent struct {
 	// Source defines a source for image repository
 	// +optional
 	Source *UpdatingSource `json:"source,omitempty"`
+	// TODO: pohfy, remove here
 	// Deployment represents configuration about deploy
 	// +optional
 	Deployment *ConfigDeploy `json:"deployment,omitempty"`
@@ -406,8 +426,11 @@ type ConfigPullRequest struct {
 	MaxHistoryDays int `json:"maxHistoryDays,omitempty"`
 	// Trigger represents a pull request trigger configuration
 	// +optional
-	Trigger    PullRequestTriggerConfig `json:"trigger,omitempty"`
-	Components []*PullRequestComponent  `json:"components"`
+	Trigger PullRequestTriggerConfig `json:"trigger,omitempty"`
+	// Bundles represents a bundle of pull request components configuration
+	Bundles []*PullRequestBundle `json:"bundles,omitempty"`
+	// TODO: pohfy, remove here
+	Components []*PullRequestComponent `json:"components"`
 	// Concurrences defines a parallel number of pull request queue
 	// +optional
 	Concurrences           int `json:"concurrences,omitempty"`

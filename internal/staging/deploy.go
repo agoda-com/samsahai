@@ -438,6 +438,12 @@ func (c *controller) deployComponents(
 	isDeployedCh := make(chan bool, 2)
 	errCh := make(chan error, 2)
 	go func() {
+		if queue.Spec.Type == s2hv1.QueueTypePullRequest {
+			isDeployedCh <- true
+			errCh <- nil
+			return
+		}
+
 		isDeployed, err := c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout)
 		if err != nil {
 			logger.Error(err, "cannot deploy components except current queue",
@@ -511,9 +517,6 @@ func (c *controller) deployComponentsExceptQueue(
 	stableMap map[string]s2hv1.StableComponent,
 	deployTimeout time.Duration,
 ) (isDeployed bool, err error) {
-	if queue.Spec.Type == s2hv1.QueueTypePullRequest {
-		return true, nil
-	}
 
 	configCtrl := c.getConfigController()
 	parentComps, err := configCtrl.GetParentComponents(c.teamName)

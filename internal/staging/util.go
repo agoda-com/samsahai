@@ -31,6 +31,7 @@ func (c *controller) getDeployConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigDep
 		}
 		return &s2hv1.ConfigDeploy{}
 	case queue.IsPullRequestQueue():
+		//// TODO: pohfy, update here
 		if cfg.PullRequest != nil && len(cfg.PullRequest.Components) > 0 {
 			for _, comp := range cfg.PullRequest.Components {
 				if comp.Name == queue.Spec.Name {
