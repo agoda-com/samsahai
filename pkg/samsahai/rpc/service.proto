@@ -10,10 +10,10 @@ service RPC {
     rpc RunPostPullRequestTrigger (PullRequestTrigger) returns (Empty);
     rpc GetMissingVersions (TeamWithCurrentComponent) returns (ImageList);
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
-    rpc GetBundleName (TeamWithComponentName) returns (BundleName);
+    rpc GetBundleName (TeamWithBundleName) returns (BundleName);
     rpc GetPriorityQueues (TeamName) returns (PriorityQueues);
-    rpc GetPullRequestComponentDependencies (TeamWithComponentName) returns (PullRequestDependencies);
-    rpc GetPullRequestConfig (TeamWithComponentName) returns (PullRequestConfig);
+    rpc GetPullRequestComponentDependencies (TeamWithBundleName) returns (PullRequestDependencies);
+    rpc GetPullRequestConfig (TeamWithBundleName) returns (PullRequestConfig);
     rpc GetPullRequestComponentSource (TeamWithPullRequest) returns (ComponentSource);
     rpc GetComponentVersion (ComponentSource) returns (ComponentVersion);
     rpc DeployActiveServicesIntoPullRequestEnvironment (TeamWithNamespace) returns (Empty);
@@ -24,9 +24,9 @@ service RPC {
 message Empty {
 }
 
-message TeamWithComponentName {
+message TeamWithBundleName {
     string teamName = 1;
-    string componentName = 2;
+    string bundleName = 2;
 }
 
 message BundleName {
@@ -116,7 +116,7 @@ message TeamWithNamespace {
 
 message TeamWithPullRequest {
     string teamName = 1;
-    string componentName = 2;
+    string bundleName = 2;
     string PRNumber = 3;
     string commitSHA = 4;
     string namespace = 5;

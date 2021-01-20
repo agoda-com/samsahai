@@ -187,8 +187,8 @@ var _ = Describe("send rest message", func() {
 				Namespace:  "owner-staging",
 				IsReverify: true,
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					ComponentName: "pr-comp1",
-					PRNumber:      "pr1234",
+					BundleName: "pr-comp1",
+					PRNumber:   "pr1234",
 				},
 			}
 
@@ -206,7 +206,7 @@ var _ = Describe("send rest message", func() {
 					"unixTimestamp keys should exist")
 				g.Expect(gjson.GetBytes(body, "teamName").String()).To(Equal(rpcComp.TeamName),
 					"teamName should be matched")
-				g.Expect(gjson.GetBytes(body, "pullRequestComponent.componentName").String()).To(Equal(rpcComp.PullRequestComponent.ComponentName),
+				g.Expect(gjson.GetBytes(body, "pullRequestComponent.componentName").String()).To(Equal(rpcComp.PullRequestComponent.BundleName),
 					"pullRequestComponent.componentName should be matched")
 				g.Expect(gjson.GetBytes(body, "pullRequestComponent.PRNumber").String()).To(Equal(rpcComp.PullRequestComponent.PRNumber),
 					"pullRequestComponent.pullRequestNumber should be matched")

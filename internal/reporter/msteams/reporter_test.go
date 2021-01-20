@@ -228,8 +228,8 @@ var _ = Describe("send ms teams message", func() {
 					},
 				},
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					ComponentName: "pr-comp1",
-					PRNumber:      "pr1234",
+					BundleName: "pr-comp1",
+					PRNumber:   "pr1234",
 				},
 			}
 			mockMSTeamsCli := &mockMSTeams{}

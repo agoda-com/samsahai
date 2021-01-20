@@ -18,9 +18,9 @@ import (
 func (c *controller) createPullRequestEnvironment(ctx context.Context, prQueue *s2hv1.PullRequestQueue) error {
 	prNamespace := fmt.Sprintf("%s%s-%s", internal.AppPrefix, c.teamName, prQueue.Name)
 	_, err := c.s2hClient.CreatePullRequestEnvironment(ctx, &samsahairpc.TeamWithPullRequest{
-		TeamName:      c.teamName,
-		Namespace:     prNamespace,
-		ComponentName: prQueue.Spec.ComponentName,
+		TeamName:   c.teamName,
+		Namespace:  prNamespace,
+		BundleName: prQueue.Spec.ComponentName,
 	})
 	if err != nil {
 		return err
@@ -53,9 +53,9 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 	prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondEnvDestroyed, corev1.ConditionTrue,
 		"Pull request environment has been destroyed")
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithComponentName{
-		TeamName:      c.teamName,
-		ComponentName: prQueue.Spec.ComponentName,
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{
+		TeamName:   c.teamName,
+		BundleName: prQueue.Spec.ComponentName,
 	})
 	if err != nil {
 		return
@@ -176,9 +176,9 @@ func (c *controller) updatePullRequestComponentDependenciesVersion(ctx context.C
 		return nil
 	}
 
-	prDependencies, err := c.s2hClient.GetPullRequestComponentDependencies(ctx, &samsahairpc.TeamWithComponentName{
-		TeamName:      teamName,
-		ComponentName: prCompName,
+	prDependencies, err := c.s2hClient.GetPullRequestComponentDependencies(ctx, &samsahairpc.TeamWithBundleName{
+		TeamName:   teamName,
+		BundleName: prCompName,
 	})
 	if err != nil {
 		return err

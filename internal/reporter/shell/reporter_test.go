@@ -55,8 +55,8 @@ var _ = Describe("shell command reporter", func() {
 			comp := internal.NewComponentUpgradeReporter(&rpc.ComponentUpgrade{
 				Status: 1,
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					ComponentName: "pr-comp1",
-					PRNumber:      "pr1234",
+					BundleName: "pr-comp1",
+					PRNumber:   "pr1234",
 				},
 			}, internal.SamsahaiConfig{})
 			err := r.SendPullRequestQueue(configCtrl, comp)

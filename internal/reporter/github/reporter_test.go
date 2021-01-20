@@ -33,9 +33,9 @@ var _ = Describe("publish commit status to github", func() {
 				TeamName:         "owner",
 				QueueHistoryName: "comp1-1234",
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					ComponentName: "pr-comp1",
-					PRNumber:      "pr1234",
-					CommitSHA:     "commit-sha-xxx",
+					BundleName: "pr-comp1",
+					PRNumber:   "pr1234",
+					CommitSHA:  "commit-sha-xxx",
 				},
 			}
 			mockGithubCli := &mockGithub{}
@@ -67,7 +67,7 @@ var _ = Describe("publish commit status to github", func() {
 				Status:   rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
 				TeamName: "owner",
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					ComponentName: "pr-comp1",
+					BundleName: "pr-comp1",
 				},
 			}
 			mockGithubCli := &mockGithub{}
@@ -103,7 +103,7 @@ var _ = Describe("publish commit status to github", func() {
 
 			rpcComp := &rpc.ComponentUpgrade{
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					ComponentName: "pr-comp1",
+					BundleName: "pr-comp1",
 				},
 			}
 			mockGithubCli := &mockGithub{}

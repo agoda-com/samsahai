@@ -123,9 +123,9 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		logger.Error(err, "cannot set request header")
 	}
 
-	bundle, err := c.s2hClient.GetBundleName(ctx, &samsahairpc.TeamWithComponentName{
-		TeamName:      c.teamName,
-		ComponentName: comp.Spec.Name,
+	bundle, err := c.s2hClient.GetBundleName(ctx, &samsahairpc.TeamWithBundleName{
+		TeamName:   c.teamName,
+		BundleName: comp.Spec.Name,
 	})
 	if err != nil {
 		logger.Error(err, "cannot get bundle name", "team", c.teamName, "component", comp.Spec.Name)

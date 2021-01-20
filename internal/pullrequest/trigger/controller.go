@@ -118,7 +118,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		logger.Error(err, "cannot set request header")
 	}
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithComponentName{TeamName: c.teamName})
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{TeamName: c.teamName})
 	if err != nil {
 		return reconcile.Result{}, errors.Wrapf(err, "cannot get pull request config of team: %s", c.teamName)
 	}
@@ -240,9 +240,9 @@ func (c *controller) fillEmptyData(prTrigger *s2hv1.PullRequestTrigger, prCompSo
 func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger *s2hv1.PullRequestTrigger) (*samsahairpc.ComponentSource, error) {
 	compName := prTrigger.Spec.Component
 	prCompSource, err := c.s2hClient.GetPullRequestComponentSource(ctx, &samsahairpc.TeamWithPullRequest{
-		TeamName:      c.teamName,
-		ComponentName: compName,
-		PRNumber:      prTrigger.Spec.PRNumber,
+		TeamName:   c.teamName,
+		BundleName: compName,
+		PRNumber:   prTrigger.Spec.PRNumber,
 	})
 	if err != nil {
 		return &samsahairpc.ComponentSource{}, err

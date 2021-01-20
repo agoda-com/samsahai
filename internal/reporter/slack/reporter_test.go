@@ -216,8 +216,8 @@ var _ = Describe("send slack message", func() {
 					},
 				},
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					ComponentName: "pr-comp1",
-					PRNumber:      "pr1234",
+					BundleName: "pr-comp1",
+					PRNumber:   "pr1234",
 				},
 			}
 			mockSlackCli := &mockSlack{}

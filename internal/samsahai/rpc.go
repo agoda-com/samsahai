@@ -224,14 +224,14 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 	return &rpc.Empty{}, nil
 }
 
-func (c *controller) GetBundleName(ctx context.Context, teamWithCompName *rpc.TeamWithComponentName) (
+func (c *controller) GetBundleName(ctx context.Context, teamWithCompName *rpc.TeamWithBundleName) (
 	*rpc.BundleName, error) {
 
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 
-	bundleName := c.getBundleName(teamWithCompName.ComponentName, teamWithCompName.TeamName)
+	bundleName := c.getBundleName(teamWithCompName.BundleName, teamWithCompName.TeamName)
 
 	return &rpc.BundleName{Name: bundleName}, nil
 }
@@ -240,7 +240,7 @@ func (c *controller) GetBundleName(ctx context.Context, teamWithCompName *rpc.Te
 // repository and version are retrieved from active components
 func (c *controller) GetPullRequestComponentDependencies(
 	ctx context.Context,
-	teamWithCompName *rpc.TeamWithComponentName,
+	teamWithCompName *rpc.TeamWithBundleName,
 ) (*rpc.PullRequestDependencies, error) {
 
 	if err := c.authenticateRPC(ctx); err != nil {
@@ -248,7 +248,7 @@ func (c *controller) GetPullRequestComponentDependencies(
 	}
 
 	teamName := teamWithCompName.TeamName
-	compName := teamWithCompName.ComponentName
+	compName := teamWithCompName.BundleName
 	deps, _ := c.GetConfigController().GetPullRequestComponentDependencies(teamName, compName)
 
 	teamComp := &s2hv1.Team{}
@@ -328,7 +328,7 @@ func (c *controller) GetComponentVersion(ctx context.Context, compSource *rpc.Co
 	return &rpc.ComponentVersion{Version: version}, nil
 }
 
-func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc.TeamWithComponentName) (
+func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc.TeamWithBundleName) (
 	*rpc.PullRequestConfig, error) {
 
 	if err := c.authenticateRPC(ctx); err != nil {
@@ -364,7 +364,7 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 	//// TODO: pohfy, update here
 	if len(prConfig.Components) > 0 {
 		for _, comp := range prConfig.Components {
-			if comp.Name == teamWithComp.ComponentName {
+			if comp.Name == teamWithComp.BundleName {
 				if comp.MaxRetry != nil {
 					maxRetryVerification = comp.MaxRetry
 				}
@@ -412,7 +412,7 @@ func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWith
 	}
 
 	for compName, comp := range comps {
-		if compName == teamWithPR.ComponentName {
+		if compName == teamWithPR.BundleName {
 			if comp.Source != nil {
 				compSource.Source = string(*comp.Source)
 			}
@@ -423,7 +423,7 @@ func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWith
 	}
 
 	for _, prComp := range prConfig.Components {
-		if prComp.Name == teamWithPR.ComponentName {
+		if prComp.Name == teamWithPR.BundleName {
 			if prComp.Source != nil && *prComp.Source != "" {
 				compSource.Source = string(*prComp.Source)
 			}
@@ -445,7 +445,7 @@ func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWith
 
 	prData := s2h.PullRequestData{PRNumber: teamWithPR.PRNumber}
 	compSource.Pattern = template.TextRender("PullRequestTagPattern", compSource.Pattern, prData)
-	compSource.ComponentName = teamWithPR.ComponentName
+	compSource.ComponentName = teamWithPR.BundleName
 
 	return compSource, nil
 }
@@ -514,7 +514,7 @@ func (c *controller) CreatePullRequestEnvironment(ctx context.Context, teamWithP
 	resources := prConfig.Resources
 	//// TODO: pohfy, update here
 	for _, comp := range prConfig.Components {
-		if comp.Name == teamWithPR.ComponentName {
+		if comp.Name == teamWithPR.BundleName {
 			if comp.Resources != nil {
 				resources = comp.Resources
 			}
