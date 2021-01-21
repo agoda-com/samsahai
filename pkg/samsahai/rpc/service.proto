@@ -12,7 +12,7 @@ service RPC {
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
     rpc GetBundleName (TeamWithBundleName) returns (BundleName);
     rpc GetPriorityQueues (TeamName) returns (PriorityQueues);
-    rpc GetPullRequestComponentDependencies (TeamWithBundleName) returns (PullRequestDependencies);
+    rpc GetPullRequestBundleDependencies (TeamWithBundleName) returns (PullRequestDependencies);
     rpc GetPullRequestConfig (TeamWithBundleName) returns (PullRequestConfig);
     rpc GetPullRequestComponentSource (TeamWithPullRequest) returns (ComponentSource);
     rpc GetComponentVersion (ComponentSource) returns (ComponentVersion);

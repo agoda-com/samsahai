@@ -26,8 +26,8 @@ type ConfigController interface {
 	// GetPullRequestConfig returns a configuration of pull request
 	GetPullRequestConfig(configName string) (*s2hv1.ConfigPullRequest, error)
 
-	// GetPullRequestComponentDependencies returns a pull request component dependencies from configuration
-	GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error)
+	// GetPullRequestBundleDependencies returns dependencies list of a pull request bundle from configuration
+	GetPullRequestBundleDependencies(configName, prCompName string) ([]string, error)
 
 	// Update updates Config CRD
 	Update(config *s2hv1.Config) error

@@ -54,7 +54,7 @@ func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2
 
 		prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{
 			TeamName:   c.teamName,
-			BundleName: prQueue.Spec.ComponentName,
+			BundleName: prQueue.Spec.BundleName,
 		})
 		if err != nil {
 			return err
@@ -62,7 +62,7 @@ func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2
 
 		prQueueRPC := &samsahairpc.TeamWithPullRequest{
 			TeamName:      c.teamName,
-			BundleName:    prQueue.Spec.ComponentName,
+			BundleName:    prQueue.Spec.BundleName,
 			PRNumber:      prQueue.Spec.PRNumber,
 			CommitSHA:     prQueue.Spec.CommitSHA,
 			Namespace:     prQueue.Status.PullRequestNamespace,

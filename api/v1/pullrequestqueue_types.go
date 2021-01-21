@@ -25,8 +25,9 @@ import (
 
 // PullRequestQueueSpec defines the desired state of PullRequestQueue
 type PullRequestQueueSpec struct {
-	// ComponentName represents a pull request Component name
-	ComponentName string `json:"componentName"`
+	// TODO: pohfy, changed from componentName to name
+	// BundleName represents a pull request bundle name
+	BundleName string `json:"bundleName"`
 
 	// PRNumber represents a pull request number
 	PRNumber string `json:"prNumber"`

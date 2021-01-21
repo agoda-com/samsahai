@@ -236,20 +236,20 @@ func (c *controller) GetBundleName(ctx context.Context, teamWithCompName *rpc.Te
 	return &rpc.BundleName{Name: bundleName}, nil
 }
 
-// GetPullRequestComponentDependencies returns pull request dependencies from configuration
+// GetPullRequestBundleDependencies returns pull request dependencies from configuration
 // repository and version are retrieved from active components
-func (c *controller) GetPullRequestComponentDependencies(
+func (c *controller) GetPullRequestBundleDependencies(
 	ctx context.Context,
-	teamWithCompName *rpc.TeamWithBundleName,
+	teamWithBundleName *rpc.TeamWithBundleName,
 ) (*rpc.PullRequestDependencies, error) {
 
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 
-	teamName := teamWithCompName.TeamName
-	compName := teamWithCompName.BundleName
-	deps, _ := c.GetConfigController().GetPullRequestComponentDependencies(teamName, compName)
+	teamName := teamWithBundleName.TeamName
+	bundleName := teamWithBundleName.BundleName
+	deps, _ := c.GetConfigController().GetPullRequestBundleDependencies(teamName, bundleName)
 
 	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamName, teamComp); err != nil {

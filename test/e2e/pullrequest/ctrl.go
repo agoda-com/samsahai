@@ -463,9 +463,9 @@ var _ = Describe("[e2e] Pull request controller", func() {
 					Namespace: stgNamespace,
 				},
 				Spec: s2hv1.PullRequestQueueSpec{
-					ComponentName: prCompName,
-					PRNumber:      prNumber,
-					Components:    prComps,
+					BundleName: prCompName,
+					PRNumber:   prNumber,
+					Components: prComps,
 				},
 			}
 			Expect(prQueueCtrl.Add(&prQueue, nil)).NotTo(HaveOccurred(),
@@ -477,9 +477,9 @@ var _ = Describe("[e2e] Pull request controller", func() {
 					Namespace: stgNamespace,
 				},
 				Spec: s2hv1.PullRequestQueueSpec{
-					ComponentName: prCompName,
-					PRNumber:      prNumber,
-					Components:    prComps,
+					BundleName: prCompName,
+					PRNumber:   prNumber,
+					Components: prComps,
 				},
 			}
 			Expect(prQueueCtrl.Add(&prQueue2, nil)).NotTo(HaveOccurred(),
@@ -591,7 +591,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 					Namespace: stgNamespace,
 				},
 				Spec: s2hv1.PullRequestQueueSpec{
-					ComponentName:     prCompName,
+					BundleName:        prCompName,
 					PRNumber:          prNumber,
 					Components:        prComps,
 					CommitSHA:         commitSHA,
@@ -759,10 +759,10 @@ var _ = Describe("[e2e] Pull request controller", func() {
 					Namespace: stgNamespace,
 				},
 				Spec: s2hv1.PullRequestQueueSpec{
-					ComponentName: prCompName,
-					PRNumber:      prNumber,
-					Components:    prComps,
-					NoOfRetry:     1,
+					BundleName: prCompName,
+					PRNumber:   prNumber,
+					Components: prComps,
+					NoOfRetry:  1,
 				},
 				Status: s2hv1.PullRequestQueueStatus{
 					State:                s2hv1.PullRequestQueueEnvDestroying,

@@ -218,8 +218,8 @@ func (c *controller) GetPriorityQueues(configName string) ([]string, error) {
 	return config.Status.Used.PriorityQueues, nil
 }
 
-// GetPullRequestComponentDependencies returns a pull request component dependencies from configuration
-func (c *controller) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
+// GetPullRequestBundleDependencies returns dependencies list of a pull request bundle from configuration
+func (c *controller) GetPullRequestBundleDependencies(configName, prBundleName string) ([]string, error) {
 	config, err := c.Get(configName)
 	if err != nil {
 		logger.Error(err, "cannot get Config", "name", configName)
@@ -228,10 +228,10 @@ func (c *controller) GetPullRequestComponentDependencies(configName, prCompName 
 
 	prDeps := make([]string, 0)
 	if config.Status.Used.PullRequest != nil {
-		//// TODO: pohfy, update here
-		for _, prComp := range config.Status.Used.PullRequest.Components {
-			if prComp.Name == prCompName {
-				prDeps = prComp.Dependencies
+		// TODO: pohfy, updated from PullRequest.Components to PullRequest.Bundles
+		for _, prBundle := range config.Status.Used.PullRequest.Bundles {
+			if prBundle.Name == prBundleName {
+				prDeps = prBundle.Dependencies
 				break
 			}
 		}

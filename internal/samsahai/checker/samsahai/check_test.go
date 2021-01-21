@@ -293,7 +293,7 @@ func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1.ConfigP
 	return nil, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
+func (c *mockConfigCtrl) GetPullRequestBundleDependencies(configName, prCompName string) ([]string, error) {
 	return nil, nil
 }
 

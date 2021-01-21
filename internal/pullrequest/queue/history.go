@@ -16,7 +16,7 @@ import (
 )
 
 func (c *controller) createPullRequestQueueHistory(ctx context.Context, prQueue *s2hv1.PullRequestQueue) error {
-	prQueueLabels := getPullRequestQueueLabels(c.teamName, prQueue.Spec.ComponentName, prQueue.Spec.PRNumber)
+	prQueueLabels := getPullRequestQueueLabels(c.teamName, prQueue.Spec.BundleName, prQueue.Spec.PRNumber)
 
 	if err := c.deletePullRequestQueueHistoryOutOfRange(ctx); err != nil {
 		return err
