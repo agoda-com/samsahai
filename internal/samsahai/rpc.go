@@ -361,15 +361,13 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 		maxRetryVerification = prConfig.MaxRetry
 	}
 
-	//// TODO: pohfy, update here
-	if len(prConfig.Components) > 0 {
-		for _, comp := range prConfig.Components {
-			if comp.Name == teamWithComp.BundleName {
-				if comp.MaxRetry != nil {
-					maxRetryVerification = comp.MaxRetry
-				}
-				break
+	// TODO: pohfy, updated prConfig.Componentes to Bundles
+	for _, bundle := range prConfig.Bundles {
+		if bundle.Name == teamWithComp.BundleName {
+			if bundle.MaxRetry != nil {
+				maxRetryVerification = bundle.MaxRetry
 			}
+			break
 		}
 	}
 
