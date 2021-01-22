@@ -220,8 +220,8 @@ ifndef DRYRUN
 	if [ "$(GIT_TREE_STATE)" != "clean" ]; then \
 		echo 'git tree state is $(GIT_TREE_STATE)'; \
 		git status; \
-		echo 'warning: automatic checkout to remove changes'; \
-		git checkout .; \
+		echo 'warning: automatic stash changes'; \
+		git stash save; \
 	fi;
 endif
 
