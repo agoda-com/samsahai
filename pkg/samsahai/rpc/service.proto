@@ -49,6 +49,7 @@ message ComponentUpgrade {
     enum UpgradeStatus {
         UpgradeStatus_FAILURE = 0;
         UpgradeStatus_SUCCESS = 1;
+        UpgradeStatus_CANCELED = 2;
     }
     enum IssueType {
         IssueType_UNKNOWN = 0;

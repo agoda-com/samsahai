@@ -73,101 +73,40 @@ func (c *controller) GetMissingVersions(ctx context.Context, teamInfo *rpc.TeamW
 			"cannot get list of stable components, namespace %s", teamComp.Status.Namespace.Staging)
 	}
 
+	imgList := &rpc.ImageList{}
 	comps, err := c.GetConfigController().GetComponents(teamComp.Name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot get components of team %s", teamComp.Name)
 	}
 
-	// detect image missing of all stable components and current components concurrently
-	missingImagesCh := make(chan []*rpc.Image, 2)
-
+	// TODO: pohfy, should do concurrently
 	// get image missing of stable components
-	go func() {
-		missingImageCh := make(chan *rpc.Image)
-		errCh := make(chan error)
-		for _, stable := range stableList.Items {
-			go func(stable s2hv1.StableComponent) {
-				source, ok := c.getImageSource(comps, stable.Name)
-				if !ok {
-					errCh <- fmt.Errorf("source of image not found")
-					return
-				}
-
-				// ignore current component
-				for _, qComp := range teamInfo.Components {
-					if qComp.Name == stable.Name {
-						missingImageCh <- &rpc.Image{}
-						return
-					}
-				}
-
-				missingImage, err := c.detectImageMissing(*source, stable.Spec.Repository, stable.Name, stable.Spec.Version)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				missingImageCh <- missingImage
-			}(stable)
+	for _, stable := range stableList.Items {
+		source, ok := c.getImageSource(comps, stable.Name)
+		if !ok {
+			continue
 		}
 
-		missingImages := make([]*rpc.Image, 0)
-		for i := 0; i < len(stableList.Items); i++ {
-			select {
-			case missingImage := <-missingImageCh:
-				if missingImage.Repository != "" {
-					missingImages = append(missingImages, missingImage)
-				}
-			case err := <-errCh:
-				if err != nil {
-					logger.Error(err, "cannot detect image missing")
-				}
+		// ignore current component
+		isFound := false
+		for _, qComp := range teamInfo.Components {
+			if qComp.Name == stable.Name {
+				isFound = true
+				break
 			}
 		}
-		missingImagesCh <- missingImages
-	}()
+		if isFound {
+			continue
+		}
+
+		c.detectAndAddImageMissing(*source, stable.Spec.Repository, stable.Name, stable.Spec.Version, imgList)
+	}
 
 	// get image missing of current components
-	go func() {
-		missingImageCh := make(chan *rpc.Image)
-		errCh := make(chan error)
-		for _, qComp := range teamInfo.Components {
-			go func(qComp *rpc.Component) {
-				source, ok := c.getImageSource(comps, qComp.Name)
-				if !ok {
-					errCh <- fmt.Errorf("source of image not found")
-					return
-				}
-
-				missingImage, err := c.detectImageMissing(*source, qComp.Image.Repository, qComp.Name, qComp.Image.Tag)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				missingImageCh <- missingImage
-			}(qComp)
-		}
-
-		missingImages := make([]*rpc.Image, 0)
-		for i := 0; i < len(teamInfo.Components); i++ {
-			select {
-			case missingImage := <-missingImageCh:
-				if missingImage.Repository != "" {
-					missingImages = append(missingImages, missingImage)
-				}
-			case err := <-errCh:
-				if err != nil {
-					logger.Error(err, "cannot detect image missing")
-				}
-			}
-		}
-		missingImagesCh <- missingImages
-	}()
-
-	imgList := &rpc.ImageList{}
-	for i := 0; i < 2; i++ {
-		missingImages := <-missingImagesCh
-		if len(missingImages) > 0 {
-			imgList.Images = append(imgList.Images, missingImages...)
+	for _, qComp := range teamInfo.Components {
+		source, ok := c.getImageSource(comps, qComp.Name)
+		if ok {
+			c.detectAndAddImageMissing(*source, qComp.Image.Repository, qComp.Name, qComp.Image.Tag, imgList)
 		}
 	}
 
@@ -572,11 +511,11 @@ func (c *controller) CreatePullRequestEnvironment(ctx context.Context, teamWithP
 	}
 
 	resources := prConfig.Resources
-	//// TODO: pohfy, update here
-	for _, comp := range prConfig.Components {
-		if comp.Name == teamWithPR.BundleName {
-			if comp.Resources != nil {
-				resources = comp.Resources
+	//// TODO: pohfy, updated here
+	for _, bundle := range prConfig.Bundles {
+		if bundle.Name == teamWithPR.BundleName {
+			if bundle.Resources != nil {
+				resources = bundle.Resources
 			}
 		}
 	}
@@ -605,27 +544,26 @@ func (c *controller) DestroyPullRequestEnvironment(ctx context.Context, teamWith
 
 }
 
-// TODO: pohfy, change here to return image missing
-func (c *controller) detectImageMissing(source s2hv1.UpdatingSource, repo, name, version string) (*rpc.Image, error) {
+func (c *controller) detectAndAddImageMissing(source s2hv1.UpdatingSource, repo, name, version string, imgList *rpc.ImageList) {
 	checker, err := c.getComponentChecker(string(source))
 	if err != nil {
-		return &rpc.Image{}, errors.Wrapf(err, "cannot get component checker, source: %s", string(source))
+		logger.Error(err, "cannot get component checker", "source", string(source))
+		return
 	}
 
 	if repo != "" {
 		if err := checker.EnsureVersion(repo, name, version); err != nil {
-			if !s2herrors.IsImageNotFound(err) && !s2herrors.IsErrRequestTimeout(err) {
-				return &rpc.Image{},
-					errors.Wrapf(err, "cannot ensure version, name: %s, source: %s, repository: %s, version: %s",
-						name, source, repo, version)
-
+			if s2herrors.IsImageNotFound(err) || s2herrors.IsErrRequestTimeout(err) {
+				imgList.Images = append(imgList.Images, &rpc.Image{
+					Repository: repo,
+					Tag:        version,
+				})
+				return
 			}
-
-			return &rpc.Image{Repository: repo, Tag: version}, nil
+			logger.Error(err, "cannot ensure version",
+				"name", name, "source", source, "repository", repo, "version", version)
 		}
 	}
-
-	return &rpc.Image{}, nil
 }
 
 func (c *controller) getImageSource(comps map[string]*s2hv1.Component, name string) (*s2hv1.UpdatingSource, bool) {

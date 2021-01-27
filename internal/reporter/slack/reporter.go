@@ -227,7 +227,7 @@ func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeRep
 	message := `
 *Pull Request Queue:* {{ .StatusStr }}
 {{- if .PullRequestComponent }}
-*Component:* {{ .PullRequestComponent.ComponentName }}
+*Component:* {{ .PullRequestComponent.BundleName }}
 *PR Number:* {{ .PullRequestComponent.PRNumber }}
 {{- end }}
 ` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL)

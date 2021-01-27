@@ -91,8 +91,9 @@ func NewComponentUpgradeReporter(comp *rpc.ComponentUpgrade, s2hConfig SamsahaiC
 type StatusType string
 
 const (
-	StatusSuccess StatusType = "Success"
-	StatusFailure StatusType = "Failure"
+	StatusSuccess  StatusType = "Success"
+	StatusFailure  StatusType = "Failure"
+	StatusCanceled StatusType = "Canceled"
 )
 
 // IssueType represents an issue type of component upgrade failure
@@ -239,6 +240,8 @@ func convertStatusType(statusType rpc.ComponentUpgrade_UpgradeStatus) StatusType
 	switch statusType {
 	case rpc.ComponentUpgrade_UpgradeStatus_SUCCESS:
 		return StatusSuccess
+	case rpc.ComponentUpgrade_UpgradeStatus_CANCELED:
+		return StatusCanceled
 	default:
 		return StatusFailure
 	}

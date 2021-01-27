@@ -25,7 +25,6 @@ import (
 
 // PullRequestQueueSpec defines the desired state of PullRequestQueue
 type PullRequestQueueSpec struct {
-	// TODO: pohfy, changed from componentName to name
 	// BundleName represents a pull request bundle name
 	BundleName string `json:"bundleName"`
 

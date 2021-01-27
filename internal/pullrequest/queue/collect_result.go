@@ -48,8 +48,12 @@ func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2
 		isDeploySuccess, isTestSuccess := deploymentQueue.IsDeploySuccess(), deploymentQueue.IsTestSuccess()
 
 		compUpgradeStatus := samsahairpc.ComponentUpgrade_UpgradeStatus_FAILURE
-		if isDeploySuccess && isTestSuccess {
-			compUpgradeStatus = samsahairpc.ComponentUpgrade_UpgradeStatus_SUCCESS
+		if prQueue.IsCanceled() {
+			compUpgradeStatus = samsahairpc.ComponentUpgrade_UpgradeStatus_CANCELED
+		} else {
+			if isDeploySuccess && isTestSuccess {
+				compUpgradeStatus = samsahairpc.ComponentUpgrade_UpgradeStatus_SUCCESS
+			}
 		}
 
 		prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{
