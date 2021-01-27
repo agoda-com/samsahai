@@ -17,7 +17,6 @@ import (
 
 func (c *controller) createPullRequestEnvironment(ctx context.Context, prQueue *s2hv1.PullRequestQueue) error {
 	prNamespace := fmt.Sprintf("%s%s-%s", internal.AppPrefix, c.teamName, prQueue.Name)
-	// TODO: pohfy, rename TeamWithPullRequest rpc ComponentName to BundleName
 	_, err := c.s2hClient.CreatePullRequestEnvironment(ctx, &samsahairpc.TeamWithPullRequest{
 		TeamName:   c.teamName,
 		Namespace:  prNamespace,

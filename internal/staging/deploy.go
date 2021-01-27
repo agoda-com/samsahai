@@ -62,6 +62,7 @@ func (c *controller) deployEnvironment(queue *s2hv1.Queue) error {
 		}
 
 		var err error
+		// TODO: pohfy, check here
 		queueParentComps, queueComps, err = c.getParentAndQueueCompsFromQueueType(queue)
 		if err != nil {
 			return err
@@ -160,7 +161,8 @@ func (c *controller) getAllComponentsFromQueueType(q *s2hv1.Queue) (
 
 	configCtrl := c.getConfigController()
 	if q.IsPullRequestQueue() {
-		comps, err = configCtrl.GetPullRequestComponents(c.teamName)
+		prBundleName := q.Spec.Name
+		comps, err = configCtrl.GetPullRequestComponents(c.teamName, prBundleName)
 		if err != nil {
 			return
 		}
@@ -613,7 +615,9 @@ func (c *controller) deployQueueComponent(
 				// merge stable only matched component or dependencies
 				for _, comp := range queueComps {
 					if queue.IsPullRequestQueue() {
-						envValues, err := configctrl.GetEnvComponentValues(cfg, comp.Name, c.teamName, envType)
+						// TODO: pohfy, update here
+						bundleName := queue.Spec.Name
+						envValues, err := configctrl.GetEnvComponentValues(cfg, bundleName, c.teamName, envType)
 						if err != nil {
 							errCh <- err
 							return

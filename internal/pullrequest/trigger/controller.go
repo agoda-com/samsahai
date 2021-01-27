@@ -279,9 +279,15 @@ func (c *controller) createPullRequestQueue(namespace, compName, compRepo, compV
 			Repository: compRepo,
 			Version:    compVersion,
 		},
+		// TODO: pohfy, mock input
+		{
+			Name:       "wordpress",
+			Repository: "bitnami/wordpress",
+			Version:    "latest",
+		},
 	}
 
-	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, compName, prNumber, commitSHA, comps)
+	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, "db", prNumber, commitSHA, comps)
 	if err := c.prQueueCtrl.Add(prQueue, nil); err != nil {
 		return err
 	}
