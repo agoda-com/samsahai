@@ -429,8 +429,6 @@ type ConfigPullRequest struct {
 	Trigger PullRequestTriggerConfig `json:"trigger,omitempty"`
 	// Bundles represents a bundle of pull request components configuration
 	Bundles []*PullRequestBundle `json:"bundles,omitempty"`
-	// TODO: pohfy, remove here
-	Components []*PullRequestComponent `json:"components"`
 	// Concurrences defines a parallel number of pull request queue
 	// +optional
 	Concurrences           int `json:"concurrences,omitempty"`

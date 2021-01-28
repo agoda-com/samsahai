@@ -1430,10 +1430,6 @@ definitions:
         items:
           $ref: '#/definitions/webhook.Components'
         type: array
-      nextProcessAt:
-        type: string
-      noOfRetry:
-        type: integer
       prNumber:
         type: string
     type: object

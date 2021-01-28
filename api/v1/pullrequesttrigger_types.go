@@ -21,12 +21,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// BundleComponent represents a bundle component configuration
-type BundleComponent struct {
+// PullRequestTriggerComponent represents a pull request component in bundle
+type PullRequestTriggerComponent struct {
 	// ComponentName defines a name of bundle component
-	ComponentName string `json:"componentName,omitempty"`
+	ComponentName string `json:"componentName"`
 	// Image defines an image repository and tag
-	Image *Image `json:"image,omitempty"`
+	Image *Image `json:"image"`
 	// Pattern defines a pattern of bundle component which is a regex of tag
 	// +optional
 	Pattern string `json:"pattern,omitempty"`
@@ -41,7 +41,7 @@ type PullRequestTriggerSpec struct {
 	// +optional
 	CommitSHA string `json:"commitSHA,omitempty"`
 	// +optional
-	Components []BundleComponent `json:"components,omitempty"`
+	Components []*PullRequestTriggerComponent `json:"components,omitempty"`
 	// +optional
 	NextProcessAt *metav1.Time `json:"nextProcessAt,omitempty"`
 	// +optional

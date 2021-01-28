@@ -14,7 +14,7 @@ service RPC {
     rpc GetPriorityQueues (TeamName) returns (PriorityQueues);
     rpc GetPullRequestBundleDependencies (TeamWithBundleName) returns (PullRequestDependencies);
     rpc GetPullRequestConfig (TeamWithBundleName) returns (PullRequestConfig);
-    rpc GetPullRequestComponentSource (TeamWithPullRequest) returns (ComponentSource);
+    rpc GetPullRequestComponentSources (TeamWithPullRequest) returns (ComponentSourceList);
     rpc GetComponentVersion (ComponentSource) returns (ComponentVersion);
     rpc DeployActiveServicesIntoPullRequestEnvironment (TeamWithNamespace) returns (Empty);
     rpc CreatePullRequestEnvironment (TeamWithPullRequest) returns (Empty);
@@ -129,12 +129,15 @@ message PullRequestConfig {
     int32 maxRetry = 2;
     int32 maxHistoryDays = 3;
     PullRequestTriggerConfig trigger = 4;
-    repeated string bundleComponentsName = 5;
 }
 
 message PullRequestTriggerConfig {
     int32 maxRetry = 1;
     string pollingTime = 2;
+}
+
+message ComponentSourceList {
+    repeated ComponentSource ComponentSources = 1;
 }
 
 message ComponentSource {

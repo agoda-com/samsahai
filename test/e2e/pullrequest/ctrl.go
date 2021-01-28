@@ -643,7 +643,8 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 			By("Creating Config")
 			config := mockConfig
-			config.Status.Used.PullRequest.Components[0].Image.Repository = "missing"
+			// TODO: pohfy, update Components to Bundles
+			//config.Status.Used.PullRequest.Bundles[0].Image.Repository = "missing"
 			Expect(client.Create(ctx, &config)).To(BeNil())
 
 			By("Creating Team")
@@ -951,11 +952,12 @@ var (
 				PollingTime: metav1.Duration{Duration: 1 * time.Second},
 				MaxRetry:    &prMaxRetry,
 			},
-			Components: []*s2hv1.PullRequestComponent{
+			// TODO: pohfy, update Components to Bundles
+			Bundles: []*s2hv1.PullRequestBundle{
 				{
-					Name:         prCompName,
-					Image:        prImage,
-					Source:       &compSource,
+					Name: prCompName,
+					//Image:        prImage,
+					//Source:       &compSource,
 					Deployment:   &s2hv1.ConfigDeploy{},
 					Dependencies: []string{prDepCompName},
 				},

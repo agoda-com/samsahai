@@ -2536,12 +2536,6 @@
                         "$ref": "#/definitions/webhook.Components"
                     }
                 },
-                "nextProcessAt": {
-                    "type": "string"
-                },
-                "noOfRetry": {
-                    "type": "integer"
-                },
                 "prNumber": {
                     "type": "string"
                 }

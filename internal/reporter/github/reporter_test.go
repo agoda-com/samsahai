@@ -167,7 +167,8 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 						},
 					},
 					PullRequest: &s2hv1.ConfigPullRequest{
-						Components: []*s2hv1.PullRequestComponent{
+						// TODO: pohfy, update Components to Bundles
+						Bundles: []*s2hv1.PullRequestBundle{
 							{
 								Name:          "pr-comp1",
 								GitRepository: "error",
@@ -188,7 +189,8 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 						},
 					},
 					PullRequest: &s2hv1.ConfigPullRequest{
-						Components: []*s2hv1.PullRequestComponent{
+						// TODO: pohfy, update Components to Bundles
+						Bundles: []*s2hv1.PullRequestBundle{
 							{
 								Name:          "pr-comp1",
 								GitRepository: "samsahai/samsahai",

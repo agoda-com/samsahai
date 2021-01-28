@@ -233,7 +233,6 @@ func (c *controller) GetPullRequestBundleDependencies(configName, prBundleName s
 
 	prDeps := make([]string, 0)
 	if config.Status.Used.PullRequest != nil {
-		// TODO: pohfy, updated from PullRequest.Components to PullRequest.Bundles
 		for _, prBundle := range config.Status.Used.PullRequest.Bundles {
 			if prBundle.Name == prBundleName {
 				prDeps = prBundle.Dependencies

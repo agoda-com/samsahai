@@ -229,16 +229,17 @@ var _ = Describe("[e2e] Staging controller", func() {
 		},
 	}
 
-	prImage := s2hv1.ComponentImage{
-		Repository: "bitnami/redis",
-	}
+	//prImage := s2hv1.ComponentImage{
+	//	Repository: "bitnami/redis",
+	//}
 
 	configPR := s2hv1.ConfigPullRequest{
-		Components: []*s2hv1.PullRequestComponent{
+		// TODO: pohfy, update Components to Bundles
+		Bundles: []*s2hv1.PullRequestBundle{
 			{
-				Name:       redisCompName,
-				Image:      prImage,
-				Source:     &compSource,
+				Name: redisCompName,
+				//Image:      prImage,
+				//Source:     &compSource,
 				Deployment: &deployConfig,
 			},
 		},

@@ -13,7 +13,8 @@ import (
 
 // TriggerPullRequestDeployment creates/updates PullRequestTrigger crd object
 func (c *controller) TriggerPullRequestDeployment(teamName, bundleName, prNumber, commitSHA string,
-	nextProcessAt *v1.Time, noOfRetry int, bundleCompsTag map[string]string) error {
+	bundleCompsTag map[string]string) error {
+
 	ctx := context.TODO()
 
 	teamComp := s2hv1.Team{}
@@ -21,9 +22,9 @@ func (c *controller) TriggerPullRequestDeployment(teamName, bundleName, prNumber
 		return err
 	}
 
-	components := make([]s2hv1.BundleComponent, 0)
+	components := make([]*s2hv1.PullRequestTriggerComponent, 0)
 	for name, tag := range bundleCompsTag {
-		components = append(components, s2hv1.BundleComponent{
+		components = append(components, &s2hv1.PullRequestTriggerComponent{
 			ComponentName: name,
 			Image:         &s2hv1.Image{Tag: tag},
 		})
@@ -41,13 +42,11 @@ func (c *controller) TriggerPullRequestDeployment(teamName, bundleName, prNumber
 					Namespace: namespace,
 					Labels:    getPullRequestTriggerLabels(teamName, bundleName, prNumber),
 				},
-				Spec: s2hv1.PullRequestTriggerSpec{ // TODO: sunny reset nextprocessAt , noOfRetry , move nextprocessAt , noOfRetry from status
-					BundleName:    bundleName,
-					PRNumber:      prNumber,
-					CommitSHA:     commitSHA,
-					Components:    components,
-					NextProcessAt: nextProcessAt,
-					NoOfRetry:     &noOfRetry,
+				Spec: s2hv1.PullRequestTriggerSpec{
+					BundleName: bundleName,
+					PRNumber:   prNumber,
+					CommitSHA:  commitSHA,
+					Components: components,
 				},
 			}
 
@@ -62,9 +61,13 @@ func (c *controller) TriggerPullRequestDeployment(teamName, bundleName, prNumber
 		return err
 	}
 
-	// TODO: sunny
 	prTrigger.Spec.Components = components
 	prTrigger.Spec.CommitSHA = commitSHA
+
+	// reset pr nextProcessAt and noOfRetry on every trigger
+	initRetry := 0
+	prTrigger.Spec.NextProcessAt = nil
+	prTrigger.Spec.NoOfRetry = &initRetry
 
 	if err := c.client.Update(ctx, &prTrigger); err != nil {
 		return err

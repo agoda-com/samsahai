@@ -79,7 +79,6 @@ func (c *controller) GetMissingVersions(ctx context.Context, teamInfo *rpc.TeamW
 		return nil, errors.Wrapf(err, "cannot get components of team %s", teamComp.Name)
 	}
 
-	// TODO: pohfy, should do concurrently
 	// get image missing of stable components
 	for _, stable := range stableList.Items {
 		source, ok := c.getImageSource(comps, stable.Name)
@@ -363,20 +362,6 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 		maxRetryVerification = prConfig.MaxRetry
 	}
 
-	// TODO: pohfy, updated prConfig.Componentes to Bundles
-	var bundleComponentsName []string
-	for _, bundle := range prConfig.Bundles {
-		if bundle.Name == teamWithComp.BundleName {
-			if bundle.MaxRetry != nil {
-				maxRetryVerification = bundle.MaxRetry
-			}
-			for _, bc := range bundle.Components {
-				bundleComponentsName = append(bundleComponentsName, bc.Name)
-			}
-			break
-		}
-	}
-
 	maxHistoryDays := c.configs.PullRequest.MaxHistoryDays
 	if prConfig.MaxHistoryDays != 0 {
 		maxHistoryDays = prConfig.MaxHistoryDays
@@ -390,13 +375,14 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 			MaxRetry:    int32(*maxRetryTrigger),
 			PollingTime: pollingTimeTrigger.Duration.String(),
 		},
-		BundleComponentsName: bundleComponentsName,
 	}
 
 	return rpcPRConfig, nil
 }
 
-func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWithPR *rpc.TeamWithPullRequest) (*rpc.ComponentSource, error) {
+func (c *controller) GetPullRequestComponentSources(ctx context.Context, teamWithPR *rpc.TeamWithPullRequest) (
+	*rpc.ComponentSourceList, error) {
+
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
@@ -404,55 +390,71 @@ func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWith
 	configCtrl := c.GetConfigController()
 
 	teamName := teamWithPR.TeamName
-	prConfig, err := configCtrl.GetPullRequestConfig(teamWithPR.TeamName)
+	prComps, err := configCtrl.GetPullRequestComponents(teamName, teamWithPR.BundleName)
 	if err != nil {
 		return nil, err
 	}
 
-	compSource := &rpc.ComponentSource{Image: &rpc.Image{}}
+	compSources := make([]*rpc.ComponentSource, 0)
+	for _, prComp := range prComps {
+		compSource := &rpc.ComponentSource{Image: &rpc.Image{}}
+		if prComp.Source != nil && *prComp.Source != "" {
+			compSource.Source = string(*prComp.Source)
+		}
+
+		// resolve pull request number for image tag pattern
+		if prComp.Image.Pattern != "" {
+			compSource.Pattern = prComp.Image.Pattern
+		}
+
+		if prComp.Image.Repository != "" {
+			compSource.Image.Repository = prComp.Image.Repository
+		}
+
+		if prComp.Image.Tag != "" {
+			compSource.Image.Tag = prComp.Image.Tag
+		}
+
+		// render image tag
+		prData := s2h.PullRequestData{PRNumber: teamWithPR.PRNumber}
+		compSource.Pattern = template.TextRender("PullRequestTagPattern", compSource.Pattern, prData)
+		if compSource.Image.Tag == "" {
+			compSource.Image.Tag = compSource.Pattern
+		}
+
+		compSource.ComponentName = prComp.Name
+		compSources = append(compSources, compSource)
+	}
 
 	comps, err := configCtrl.GetComponents(teamName)
 	if err != nil {
 		return nil, err
 	}
 
+	// fill empty data
 	for compName, comp := range comps {
-		if compName == teamWithPR.BundleName {
-			if comp.Source != nil {
-				compSource.Source = string(*comp.Source)
-			}
-			compSource.Pattern = comp.Image.Pattern
-			compSource.Image.Repository = comp.Image.Repository
-			compSource.Image.Tag = comp.Image.Tag
-		}
-	}
-
-	for _, prComp := range prConfig.Components {
-		if prComp.Name == teamWithPR.BundleName {
-			if prComp.Source != nil && *prComp.Source != "" {
-				compSource.Source = string(*prComp.Source)
-			}
-
-			// resolve pull request number for image tag pattern
-			if prComp.Image.Pattern != "" {
-				compSource.Pattern = prComp.Image.Pattern
-			}
-
-			if prComp.Image.Repository != "" {
-				compSource.Image.Repository = prComp.Image.Repository
-			}
-
-			if prComp.Image.Tag != "" {
-				compSource.Image.Tag = prComp.Image.Tag
+		for _, compSource := range compSources {
+			if compName == compSource.ComponentName {
+				if compSource.Source == "" && comp.Source != nil {
+					compSource.Source = string(*comp.Source)
+				}
+				if compSource.Pattern == "" {
+					compSource.Pattern = comp.Image.Pattern
+				}
+				if compSource.Image == nil {
+					compSource.Image = &rpc.Image{}
+				}
+				if compSource.Image.Repository == "" {
+					compSource.Image.Repository = comp.Image.Repository
+				}
+				if compSource.Image.Tag == "" {
+					compSource.Image.Tag = comp.Image.Tag
+				}
 			}
 		}
 	}
 
-	prData := s2h.PullRequestData{PRNumber: teamWithPR.PRNumber}
-	compSource.Pattern = template.TextRender("PullRequestTagPattern", compSource.Pattern, prData)
-	compSource.ComponentName = teamWithPR.BundleName
-
-	return compSource, nil
+	return &rpc.ComponentSourceList{ComponentSources: compSources}, nil
 }
 
 func (c *controller) DeployActiveServicesIntoPullRequestEnvironment(ctx context.Context, teamWithNS *rpc.TeamWithNamespace) (*rpc.Empty, error) {
