@@ -515,14 +515,15 @@ var _ = Describe("send ms teams message", func() {
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
 
 			timeNow := metav1.Now()
-			noOfRetry := 2
-			img := &s2hv1.Image{Repository: "registry/comp-1", Tag: "1.0.0"}
+			//noOfRetry := 2
+			//img := &s2hv1.Image{Repository: "registry/comp-1", Tag: "1.0.0"}
 			status := s2hv1.PullRequestTriggerStatus{
 				CreatedAt: &timeNow,
-				NoOfRetry: &noOfRetry,
+				//NoOfRetry: &noOfRetry,
 			}
+			// TODO: sunny
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", "Failure", img)
+				"owner", "comp1", "1234", "Failure", nil)
 			err := r.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
 			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
 			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
@@ -534,7 +535,7 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("1234"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("registry/comp-1:1.0.0"))
-			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>NO of Retry:</b> 2"))
+			//g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>NO of Retry:</b> 2"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(timeNow.Format("2006-01-02 15:04:05 MST")))
 			g.Expect(err).Should(BeNil())
 		})
@@ -548,13 +549,14 @@ var _ = Describe("send ms teams message", func() {
 				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
 
 			timeNow := metav1.Now()
-			img := &s2hv1.Image{Repository: "registry/comp-1", Tag: "1.0.0"}
+			//img := &s2hv1.Image{Repository: "registry/comp-1", Tag: "1.0.0"}
 			status := s2hv1.PullRequestTriggerStatus{
 				CreatedAt: &timeNow,
-				NoOfRetry: nil,
+				//NoOfRetry: nil,
 			}
+			// TODO: sunny fix comps param
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", "Success", img)
+				"owner", "comp1", "1234", "Success", nil)
 			err := r.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
 			g.Expect(mockMSTeamsCli.accessTokenCalls).Should(Equal(1))
 			g.Expect(mockMSTeamsCli.getGroupIDCalls).Should(Equal(2))
@@ -562,7 +564,7 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.postMessageCalls).Should(Equal(3))
 			g.Expect(mockMSTeamsCli.channels).Should(Equal([]string{"chan1-1", "chan1-2", "chan2-1"}))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Success"))
-			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>NO of Retry:</b> 0"))
+			//g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("<b>NO of Retry:</b> 0"))
 			g.Expect(err).Should(BeNil())
 		})
 	})

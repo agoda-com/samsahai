@@ -225,7 +225,8 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 	return &rpc.Empty{}, nil
 }
 
-func (c *controller) GetBundleName(ctx context.Context, teamWithCompName *rpc.TeamWithBundleName) (
+func (c *controller) GetBundleName(ctx context.Context,
+	teamWithCompName *rpc.TeamWithBundleName) (
 	*rpc.BundleName, error) {
 
 	if err := c.authenticateRPC(ctx); err != nil {
@@ -363,10 +364,14 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 	}
 
 	// TODO: pohfy, updated prConfig.Componentes to Bundles
+	var bundleComponentsName []string
 	for _, bundle := range prConfig.Bundles {
 		if bundle.Name == teamWithComp.BundleName {
 			if bundle.MaxRetry != nil {
 				maxRetryVerification = bundle.MaxRetry
+			}
+			for _, bc := range bundle.Components {
+				bundleComponentsName = append(bundleComponentsName, bc.Name)
 			}
 			break
 		}
@@ -385,6 +390,7 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 			MaxRetry:    int32(*maxRetryTrigger),
 			PollingTime: pollingTimeTrigger.Duration.String(),
 		},
+		BundleComponentsName: bundleComponentsName,
 	}
 
 	return rpcPRConfig, nil
@@ -724,15 +730,16 @@ func (c *controller) ensureTeamPullRequestNamespaceUpdated(teamName, targetNs st
 func (c *controller) sendPullRequestTriggerReport(prTrigger *s2hv1.PullRequestTrigger, prTriggerRPC *rpc.PullRequestTrigger) {
 	configCtrl := c.GetConfigController()
 
-	compName := prTrigger.Spec.Component
+	bundleName := prTrigger.Spec.BundleName
 	prNumber := prTrigger.Spec.PRNumber
-	for _, reporter := range c.reporters {
+	comps := prTrigger.Spec.Components
+	for _, reporter := range c.reporters { // TODO: sunny edit report add component detail
 		prTriggerRpt := s2h.NewPullRequestTriggerResultReporter(prTrigger.Status, c.configs, prTriggerRPC.TeamName,
-			compName, prTrigger.Spec.PRNumber, prTriggerRPC.Result, prTrigger.Spec.Image)
+			bundleName, prTrigger.Spec.PRNumber, prTriggerRPC.Result, comps)
 
 		if err := reporter.SendPullRequestTriggerResult(configCtrl, prTriggerRpt); err != nil {
 			logger.Error(err, "cannot send pull request trigger result report",
-				"team", prTriggerRPC.TeamName, "component", compName, "prNumber", prNumber)
+				"team", prTriggerRPC.TeamName, "component", bundleName, "prNumber", prNumber)
 		}
 	}
 }

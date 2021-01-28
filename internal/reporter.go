@@ -177,26 +177,27 @@ func NewImageMissingReporter(image s2hv1.Image, s2hConfig SamsahaiConfig,
 
 // PullRequestTriggerReporter manages pull request trigger report
 type PullRequestTriggerReporter struct {
-	TeamName      string       `json:"teamName,omitempty"`
-	ComponentName string       `json:"componentName,omitempty"`
-	PRNumber      string       `json:"prNumber,omitempty"`
-	Result        string       `json:"result,omitempty"`
-	Image         *s2hv1.Image `json:"image,omitempty"`
+	TeamName   string                  `json:"teamName,omitempty"`
+	BundleName string                  `json:"bundleName,omitempty"`
+	PRNumber   string                  `json:"prNumber,omitempty"`
+	Result     string                  `json:"result,omitempty"`
+	Image      *s2hv1.Image            `json:"image,omitempty"`
+	Components []s2hv1.BundleComponent `json:"components,omitempty"`
 	s2hv1.PullRequestTriggerStatus
 	SamsahaiConfig
 }
 
 // NewPullRequestTriggerResultReporter creates pull request trigger result reporter object
 func NewPullRequestTriggerResultReporter(status s2hv1.PullRequestTriggerStatus, s2hConfig SamsahaiConfig,
-	teamName, compName, prNumber, result string, image *s2hv1.Image) *PullRequestTriggerReporter {
+	teamName, bundleName, prNumber, result string, comps []s2hv1.BundleComponent) *PullRequestTriggerReporter {
 
 	c := &PullRequestTriggerReporter{
 		PullRequestTriggerStatus: status,
 		TeamName:                 teamName,
-		ComponentName:            compName,
+		BundleName:               bundleName,
 		PRNumber:                 prNumber,
 		Result:                   result,
-		Image:                    image,
+		Components:               comps,
 		SamsahaiConfig:           s2hConfig,
 	}
 

@@ -21,18 +21,31 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// PullRequestTriggerSpec defines the desired state of PullRequestTrigger
-type PullRequestTriggerSpec struct {
-	Component string `json:"component"`
-	PRNumber  string `json:"prNumber"`
-	// +optional
-	CommitSHA string `json:"commitSHA,omitempty"`
-	// +optional
+// BundleComponent represents a bundle component configuration
+type BundleComponent struct {
+	// ComponentName defines a name of bundle component
+	ComponentName string `json:"componentName,omitempty"`
+	// Image defines an image repository and tag
 	Image *Image `json:"image,omitempty"`
+	// Pattern defines a pattern of bundle component which is a regex of tag
 	// +optional
 	Pattern string `json:"pattern,omitempty"`
 	// +optional
 	Source UpdatingSource `json:"source,omitempty"`
+}
+
+// PullRequestTriggerSpec defines the desired state of PullRequestTrigger
+type PullRequestTriggerSpec struct {
+	BundleName string `json:"bundleName"`
+	PRNumber   string `json:"prNumber"`
+	// +optional
+	CommitSHA string `json:"commitSHA,omitempty"`
+	// +optional
+	Components []BundleComponent `json:"components,omitempty"`
+	// +optional
+	NextProcessAt *metav1.Time `json:"nextProcessAt,omitempty"`
+	// +optional
+	NoOfRetry *int `json:"noOfRetry,omitempty"`
 }
 
 // PullRequestTriggerResult represents the result status of a pull request trigger
@@ -50,14 +63,6 @@ type PullRequestTriggerStatus struct {
 
 	// UpdatedAt represents time when pull request has been re-triggered
 	UpdatedAt *metav1.Time `json:"updatedAt,omitempty"`
-
-	// NextProcessAt represents time to re-check the image in the target registry
-	// +optional
-	NextProcessAt *metav1.Time `json:"nextProcessAt,omitempty"`
-
-	// NoOfRetry defines how many times this pull request has been triggered
-	// +optional
-	NoOfRetry *int `json:"noOfRetry,omitempty"`
 
 	// Result represents a result of the pull request trigger
 	// +optional

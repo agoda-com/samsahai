@@ -179,12 +179,12 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	}
 
 	if slackConfig.PullRequestTrigger != nil {
-		err := util.CheckMatchingCriteria(slackConfig.PullRequestTrigger.Criteria, string(prTriggerRpt.Result))
+		err := util.CheckMatchingCriteria(slackConfig.PullRequestTrigger.Criteria, prTriggerRpt.Result)
 		if err != nil {
 			return nil
 		}
 	}
-
+	// TODO: sunny update template add component detail
 	message := r.makePullRequestTriggerResultReport(prTriggerRpt)
 
 	return r.post(slackConfig, message, internal.PullRequestTriggerType)
@@ -220,6 +220,7 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 	return strings.TrimSpace(template.TextRender("SlackComponentUpgrade", message, comp))
 }
 
+// TODO: sunny update template add component detail
 func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeReporter) string {
 	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}`
 	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}/log`
@@ -370,12 +371,19 @@ func (r *reporter) makeImageMissingListReport(images []s2hv1.Image, reason strin
 	return strings.TrimSpace(template.TextRender("SlackImageMissingList", message, imagesObj))
 }
 
+// TODO: sunny update template add component detail
 func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.PullRequestTriggerReporter) string {
 	var message = `
 *Pull Request Trigger:* {{ .Result }}
-*Component:* {{ .ComponentName }}
+*Bundle:* {{ .BundleName }}
 *PR Number:* {{ .PRNumber }}
-*Image:* {{ if .Image }}{{ .Image.Repository }}:{{ .Image.Tag }}{{ else }}no image defined{{ end }}
+{{ if .Components }}
+*Components* 
+{{- range .Components }}
+>- *Name:* {{ .Components.ComponentName }}
+>   *Image:* {{ .Components.Repository }}:{{ .Components.Tag }}
+{{- end }}
+{{ else }}no components defined{{ end }}
 *NO of Retry:* {{ if .NoOfRetry }}{{ .NoOfRetry }}{{ else }}0{{ end }}
 *Owner:* {{ .TeamName }}
 *Start at:* {{ .CreatedAt | TimeFormat }}

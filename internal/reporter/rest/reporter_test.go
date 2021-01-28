@@ -246,17 +246,17 @@ var _ = Describe("send rest message", func() {
 		})
 
 		It("should correctly send pull request trigger result", func() {
-			img := &s2hv1.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
+			//img := &s2hv1.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
 			timeNow := metav1.Now()
-			noOfRetry := 2
+			//noOfRetry := 2
 			status := s2hv1.PullRequestTriggerStatus{
 				CreatedAt: &timeNow,
-				NoOfRetry: &noOfRetry,
-				Result:    "Failure",
+				//NoOfRetry: &noOfRetry,
+				Result: "Failure",
 			}
-
+			// TODO: sunny fix comps param
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", "Failure", img)
+				"owner", "comp1", "1234", "Failure", nil)
 
 			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
 				g.Expect(gjson.ValidBytes(body)).To(BeTrue(), "request body should be json")
@@ -266,7 +266,7 @@ var _ = Describe("send rest message", func() {
 					"result should be matched")
 				g.Expect(gjson.GetBytes(body, "teamName").String()).To(Equal(prTriggerRpt.TeamName),
 					"teamName should be matched")
-				g.Expect(gjson.GetBytes(body, "componentName").String()).To(Equal(prTriggerRpt.ComponentName),
+				g.Expect(gjson.GetBytes(body, "componentName").String()).To(Equal(prTriggerRpt.BundleName),
 					"componentName should be matched")
 				g.Expect(gjson.GetBytes(body, "prNumber").String()).To(Equal(prTriggerRpt.PRNumber),
 					"prNumber should be matched")

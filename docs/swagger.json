@@ -1210,7 +1210,15 @@
         "v1.ConfigPullRequest": {
             "type": "object",
             "properties": {
+                "bundles": {
+                    "description": "Bundles represents a bundle of pull request components configuration",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.PullRequestBundle"
+                    }
+                },
                 "components": {
+                    "description": "TODO: pohfy, remove here",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v1.PullRequestComponent"
@@ -1553,6 +1561,46 @@
                 }
             }
         },
+        "v1.PullRequestBundle": {
+            "type": "object",
+            "properties": {
+                "components": {
+                    "description": "Components represents a list of pull request components which are deployed together as a bundle",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.PullRequestComponent"
+                    }
+                },
+                "dependencies": {
+                    "description": "Dependencies defines a list of components which are required to be deployed together with the main component\n+optional",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "deployment": {
+                    "description": "Deployment represents configuration about deploy\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigDeploy"
+                },
+                "gitRepository": {
+                    "description": "GitRepository represents a string of git \"\u003cowner\u003e/\u003crepository\u003e\" e.g., agoda-com/samsahai\nused for publishing commit status\n+optional",
+                    "type": "string"
+                },
+                "maxRetry": {
+                    "description": "MaxRetry defines max retry counts of pull request component upgrade\n+optional",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "Name defines a bundle component name, can be any name",
+                    "type": "string"
+                },
+                "resources": {
+                    "description": "Resources represents how many resources of pull request namespace\n+optional",
+                    "type": "string"
+                }
+            }
+        },
         "v1.PullRequestComponent": {
             "type": "object",
             "properties": {
@@ -1564,7 +1612,7 @@
                     }
                 },
                 "deployment": {
-                    "description": "Deployment represents configuration about deploy\n+optional",
+                    "description": "TODO: pohfy, remove here\nDeployment represents configuration about deploy\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1.ConfigDeploy"
                 },
@@ -1659,12 +1707,12 @@
         "v1.PullRequestQueueSpec": {
             "type": "object",
             "properties": {
-                "commitSHA": {
-                    "description": "CommitSHA represents a commit SHA\n+optional",
+                "bundleName": {
+                    "description": "BundleName represents a pull request bundle name",
                     "type": "string"
                 },
-                "componentName": {
-                    "description": "ComponentName represents a pull request Component name",
+                "commitSHA": {
+                    "description": "CommitSHA represents a commit SHA\n+optional",
                     "type": "string"
                 },
                 "components": {
@@ -2392,6 +2440,17 @@
                 "type": "object"
             }
         },
+        "webhook.Components": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "tag": {
+                    "type": "string"
+                }
+            }
+        },
         "webhook.activePromotion": {
             "type": "object",
             "properties": {
@@ -2465,16 +2524,25 @@
         "webhook.pullRequestWebhookEventJSON": {
             "type": "object",
             "properties": {
+                "bundleName": {
+                    "type": "string"
+                },
                 "commitSHA": {
                     "type": "string"
                 },
-                "component": {
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/webhook.Components"
+                    }
+                },
+                "nextProcessAt": {
                     "type": "string"
+                },
+                "noOfRetry": {
+                    "type": "integer"
                 },
                 "prNumber": {
-                    "type": "string"
-                },
-                "tag": {
                     "type": "string"
                 }
             }

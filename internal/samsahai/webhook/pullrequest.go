@@ -5,20 +5,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	v1 "github.com/agoda-com/samsahai/api/v1"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
 
+type Components struct {
+	Name string `json:"name"`
+	Tag  string `json:"tag,omitempty"`
+}
+
+// TODO: sunny
 type pullRequestWebhookEventJSON struct {
-	Component string             `json:"component"`
-	PRNumber  intstr.IntOrString `json:"prNumber"`
-	CommitSHA string             `json:"commitSHA,omitempty"`
-	Tag       string             `json:"tag,omitempty"`
+	BundleName    string             `json:"bundleName"`
+	PRNumber      intstr.IntOrString `json:"prNumber"`
+	CommitSHA     string             `json:"commitSHA,omitempty"`
+	Components    []Components       `json:"components,omitempty"`
+	NextProcessAt string             `json:"nextProcessAt,omitempty"`
+	NoOfRetry     int                `json:"noOfRetry,omitempty"`
 }
 
 type teamPRQueueJSON struct {
@@ -61,8 +71,22 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
-	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.Component, jsonData.Tag,
-		jsonData.PRNumber.String(), jsonData.CommitSHA)
+	mapCompTag := make(map[string]string)
+	for _, comp := range jsonData.Components {
+		mapCompTag[comp.Name] = comp.Tag
+	}
+
+	// TODO: sunny nextprocessAt , noOfRetry
+	if jsonData.NextProcessAt != "" {
+		next, _ := time.Parse("2006-01-02T15:04:05.000Z", jsonData.NextProcessAt)
+		nextProcessAt := metav1.NewTime(next)
+		err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.BundleName, jsonData.PRNumber.String(),
+			jsonData.CommitSHA, &nextProcessAt, jsonData.NoOfRetry, mapCompTag)
+	} else {
+		err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.BundleName, jsonData.PRNumber.String(),
+			jsonData.CommitSHA, nil, jsonData.NoOfRetry, mapCompTag)
+	}
+
 	if err != nil {
 		h.error(w, http.StatusInternalServerError, err)
 	}

@@ -61,7 +61,7 @@ func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA st
 	comps []*s2hv1.QueueComponent) *s2hv1.PullRequestQueue {
 
 	qLabels := getPullRequestQueueLabels(teamName, bundleName, prNumber)
-	prQueueName := internal.GenPullRequestComponentName(bundleName, prNumber)
+	prQueueName := internal.GenPullRequestBundleName(bundleName, prNumber)
 
 	return &s2hv1.PullRequestQueue{
 		ObjectMeta: metav1.ObjectMeta{

@@ -129,6 +129,7 @@ message PullRequestConfig {
     int32 maxRetry = 2;
     int32 maxHistoryDays = 3;
     PullRequestTriggerConfig trigger = 4;
+    repeated string bundleComponentsName = 5;
 }
 
 message PullRequestTriggerConfig {

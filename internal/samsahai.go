@@ -199,7 +199,7 @@ type SamsahaiController interface {
 	NotifyActivePromotionReport(atpRpt *ActivePromotionReporter)
 
 	// TriggerPullRequestDeployment creates PullRequestTrigger crd object
-	TriggerPullRequestDeployment(teamName, component, tag, prNumber, commitSHA string) error
+	TriggerPullRequestDeployment(teamName, component, prNumber, commitSHA string, nextProcessAt *metav1.Time, noOfRetry int, bundleCompTag map[string]string) error
 
 	// API
 
@@ -283,9 +283,9 @@ func GenStagingNamespace(teamName string) string {
 	return AppPrefix + teamName
 }
 
-// GenPullRequestComponentName generates PullRequest object name from component and pull request number
-func GenPullRequestComponentName(component, prNumber string) string {
-	return fmt.Sprintf("%s-%s", component, prNumber)
+// GenPullRequestBundleName generates PullRequest object name from bundle name and pull request number
+func GenPullRequestBundleName(bundle, prNumber string) string {
+	return fmt.Sprintf("%s-%s", bundle, prNumber)
 }
 
 // PullRequestData defines a pull request data for template rendering

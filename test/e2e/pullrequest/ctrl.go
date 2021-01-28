@@ -691,7 +691,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 					return false, nil
 				}
 
-				if prTrigger.Status.NoOfRetry != nil && *prTrigger.Status.NoOfRetry < prMaxRetry {
+				if prTrigger.Spec.NoOfRetry != nil && *prTrigger.Spec.NoOfRetry < prMaxRetry {
 					return false, nil
 				}
 
@@ -937,7 +937,7 @@ var (
 	upComingCommitSHA = "67890"
 
 	prMaxRetry    = 2
-	prTriggerName = internal.GenPullRequestComponentName(prCompName, prNumber)
+	prTriggerName = internal.GenPullRequestBundleName(prCompName, prNumber)
 
 	configSpec = s2hv1.ConfigSpec{
 		Staging: &s2hv1.ConfigStaging{

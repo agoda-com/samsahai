@@ -102,7 +102,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	// wait until next run
-	nextProcessAt := prTrigger.Status.NextProcessAt
+	nextProcessAt := prTrigger.Spec.NextProcessAt //  TODO: sunny prTrigger.Spec.NextProcessAt
 	if nextProcessAt != nil && now.Before(nextProcessAt) {
 		return reconcile.Result{
 			Requeue:      true,
@@ -118,7 +118,9 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		logger.Error(err, "cannot set request header")
 	}
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{TeamName: c.teamName})
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{
+		TeamName:   c.teamName,
+		BundleName: prTrigger.Spec.BundleName})
 	if err != nil {
 		return reconcile.Result{}, errors.Wrapf(err, "cannot get pull request config of team: %s", c.teamName)
 	}
@@ -130,7 +132,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	zeroRetry := 0
-	noOfRetry := prTrigger.Status.NoOfRetry
+	noOfRetry := prTrigger.Spec.NoOfRetry // TODO: sunny prTrigger.Spec.NoOfRetry
 	maxRetry := prConfig.Trigger.MaxRetry
 	if maxRetry >= 0 && noOfRetry != nil && *noOfRetry >= int(maxRetry) {
 		if err := c.deleteAndSendPullRequestTriggerResult(ctx, prTrigger); err != nil {
@@ -140,13 +142,12 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
-	// fill empty data
-	prCompSource, err := c.getOverridingComponentSource(ctx, prTrigger)
+	prCompSources, err := c.getOverridingComponentSource(ctx, prTrigger, prConfig.BundleComponentsName)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	changed := c.fillEmptyData(prTrigger, prCompSource)
+	changed := c.fillEmptyData(prTrigger, prCompSources)
 	if changed {
 		if err := c.client.Update(context.TODO(), prTrigger); err != nil {
 			return reconcile.Result{}, err
@@ -155,37 +156,62 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
+	var prQueueComponents = s2hv1.QueueComponents{}
+	//var versionCh = make(chan *samsahairpc.ComponentVersion)
+	//var errCh = make(chan error)
 	nextProcessAt = &metav1.Time{Time: now.Add(pollingTime)}
-	version, err := c.s2hClient.GetComponentVersion(ctx, prCompSource)
-	if err != nil {
-		// cannot get component version from image registry
-		prTrigger.Status.UpdatedAt = &now
-		prTrigger.Status.NextProcessAt = nextProcessAt
+	for _, prCompSource := range prCompSources {
+		// TODO: sunny concurrence
+		//go func() {
+		version, err := c.s2hClient.GetComponentVersion(ctx, prCompSource)
+		//versionCh <- version
+		//errCh <- err
+		//}()
+		//}
+		//var version *samsahairpc.ComponentVersion
+		//for i := 0; i < len(prCompSources); i++ {
+		//	select {
+		//	case version = <-versionCh:
+		//
+		//	case err = <-errCh:
+		//
+		//	}
+		//}
 
-		if prTrigger.Status.NoOfRetry == nil {
-			prTrigger.Status.NoOfRetry = &zeroRetry
-		} else {
-			*prTrigger.Status.NoOfRetry++
+		if err != nil {
+			// cannot get component version from image registry
+			prTrigger.Status.UpdatedAt = &now
+			prTrigger.Spec.NextProcessAt = nextProcessAt
+
+			if prTrigger.Spec.NoOfRetry == nil {
+				prTrigger.Spec.NoOfRetry = &zeroRetry
+			} else {
+				*prTrigger.Spec.NoOfRetry++
+			}
+
+			prTrigger.Status.SetCondition(s2hv1.PullRequestTriggerCondFailed, corev1.ConditionTrue, err.Error())
+			prTrigger.Status.SetResult(s2hv1.PullRequestTriggerFailure)
+
+			if err := c.client.Update(context.TODO(), prTrigger); err != nil {
+				return reconcile.Result{}, err
+			}
+
+			return reconcile.Result{}, nil
 		}
-
-		prTrigger.Status.SetCondition(s2hv1.PullRequestTriggerCondFailed, corev1.ConditionTrue, err.Error())
-		prTrigger.Status.SetResult(s2hv1.PullRequestTriggerFailure)
-
-		if err := c.client.Update(context.TODO(), prTrigger); err != nil {
-			return reconcile.Result{}, err
+		prQueueComp := &s2hv1.QueueComponent{
+			Name:       prCompSource.ComponentName,
+			Repository: prCompSource.Image.Repository,
+			Version:    version.Version,
 		}
-
-		return reconcile.Result{}, nil
+		prQueueComponents = append(prQueueComponents, prQueueComp)
 	}
-
 	// successfully get component version from image registry
 	prTrigger.Status.SetResult(s2hv1.PullRequestTriggerSuccess)
 
-	comp := prTrigger.Spec.Component
-	imgRepo := prTrigger.Spec.Image.Repository
+	name := prTrigger.Spec.BundleName
 	prNumber := prTrigger.Spec.PRNumber
 	commitSHA := prTrigger.Spec.CommitSHA
-	err = c.createPullRequestQueue(req.Namespace, comp, imgRepo, version.Version, prNumber, commitSHA)
+	err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, prQueueComponents)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -197,7 +223,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	return reconcile.Result{}, nil
 }
 
-func (c *controller) fillEmptyData(prTrigger *s2hv1.PullRequestTrigger, prCompSource *samsahairpc.ComponentSource) (changed bool) {
+func (c *controller) fillEmptyData(prTrigger *s2hv1.PullRequestTrigger, prCompSources []*samsahairpc.ComponentSource) (changed bool) {
 	now := metav1.Now()
 
 	if prTrigger.Status.CreatedAt == nil {
@@ -209,85 +235,108 @@ func (c *controller) fillEmptyData(prTrigger *s2hv1.PullRequestTrigger, prCompSo
 		changed = true
 	}
 
-	if prTrigger.Spec.Image == nil {
-		prTrigger.Spec.Image = &s2hv1.Image{}
-		changed = true
-	}
-	if prTrigger.Spec.Image.Repository == "" {
-		prTrigger.Spec.Image.Repository = prCompSource.Image.Repository
-		changed = true
-	}
-	if prTrigger.Spec.Image.Tag == "" {
-		prTrigger.Spec.Image.Tag = prCompSource.Image.Tag
-		changed = true
-	}
-	if prTrigger.Spec.Pattern == "" {
-		prTrigger.Spec.Pattern = prCompSource.Pattern
-		changed = true
-	}
-	if prTrigger.Spec.Source == "" {
-		prTrigger.Spec.Source = s2hv1.UpdatingSource(prCompSource.Source)
-		changed = true
+	if len(prTrigger.Spec.Components) == 0 {
+		for _, prCompSource := range prCompSources {
+			prTrigger.Spec.Components = append(prTrigger.Spec.Components, s2hv1.BundleComponent{
+				ComponentName: prCompSource.ComponentName,
+			})
+		}
+	} else if len(prTrigger.Spec.Components) < len(prCompSources) {
+		check := make(map[string]bool)
+		for _, prTriggerComp := range prTrigger.Spec.Components {
+			check[prTriggerComp.ComponentName] = true
+		}
+		for _, prCompSource := range prCompSources { // redis, mariadb, wordpress
+			if _, ok := check[prCompSource.ComponentName]; !ok {
+				check[prCompSource.ComponentName] = true
+				prTrigger.Spec.Components = append(prTrigger.Spec.Components, s2hv1.BundleComponent{
+					ComponentName: prCompSource.ComponentName,
+				})
+			}
+		}
 	}
 
-	if prTrigger.Spec.Image.Tag == "" {
-		prTrigger.Spec.Image.Tag = prTrigger.Spec.Pattern
+	for _, prCompSource := range prCompSources {
+		for i, prTriggerComponent := range prTrigger.Spec.Components {
+			if prTriggerComponent.ComponentName == prCompSource.ComponentName {
+				if prTriggerComponent.Image == nil {
+					prTriggerComponent.Image = &s2hv1.Image{}
+					changed = true
+				}
+				if prTriggerComponent.Image.Repository == "" {
+					prTriggerComponent.Image.Repository = prCompSource.Image.Repository
+					changed = true
+				}
+				if prTriggerComponent.Image.Tag == "" {
+					prTriggerComponent.Image.Tag = prCompSource.Image.Tag
+					changed = true
+				}
+				if prTriggerComponent.Pattern == "" {
+					prTriggerComponent.Pattern = prCompSource.Pattern
+					changed = true
+				}
+				if prTriggerComponent.Source == "" {
+					prTriggerComponent.Source = s2hv1.UpdatingSource(prCompSource.Source)
+					changed = true
+				}
+
+				if prTriggerComponent.Image.Tag == "" {
+					prTriggerComponent.Image.Tag = prTriggerComponent.Pattern
+				}
+				prTrigger.Spec.Components[i] = prTriggerComponent
+			}
+		}
 	}
 
 	return
 }
 
-func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger *s2hv1.PullRequestTrigger) (*samsahairpc.ComponentSource, error) {
-	compName := prTrigger.Spec.Component
-	prCompSource, err := c.s2hClient.GetPullRequestComponentSource(ctx, &samsahairpc.TeamWithPullRequest{
-		TeamName:   c.teamName,
-		BundleName: compName,
-		PRNumber:   prTrigger.Spec.PRNumber,
-	})
-	if err != nil {
-		return &samsahairpc.ComponentSource{}, err
-	}
+func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger *s2hv1.PullRequestTrigger, compsName []string) ([]*samsahairpc.ComponentSource, error) {
+	var prCompSources []*samsahairpc.ComponentSource
+	for _, compName := range compsName {
+		prCompSource, err := c.s2hClient.GetPullRequestComponentSource(ctx, &samsahairpc.TeamWithPullRequest{
+			TeamName:   c.teamName,
+			BundleName: compName,
+			PRNumber:   prTrigger.Spec.PRNumber,
+		})
 
-	overridingPRImage := prTrigger.Spec.Image
-	if overridingPRImage != nil {
-		if overridingPRImage.Repository != "" {
-			prCompSource.Image.Repository = overridingPRImage.Repository
+		if err != nil {
+			return []*samsahairpc.ComponentSource{}, err
 		}
 
-		if overridingPRImage.Tag != "" {
-			prCompSource.Image.Tag = overridingPRImage.Tag
+		for _, prBundleComponent := range prTrigger.Spec.Components {
+			if prBundleComponent.ComponentName == compName {
+				overridingPRImage := prBundleComponent.Image
+				if overridingPRImage != nil {
+					if overridingPRImage.Repository != "" {
+						prCompSource.Image.Repository = overridingPRImage.Repository
+					}
+
+					if overridingPRImage.Tag != "" {
+						prCompSource.Image.Tag = overridingPRImage.Tag
+					}
+				}
+
+				overridingPattern := prBundleComponent.Pattern
+				if overridingPattern != "" {
+					prCompSource.Pattern = overridingPattern
+				}
+
+				overridingSource := prBundleComponent.Source
+				if overridingSource != "" {
+					prCompSource.Source = string(overridingSource)
+				}
+			}
 		}
+		prCompSources = append(prCompSources, prCompSource)
 	}
 
-	overridingPattern := prTrigger.Spec.Pattern
-	if overridingPattern != "" {
-		prCompSource.Pattern = overridingPattern
-	}
+	return prCompSources, nil
 
-	overridingSource := prTrigger.Spec.Source
-	if overridingSource != "" {
-		prCompSource.Source = string(overridingSource)
-	}
-
-	return prCompSource, nil
 }
 
-func (c *controller) createPullRequestQueue(namespace, compName, compRepo, compVersion, prNumber, commitSHA string) error {
-	comps := s2hv1.QueueComponents{
-		{
-			Name:       compName,
-			Repository: compRepo,
-			Version:    compVersion,
-		},
-		// TODO: pohfy, mock input
-		{
-			Name:       "wordpress",
-			Repository: "bitnami/wordpress",
-			Version:    "latest",
-		},
-	}
-
-	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, "db", prNumber, commitSHA, comps)
+func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA string, comps s2hv1.QueueComponents) error {
+	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, name, prNumber, commitSHA, comps)
 	if err := c.prQueueCtrl.Add(prQueue, nil); err != nil {
 		return err
 	}
@@ -305,7 +354,7 @@ func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context, 
 	if _, err := c.s2hClient.RunPostPullRequestTrigger(ctx, prTriggerRPC); err != nil {
 		return errors.Wrapf(err,
 			"cannot send pull request trigger result report, team: %s, component: %s, prNumber: %s",
-			c.teamName, prTrigger.Spec.Component, prTrigger.Spec.PRNumber)
+			c.teamName, prTrigger.Spec.BundleName, prTrigger.Spec.PRNumber)
 	}
 
 	if err := c.client.Delete(context.TODO(), prTrigger); err != nil && !k8serrors.IsNotFound(err) {
