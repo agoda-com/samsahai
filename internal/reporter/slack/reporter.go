@@ -172,7 +172,9 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 }
 
 // SendPullRequestTriggerResult implements the reporter SendPullRequestTriggerResult function
-func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
+func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigController,
+	prTriggerRpt *internal.PullRequestTriggerReporter) error {
+
 	slackConfig, err := r.getSlackConfig(prTriggerRpt.TeamName, configCtrl)
 	if err != nil {
 		return nil
@@ -184,8 +186,12 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 			return nil
 		}
 	}
-	// TODO: sunny update template add component detail
+
 	message := r.makePullRequestTriggerResultReport(prTriggerRpt)
+	if len(prTriggerRpt.ImageMissingList) > 0 {
+		message += "\n"
+		message += r.makeImageMissingListReport(prTriggerRpt.ImageMissingList, "")
+	}
 
 	return r.post(slackConfig, message, internal.PullRequestTriggerType)
 }
@@ -220,7 +226,6 @@ func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeRep
 	return strings.TrimSpace(template.TextRender("SlackComponentUpgrade", message, comp))
 }
 
-// TODO: sunny update template add component detail
 func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeReporter) string {
 	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}`
 	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}/log`
@@ -371,19 +376,20 @@ func (r *reporter) makeImageMissingListReport(images []s2hv1.Image, reason strin
 	return strings.TrimSpace(template.TextRender("SlackImageMissingList", message, imagesObj))
 }
 
-// TODO: sunny update template add component detail
 func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.PullRequestTriggerReporter) string {
 	var message = `
 *Pull Request Trigger:* {{ .Result }}
 *Bundle:* {{ .BundleName }}
 *PR Number:* {{ .PRNumber }}
-{{ if .Components }}
 *Components* 
+{{- if .Components }}
 {{- range .Components }}
->- *Name:* {{ .Components.ComponentName }}
->   *Image:* {{ .Components.Repository }}:{{ .Components.Tag }}
+>- *Name:* {{ .ComponentName }}
+>   *Image:* {{ if .Image }}{{ .Image.Repository }}:{{ .Image.Tag }}{{ else }}no image defined{{ end }}
 {{- end }}
-{{ else }}no components defined{{ end }}
+{{- else }}
+` + "`no components defined`" + `
+{{- end }}
 *NO of Retry:* {{ if .NoOfRetry }}{{ .NoOfRetry }}{{ else }}0{{ end }}
 *Owner:* {{ .TeamName }}
 *Start at:* {{ .CreatedAt | TimeFormat }}

@@ -1728,6 +1728,11 @@ func (in *PullRequestTriggerStatus) DeepCopyInto(out *PullRequestTriggerStatus) 
 		in, out := &in.UpdatedAt, &out.UpdatedAt
 		*out = (*in).DeepCopy()
 	}
+	if in.ImageMissingList != nil {
+		in, out := &in.ImageMissingList, &out.ImageMissingList
+		*out = make([]Image, len(*in))
+		copy(*out, *in)
+	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]PullRequestTriggerCondition, len(*in))

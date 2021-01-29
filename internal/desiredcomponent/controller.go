@@ -128,7 +128,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		BundleName: comp.Spec.Name,
 	})
 	if err != nil {
-		logger.Error(err, "cannot get bundle name", "team", c.teamName, "component", comp.Spec.Name)
+		logger.Error(err, "cannot get bundle name", "team", c.teamName, "bundle", comp.Spec.Name)
 	}
 
 	priorityQueues, err := c.s2hClient.GetPriorityQueues(ctx, &samsahairpc.TeamName{Name: c.teamName})

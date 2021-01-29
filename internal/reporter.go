@@ -183,13 +183,15 @@ type PullRequestTriggerReporter struct {
 	Result     string                               `json:"result,omitempty"`
 	Components []*s2hv1.PullRequestTriggerComponent `json:"components,omitempty"`
 	Image      *s2hv1.Image                         `json:"image,omitempty"`
+	NoOfRetry  int                                  `json:"noOfRetry,omitempty"`
 	s2hv1.PullRequestTriggerStatus
 	SamsahaiConfig
 }
 
 // NewPullRequestTriggerResultReporter creates pull request trigger result reporter object
 func NewPullRequestTriggerResultReporter(status s2hv1.PullRequestTriggerStatus, s2hConfig SamsahaiConfig,
-	teamName, bundleName, prNumber, result string, comps []*s2hv1.PullRequestTriggerComponent) *PullRequestTriggerReporter {
+	teamName, bundleName, prNumber, result string, noOfRetry int,
+	comps []*s2hv1.PullRequestTriggerComponent) *PullRequestTriggerReporter {
 
 	c := &PullRequestTriggerReporter{
 		PullRequestTriggerStatus: status,
@@ -199,6 +201,7 @@ func NewPullRequestTriggerResultReporter(status s2hv1.PullRequestTriggerStatus, 
 		Result:                   result,
 		Components:               comps,
 		SamsahaiConfig:           s2hConfig,
+		NoOfRetry:                noOfRetry,
 	}
 
 	return c

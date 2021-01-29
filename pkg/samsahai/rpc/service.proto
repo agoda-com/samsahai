@@ -156,4 +156,5 @@ message PullRequestTrigger {
     string namespace = 2;
     string teamName = 3;
     string result = 4;
+    repeated Image imageMissingList = 5;
 }

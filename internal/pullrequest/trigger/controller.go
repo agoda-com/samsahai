@@ -131,7 +131,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			prConfig.Trigger.PollingTime)
 	}
 
-	initRetry := 0
 	noOfRetry := prTrigger.Spec.NoOfRetry
 	maxRetry := prConfig.Trigger.MaxRetry
 	if maxRetry >= 0 && noOfRetry != nil && *noOfRetry >= int(maxRetry) {
@@ -156,37 +155,71 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
-	var prQueueComponents = s2hv1.QueueComponents{}
-	nextProcessAt = &metav1.Time{Time: now.Add(pollingTime)}
+	compSourceCh, compVersionCh := make(chan *samsahairpc.ComponentSource), make(chan *samsahairpc.ComponentVersion)
+	errCh := make(chan error)
 	for _, prCompSource := range prCompSources {
-		version, err := c.s2hClient.GetComponentVersion(ctx, prCompSource)
-		if err != nil {
-			// cannot get component version from image registry
-			prTrigger.Status.UpdatedAt = &now
-			prTrigger.Spec.NextProcessAt = nextProcessAt
-
-			if prTrigger.Spec.NoOfRetry == nil {
-				prTrigger.Spec.NoOfRetry = &initRetry
-			} else {
-				*prTrigger.Spec.NoOfRetry++
+		go func(prCompSource *samsahairpc.ComponentSource) {
+			version, err := c.s2hClient.GetComponentVersion(ctx, prCompSource)
+			if err != nil {
+				errCh <- err
+				compSourceCh <- prCompSource
+				return
 			}
-
-			prTrigger.Status.SetCondition(s2hv1.PullRequestTriggerCondFailed, corev1.ConditionTrue, err.Error())
-			prTrigger.Status.SetResult(s2hv1.PullRequestTriggerFailure)
-
-			if err := c.client.Update(context.TODO(), prTrigger); err != nil {
-				return reconcile.Result{}, err
-			}
-
-			return reconcile.Result{}, nil
-		}
-		prQueueComp := &s2hv1.QueueComponent{
-			Name:       prCompSource.ComponentName,
-			Repository: prCompSource.Image.Repository,
-			Version:    version.Version,
-		}
-		prQueueComponents = append(prQueueComponents, prQueueComp)
+			compVersionCh <- version
+			compSourceCh <- prCompSource
+		}(prCompSource)
 	}
+
+	var prQueueComponents s2hv1.QueueComponents
+	var globalErr error
+	for i := 0; i < len(prCompSources); i++ {
+		select {
+		case compVersion := <-compVersionCh:
+			compSource := <-compSourceCh
+			prQueueComp := &s2hv1.QueueComponent{
+				Name:       compSource.ComponentName,
+				Repository: compSource.Image.Repository,
+				Version:    compVersion.Version,
+			}
+			prQueueComponents = append(prQueueComponents, prQueueComp)
+		case err := <-errCh:
+			compSource := <-compSourceCh
+			prTrigger.Status.ImageMissingList = make([]s2hv1.Image, 0)
+			if err != nil {
+				globalErr = err
+				img := s2hv1.Image{
+					Repository: compSource.Image.Repository,
+					Tag:        compSource.Image.Tag,
+				}
+				prTrigger.Status.ImageMissingList = append(prTrigger.Status.ImageMissingList, img)
+			}
+		}
+	}
+
+	if globalErr != nil {
+		initRetry := 0
+		nextProcessAt = &metav1.Time{Time: now.Add(pollingTime)}
+
+		// cannot get component version from image registry
+		prTrigger.Status.UpdatedAt = &now
+		prTrigger.Spec.NextProcessAt = nextProcessAt
+
+		if prTrigger.Spec.NoOfRetry == nil {
+			prTrigger.Spec.NoOfRetry = &initRetry
+		} else {
+			*prTrigger.Spec.NoOfRetry++
+		}
+
+		prTrigger.Status.SetCondition(s2hv1.PullRequestTriggerCondFailed, corev1.ConditionTrue, globalErr.Error())
+		prTrigger.Status.SetResult(s2hv1.PullRequestTriggerFailure)
+
+		if err := c.client.Update(context.TODO(), prTrigger); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		return reconcile.Result{}, nil
+	}
+
 	// successfully get component version from image registry
 	prTrigger.Status.SetResult(s2hv1.PullRequestTriggerSuccess)
 
@@ -348,11 +381,17 @@ func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA
 }
 
 func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context, prTrigger *s2hv1.PullRequestTrigger) error {
+	outImgList := make([]*samsahairpc.Image, 0)
+	for _, img := range prTrigger.Status.ImageMissingList {
+		outImgList = append(outImgList, &samsahairpc.Image{Repository: img.Repository, Tag: img.Tag})
+	}
+
 	prTriggerRPC := &samsahairpc.PullRequestTrigger{
-		Name:      prTrigger.Name,
-		Namespace: prTrigger.Namespace,
-		TeamName:  c.teamName,
-		Result:    string(prTrigger.Status.Result),
+		Name:             prTrigger.Name,
+		Namespace:        prTrigger.Namespace,
+		TeamName:         c.teamName,
+		Result:           string(prTrigger.Status.Result),
+		ImageMissingList: outImgList,
 	}
 	if _, err := c.s2hClient.RunPostPullRequestTrigger(ctx, prTriggerRPC); err != nil {
 		return errors.Wrapf(err,

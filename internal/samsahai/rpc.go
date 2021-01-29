@@ -73,39 +73,101 @@ func (c *controller) GetMissingVersions(ctx context.Context, teamInfo *rpc.TeamW
 			"cannot get list of stable components, namespace %s", teamComp.Status.Namespace.Staging)
 	}
 
-	imgList := &rpc.ImageList{}
 	comps, err := c.GetConfigController().GetComponents(teamComp.Name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot get components of team %s", teamComp.Name)
 	}
 
+	// detect image missing of all stable components and current components concurrently
+	missingImagesCh := make(chan []*rpc.Image, 2)
+
 	// get image missing of stable components
-	for _, stable := range stableList.Items {
-		source, ok := c.getImageSource(comps, stable.Name)
-		if !ok {
-			continue
+	go func() {
+		missingImageCh := make(chan *rpc.Image)
+		errCh := make(chan error)
+		for _, stable := range stableList.Items {
+			go func(stable s2hv1.StableComponent) {
+				source, ok := c.getImageSource(comps, stable.Name)
+				if !ok {
+					errCh <- fmt.Errorf("source of image not found")
+					return
+				}
+
+				// ignore current component
+				for _, qComp := range teamInfo.Components {
+					if qComp.Name == stable.Name {
+						missingImageCh <- &rpc.Image{}
+						return
+					}
+				}
+
+				missingImage, err := c.detectMissingImage(*source, stable.Spec.Repository, stable.Name, stable.Spec.Version)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				missingImageCh <- missingImage
+			}(stable)
 		}
 
-		// ignore current component
-		isFound := false
-		for _, qComp := range teamInfo.Components {
-			if qComp.Name == stable.Name {
-				isFound = true
-				break
+		missingImages := make([]*rpc.Image, 0)
+		for i := 0; i < len(stableList.Items); i++ {
+			select {
+			case missingImage := <-missingImageCh:
+				if missingImage.Repository != "" {
+					missingImages = append(missingImages, missingImage)
+				}
+			case err := <-errCh:
+				if err != nil {
+					logger.Error(err, "cannot detect image missing")
+				}
 			}
 		}
-		if isFound {
-			continue
-		}
-
-		c.detectAndAddImageMissing(*source, stable.Spec.Repository, stable.Name, stable.Spec.Version, imgList)
-	}
+		missingImagesCh <- missingImages
+	}()
 
 	// get image missing of current components
-	for _, qComp := range teamInfo.Components {
-		source, ok := c.getImageSource(comps, qComp.Name)
-		if ok {
-			c.detectAndAddImageMissing(*source, qComp.Image.Repository, qComp.Name, qComp.Image.Tag, imgList)
+	go func() {
+		missingImageCh := make(chan *rpc.Image)
+		errCh := make(chan error)
+		for _, qComp := range teamInfo.Components {
+			go func(qComp *rpc.Component) {
+				source, ok := c.getImageSource(comps, qComp.Name)
+				if !ok {
+					errCh <- fmt.Errorf("source of image not found")
+					return
+				}
+
+				missingImage, err := c.detectMissingImage(*source, qComp.Image.Repository, qComp.Name, qComp.Image.Tag)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				missingImageCh <- missingImage
+			}(qComp)
+		}
+
+		missingImages := make([]*rpc.Image, 0)
+		for i := 0; i < len(teamInfo.Components); i++ {
+			select {
+			case missingImage := <-missingImageCh:
+				if missingImage.Repository != "" {
+					missingImages = append(missingImages, missingImage)
+				}
+			case err := <-errCh:
+				if err != nil {
+					logger.Error(err, "cannot detect image missing")
+				}
+			}
+		}
+		missingImagesCh <- missingImages
+	}()
+
+	imgList := &rpc.ImageList{}
+	for i := 0; i < 2; i++ {
+		missingImages := <-missingImagesCh
+		if len(missingImages) > 0 {
+			imgList.Images = append(imgList.Images, missingImages...)
 		}
 	}
 
@@ -180,7 +242,9 @@ func (c *controller) RunPostPullRequestQueue(ctx context.Context, comp *rpc.Comp
 	return &rpc.Empty{}, nil
 }
 
-func (c *controller) RunPostPullRequestTrigger(ctx context.Context, prTriggerRPC *rpc.PullRequestTrigger) (*rpc.Empty, error) {
+func (c *controller) RunPostPullRequestTrigger(ctx context.Context, prTriggerRPC *rpc.PullRequestTrigger) (
+	*rpc.Empty, error) {
+
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
@@ -552,26 +616,26 @@ func (c *controller) DestroyPullRequestEnvironment(ctx context.Context, teamWith
 
 }
 
-func (c *controller) detectAndAddImageMissing(source s2hv1.UpdatingSource, repo, name, version string, imgList *rpc.ImageList) {
+func (c *controller) detectMissingImage(source s2hv1.UpdatingSource, repo, name, version string) (*rpc.Image, error) {
 	checker, err := c.getComponentChecker(string(source))
 	if err != nil {
-		logger.Error(err, "cannot get component checker", "source", string(source))
-		return
+		return &rpc.Image{}, errors.Wrapf(err, "cannot get component checker, source: %s", string(source))
 	}
 
 	if repo != "" {
 		if err := checker.EnsureVersion(repo, name, version); err != nil {
-			if s2herrors.IsImageNotFound(err) || s2herrors.IsErrRequestTimeout(err) {
-				imgList.Images = append(imgList.Images, &rpc.Image{
-					Repository: repo,
-					Tag:        version,
-				})
-				return
+			if !s2herrors.IsImageNotFound(err) && !s2herrors.IsErrRequestTimeout(err) {
+				return &rpc.Image{},
+					errors.Wrapf(err, "cannot ensure version, name: %s, source: %s, repository: %s, version: %s",
+						name, source, repo, version)
+
 			}
-			logger.Error(err, "cannot ensure version",
-				"name", name, "source", source, "repository", repo, "version", version)
+
+			return &rpc.Image{Repository: repo, Tag: version}, nil
 		}
 	}
+
+	return &rpc.Image{}, nil
 }
 
 func (c *controller) getImageSource(comps map[string]*s2hv1.Component, name string) (*s2hv1.UpdatingSource, bool) {
@@ -623,7 +687,7 @@ func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv
 		if comp.PullRequestComponent != nil && comp.PullRequestComponent.PRNumber != "" {
 			if err := reporter.SendPullRequestQueue(configCtrl, upgradeComp); err != nil {
 				logger.Error(err, "cannot send component upgrade failure report",
-					"team", comp.TeamName, "component", comp.Name)
+					"team", comp.TeamName, "bundle", comp.Name)
 			}
 		} else {
 			if err := reporter.SendComponentUpgrade(configCtrl, upgradeComp); err != nil {
@@ -735,13 +799,18 @@ func (c *controller) sendPullRequestTriggerReport(prTrigger *s2hv1.PullRequestTr
 	bundleName := prTrigger.Spec.BundleName
 	prNumber := prTrigger.Spec.PRNumber
 	comps := prTrigger.Spec.Components
-	for _, reporter := range c.reporters { // TODO: sunny edit report add component detail
+	for _, reporter := range c.reporters {
+		noOfRetry := 0
+		if prTrigger.Spec.NoOfRetry != nil {
+			noOfRetry = *prTrigger.Spec.NoOfRetry
+		}
+
 		prTriggerRpt := s2h.NewPullRequestTriggerResultReporter(prTrigger.Status, c.configs, prTriggerRPC.TeamName,
-			bundleName, prTrigger.Spec.PRNumber, prTriggerRPC.Result, comps)
+			bundleName, prTrigger.Spec.PRNumber, prTriggerRPC.Result, noOfRetry, comps)
 
 		if err := reporter.SendPullRequestTriggerResult(configCtrl, prTriggerRpt); err != nil {
 			logger.Error(err, "cannot send pull request trigger result report",
-				"team", prTriggerRPC.TeamName, "component", bundleName, "prNumber", prNumber)
+				"team", prTriggerRPC.TeamName, "bundle", bundleName, "prNumber", prNumber)
 		}
 	}
 }

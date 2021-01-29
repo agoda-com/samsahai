@@ -68,6 +68,10 @@ type PullRequestTriggerStatus struct {
 	// +optional
 	Result PullRequestTriggerResult `json:"result,omitempty"`
 
+	// ImageMissingList defines image missing lists
+	// +optional
+	ImageMissingList []Image `json:"imageMissingList,omitempty"`
+
 	// Conditions contains observations of the resource's state e.g.,
 	// Queue deployed, being tested
 	// +optional
