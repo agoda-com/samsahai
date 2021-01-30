@@ -393,7 +393,7 @@ func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.Pul
 {{- else }}
 <br/><code>no components defined</code>
 {{- end }}
-<br/><b>NO of Retry:</b> {{ if .NoOfRetry }}{{ .NoOfRetry }}{{ else }}0{{ end }}
+<br/><b>NO of Retry:</b> {{ .NoOfRetry }}
 <br/><b>Owner:</b> {{ .TeamName }}
 <br/><b>Start at:</b> {{ .CreatedAt | TimeFormat }}
 `

@@ -329,11 +329,6 @@ definitions:
         items:
           $ref: '#/definitions/v1.PullRequestBundle'
         type: array
-      components:
-        description: 'TODO: pohfy, remove here'
-        items:
-          $ref: '#/definitions/v1.PullRequestComponent'
-        type: array
       concurrences:
         description: |-
           Concurrences defines a parallel number of pull request queue

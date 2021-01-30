@@ -426,6 +426,15 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 		maxRetryVerification = prConfig.MaxRetry
 	}
 
+	for _, bundle := range prConfig.Bundles {
+		if bundle.Name == teamWithComp.BundleName {
+			if bundle.MaxRetry != nil {
+				maxRetryVerification = bundle.MaxRetry
+			}
+			break
+		}
+	}
+
 	maxHistoryDays := c.configs.PullRequest.MaxHistoryDays
 	if prConfig.MaxHistoryDays != 0 {
 		maxHistoryDays = prConfig.MaxHistoryDays

@@ -1217,13 +1217,6 @@
                         "$ref": "#/definitions/v1.PullRequestBundle"
                     }
                 },
-                "components": {
-                    "description": "TODO: pohfy, remove here",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1.PullRequestComponent"
-                    }
-                },
                 "concurrences": {
                     "description": "Concurrences defines a parallel number of pull request queue\n+optional",
                     "type": "integer"

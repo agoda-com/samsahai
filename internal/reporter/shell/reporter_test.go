@@ -55,7 +55,7 @@ var _ = Describe("shell command reporter", func() {
 			comp := internal.NewComponentUpgradeReporter(&rpc.ComponentUpgrade{
 				Status: 1,
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					BundleName: "pr-comp1",
+					BundleName: "bundle-1",
 					PRNumber:   "pr1234",
 				},
 			}, internal.SamsahaiConfig{})
@@ -120,8 +120,18 @@ var _ = Describe("shell command reporter", func() {
 			configCtrl := newMockConfigCtrl("")
 
 			status := s2hv1.PullRequestTriggerStatus{}
+			prComps := []*s2hv1.PullRequestTriggerComponent{
+				{
+					ComponentName: "bundle1-comp1",
+					Image:         &s2hv1.Image{Repository: "registry/comp-1", Tag: "1.0.0"},
+				},
+				{
+					ComponentName: "bundle1-comp2",
+					Image:         &s2hv1.Image{Repository: "registry/comp-2", Tag: "2.0.0"},
+				},
+			}
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", "Failure", nil)
+				"owner", "bundle-1", "1234", "Failure", 0, prComps)
 			err := r.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
 			g.Expect(err).NotTo(HaveOccurred())
 

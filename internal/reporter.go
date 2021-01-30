@@ -182,7 +182,6 @@ type PullRequestTriggerReporter struct {
 	PRNumber   string                               `json:"prNumber,omitempty"`
 	Result     string                               `json:"result,omitempty"`
 	Components []*s2hv1.PullRequestTriggerComponent `json:"components,omitempty"`
-	Image      *s2hv1.Image                         `json:"image,omitempty"`
 	NoOfRetry  int                                  `json:"noOfRetry,omitempty"`
 	s2hv1.PullRequestTriggerStatus
 	SamsahaiConfig

@@ -174,11 +174,11 @@ var _ = Describe("send rest message", func() {
 				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
 				Components: []*rpc.Component{
 					{
-						Name:  "comp1",
+						Name:  "bundle1-comp1",
 						Image: img1,
 					},
 					{
-						Name:  "comp2",
+						Name:  "bundle1-comp2",
 						Image: img2,
 					},
 				},
@@ -187,7 +187,7 @@ var _ = Describe("send rest message", func() {
 				Namespace:  "owner-staging",
 				IsReverify: true,
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					BundleName: "pr-comp1",
+					BundleName: "bundle-1",
 					PRNumber:   "pr1234",
 				},
 			}
@@ -206,10 +206,22 @@ var _ = Describe("send rest message", func() {
 					"unixTimestamp keys should exist")
 				g.Expect(gjson.GetBytes(body, "teamName").String()).To(Equal(rpcComp.TeamName),
 					"teamName should be matched")
-				g.Expect(gjson.GetBytes(body, "pullRequestComponent.componentName").String()).To(Equal(rpcComp.PullRequestComponent.BundleName),
+				g.Expect(gjson.GetBytes(body, "pullRequestComponent.bundleName").String()).To(Equal(rpcComp.PullRequestComponent.BundleName),
 					"pullRequestComponent.componentName should be matched")
 				g.Expect(gjson.GetBytes(body, "pullRequestComponent.PRNumber").String()).To(Equal(rpcComp.PullRequestComponent.PRNumber),
 					"pullRequestComponent.pullRequestNumber should be matched")
+
+				components := gjson.GetBytes(body, "components").Array()
+				g.Expect(len(components)).To(Equal(2))
+				g.Expect(gjson.GetBytes([]byte(components[0].String()), "image.repository").String()).To(Equal(img1.Repository),
+					"imageRepository should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[0].String()), "image.tag").String()).To(Equal(img1.Tag),
+					"imageTag should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[1].String()), "image.repository").String()).To(Equal(img2.Repository),
+					"imageRepository should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[1].String()), "image.tag").String()).To(Equal(img2.Tag),
+					"imageTag should be matched")
+
 			})
 
 			defer server.Close()
@@ -246,17 +258,23 @@ var _ = Describe("send rest message", func() {
 		})
 
 		It("should correctly send pull request trigger result", func() {
-			//img := &s2hv1.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
 			timeNow := metav1.Now()
-			//noOfRetry := 2
 			status := s2hv1.PullRequestTriggerStatus{
 				CreatedAt: &timeNow,
-				//NoOfRetry: &noOfRetry,
-				Result: "Failure",
+				Result:    "Failure",
 			}
-			// TODO: sunny fix comps param
+			prComps := []*s2hv1.PullRequestTriggerComponent{
+				{
+					ComponentName: "bundle1-comp1",
+					Image:         &s2hv1.Image{Repository: "registry/comp-1", Tag: "1.0.0"},
+				},
+				{
+					ComponentName: "bundle1-comp2",
+					Image:         &s2hv1.Image{Repository: "registry/comp-2", Tag: "2.0.0"},
+				},
+			}
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", "Failure", nil)
+				"owner", "bundle-1", "1234", "Failure", 2, prComps)
 
 			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
 				g.Expect(gjson.ValidBytes(body)).To(BeTrue(), "request body should be json")
@@ -266,14 +284,21 @@ var _ = Describe("send rest message", func() {
 					"result should be matched")
 				g.Expect(gjson.GetBytes(body, "teamName").String()).To(Equal(prTriggerRpt.TeamName),
 					"teamName should be matched")
-				g.Expect(gjson.GetBytes(body, "componentName").String()).To(Equal(prTriggerRpt.BundleName),
+				g.Expect(gjson.GetBytes(body, "bundleName").String()).To(Equal(prTriggerRpt.BundleName),
 					"componentName should be matched")
 				g.Expect(gjson.GetBytes(body, "prNumber").String()).To(Equal(prTriggerRpt.PRNumber),
 					"prNumber should be matched")
-				g.Expect(gjson.GetBytes(body, "image.repository").String()).To(Equal(prTriggerRpt.Image.Repository),
-					"image.repository should be matched")
-				g.Expect(gjson.GetBytes(body, "image.tag").String()).To(Equal(prTriggerRpt.Image.Tag),
-					"image.tag should be matched")
+
+				components := gjson.GetBytes(body, "components").Array()
+				g.Expect(len(components)).To(Equal(2))
+				g.Expect(gjson.GetBytes([]byte(components[0].String()), "image.repository").String()).
+					To(Equal(prComps[0].Image.Repository), "imageRepository should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[0].String()), "image.tag").String()).
+					To(Equal(prComps[0].Image.Tag), "imageTag should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[1].String()), "image.repository").String()).
+					To(Equal(prComps[1].Image.Repository), "imageRepository should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[1].String()), "image.tag").String()).
+					To(Equal(prComps[1].Image.Tag), "imageTag should be matched")
 			})
 
 			defer server.Close()
