@@ -214,6 +214,12 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		prTrigger.Status.SetResult(s2hv1.PullRequestTriggerFailure)
 
 		if err := c.client.Update(context.TODO(), prTrigger); err != nil {
+			if k8serrors.IsConflict(err) {
+				logger.Debug("this PullRequestTrigger has been updated/deleted",
+					"team", c.teamName, "bundle", prTrigger.Spec.BundleName,
+					"prNumber", prTrigger.Spec.PRNumber)
+				return reconcile.Result{}, nil
+			}
 			return reconcile.Result{}, err
 		}
 
@@ -336,7 +342,6 @@ func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger
 		BundleName: bundleName,
 		PRNumber:   prTrigger.Spec.PRNumber,
 	})
-
 	if err != nil {
 		return []*samsahairpc.ComponentSource{}, err
 	}

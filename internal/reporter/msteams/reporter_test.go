@@ -213,7 +213,7 @@ var _ = Describe("send ms teams message", func() {
 						Image: &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
 					},
 					{
-						Name:  "bundle1-comp2s",
+						Name:  "bundle1-comp2",
 						Image: &rpc.Image{Repository: "image-2", Tag: "2.1.0"},
 					},
 				},
@@ -756,7 +756,7 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestComponents(configName, prBundleName string) (map[string]*s2hv1.Component, error) {
+func (c *mockConfigCtrl) GetPullRequestComponents(configName, prBundleName string, depIncluded bool) (map[string]*s2hv1.Component, error) {
 	return map[string]*s2hv1.Component{}, nil
 }
 

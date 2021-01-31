@@ -1597,22 +1597,6 @@
         "v1.PullRequestComponent": {
             "type": "object",
             "properties": {
-                "dependencies": {
-                    "description": "Dependencies defines a list of components which are required to be deployed together with the main component\n+optional",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "deployment": {
-                    "description": "TODO: pohfy, remove here\nDeployment represents configuration about deploy\n+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1.ConfigDeploy"
-                },
-                "gitRepository": {
-                    "description": "GitRepository represents a string of git \"\u003cowner\u003e/\u003crepository\u003e\" e.g., agoda-com/samsahai\nused for publishing commit status\n+optional",
-                    "type": "string"
-                },
                 "image": {
                     "description": "Image defines an image repository, tag and pattern of pull request component which is a regex of tag\n+optional",
                     "type": "object",

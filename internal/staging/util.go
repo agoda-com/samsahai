@@ -31,7 +31,6 @@ func (c *controller) getDeployConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigDep
 		}
 		return &s2hv1.ConfigDeploy{}
 	case queue.IsPullRequestQueue():
-		//// TODO: pohfy, updated here
 		bundleName := queue.Spec.Name
 		if cfg.PullRequest != nil && len(cfg.PullRequest.Bundles) > 0 {
 			for _, bundle := range cfg.PullRequest.Bundles {

@@ -186,7 +186,7 @@ func (c *controller) deleteAllComponentsInNamespace(teamName, ns string, started
 		return err
 	}
 	if !ok {
-		logger.Debug("Releases are being deleted", "team", teamName, "namespace", ns)
+		logger.Debug("releases are being deleted", "team", teamName, "namespace", ns)
 		return s2herrors.ErrDeletingReleases
 	}
 

@@ -380,6 +380,11 @@ func (c *controller) GetComponentVersion(ctx context.Context, compSource *rpc.Co
 		imgTag = compSource.Pattern
 	}
 
+	if imgRepository == "" || imgTag == "" {
+		return nil, fmt.Errorf("image repository and tag should not be empty, repository: %s, tag: %s",
+			imgRepository, imgTag)
+	}
+
 	version, err := checker.GetVersion(imgRepository, compSource.ComponentName, imgTag)
 	if err != nil {
 		switch err.Error() {
@@ -463,7 +468,7 @@ func (c *controller) GetPullRequestComponentSources(ctx context.Context, teamWit
 	configCtrl := c.GetConfigController()
 
 	teamName := teamWithPR.TeamName
-	prComps, err := configCtrl.GetPullRequestComponents(teamName, teamWithPR.BundleName)
+	prComps, err := configCtrl.GetPullRequestComponents(teamName, teamWithPR.BundleName, false)
 	if err != nil {
 		return nil, err
 	}
@@ -592,7 +597,6 @@ func (c *controller) CreatePullRequestEnvironment(ctx context.Context, teamWithP
 	}
 
 	resources := prConfig.Resources
-	//// TODO: pohfy, updated here
 	for _, bundle := range prConfig.Bundles {
 		if bundle.Name == teamWithPR.BundleName {
 			if bundle.Resources != nil {

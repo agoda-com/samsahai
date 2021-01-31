@@ -657,26 +657,6 @@ definitions:
     type: object
   v1.PullRequestComponent:
     properties:
-      dependencies:
-        description: |-
-          Dependencies defines a list of components which are required to be deployed together with the main component
-          +optional
-        items:
-          type: string
-        type: array
-      deployment:
-        $ref: '#/definitions/v1.ConfigDeploy'
-        description: |-
-          TODO: pohfy, remove here
-          Deployment represents configuration about deploy
-          +optional
-        type: object
-      gitRepository:
-        description: |-
-          GitRepository represents a string of git "<owner>/<repository>" e.g., agoda-com/samsahai
-          used for publishing commit status
-          +optional
-        type: string
       image:
         $ref: '#/definitions/v1.ComponentImage'
         description: |-

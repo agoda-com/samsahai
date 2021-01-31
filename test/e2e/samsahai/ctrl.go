@@ -1217,13 +1217,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		By("Starting Samsahai internal process")
 		go samsahaiCtrl.Start(chStop)
 
-		By("Starting http server")
-		mux := http.NewServeMux()
-		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
-		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
-		server := httptest.NewServer(mux)
-		defer server.Close()
-
 		By("Creating Config")
 		config := mockConfig
 		Expect(client.Create(ctx, &config)).To(BeNil())
@@ -1248,6 +1241,13 @@ var _ = Describe("[e2e] Main controller", func() {
 			return true, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Starting http server")
+		mux := http.NewServeMux()
+		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
+		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
+		server := httptest.NewServer(mux)
+		defer server.Close()
 
 		By("Send webhook")
 		jsonData, err := json.Marshal(map[string]interface{}{
@@ -2063,6 +2063,24 @@ var (
 	mariaDBCompName   = "mariadb"
 	wordpressCompName = "wordpress"
 
+	wordpressImage = s2hv1.ComponentImage{
+		Repository: "bitnami/wordpress",
+		Pattern:    "5\\.3.*debian-10.*",
+		Tag:        "5.3.2-debian-10-r32",
+	}
+
+	mariaDBImage = s2hv1.ComponentImage{
+		Repository: "bitnami/mariadb",
+		Pattern:    "10\\.5.*debian-10.*",
+		Tag:        "10.5.8-debian-10-r32",
+	}
+
+	redisImage = s2hv1.ComponentImage{
+		Repository: "bitnami/redis",
+		Pattern:    "5.*debian-10.*",
+		Tag:        "5.0.10-debian-10-r90",
+	}
+
 	maxActivePromotionRetry = 2
 
 	mockTeamSpec = s2hv1.TeamSpec{
@@ -2086,20 +2104,20 @@ var (
 			Namespace: s2hv1.TeamNamespace{},
 			DesiredComponentImageCreatedTime: map[string]map[string]s2hv1.DesiredImageTime{
 				mariaDBCompName: {
-					stringutils.ConcatImageString("bitnami/mariadb", "10.3.18-debian-9-r32"): s2hv1.DesiredImageTime{
-						Image:       &s2hv1.Image{Repository: "bitnami/mariadb", Tag: "10.3.18-debian-9-r32"},
+					stringutils.ConcatImageString(mariaDBImage.Repository, mariaDBImage.Tag): s2hv1.DesiredImageTime{
+						Image:       &s2hv1.Image{Repository: mariaDBImage.Repository, Tag: mariaDBImage.Tag},
 						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 					},
 				},
 				redisCompName: {
-					stringutils.ConcatImageString("bitnami/redis", "5.0.5-debian-9-r160"): s2hv1.DesiredImageTime{
-						Image:       &s2hv1.Image{Repository: "bitnami/redis", Tag: "5.0.5-debian-9-r160"},
+					stringutils.ConcatImageString(redisImage.Repository, redisImage.Tag): s2hv1.DesiredImageTime{
+						Image:       &s2hv1.Image{Repository: redisImage.Repository, Tag: redisImage.Tag},
 						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 					},
 				},
 				wordpressCompName: {
-					stringutils.ConcatImageString("bitnami/wordpress", "5.2.4-debian-9-r18"): s2hv1.DesiredImageTime{
-						Image:       &s2hv1.Image{Repository: "bitnami/wordpress", Tag: "5.2.4-debian-9-r18"},
+					stringutils.ConcatImageString(wordpressImage.Repository, wordpressImage.Tag): s2hv1.DesiredImageTime{
+						Image:       &s2hv1.Image{Repository: wordpressImage.Repository, Tag: wordpressImage.Tag},
 						CreatedTime: metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 					},
 				},
@@ -2160,7 +2178,7 @@ var (
 		},
 	}
 
-	stableSpecMariaDB = s2hv1.StableComponentSpec{Name: mariaDBCompName, Version: "10.3.18-debian-9-r32", Repository: "bitnami/mariadb"}
+	stableSpecMariaDB = s2hv1.StableComponentSpec{Name: mariaDBCompName, Version: mariaDBImage.Tag, Repository: mariaDBImage.Repository}
 	stableMariaDB     = s2hv1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{Name: mariaDBCompName, Namespace: stgNamespace},
 		Spec:       stableSpecMariaDB,
@@ -2170,7 +2188,7 @@ var (
 		Spec:       stableSpecMariaDB,
 	}
 
-	stableSpecRedis = s2hv1.StableComponentSpec{Name: redisCompName, Version: "5.0.5-debian-9-r160", Repository: "bitnami/redis"}
+	stableSpecRedis = s2hv1.StableComponentSpec{Name: redisCompName, Version: redisImage.Tag, Repository: redisImage.Repository}
 	stableRedis     = s2hv1.StableComponent{
 		ObjectMeta: metav1.ObjectMeta{Name: redisCompName, Namespace: stgNamespace},
 		Spec:       stableSpecRedis,
@@ -2182,7 +2200,7 @@ var (
 				ObjectMeta: metav1.ObjectMeta{Name: redisCompName, Namespace: stgNamespace},
 				Spec: s2hv1.QueueSpec{Name: redisCompName,
 					Components: s2hv1.QueueComponents{
-						{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r160"},
+						{Name: redisCompName, Repository: redisImage.Repository, Version: redisImage.Tag},
 					},
 				},
 			},
@@ -2190,7 +2208,7 @@ var (
 				ObjectMeta: metav1.ObjectMeta{Name: wordpressCompName, Namespace: stgNamespace},
 				Spec: s2hv1.QueueSpec{Name: wordpressCompName,
 					Components: s2hv1.QueueComponents{
-						{Name: wordpressCompName, Repository: "bitnami/wordpress", Version: "5.2.4-debian-9-r18"},
+						{Name: wordpressCompName, Repository: wordpressImage.Repository, Version: wordpressImage.Tag},
 					},
 				},
 			},
@@ -2244,8 +2262,8 @@ var (
 			Name:       redisCompName,
 		},
 		Image: s2hv1.ComponentImage{
-			Repository: "bitnami/redis",
-			Pattern:    "5.*debian-9.*",
+			Repository: redisImage.Repository,
+			Pattern:    redisImage.Pattern,
 		},
 		Source: &compSource,
 		Values: s2hv1.ComponentValues{
@@ -2271,16 +2289,16 @@ var (
 			Name:       wordpressCompName,
 		},
 		Image: s2hv1.ComponentImage{
-			Repository: "bitnami/wordpress",
-			Pattern:    "5\\.2.*debian-9.*",
+			Repository: wordpressImage.Repository,
+			Pattern:    wordpressImage.Pattern,
 		},
 		Source: &compSource,
 		Dependencies: []*s2hv1.Dependency{
 			{
 				Name: mariaDBCompName,
 				Image: s2hv1.ComponentImage{
-					Repository: "bitnami/mariadb",
-					Pattern:    "10\\.3.*debian-9.*",
+					Repository: mariaDBImage.Repository,
+					Pattern:    mariaDBImage.Pattern,
 				},
 			},
 		},

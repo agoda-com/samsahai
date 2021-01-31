@@ -14,8 +14,9 @@ type ConfigController interface {
 	// GetParentComponents returns components that doesn't have parent (nil Parent)
 	GetParentComponents(configName string) (map[string]*s2hv1.Component, error)
 
-	// GetPullRequestComponents returns all pull request components of a given bundle name from `Configuration` that has valid `Source`
-	GetPullRequestComponents(configName, prBundleName string) (map[string]*s2hv1.Component, error)
+	// GetPullRequestComponents returns all pull request components of a given bundle name
+	// with or without dependencies from `Configuration` that has valid `Source`
+	GetPullRequestComponents(configName, prBundleName string, depIncluded bool) (map[string]*s2hv1.Component, error)
 
 	// GetBundles returns a group of components for each bundle
 	GetBundles(configName string) (s2hv1.ConfigBundles, error)

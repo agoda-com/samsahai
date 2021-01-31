@@ -62,7 +62,6 @@ func (c *controller) deployEnvironment(queue *s2hv1.Queue) error {
 		}
 
 		var err error
-		// TODO: pohfy, check here
 		queueParentComps, queueComps, err = c.getParentAndQueueCompsFromQueueType(queue)
 		if err != nil {
 			return err
@@ -162,7 +161,7 @@ func (c *controller) getAllComponentsFromQueueType(q *s2hv1.Queue) (
 	configCtrl := c.getConfigController()
 	if q.IsPullRequestQueue() {
 		prBundleName := q.Spec.Name
-		comps, err = configCtrl.GetPullRequestComponents(c.teamName, prBundleName)
+		comps, err = configCtrl.GetPullRequestComponents(c.teamName, prBundleName, true)
 		if err != nil {
 			return
 		}
@@ -594,15 +593,16 @@ func (c *controller) deployQueueComponent(
 			}
 
 			envType := s2hv1.EnvBase
+			parentBaseValues := s2hv1.ComponentValues{}
 			if queue.IsPullRequestQueue() {
 				envType = s2hv1.EnvPullRequest
-			}
-
-			// get parent values from queue type
-			parentBaseValues, err := configctrl.GetEnvComponentValues(cfg, parentName, c.teamName, envType)
-			if err != nil {
-				errCh <- err
-				return
+			} else {
+				// get parent values except pull request queue type
+				parentBaseValues, err = configctrl.GetEnvComponentValues(cfg, parentName, c.teamName, envType)
+				if err != nil {
+					errCh <- err
+					return
+				}
 			}
 
 			values := valuesutil.GenStableComponentValues(
@@ -615,7 +615,6 @@ func (c *controller) deployQueueComponent(
 				// merge stable only matched component or dependencies
 				for _, comp := range queueComps {
 					if queue.IsPullRequestQueue() {
-						// TODO: pohfy, update here
 						bundleName := queue.Spec.Name
 						envValues, err := configctrl.GetEnvComponentValues(cfg, bundleName, c.teamName, envType)
 						if err != nil {

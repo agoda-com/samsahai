@@ -23,7 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// PullRequestQueueSpec defines the desired state of PullRequestQueue // TODO: sunny support []comps
+// PullRequestQueueSpec defines the desired state of PullRequestQueue
 type PullRequestQueueSpec struct {
 	// BundleName represents a pull request bundle name
 	BundleName string `json:"bundleName"`

@@ -66,6 +66,11 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
+	if jsonData.BundleName == "" || jsonData.PRNumber.String() == "" {
+		h.error(w, http.StatusBadRequest, fmt.Errorf("must define bundleName and prNumber"))
+		return
+	}
+
 	mapCompTag := make(map[string]string)
 	for _, comp := range jsonData.Components {
 		mapCompTag[comp.Name] = comp.Tag

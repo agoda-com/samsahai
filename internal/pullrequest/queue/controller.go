@@ -56,7 +56,6 @@ func WithClient(client client.Client) Option {
 	}
 }
 
-// TODO: pohfy, update here
 func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA string,
 	comps []*s2hv1.QueueComponent) *s2hv1.PullRequestQueue {
 

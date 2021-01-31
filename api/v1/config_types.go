@@ -384,18 +384,7 @@ type PullRequestComponent struct {
 	Image ComponentImage `json:"image,omitempty"`
 	// Source defines a source for image repository
 	// +optional
-	Source *UpdatingSource `json:"source,omitempty"`
-	// TODO: pohfy, remove here
-	// Deployment represents configuration about deploy
-	// +optional
-	Deployment *ConfigDeploy `json:"deployment,omitempty"`
-	// Dependencies defines a list of components which are required to be deployed together with the main component
-	// +optional
-	Dependencies []string `json:"dependencies,omitempty"`
-	// GitRepository represents a string of git "<owner>/<repository>" e.g., agoda-com/samsahai
-	// used for publishing commit status
-	// +optional
-	GitRepository          string `json:"gitRepository,omitempty"`
+	Source                 *UpdatingSource `json:"source,omitempty"`
 	PullRequestExtraConfig `json:",inline"`
 }
 

@@ -61,6 +61,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	ctx := context.TODO()
 
+	redisBundleName := "redis-bd"
 	redisCompName := "redis"
 	mariaDBCompName := "mariadb"
 	wordpressCompName := "wordpress"
@@ -229,18 +230,22 @@ var _ = Describe("[e2e] Staging controller", func() {
 		},
 	}
 
-	//prImage := s2hv1.ComponentImage{
-	//	Repository: "bitnami/redis",
-	//}
+	prImage := s2hv1.ComponentImage{
+		Repository: "bitnami/redis",
+	}
 
 	configPR := s2hv1.ConfigPullRequest{
-		// TODO: pohfy, update Components to Bundles
 		Bundles: []*s2hv1.PullRequestBundle{
 			{
-				Name: redisCompName,
-				//Image:      prImage,
-				//Source:     &compSource,
+				Name:       redisBundleName,
 				Deployment: &deployConfig,
+				Components: []*s2hv1.PullRequestComponent{
+					{
+						Name:   redisCompName,
+						Image:  prImage,
+						Source: &compSource,
+					},
+				},
 			},
 		},
 	}
@@ -261,7 +266,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 				redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
 			},
 			"pull-request": map[string][]string{
-				redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/pull-request/redis.yaml"},
+				redisBundleName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/pull-request/redis.yaml"},
 			},
 		},
 		Staging: &s2hv1.ConfigStaging{
@@ -696,9 +701,8 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Ensure Pull Request Components")
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			retry := 0
-			queue, err := queue.EnsurePullRequestComponents(client, teamName, namespace, redisCompName, redisCompName,
-				"123",
-				prComps, retry)
+			queue, err := queue.EnsurePullRequestComponents(client, teamName, namespace, redisBundleName,
+				redisBundleName, "123", prComps, retry)
 			if err != nil {
 				logger.Error(err, "cannot ensure pull request components")
 				return false, nil
@@ -727,7 +731,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(svc.Spec.ExternalName).To(ContainSubstring(expectedExtSvcName))
 
 		By("Delete Pull Request Queue")
-		Expect(queue.DeletePullRequestQueue(client, namespace, redisCompName))
+		Expect(queue.DeletePullRequestQueue(client, namespace, redisBundleName))
 	}, 300)
 
 	It("should create error log in case of deploy failed", func(done Done) {

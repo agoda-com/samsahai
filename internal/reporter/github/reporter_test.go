@@ -28,12 +28,12 @@ var _ = Describe("publish commit status to github", func() {
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
-				Name:             "comp1",
+				Name:             "bundle-1",
 				Status:           rpc.ComponentUpgrade_UpgradeStatus_SUCCESS,
 				TeamName:         "owner",
-				QueueHistoryName: "comp1-1234",
+				QueueHistoryName: "bundle1-comp1-1234",
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					BundleName: "pr-comp1",
+					BundleName: "bundle-1",
 					PRNumber:   "pr1234",
 					CommitSHA:  "commit-sha-xxx",
 				},
@@ -43,7 +43,7 @@ var _ = Describe("publish commit status to github", func() {
 			comp := internal.NewComponentUpgradeReporter(
 				rpcComp,
 				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
-				internal.WithQueueHistoryName("comp1-5678"),
+				internal.WithQueueHistoryName("bundle1-comp1-5678"),
 				internal.WithNamespace("pr-namespace"),
 			)
 			err := r.SendPullRequestQueue(configCtrl, comp)
@@ -53,8 +53,8 @@ var _ = Describe("publish commit status to github", func() {
 			g.Expect(mockGithubCli.commitSHA).Should(Equal("commit-sha-xxx"))
 			g.Expect(mockGithubCli.status).Should(Equal(github.CommitStatusSuccess))
 			g.Expect(mockGithubCli.targetURLs).Should(Equal([]string{
-				"http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678",
-				"http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log",
+				"http://localhost:8080/teams/owner/pullrequest/queue/histories/bundle1-comp1-5678",
+				"http://localhost:8080/teams/owner/pullrequest/queue/histories/bundle1-comp1-5678/log",
 			}))
 		})
 
@@ -63,11 +63,11 @@ var _ = Describe("publish commit status to github", func() {
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
-				Name:     "comp1",
+				Name:     "bundle-1",
 				Status:   rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
 				TeamName: "owner",
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					BundleName: "pr-comp1",
+					BundleName: "bundle-1",
 				},
 			}
 			mockGithubCli := &mockGithub{}
@@ -103,7 +103,7 @@ var _ = Describe("publish commit status to github", func() {
 
 			rpcComp := &rpc.ComponentUpgrade{
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					BundleName: "pr-comp1",
+					BundleName: "bundle-1",
 				},
 			}
 			mockGithubCli := &mockGithub{}
@@ -167,10 +167,9 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 						},
 					},
 					PullRequest: &s2hv1.ConfigPullRequest{
-						// TODO: pohfy, update Components to Bundles
 						Bundles: []*s2hv1.PullRequestBundle{
 							{
-								Name:          "pr-comp1",
+								Name:          "bundle-1",
 								GitRepository: "error",
 							},
 						},
@@ -189,10 +188,12 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 						},
 					},
 					PullRequest: &s2hv1.ConfigPullRequest{
-						// TODO: pohfy, update Components to Bundles
 						Bundles: []*s2hv1.PullRequestBundle{
 							{
-								Name:          "pr-comp1",
+								Name: "bundle-1",
+								Components: []*s2hv1.PullRequestComponent{
+									{},
+								},
 								GitRepository: "samsahai/samsahai",
 							},
 						},
@@ -211,7 +212,7 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestComponents(configName, prBundleName string) (map[string]*s2hv1.Component, error) {
+func (c *mockConfigCtrl) GetPullRequestComponents(configName, prBundleName string, depIncluded bool) (map[string]*s2hv1.Component, error) {
 	return map[string]*s2hv1.Component{}, nil
 }
 

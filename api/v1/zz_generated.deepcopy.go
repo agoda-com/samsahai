@@ -1254,16 +1254,6 @@ func (in *PullRequestComponent) DeepCopyInto(out *PullRequestComponent) {
 		*out = new(UpdatingSource)
 		**out = **in
 	}
-	if in.Deployment != nil {
-		in, out := &in.Deployment, &out.Deployment
-		*out = new(ConfigDeploy)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Dependencies != nil {
-		in, out := &in.Dependencies, &out.Dependencies
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	in.PullRequestExtraConfig.DeepCopyInto(&out.PullRequestExtraConfig)
 }
 
