@@ -252,8 +252,8 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
 <br/><b>Components</b>
 {{- range .Components }}
 <li><b>- Name:</b> {{ .Name }}</li>
-<li><b>&nbsp;&nbsp;Version:</b> {{ .Image.Tag }}</li>
-<li><b>&nbsp;&nbsp;Repository:</b> {{ .Image.Repository }}</li>
+<li><b>&nbsp;&nbsp;Version:</b> {{ if .Image.Tag }}{{ .Image.Tag }}{{ else }}<code>no stable/active image tag found, using from values file</code>{{ end }}</li>
+<li><b>&nbsp;&nbsp;Repository:</b> {{ if .Image.Repository }}{{ .Image.Repository }}{{ else }}<code>no stable/active image repository found, using from values file</code>{{ end }}</li>
 {{- end }}
 <br/><b>Owner:</b> {{ .TeamName }}
 <br/><b>Namespace:</b> {{ .Namespace }}

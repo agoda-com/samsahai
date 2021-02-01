@@ -233,7 +233,7 @@ func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeRep
 	message := `
 *Pull Request Queue:* {{ .StatusStr }}
 {{- if .PullRequestComponent }}
-*Component:* {{ .PullRequestComponent.BundleName }}
+*Bundle:* {{ .PullRequestComponent.BundleName }}
 *PR Number:* {{ .PullRequestComponent.PRNumber }}
 {{- end }}
 ` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL)
@@ -250,8 +250,8 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
 *Components* 
 {{- range .Components }}
 >- *Name:* {{ .Name }}
->   *Version:* {{ .Image.Tag }}
->   *Repository:* {{ .Image.Repository }}
+>   *Version:* {{ if .Image.Tag }}{{ .Image.Tag }}{{ else }}` + "`no stable/active image tag found, using from values file`" + `{{ end }}
+>   *Repository:* {{ if .Image.Repository }}{{ .Image.Repository }}{{ else }}` + "`no stable/active image repository found, using from values file`" + `{{ end }}
 {{- end }}
 *Owner:* {{ .TeamName }}
 *Namespace:* {{ .Namespace }}
