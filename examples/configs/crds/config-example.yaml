@@ -17,8 +17,8 @@ spec:
       redis:
         - https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/envs/active/redis.yaml
     pull-request:
-      redis:
-        - https://raw.githubusercontent.com/agoda-com/samsahai/master/envs/pull-request/redis.yaml
+      redis-bundle:
+        - https://raw.githubusercontent.com/agoda-com/samsahai/master/envs/pull-request/redis-bundle.yaml
 
   staging:
     maxRetry: 3
@@ -37,11 +37,14 @@ spec:
     trigger:
       pollingTime: 1m
       maxRetry: 5
-    components:
-      - name: redis
-        image:
-          repository: bitnami/redis
-          pattern: '5.0.7-debian-9-r{{ .PRNumber }}'
+    bundles:
+      - name: redis-bundle
+        components:
+          - name: redis
+            image:
+              repository: bitnami/redis
+              pattern: '5.0.7-debian-9-r{{ .PRNumber }}'
+            source: public-registry
         deployment:
           timeout: 1h
           engine: helm3
