@@ -179,8 +179,6 @@ func (c *controller) getMissingVersions(teamInfo *rpc.TeamWithCurrentComponent, 
 	for i := 0; i < 2; i++ {
 		select {
 		case <-ctx.Done():
-			logger.Error(s2herrors.ErrRequestTimeout,
-				fmt.Sprintf("detect missing images took longer than %v", timeout))
 			return nil, errors.Wrapf(s2herrors.ErrRequestTimeout, "detect missing images took longer than %v",
 				timeout)
 		case missingImages := <-missingImagesCh:

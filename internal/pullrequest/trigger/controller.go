@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -372,8 +371,6 @@ func (c *controller) getPRQueueComponentsIfImageExisted(ctx context.Context, prT
 	for i := 0; i < len(prCompSources); i++ {
 		select {
 		case <-ctx.Done():
-			logger.Error(s2herrors.ErrRequestTimeout,
-				fmt.Sprintf("detect missing images for pull request trigger took longer than %v", timeout))
 			return s2hv1.QueueComponents{}, errors.Wrapf(s2herrors.ErrRequestTimeout,
 				"detect missing images for pull request trigger took longer than %v",
 				timeout)
