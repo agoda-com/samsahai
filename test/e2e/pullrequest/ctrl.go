@@ -216,6 +216,23 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Deleting all PullRequestQueues error")
 
+		By("Deleting all PullRequestTriggers")
+		err = client.DeleteAllOf(ctx, &s2hv1.PullRequestTrigger{}, rclient.InNamespace(stgNamespace))
+		Expect(err).NotTo(HaveOccurred())
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			prTriggerList := s2hv1.PullRequestTriggerList{}
+			err = client.List(ctx, &prTriggerList, &rclient.ListOptions{Namespace: stgNamespace})
+			if err != nil && k8serrors.IsNotFound(err) {
+				return true, nil
+			}
+			if len(prTriggerList.Items) == 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Deleting all PullRequestQueues error")
+
 		By("Deleting Secret")
 		secret := mockSecret
 		Expect(client.Delete(ctx, &secret)).NotTo(HaveOccurred())
@@ -228,723 +245,741 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		wgStop.Wait()
 	}, 60)
 
-	Describe("Pull request", func() {
-		It("should successfully deploy pull request queue with 2 components in a bundle", func(done Done) {
-			defer close(done)
+	It("should successfully deploy pull request queue with 2 components in a bundle", func(done Done) {
+		defer close(done)
 
-			By("Starting Samsahai internal process")
-			setupSamsahai()
-			go samsahaiCtrl.Start(chStop)
+		By("Starting Samsahai internal process")
+		setupSamsahai()
+		go samsahaiCtrl.Start(chStop)
 
-			By("Starting Staging internal process")
-			stagingCtrl, _ := setupStaging(stgNamespace)
-			go stagingCtrl.Start(chStop)
+		By("Starting Staging internal process")
+		stagingCtrl, _ := setupStaging(stgNamespace)
+		go stagingCtrl.Start(chStop)
 
-			By("Creating Config")
-			config := mockConfig
-			Expect(client.Create(ctx, &config)).To(BeNil())
+		By("Creating Config")
+		config := mockConfig
+		Expect(client.Create(ctx, &config)).To(BeNil())
 
-			By("Creating Team")
-			teamComp := mockTeam
-			Expect(client.Create(ctx, &teamComp)).To(BeNil())
+		By("Creating Team")
+		teamComp := mockTeam
+		Expect(client.Create(ctx, &teamComp)).To(BeNil())
 
-			By("Verifying namespace and config have been created")
-			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-				namespace := corev1.Namespace{}
-				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
-					return false, nil
-				}
-
-				config := s2hv1.Config{}
-				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
-				if err != nil {
-					return false, nil
-				}
-
-				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
-
-			By("Starting http server")
-			mux := http.NewServeMux()
-			mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
-			mux.Handle("/", s2hhttp.New(samsahaiCtrl))
-			server := httptest.NewServer(mux)
-			defer server.Close()
-
-			By("Send webhook")
-			jsonPRData, _ := json.Marshal(map[string]interface{}{
-				"bundleName": bundledCompPRBundleName,
-				"prNumber":   prNumber,
-			})
-			apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
-			_, _, err = utilhttp.Post(apiURL, jsonPRData)
-			Expect(err).NotTo(HaveOccurred(), "Pull request webhook sent error")
-
-			By("Verifying PullRequestTrigger has been created")
-			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-				prTrigger := s2hv1.PullRequestTrigger{}
-				err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prTrigger)
-				if err != nil {
-					return false, nil
-				}
-
-				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger error")
-
-			By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
-			err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
-				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prQueue)
-				if err != nil {
-					return false, nil
-				}
-
-				prTrigger := s2hv1.PullRequestTrigger{}
-				err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prTrigger)
-				if err != nil && k8serrors.IsNotFound(err) {
-					return true, nil
-				}
-
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
 				return false, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue created error")
+			}
 
-			By("Verifying PullRequestQueue has been running and Team status has been updated")
-			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prQueue)
-				if err != nil {
-					return false, nil
-				}
+			config := s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
 
-				if prQueue.Status.State == s2hv1.PullRequestQueueWaiting ||
-					prQueue.Status.State == s2hv1.PullRequestQueueEnvDestroying {
-					return false, nil
-				}
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
-				teamComp := s2hv1.Team{}
-				err = client.Get(ctx, types.NamespacedName{Name: teamName}, &teamComp)
-				if err != nil {
-					return false, nil
-				}
+		By("Starting http server")
+		mux := http.NewServeMux()
+		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
+		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
+		server := httptest.NewServer(mux)
+		defer server.Close()
 
-				if len(teamComp.Status.Namespace.PullRequests) != 0 {
-					for _, ns := range teamComp.Status.Namespace.PullRequests {
-						if ns == bundledPRNamespace {
-							return true, nil
-						}
+		By("Send webhook")
+		jsonPRData, _ := json.Marshal(map[string]interface{}{
+			"bundleName": bundledCompPRBundleName,
+			"prNumber":   prNumber,
+		})
+		apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
+		_, _, err = utilhttp.Post(apiURL, jsonPRData)
+		Expect(err).NotTo(HaveOccurred(), "Pull request webhook sent error")
+
+		By("Verifying PullRequestTrigger has been created")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			prTrigger := s2hv1.PullRequestTrigger{}
+			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prTrigger)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger error")
+
+		By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
+		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
+			prQueue := s2hv1.PullRequestQueue{}
+			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prQueue)
+			if err != nil {
+				return false, nil
+			}
+
+			prTrigger := s2hv1.PullRequestTrigger{}
+			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prTrigger)
+			if err != nil && k8serrors.IsNotFound(err) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue created error")
+
+		By("Verifying PullRequestQueue has been running and Team status has been updated")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			prQueue := s2hv1.PullRequestQueue{}
+			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prQueue)
+			if err != nil {
+				return false, nil
+			}
+
+			if prQueue.Status.State == s2hv1.PullRequestQueueWaiting ||
+				prQueue.Status.State == s2hv1.PullRequestQueueEnvDestroying {
+				return false, nil
+			}
+
+			teamComp := s2hv1.Team{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamName}, &teamComp)
+			if err != nil {
+				return false, nil
+			}
+
+			if len(teamComp.Status.Namespace.PullRequests) != 0 {
+				for _, ns := range teamComp.Status.Namespace.PullRequests {
+					if ns == bundledPRNamespace {
+						return true, nil
 					}
 				}
+			}
 
-				return false, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue running error")
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue running error")
 
-			By("Verifying Queue bundled components have been updated")
-			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-				queue := s2hv1.Queue{}
-				err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: bundledPRNamespace}, &queue)
-				if err != nil {
-					return false, nil
-				}
-
-				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Get pull-request Queue type error")
-
+		By("Verifying Queue bundled components have been updated")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			queue := s2hv1.Queue{}
 			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: bundledPRNamespace}, &queue)
-			Expect(err).NotTo(HaveOccurred(), "Queue bundled components should have been updated")
-			Expect(queue.Spec.Components).To(HaveLen(2))
-			Expect(queue.Spec.Components[0].Name).To(Equal(prComps[1].Name))
-			Expect(queue.Spec.Components[0].Repository).To(Equal(prComps[1].Repository))
-			Expect(queue.Spec.Components[0].Version).To(Equal(mariaDBImageTag))
-			Expect(queue.Spec.Components[1].Name).To(Equal(prComps[0].Name))
-			Expect(queue.Spec.Components[1].Repository).To(Equal(prComps[0].Repository))
-			Expect(queue.Spec.Components[1].Version).To(Equal(prComps[0].Version))
-
-			By("Updating mock pull-request Queue type")
-			queue.Status.State = s2hv1.Finished
-			queue.Status.SetCondition(s2hv1.QueueDeployed, corev1.ConditionTrue, "")
-			queue.Status.SetCondition(s2hv1.QueueTested, corev1.ConditionTrue, "")
-			Expect(client.Update(ctx, &queue)).NotTo(HaveOccurred(),
-				"pull-request Queue type updated error")
-
-			By("Verifying PullRequestQueue has been deleted and PullRequestQueueHistory has been created")
-			err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
-				prQueueHistList := s2hv1.PullRequestQueueHistoryList{}
-				err = client.List(ctx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})
-				if err != nil {
-					return false, nil
-				}
-
-				if len(prQueueHistList.Items) == 0 {
-					return false, nil
-				}
-
-				if len(prQueueHistList.Items) != 1 {
-					return false, fmt.Errorf("should create PullRequestQueueHistory once")
-				}
-
-				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: bundledPRNamespace}, &prQueue)
-				if err != nil && k8serrors.IsNotFound(err) {
-					return true, nil
-				}
-
+			if err != nil {
 				return false, nil
-			})
-			Expect(err).NotTo(HaveOccurred(),
-				"Verify PullRequestQueue deleted and PullRequestQueueHistory created error")
-
-			By("Verifying PullRequestQueueHistory result")
-			prQueueHistList := s2hv1.PullRequestQueueHistoryList{}
-			Expect(client.List(ctx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})).NotTo(HaveOccurred())
-			Expect(prQueueHistList.Items).To(HaveLen(1))
-			Expect(strings.Contains(prQueueHistList.Items[0].Name, bundledPRTriggerName)).To(BeTrue())
-			Expect(prQueueHistList.Items[0].Spec.PullRequestQueue).NotTo(BeNil())
-			Expect(prQueueHistList.Items[0].Spec.PullRequestQueue.Status.Result).To(Equal(s2hv1.PullRequestQueueSuccess))
-		}, 120)
-
-		It("should successfully deploy pull request queue with 1 component and dependencies", func(done Done) {
-			defer close(done)
-
-			By("Starting Samsahai internal process")
-			setupSamsahai()
-			go samsahaiCtrl.Start(chStop)
-
-			By("Starting Staging internal process")
-			stagingCtrl, _ := setupStaging(stgNamespace)
-			go stagingCtrl.Start(chStop)
-
-			By("Creating Config")
-			config := mockConfig
-			Expect(client.Create(ctx, &config)).To(BeNil())
-
-			By("Creating Team")
-			teamComp := mockTeam
-			Expect(client.Create(ctx, &teamComp)).To(BeNil())
-
-			By("Verifying namespace and config have been created")
-			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-				namespace := corev1.Namespace{}
-				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
-					return false, nil
-				}
-
-				config := s2hv1.Config{}
-				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
-				if err != nil {
-					return false, nil
-				}
-
-				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
-
-			By("Starting http server")
-			mux := http.NewServeMux()
-			mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
-			mux.Handle("/", s2hhttp.New(samsahaiCtrl))
-			server := httptest.NewServer(mux)
-			defer server.Close()
-
-			By("Send webhook")
-			jsonPRData, _ := json.Marshal(map[string]interface{}{
-				"bundleName": singleCompPRBundleName,
-				"prNumber":   prNumber,
-			})
-			apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
-			_, _, err = utilhttp.Post(apiURL, jsonPRData)
-			Expect(err).NotTo(HaveOccurred(), "Pull request webhook sent error")
-
-			By("Verifying PullRequestTrigger has been created")
-			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-				prTrigger := s2hv1.PullRequestTrigger{}
-				err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prTrigger)
-				if err != nil {
-					return false, nil
-				}
-
-				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger error")
-
-			By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
-			err = wait.PollImmediate(verifyTime1s, verifyTime45s, func() (ok bool, err error) {
-				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
-				if err != nil {
-					return false, nil
-				}
-
-				prTrigger := s2hv1.PullRequestTrigger{}
-				err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prTrigger)
-				if err != nil && k8serrors.IsNotFound(err) {
-					return true, nil
-				}
-
-				return false, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue created error")
-
-			By("Updating Team mock active components")
-			teamComp = s2hv1.Team{}
-			Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &teamComp)).NotTo(HaveOccurred())
-			teamComp.Status.ActiveComponents = map[string]s2hv1.StableComponent{
-				prDepCompName: {
-					Spec: s2hv1.StableComponentSpec{
-						Name:       prDepCompName,
-						Repository: prDepImage.Repository,
-						Version:    prDepImage.Tag,
-					},
-				},
 			}
-			Expect(client.Update(ctx, &teamComp)).NotTo(HaveOccurred(),
-				"Team active components updated error")
 
-			By("Verifying PullRequestQueue has been running and Team status has been updated")
-			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
-				if err != nil {
-					return false, nil
-				}
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Get pull-request Queue type error")
 
-				if prQueue.Status.State == s2hv1.PullRequestQueueWaiting ||
-					prQueue.Status.State == s2hv1.PullRequestQueueEnvDestroying {
-					return false, nil
-				}
+		queue := s2hv1.Queue{}
+		err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: bundledPRNamespace}, &queue)
+		Expect(err).NotTo(HaveOccurred(), "Queue bundled components should have been updated")
+		Expect(queue.Spec.Components).To(HaveLen(2))
+		Expect(queue.Spec.Components[0].Name).To(Equal(prComps[1].Name))
+		Expect(queue.Spec.Components[0].Repository).To(Equal(prComps[1].Repository))
+		Expect(queue.Spec.Components[0].Version).To(Equal(mariaDBImageTag))
+		Expect(queue.Spec.Components[1].Name).To(Equal(prComps[0].Name))
+		Expect(queue.Spec.Components[1].Repository).To(Equal(prComps[0].Repository))
+		Expect(queue.Spec.Components[1].Version).To(Equal(prComps[0].Version))
 
-				if !prQueue.Status.IsConditionTrue(s2hv1.PullRequestQueueCondDependenciesUpdated) {
-					return false, nil
-				}
+		By("Updating mock pull-request Queue type")
+		queue.Status.State = s2hv1.Finished
+		queue.Status.SetCondition(s2hv1.QueueDeployed, corev1.ConditionTrue, "")
+		queue.Status.SetCondition(s2hv1.QueueTested, corev1.ConditionTrue, "")
+		Expect(client.Update(ctx, &queue)).NotTo(HaveOccurred(),
+			"pull-request Queue type updated error")
 
-				teamComp := s2hv1.Team{}
-				err = client.Get(ctx, types.NamespacedName{Name: teamName}, &teamComp)
-				if err != nil {
-					return false, nil
-				}
+		By("Verifying PullRequestQueue has been deleted and PullRequestQueueHistory has been created")
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
+			prQueueHistList := s2hv1.PullRequestQueueHistoryList{}
+			err = client.List(ctx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})
+			if err != nil {
+				return false, nil
+			}
 
-				if len(teamComp.Status.Namespace.PullRequests) != 0 {
-					for _, ns := range teamComp.Status.Namespace.PullRequests {
-						if ns == singlePRNamespace {
-							return true, nil
-						}
+			if len(prQueueHistList.Items) == 0 {
+				return false, nil
+			}
+
+			if len(prQueueHistList.Items) != 1 {
+				return false, fmt.Errorf("should create PullRequestQueueHistory once")
+			}
+
+			prQueue := s2hv1.PullRequestQueue{}
+			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: bundledPRNamespace}, &prQueue)
+			if err != nil && k8serrors.IsNotFound(err) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(),
+			"Verify PullRequestQueue deleted and PullRequestQueueHistory created error")
+
+		By("Verifying PullRequestQueueHistory result")
+		prQueueHistList := s2hv1.PullRequestQueueHistoryList{}
+		Expect(client.List(ctx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})).NotTo(HaveOccurred())
+		Expect(prQueueHistList.Items).To(HaveLen(1))
+		Expect(strings.Contains(prQueueHistList.Items[0].Name, bundledPRTriggerName)).To(BeTrue())
+		Expect(prQueueHistList.Items[0].Spec.PullRequestQueue).NotTo(BeNil())
+		Expect(prQueueHistList.Items[0].Spec.PullRequestQueue.Status.Result).To(Equal(s2hv1.PullRequestQueueSuccess))
+	}, 120)
+
+	It("should successfully deploy pull request queue with 1 component and dependencies", func(done Done) {
+		defer close(done)
+
+		By("Starting Samsahai internal process")
+		setupSamsahai()
+		go samsahaiCtrl.Start(chStop)
+
+		By("Starting Staging internal process")
+		stagingCtrl, _ := setupStaging(stgNamespace)
+		go stagingCtrl.Start(chStop)
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		teamComp := mockTeam
+		Expect(client.Create(ctx, &teamComp)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Starting http server")
+		mux := http.NewServeMux()
+		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
+		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		By("Send webhook")
+		jsonPRData, _ := json.Marshal(map[string]interface{}{
+			"bundleName": singleCompPRBundleName,
+			"prNumber":   prNumber,
+		})
+		apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
+		_, _, err = utilhttp.Post(apiURL, jsonPRData)
+		Expect(err).NotTo(HaveOccurred(), "Pull request webhook sent error")
+
+		By("Verifying PullRequestTrigger has been created")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			prTrigger := s2hv1.PullRequestTrigger{}
+			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prTrigger)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger error")
+
+		By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
+		err = wait.PollImmediate(verifyTime1s, verifyTime45s, func() (ok bool, err error) {
+			prQueue := s2hv1.PullRequestQueue{}
+			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
+			if err != nil {
+				return false, nil
+			}
+
+			prTrigger := s2hv1.PullRequestTrigger{}
+			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prTrigger)
+			if err != nil && k8serrors.IsNotFound(err) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue created error")
+
+		By("Updating Team mock active components")
+		teamComp = s2hv1.Team{}
+		Expect(client.Get(ctx, types.NamespacedName{Name: teamName}, &teamComp)).NotTo(HaveOccurred())
+		teamComp.Status.ActiveComponents = map[string]s2hv1.StableComponent{
+			prDepCompName: {
+				Spec: s2hv1.StableComponentSpec{
+					Name:       prDepCompName,
+					Repository: prDepImage.Repository,
+					Version:    prDepImage.Tag,
+				},
+			},
+		}
+		Expect(client.Update(ctx, &teamComp)).NotTo(HaveOccurred(),
+			"Team active components updated error")
+
+		By("Verifying PullRequestQueue has been running and Team status has been updated")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			prQueue := s2hv1.PullRequestQueue{}
+			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
+			if err != nil {
+				return false, nil
+			}
+
+			if prQueue.Status.State == s2hv1.PullRequestQueueWaiting ||
+				prQueue.Status.State == s2hv1.PullRequestQueueEnvDestroying {
+				return false, nil
+			}
+
+			if !prQueue.Status.IsConditionTrue(s2hv1.PullRequestQueueCondDependenciesUpdated) {
+				return false, nil
+			}
+
+			teamComp := s2hv1.Team{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamName}, &teamComp)
+			if err != nil {
+				return false, nil
+			}
+
+			if len(teamComp.Status.Namespace.PullRequests) != 0 {
+				for _, ns := range teamComp.Status.Namespace.PullRequests {
+					if ns == singlePRNamespace {
+						return true, nil
 					}
 				}
+			}
 
-				return false, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue running error")
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue running error")
 
-			By("Verifying Queue component dependencies have been updated")
-			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-				queue := s2hv1.Queue{}
-				err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: singlePRNamespace}, &queue)
-				if err != nil {
-					return false, nil
-				}
-
-				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Get pull-request Queue type error")
-
+		By("Verifying Queue component dependencies have been updated")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
 			queue := s2hv1.Queue{}
 			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: singlePRNamespace}, &queue)
-			Expect(err).NotTo(HaveOccurred(), "Queue component dependencies should have been updated")
-			Expect(queue.Spec.Components).To(HaveLen(2))
-			Expect(queue.Spec.Components[0].Name).To(Equal(prComps[0].Name))
-			Expect(queue.Spec.Components[0].Repository).To(Equal(prComps[0].Repository))
-			Expect(queue.Spec.Components[0].Version).To(Equal(prComps[0].Version))
-			Expect(queue.Spec.Components[1].Name).To(Equal(prComps[1].Name))
-			Expect(queue.Spec.Components[1].Repository).To(Equal(prComps[1].Repository))
-			Expect(queue.Spec.Components[1].Version).To(Equal(prComps[1].Version),
-				"dependency version should equal active version")
-		}, 90)
-
-		It("should successfully add/remove/run pull request from queue", func(done Done) {
-			defer close(done)
-
-			By("Starting Samsahai internal process")
-			setupSamsahai()
-			go samsahaiCtrl.Start(chStop)
-
-			By("Starting Staging internal process")
-			stagingCtrl, prQueueCtrl := setupStaging(stgNamespace)
-			go stagingCtrl.Start(chStop)
-
-			By("Creating Config")
-			config := mockConfig
-			Expect(client.Create(ctx, &config)).To(BeNil())
-
-			By("Creating Team")
-			teamComp := mockTeam
-			Expect(client.Create(ctx, &teamComp)).To(BeNil())
-
-			By("Verifying namespace and config have been created")
-			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-				namespace := corev1.Namespace{}
-				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
-					return false, nil
-				}
-
-				if namespace.Status.Phase == corev1.NamespaceTerminating {
-					return false, nil
-				}
-
-				config := s2hv1.Config{}
-				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
-				if err != nil {
-					return false, nil
-				}
-
-				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
-
-			Expect(prQueueCtrl.Size(stgNamespace)).To(Equal(0),
-				"should start with empty queue")
-
-			By("Creating 2 mock PullRequestQueues")
-			prQueue := s2hv1.PullRequestQueue{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      singlePRTriggerName,
-					Namespace: stgNamespace,
-				},
-				Spec: s2hv1.PullRequestQueueSpec{
-					BundleName: singleCompPRBundleName,
-					PRNumber:   prNumber,
-					Components: prComps,
-				},
-			}
-			Expect(prQueueCtrl.Add(&prQueue, nil)).NotTo(HaveOccurred(),
-				"add pull request queue #1")
-			prQueueName2 := singlePRTriggerName + "-2"
-			prQueue2 := s2hv1.PullRequestQueue{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      prQueueName2,
-					Namespace: stgNamespace,
-				},
-				Spec: s2hv1.PullRequestQueueSpec{
-					BundleName: singleCompPRBundleName,
-					PRNumber:   prNumber,
-					Components: prComps,
-				},
-			}
-			Expect(prQueueCtrl.Add(&prQueue2, nil)).NotTo(HaveOccurred(),
-				"add pull request queue #2")
-
-			By("Verifying one PullRequestQueue has been running and another has been waiting")
-			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
-				if err != nil {
-					return false, nil
-				}
-
-				if prQueue.Status.State != s2hv1.PullRequestQueueDeploying {
-					return false, nil
-				}
-
-				prQueue2 := s2hv1.PullRequestQueue{}
-				err = client.Get(ctx, types.NamespacedName{Name: prQueueName2, Namespace: stgNamespace}, &prQueue2)
-				if err != nil {
-					return false, nil
-				}
-
-				if prQueue2.Status.State != s2hv1.PullRequestQueueWaiting {
-					return false, nil
-				}
-
-				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify 2 PullRequestQueues running and waiting error")
-
-			By("Deleting running PullRequestQueue")
-			prQueue = s2hv1.PullRequestQueue{}
-			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
-			Expect(err).NotTo(HaveOccurred(), "Get running PullRequestQueue error")
-			Expect(client.Delete(ctx, &prQueue)).NotTo(HaveOccurred(),
-				"Delete running PullRequestQueue error")
-
-			By("Verify running PullRequestQueue has been deleted and waiting PullRequestQueue has been being run")
-			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-				prQueue2 = s2hv1.PullRequestQueue{}
-				err = client.Get(ctx, types.NamespacedName{Name: prQueueName2, Namespace: stgNamespace}, &prQueue2)
-				if err != nil && k8serrors.IsNotFound(err) {
-					return true, nil
-				}
-
-				if prQueue2.Status.State == s2hv1.PullRequestQueueWaiting {
-					return false, nil
-				}
-
-				prQueue = s2hv1.PullRequestQueue{}
-				err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
-				if err != nil && k8serrors.IsNotFound(err) {
-					return true, nil
-				}
-
+			if err != nil {
 				return false, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify running PullRequestQueue deleted error")
-		}, 45)
-
-		It("should successfully reset pull request queue if commit SHA changed", func(done Done) {
-			defer close(done)
-
-			By("Starting Samsahai internal process")
-			setupSamsahai()
-			go samsahaiCtrl.Start(chStop)
-
-			By("Starting Staging internal process")
-			stagingCtrl, prQueueCtrl := setupStaging(stgNamespace)
-			go stagingCtrl.Start(chStop)
-
-			By("Creating Config")
-			config := mockConfig
-			Expect(client.Create(ctx, &config)).To(BeNil())
-
-			By("Creating Team")
-			teamComp := mockTeam
-			Expect(client.Create(ctx, &teamComp)).To(BeNil())
-
-			By("Verifying namespace and config have been created")
-			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-				namespace := corev1.Namespace{}
-				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
-					return false, nil
-				}
-
-				if namespace.Status.Phase == corev1.NamespaceTerminating {
-					return false, nil
-				}
-
-				config := s2hv1.Config{}
-				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
-				if err != nil {
-					return false, nil
-				}
-
-				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
-
-			Expect(prQueueCtrl.Size(stgNamespace)).To(Equal(0),
-				"should start with empty queue")
-
-			By("Creating mock success PullRequestQueue")
-			prQueue := s2hv1.PullRequestQueue{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      singlePRTriggerName,
-					Namespace: stgNamespace,
-				},
-				Spec: s2hv1.PullRequestQueueSpec{
-					BundleName:        singleCompPRBundleName,
-					PRNumber:          prNumber,
-					Components:        prComps,
-					CommitSHA:         commitSHA,
-					UpcomingCommitSHA: upComingCommitSHA,
-					NoOfRetry:         2,
-				},
-				Status: s2hv1.PullRequestQueueStatus{
-					Result:               s2hv1.PullRequestQueueSuccess,
-					State:                s2hv1.PullRequestQueueEnvDestroying,
-					PullRequestNamespace: singlePRNamespace,
-				},
 			}
-			Expect(prQueueCtrl.Add(&prQueue, nil)).NotTo(HaveOccurred(),
-				"add pull request queue")
 
-			By("Verifying one PullRequestQueue has been updated")
-			err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
-				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
-				if err != nil {
-					return false, nil
-				}
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Get pull-request Queue type error")
 
-				if prQueue.Status.State == s2hv1.PullRequestQueueEnvDestroying {
-					return false, nil
-				}
+		queue := s2hv1.Queue{}
+		err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: singlePRNamespace}, &queue)
+		Expect(err).NotTo(HaveOccurred(), "Queue component dependencies should have been updated")
+		Expect(queue.Spec.Components).To(HaveLen(2))
+		Expect(queue.Spec.Components[0].Name).To(Equal(prComps[0].Name))
+		Expect(queue.Spec.Components[0].Repository).To(Equal(prComps[0].Repository))
+		Expect(queue.Spec.Components[0].Version).To(Equal(prComps[0].Version))
+		Expect(queue.Spec.Components[1].Name).To(Equal(prComps[1].Name))
+		Expect(queue.Spec.Components[1].Repository).To(Equal(prComps[1].Repository))
+		Expect(queue.Spec.Components[1].Version).To(Equal(prComps[1].Version),
+			"dependency version should equal active version")
+	}, 90)
 
+	It("should successfully add/remove/run pull request from queue", func(done Done) {
+		defer close(done)
+
+		By("Starting Samsahai internal process")
+		setupSamsahai()
+		go samsahaiCtrl.Start(chStop)
+
+		By("Starting Staging internal process")
+		stagingCtrl, prQueueCtrl := setupStaging(stgNamespace)
+		go stagingCtrl.Start(chStop)
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		teamComp := mockTeam
+		Expect(client.Create(ctx, &teamComp)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			if namespace.Status.Phase == corev1.NamespaceTerminating {
+				return false, nil
+			}
+
+			config := s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		Expect(prQueueCtrl.Size(stgNamespace)).To(Equal(0),
+			"should start with empty queue")
+
+		By("Creating 2 mock PullRequestQueues")
+		prQueue := s2hv1.PullRequestQueue{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      singlePRTriggerName,
+				Namespace: stgNamespace,
+			},
+			Spec: s2hv1.PullRequestQueueSpec{
+				BundleName: singleCompPRBundleName,
+				PRNumber:   prNumber,
+				Components: prComps,
+			},
+		}
+		Expect(prQueueCtrl.Add(&prQueue, nil)).NotTo(HaveOccurred(),
+			"add pull request queue #1")
+		prQueueName2 := singlePRTriggerName + "-2"
+		prQueue2 := s2hv1.PullRequestQueue{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      prQueueName2,
+				Namespace: stgNamespace,
+			},
+			Spec: s2hv1.PullRequestQueueSpec{
+				BundleName: singleCompPRBundleName,
+				PRNumber:   prNumber,
+				Components: prComps,
+			},
+		}
+		Expect(prQueueCtrl.Add(&prQueue2, nil)).NotTo(HaveOccurred(),
+			"add pull request queue #2")
+
+		By("Verifying one PullRequestQueue has been running and another has been waiting")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			prQueue := s2hv1.PullRequestQueue{}
+			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
+			if err != nil {
+				return false, nil
+			}
+
+			if prQueue.Status.State != s2hv1.PullRequestQueueDeploying {
+				return false, nil
+			}
+
+			prQueue2 := s2hv1.PullRequestQueue{}
+			err = client.Get(ctx, types.NamespacedName{Name: prQueueName2, Namespace: stgNamespace}, &prQueue2)
+			if err != nil {
+				return false, nil
+			}
+
+			if prQueue2.Status.State != s2hv1.PullRequestQueueWaiting {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify 2 PullRequestQueues running and waiting error")
+
+		By("Deleting running PullRequestQueue")
+		prQueue = s2hv1.PullRequestQueue{}
+		err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
+		Expect(err).NotTo(HaveOccurred(), "Get running PullRequestQueue error")
+		Expect(client.Delete(ctx, &prQueue)).NotTo(HaveOccurred(),
+			"Delete running PullRequestQueue error")
+
+		By("Verify running PullRequestQueue has been deleted and waiting PullRequestQueue has been being run")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			prQueue2 = s2hv1.PullRequestQueue{}
+			err = client.Get(ctx, types.NamespacedName{Name: prQueueName2, Namespace: stgNamespace}, &prQueue2)
+			if err != nil && k8serrors.IsNotFound(err) {
 				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue updated error")
+			}
+
+			if prQueue2.Status.State == s2hv1.PullRequestQueueWaiting {
+				return false, nil
+			}
 
 			prQueue = s2hv1.PullRequestQueue{}
 			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(prQueue.Spec.CommitSHA).To(Equal(upComingCommitSHA))
-			Expect(prQueue.Spec.NoOfRetry).To(Equal(0))
-		}, 45)
-
-		It("should do pull request retry trigger if image not found", func(done Done) {
-			defer close(done)
-
-			By("Starting Samsahai internal process")
-			setupSamsahai()
-			go samsahaiCtrl.Start(chStop)
-
-			By("Starting Staging internal process")
-			stagingCtrl, _ := setupStaging(stgNamespace)
-			go stagingCtrl.Start(chStop)
-
-			By("Creating Config")
-			config := mockConfig
-			config.Status.Used.PullRequest.Bundles[0].Components[0].Image.Repository = "missing"
-			Expect(client.Create(ctx, &config)).To(BeNil())
-
-			By("Creating Team")
-			teamComp := mockTeam
-			Expect(client.Create(ctx, &teamComp)).To(BeNil())
-
-			By("Verifying namespace and config have been created")
-			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-				namespace := corev1.Namespace{}
-				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
-					return false, nil
-				}
-
-				config := s2hv1.Config{}
-				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
-				if err != nil {
-					return false, nil
-				}
-
+			if err != nil && k8serrors.IsNotFound(err) {
 				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
-
-			By("Starting http server")
-			mux := http.NewServeMux()
-			mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
-			mux.Handle("/", s2hhttp.New(samsahaiCtrl))
-			server := httptest.NewServer(mux)
-			defer server.Close()
-
-			By("Send webhook")
-			jsonPRData, _ := json.Marshal(map[string]interface{}{
-				"bundleName": singleCompPRBundleName,
-				"prNumber":   prNumber,
-			})
-			apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
-			_, _, err = utilhttp.Post(apiURL, jsonPRData)
-			Expect(err).NotTo(HaveOccurred(), "Pull request webhook sent error")
-
-			By("Verifying PullRequestTrigger has been created with retry")
-			err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-				prTrigger := s2hv1.PullRequestTrigger{}
-				err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prTrigger)
-				if err != nil {
-					return false, nil
-				}
-
-				if prTrigger.Spec.NoOfRetry != nil && *prTrigger.Spec.NoOfRetry < prMaxRetry {
-					return false, nil
-				}
-
-				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger created error")
-
-			By("Verifying PullRequestTrigger has been deleted")
-			err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
-				prTrigger := s2hv1.PullRequestTrigger{}
-				err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prTrigger)
-				if err != nil && k8serrors.IsNotFound(err) {
-					return true, nil
-				}
-
-				return false, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger deleted error")
-		}, 60)
-
-		It("should update pull request retry queue if deployment fail", func(done Done) {
-			defer close(done)
-
-			By("Starting Samsahai internal process")
-			setupSamsahai()
-			go samsahaiCtrl.Start(chStop)
-
-			By("Starting Staging internal process")
-			stagingCtrl, _ := setupStaging(stgNamespace)
-			go stagingCtrl.Start(chStop)
-
-			By("Creating Config")
-			config := mockConfig
-			Expect(client.Create(ctx, &config)).To(BeNil())
-
-			By("Creating Team")
-			teamComp := mockTeam
-			Expect(client.Create(ctx, &teamComp)).To(BeNil())
-
-			By("Verifying namespace and config have been created")
-			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-				namespace := corev1.Namespace{}
-				if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
-					return false, nil
-				}
-
-				if namespace.Status.Phase == corev1.NamespaceTerminating {
-					return false, nil
-				}
-
-				config := s2hv1.Config{}
-				err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
-				if err != nil {
-					return false, nil
-				}
-
-				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
-
-			By("Creating mock PullRequestQueue")
-			prQueue := s2hv1.PullRequestQueue{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      singlePRTriggerName,
-					Namespace: stgNamespace,
-				},
-				Spec: s2hv1.PullRequestQueueSpec{
-					BundleName: singleCompPRBundleName,
-					PRNumber:   prNumber,
-					Components: prComps,
-					NoOfRetry:  1,
-				},
-				Status: s2hv1.PullRequestQueueStatus{
-					State:                s2hv1.PullRequestQueueEnvDestroying,
-					Result:               s2hv1.PullRequestQueueFailure,
-					PullRequestNamespace: singlePRNamespace,
-				},
 			}
-			Expect(client.Create(ctx, &prQueue)).NotTo(HaveOccurred(), "Mock queue created error")
 
-			By("Verifying PullRequestQueue has been updated")
-			err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-				prQueue := s2hv1.PullRequestQueue{}
-				err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
-				if err != nil {
-					return false, nil
-				}
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify running PullRequestQueue deleted error")
+	}, 45)
 
-				if prQueue.Status.State != s2hv1.PullRequestQueueDeploying {
-					return false, nil
-				}
+	It("should successfully reset pull request queue if commit SHA changed", func(done Done) {
+		defer close(done)
 
-				if prQueue.Spec.NoOfRetry != 2 {
-					return false, nil
-				}
+		By("Starting Samsahai internal process")
+		setupSamsahai()
+		go samsahaiCtrl.Start(chStop)
 
+		By("Starting Staging internal process")
+		stagingCtrl, prQueueCtrl := setupStaging(stgNamespace)
+		go stagingCtrl.Start(chStop)
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		teamComp := mockTeam
+		Expect(client.Create(ctx, &teamComp)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			if namespace.Status.Phase == corev1.NamespaceTerminating {
+				return false, nil
+			}
+
+			config := s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		Expect(prQueueCtrl.Size(stgNamespace)).To(Equal(0),
+			"should start with empty queue")
+
+		By("Creating mock success PullRequestQueue")
+		prQueue := s2hv1.PullRequestQueue{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      singlePRTriggerName,
+				Namespace: stgNamespace,
+			},
+			Spec: s2hv1.PullRequestQueueSpec{
+				BundleName:        singleCompPRBundleName,
+				PRNumber:          prNumber,
+				Components:        prComps,
+				CommitSHA:         commitSHA,
+				UpcomingCommitSHA: upComingCommitSHA,
+				NoOfRetry:         2,
+			},
+			Status: s2hv1.PullRequestQueueStatus{
+				Result:               s2hv1.PullRequestQueueSuccess,
+				State:                s2hv1.PullRequestQueueEnvDestroying,
+				PullRequestNamespace: singlePRNamespace,
+			},
+		}
+		Expect(prQueueCtrl.Add(&prQueue, nil)).NotTo(HaveOccurred(),
+			"add pull request queue")
+
+		By("Verifying one PullRequestQueue has been updated")
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+			prQueue := s2hv1.PullRequestQueue{}
+			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
+			if err != nil {
+				return false, nil
+			}
+
+			if prQueue.Status.State == s2hv1.PullRequestQueueEnvDestroying {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue updated error")
+
+		prQueue = s2hv1.PullRequestQueue{}
+		err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(prQueue.Spec.CommitSHA).To(Equal(upComingCommitSHA))
+		Expect(prQueue.Spec.NoOfRetry).To(Equal(0))
+	}, 45)
+
+	It("should update pull request retry queue if deployment fail", func(done Done) {
+		defer close(done)
+
+		By("Starting Samsahai internal process")
+		setupSamsahai()
+		go samsahaiCtrl.Start(chStop)
+
+		By("Starting Staging internal process")
+		stagingCtrl, _ := setupStaging(stgNamespace)
+		go stagingCtrl.Start(chStop)
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		teamComp := mockTeam
+		Expect(client.Create(ctx, &teamComp)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			if namespace.Status.Phase == corev1.NamespaceTerminating {
+				return false, nil
+			}
+
+			config := s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Creating mock PullRequestQueue")
+		prQueue := s2hv1.PullRequestQueue{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      singlePRTriggerName,
+				Namespace: stgNamespace,
+			},
+			Spec: s2hv1.PullRequestQueueSpec{
+				BundleName: singleCompPRBundleName,
+				PRNumber:   prNumber,
+				Components: prComps,
+				NoOfRetry:  1,
+			},
+			Status: s2hv1.PullRequestQueueStatus{
+				State:                s2hv1.PullRequestQueueEnvDestroying,
+				Result:               s2hv1.PullRequestQueueFailure,
+				PullRequestNamespace: singlePRNamespace,
+			},
+		}
+		Expect(client.Create(ctx, &prQueue)).NotTo(HaveOccurred(), "Mock queue created error")
+
+		By("Verifying PullRequestQueue has been updated")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			prQueue := s2hv1.PullRequestQueue{}
+			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
+			if err != nil {
+				return false, nil
+			}
+
+			if prQueue.Status.State != s2hv1.PullRequestQueueDeploying {
+				return false, nil
+			}
+
+			if prQueue.Spec.NoOfRetry != 2 {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue updated error")
+	}, 45)
+
+	It("should re-create pull request trigger if re-send webhook and do retry if image not found", func(done Done) {
+		defer close(done)
+
+		By("Starting Samsahai internal process")
+		setupSamsahai()
+		go samsahaiCtrl.Start(chStop)
+
+		By("Starting Staging internal process")
+		stagingCtrl, _ := setupStaging(stgNamespace)
+		go stagingCtrl.Start(chStop)
+
+		By("Creating Config")
+		config := mockConfig
+		config.Status.Used.PullRequest.Bundles[0].Components[0].Image.Repository = "missing"
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		teamComp := mockTeam
+		Expect(client.Create(ctx, &teamComp)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Creating mock PullRequestTrigger")
+		prTrigger := s2hv1.PullRequestTrigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      singlePRTriggerName,
+				Namespace: stgNamespace,
+			},
+			Spec: s2hv1.PullRequestTriggerSpec{
+				BundleName: singleCompPRBundleName,
+				PRNumber:   prNumber,
+				Components: []*s2hv1.PullRequestTriggerComponent{
+					{
+						ComponentName: wordpressCompName,
+						Image:         &s2hv1.Image{Repository: "mock-repo", Tag: "mock-tag"},
+					},
+				},
+				NextProcessAt: &metav1.Time{Time: time.Now().Add(10 * time.Minute)},
+			},
+		}
+		Expect(client.Create(ctx, &prTrigger)).To(BeNil(), "Create mock PullRequestTrigger error")
+
+		By("Starting http server")
+		mux := http.NewServeMux()
+		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
+		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		By("Re-send webhook")
+		jsonPRData, _ := json.Marshal(map[string]interface{}{
+			"bundleName": singleCompPRBundleName,
+			"prNumber":   prNumber,
+		})
+		apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
+		_, _, err = utilhttp.Post(apiURL, jsonPRData)
+		Expect(err).NotTo(HaveOccurred(), "Pull request webhook sent error")
+
+		By("Verifying PullRequestTrigger has been created with retry")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			prTrigger := s2hv1.PullRequestTrigger{}
+			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prTrigger)
+			if err != nil {
+				return false, nil
+			}
+
+			if prTrigger.Spec.NoOfRetry != nil && *prTrigger.Spec.NoOfRetry < maxPRTriggerRetry {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger created error")
+
+		By("Verifying PullRequestTrigger has been deleted")
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
+			prTrigger := s2hv1.PullRequestTrigger{}
+			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prTrigger)
+			if err != nil && k8serrors.IsNotFound(err) {
 				return true, nil
-			})
-			Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue updated error")
-		}, 45)
-	})
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger deleted error")
+	}, 45)
 })
 
 var (
@@ -1084,7 +1119,7 @@ var (
 	commitSHA         = "12345"
 	upComingCommitSHA = "67890"
 
-	prMaxRetry           = 2
+	maxPRTriggerRetry    = 2
 	singlePRTriggerName  = internal.GenPullRequestBundleName(singleCompPRBundleName, prNumber)
 	bundledPRTriggerName = internal.GenPullRequestBundleName(bundledCompPRBundleName, prNumber)
 
@@ -1098,7 +1133,7 @@ var (
 		PullRequest: &s2hv1.ConfigPullRequest{
 			Trigger: s2hv1.PullRequestTriggerConfig{
 				PollingTime: metav1.Duration{Duration: 1 * time.Second},
-				MaxRetry:    &prMaxRetry,
+				MaxRetry:    &maxPRTriggerRetry,
 			},
 			Bundles: []*s2hv1.PullRequestBundle{
 				{
@@ -1132,7 +1167,7 @@ var (
 			},
 			Concurrences: 1,
 			PullRequestExtraConfig: s2hv1.PullRequestExtraConfig{
-				MaxRetry: &prMaxRetry,
+				MaxRetry: &maxPRTriggerRetry,
 			},
 		},
 		Reporter: configReporter,

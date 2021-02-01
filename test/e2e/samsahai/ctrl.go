@@ -1258,8 +1258,11 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Verifying DesiredComponent has been created")
-		err = wait.PollImmediate(verifyTime1s, verifyTime45s, func() (ok bool, err error) {
-			_, _, _ = utilhttp.Post(server.URL+"/webhook/component", jsonData)
+		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
+			_, _, err = utilhttp.Post(server.URL+"/webhook/component", jsonData)
+			if err != nil {
+				return false, err
+			}
 
 			dc := s2hv1.DesiredComponent{}
 			if err = client.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dc); err != nil {
@@ -1269,7 +1272,7 @@ var _ = Describe("[e2e] Main controller", func() {
 			return true, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify DesiredComponent error")
-	}, 75)
+	}, 60)
 
 	It("should successfully detect changed components", func(done Done) {
 		defer close(done)
@@ -1323,13 +1326,27 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Verifying redis DesiredComponent has been created")
 		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
-			_, _, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataRedis)
+			_, _, err = utilhttp.Post(server.URL+"/webhook/component", jsonDataRedis)
+			if err != nil {
+				return false, err
+			}
+
 			dRedis := s2hv1.DesiredComponent{}
 			if err = client.Get(ctx, types.NamespacedName{Name: redisCompName, Namespace: stgNamespace}, &dRedis); err != nil {
 				return false, nil
 			}
 
-			_, _, _ = utilhttp.Post(server.URL+"/webhook/component", jsonDataWordpress)
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify redis DesiredComponent error")
+
+		By("Verifying wordpress DesiredComponent has been created")
+		err = wait.PollImmediate(verifyTime1s, verifyTime45s, func() (ok bool, err error) {
+			_, _, err = utilhttp.Post(server.URL+"/webhook/component", jsonDataWordpress)
+			if err != nil {
+				return false, err
+			}
+
 			dWordpress := s2hv1.DesiredComponent{}
 			if err = client.Get(ctx, types.NamespacedName{Name: wordpressCompName, Namespace: stgNamespace}, &dWordpress); err != nil {
 				return false, nil
@@ -1337,7 +1354,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 			return true, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Verify DesiredComponent error")
+		Expect(err).NotTo(HaveOccurred(), "Verify wordpress DesiredComponent error")
 
 		By("Checking all desired components have been set")
 		desiredComps := &s2hv1.DesiredComponentList{}
@@ -1356,6 +1373,12 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Creating StableComponents")
 		for _, s := range mockStableCompList.Items {
+			if s.Name == redisCompName {
+				s.Spec.Version = outdatedRedisTag
+			}
+			if s.Name == mariaDBCompName {
+				s.Spec.Version = outdatedMariaDBTag
+			}
 			Expect(client.Create(ctx, &s)).To(BeNil())
 		}
 
@@ -1371,13 +1394,23 @@ var _ = Describe("[e2e] Main controller", func() {
 		configComp.Status.Used.Components = []*s2hv1.Component{{Name: redisCompName}}
 		Expect(client.Update(ctx, &configComp)).To(BeNil())
 
-		time.Sleep(verifyTime1s)
 		By("Checking DesiredComponents")
-		dRedis := s2hv1.DesiredComponent{}
-		Expect(client.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &dRedis)).To(BeNil())
-		dWordpress := s2hv1.DesiredComponent{}
-		err = client.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &dWordpress)
-		Expect(errors.IsNotFound(err)).To(BeTrue())
+		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
+			dRedis := s2hv1.DesiredComponent{}
+			err = client.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &dRedis)
+			if err != nil {
+				return false, nil
+			}
+
+			dWordpress := s2hv1.DesiredComponent{}
+			err = client.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &dWordpress)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify DesiredComponents error")
 
 		By("Checking TeamDesiredComponents")
 		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
@@ -1399,14 +1432,16 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify TeamDesiredComponent error")
 
 		By("Checking Queues")
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
 			qRedis := s2hv1.Queue{}
-			if err = client.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &qRedis); err != nil {
+			err = client.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: redisCompName}, &qRedis)
+			if err != nil {
 				return false, nil
 			}
 
 			qWordpress := s2hv1.Queue{}
-			if err = client.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &qWordpress); err != nil && !errors.IsNotFound(err) {
+			err = client.Get(ctx, types.NamespacedName{Namespace: stgNamespace, Name: wordpressCompName}, &qWordpress)
+			if err != nil && !errors.IsNotFound(err) {
 				return false, nil
 			}
 
@@ -1429,7 +1464,7 @@ var _ = Describe("[e2e] Main controller", func() {
 			return true, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify StableComponents error")
-	}, 110)
+	}, 300)
 
 	It("should successfully create outdated component when no any active namespace left but there are active components in team", func(done Done) {
 		defer close(done)
@@ -1599,39 +1634,6 @@ var _ = Describe("[e2e] Main controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(),
 			"Notify component changed and promote the first active error")
-	}, 45)
-
-	It("should successfully set new active namespace when success promotion on team creation", func(done Done) {
-		defer close(done)
-		setupSamsahai(false)
-
-		By("Creating Config")
-		config := mockConfigOnlyRedis
-		Expect(client.Create(ctx, &config)).To(BeNil())
-
-		By("Creating Team")
-		team := mockTeam
-		Expect(client.Create(ctx, &team)).To(BeNil())
-
-		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-			namespace := corev1.Namespace{}
-			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
-				return false, nil
-			}
-
-			config := s2hv1.Config{}
-			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
-			if err != nil {
-				return false, nil
-			}
-
-			return true, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Create staging related object objects error")
-
-		teamComp := s2hv1.Team{}
-		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
 
 		By("Waiting pre-active environment is successfully created")
 		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
@@ -1669,223 +1671,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
 		Expect(atpRes.Status.PreviousActiveNamespace).To(BeEmpty())
-
-		By("Start staging controller for pre-active")
-		preActiveNs := atpRes.Status.TargetNamespace
-		{
-			stagingCfg := rest.CopyConfig(restCfg)
-			stagingMgr, err := manager.New(stagingCfg, manager.Options{
-				Namespace:          preActiveNs,
-				MetricsBindAddress: "0",
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			stagingCfgCtrl := configctrl.New(stagingMgr)
-			qCtrl := queue.New(preActiveNs, client)
-			stagingPreActiveCtrl := staging.NewController(teamName, preActiveNs, samsahaiAuthToken, samsahaiClient,
-				stagingMgr, qCtrl, stagingCfgCtrl, "", "", "",
-				internal.StagingConfig{})
-			go func() {
-				defer GinkgoRecover()
-				Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())
-			}()
-			go stagingPreActiveCtrl.Start(chStop)
-		}
-
-		By("ActivePromotion should be deleted")
-		err = wait.PollImmediate(verifyTime1s, promoteTimeOut, func() (ok bool, err error) {
-			atpTemp := s2hv1.ActivePromotion{}
-			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
-			if err != nil && errors.IsNotFound(err) {
-				return true, nil
-			}
-
-			return false, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
-
-		By("Active namespace should be set")
-		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
-			teamComp = s2hv1.Team{}
-			if err := client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp); err != nil {
-				return false, nil
-			}
-
-			if teamComp.Status.Namespace.Active == preActiveNs {
-				return true, nil
-			}
-
-			return false, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Active namespace is not set")
-
-		By("Current active components should not be set as it is first time promotion")
-		teamComp = s2hv1.Team{}
-		err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
-		Expect(err).To(BeNil())
-		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
-
-		By("ActivePromotionHistory should be created")
-		atpHists := &s2hv1.ActivePromotionHistoryList{}
-		listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
-		err = client.List(ctx, atpHists, listOpt)
-		Expect(err).To(BeNil())
-		Expect(len(atpHists.Items)).To(Equal(1))
-		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).To(BeNil())
-
-		By("Public API")
-		{
-			By("Get team")
-			{
-				_, data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(data).NotTo(BeNil())
-				Expect(gjson.GetBytes(data, "teamName").Str).To(Equal(team.Name))
-			}
-
-			By("Get team Queue")
-			{
-				_, data, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue")
-				Expect(err).NotTo(HaveOccurred())
-				Expect(data).NotTo(BeNil())
-			}
-
-			By("Get team QueueHistories not found")
-			{
-				_, _, err := utilhttp.Get(samsahaiServer.URL + "/teams/" + team.Name + "/queue/histories/" + "unknown")
-				Expect(err).To(HaveOccurred())
-			}
-		}
-	}, 280)
-
-	It("should successfully not set active namespace when failed promotion on team creation", func(done Done) {
-		defer close(done)
-		setupSamsahai(false)
-
-		By("Creating Config")
-		config := mockConfigOnlyRedis
-		Expect(client.Create(ctx, &config)).To(BeNil())
-
-		By("Creating Team")
-		team := mockTeam
-		Expect(client.Create(ctx, &team)).To(BeNil())
-
-		By("Verifying namespace and config have been created")
-		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
-			namespace := corev1.Namespace{}
-			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
-				return false, nil
-			}
-
-			config := s2hv1.Config{}
-			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
-			if err != nil {
-				return false, nil
-			}
-
-			return true, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Create staging related objects error")
-
-		By("Waiting pre-active environment is successfully created")
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-			atpTemp := s2hv1.ActivePromotion{}
-			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
-			if err != nil {
-				return false, nil
-			}
-
-			if atpTemp.Status.IsConditionTrue(s2hv1.ActivePromotionCondPreActiveCreated) {
-				return true, nil
-			}
-
-			return false, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Delete previous namespace error")
-
-		atpRes := s2hv1.ActivePromotion{}
-		err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &atpRes)
-		Expect(err).NotTo(HaveOccurred(), "Get active promotion error")
-
-		By("Checking pre-active namespace has been set")
-		teamComp := s2hv1.Team{}
-		err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
-		Expect(err).To(BeNil())
-		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
-		Expect(teamComp.Status.Namespace.PreActive).ToNot(BeEmpty())
-		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
-		Expect(atpRes.Status.PreviousActiveNamespace).To(BeEmpty())
-
-		By("Waiting ActivePromotion state to be `Deploying`")
-		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
-			atpComp := s2hv1.ActivePromotion{}
-			if err := client.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp); err != nil {
-				return false, nil
-			}
-
-			if atpComp.Status.State == s2hv1.ActivePromotionDeployingComponents {
-				return true, nil
-			}
-
-			return false, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Change active promotion state to `Deploying` error")
-
-		By("Updating ActivePromotion state to be `DestroyingPreActiveEnvironment`")
-		atpComp := s2hv1.ActivePromotion{}
-		Expect(client.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp))
-		atpComp.Status.State = s2hv1.ActivePromotionDestroyingPreActive
-		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondPreActiveDestroyed, corev1.ConditionTrue, "failed")
-		Expect(client.Update(ctx, &atpComp)).To(BeNil())
-
-		By("Delete ActivePromotion")
-		atpComp = s2hv1.ActivePromotion{}
-		Expect(client.Get(ctx, types.NamespacedName{Name: atpRes.Name}, &atpComp))
-		Expect(client.Delete(ctx, &atpComp)).To(BeNil())
-
-		By("Pre-active namespace should be deleted")
-		preActiveNs := atpComp.Status.TargetNamespace
-		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
-			namespace := corev1.Namespace{}
-			err = client.Get(ctx, types.NamespacedName{Name: preActiveNs}, &namespace)
-			if err != nil && errors.IsNotFound(err) {
-				return true, nil
-			}
-
-			return false, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Delete pre-active namespace error")
-
-		By("ActivePromotion should be deleted")
-		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-			atpTemp := s2hv1.ActivePromotion{}
-			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &atpTemp)
-			if err != nil && errors.IsNotFound(err) {
-				return true, nil
-			}
-
-			return false, nil
-		})
-		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
-
-		atpHists := &s2hv1.ActivePromotionHistoryList{}
-		listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(defaultLabels)}
-		err = client.List(ctx, atpHists, listOpt)
-		Expect(err).To(BeNil())
-		Expect(len(atpHists.Items)).To(Equal(1))
-		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).To(BeNil())
-
-		By("Checking only staging namespace left")
-		teamComp = s2hv1.Team{}
-		err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
-		Expect(err).To(BeNil())
-		Expect(teamComp.Status.Namespace.Staging).ToNot(BeEmpty())
-		Expect(teamComp.Status.Namespace.Active).To(BeEmpty())
-		Expect(teamComp.Status.Namespace.PreActive).To(BeEmpty())
-
-		By("Current active components should not be set")
-		Expect(len(teamComp.Status.ActiveComponents)).To(BeZero())
-	}, 100)
+	}, 75)
 
 	It("should successfully create cronjob", func(done Done) {
 		defer close(done)
@@ -1953,7 +1739,7 @@ var _ = Describe("[e2e] Main controller", func() {
 			}
 			return true, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Config should be deleted")
+		Expect(err).NotTo(HaveOccurred(), "CronJob should be deleted")
 	}, 90)
 
 	It("should successfully apply/update team template", func(done Done) {
@@ -2194,13 +1980,17 @@ var (
 		Spec:       stableSpecRedis,
 	}
 
-	mockQueueList = &s2hv1.QueueList{
+	// stable version should not be latest or equal to desired version
+	outdatedRedisTag     = "5.0-debian-10"
+	outdatedWordpressTag = "5-debian-10"
+	outdatedMariaDBTag   = "10.2-debian-10"
+	mockQueueList        = &s2hv1.QueueList{
 		Items: []s2hv1.Queue{
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: redisCompName, Namespace: stgNamespace},
 				Spec: s2hv1.QueueSpec{Name: redisCompName,
 					Components: s2hv1.QueueComponents{
-						{Name: redisCompName, Repository: redisImage.Repository, Version: redisImage.Tag},
+						{Name: redisCompName, Repository: redisImage.Repository, Version: outdatedRedisTag},
 					},
 				},
 			},
@@ -2208,7 +1998,7 @@ var (
 				ObjectMeta: metav1.ObjectMeta{Name: wordpressCompName, Namespace: stgNamespace},
 				Spec: s2hv1.QueueSpec{Name: wordpressCompName,
 					Components: s2hv1.QueueComponents{
-						{Name: wordpressCompName, Repository: wordpressImage.Repository, Version: wordpressImage.Tag},
+						{Name: wordpressCompName, Repository: wordpressImage.Repository, Version: outdatedWordpressTag},
 					},
 				},
 			},

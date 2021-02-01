@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
+	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	prqueuectrl "github.com/agoda-com/samsahai/internal/pullrequest/queue"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
@@ -155,62 +157,29 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
-	compSourceCh, compVersionCh := make(chan *samsahairpc.ComponentSource), make(chan *samsahairpc.ComponentVersion)
-	errCh := make(chan error)
-	for _, prCompSource := range prCompSources {
-		go func(prCompSource *samsahairpc.ComponentSource) {
-			version, err := c.s2hClient.GetComponentVersion(ctx, prCompSource)
-			if err != nil {
-				errCh <- err
-				compSourceCh <- prCompSource
-				return
-			}
-			compVersionCh <- version
-			compSourceCh <- prCompSource
-		}(prCompSource)
-	}
-
-	var prQueueComponents s2hv1.QueueComponents
-	var globalErr error
-	for i := 0; i < len(prCompSources); i++ {
-		select {
-		case compVersion := <-compVersionCh:
-			compSource := <-compSourceCh
-			prQueueComp := &s2hv1.QueueComponent{
-				Name:       compSource.ComponentName,
-				Repository: compSource.Image.Repository,
-				Version:    compVersion.Version,
-			}
-			prQueueComponents = append(prQueueComponents, prQueueComp)
-		case err := <-errCh:
-			compSource := <-compSourceCh
-			prTrigger.Status.ImageMissingList = make([]s2hv1.Image, 0)
-			if err != nil {
-				globalErr = err
-				img := s2hv1.Image{
-					Repository: compSource.Image.Repository,
-					Tag:        compSource.Image.Tag,
-				}
-				prTrigger.Status.ImageMissingList = append(prTrigger.Status.ImageMissingList, img)
-			}
-		}
-	}
-
-	if globalErr != nil {
-		initRetry := 0
-		nextProcessAt = &metav1.Time{Time: now.Add(pollingTime)}
-
+	prQueueComponents, err := c.getPRQueueComponentsIfImageExisted(ctx, prTrigger, prCompSources)
+	if err != nil {
 		// cannot get component version from image registry
-		prTrigger.Status.UpdatedAt = &now
-		prTrigger.Spec.NextProcessAt = nextProcessAt
-
+		initRetry := 0
 		if prTrigger.Spec.NoOfRetry == nil {
 			prTrigger.Spec.NoOfRetry = &initRetry
 		} else {
 			*prTrigger.Spec.NoOfRetry++
 		}
 
-		prTrigger.Status.SetCondition(s2hv1.PullRequestTriggerCondFailed, corev1.ConditionTrue, globalErr.Error())
+		nextProcessAt = &metav1.Time{Time: now.Add(pollingTime)}
+
+		noOfRetry := prTrigger.Spec.NoOfRetry
+		maxRetry := prConfig.Trigger.MaxRetry
+		if maxRetry >= 0 && noOfRetry != nil && *noOfRetry >= int(maxRetry) {
+			prTrigger.Spec.NextProcessAt = &now
+		} else {
+			prTrigger.Spec.NextProcessAt = nextProcessAt
+		}
+
+		prTrigger.Status.UpdatedAt = &now
+
+		prTrigger.Status.SetCondition(s2hv1.PullRequestTriggerCondFailed, corev1.ConditionTrue, err.Error())
 		prTrigger.Status.SetResult(s2hv1.PullRequestTriggerFailure)
 
 		if err := c.client.Update(context.TODO(), prTrigger); err != nil {
@@ -374,6 +343,63 @@ func (c *controller) getOverridingComponentSource(ctx context.Context, prTrigger
 	}
 
 	return prCompSourceList.ComponentSources, nil
+}
+
+func (c *controller) getPRQueueComponentsIfImageExisted(ctx context.Context, prTrigger *s2hv1.PullRequestTrigger,
+	prCompSources []*samsahairpc.ComponentSource) (s2hv1.QueueComponents, error) {
+
+	timeout := 300 * time.Second
+	ctx, cancelFunc := context.WithTimeout(ctx, timeout)
+	defer cancelFunc()
+
+	compSourceCh, compVersionCh := make(chan *samsahairpc.ComponentSource), make(chan *samsahairpc.ComponentVersion)
+	errCh := make(chan error)
+	for _, prCompSource := range prCompSources {
+		go func(prCompSource *samsahairpc.ComponentSource) {
+			version, err := c.s2hClient.GetComponentVersion(ctx, prCompSource)
+			if err != nil {
+				errCh <- err
+				compSourceCh <- prCompSource
+				return
+			}
+			compVersionCh <- version
+			compSourceCh <- prCompSource
+		}(prCompSource)
+	}
+
+	var prQueueComponents s2hv1.QueueComponents
+	var globalErr error
+	for i := 0; i < len(prCompSources); i++ {
+		select {
+		case <-ctx.Done():
+			logger.Error(s2herrors.ErrRequestTimeout,
+				fmt.Sprintf("detect missing images for pull request trigger took longer than %v", timeout))
+			return s2hv1.QueueComponents{}, errors.Wrapf(s2herrors.ErrRequestTimeout,
+				"detect missing images for pull request trigger took longer than %v",
+				timeout)
+		case compVersion := <-compVersionCh:
+			compSource := <-compSourceCh
+			prQueueComp := &s2hv1.QueueComponent{
+				Name:       compSource.ComponentName,
+				Repository: compSource.Image.Repository,
+				Version:    compVersion.Version,
+			}
+			prQueueComponents = append(prQueueComponents, prQueueComp)
+		case err := <-errCh:
+			compSource := <-compSourceCh
+			prTrigger.Status.ImageMissingList = make([]s2hv1.Image, 0)
+			if err != nil {
+				globalErr = err
+				img := s2hv1.Image{
+					Repository: compSource.Image.Repository,
+					Tag:        compSource.Image.Tag,
+				}
+				prTrigger.Status.ImageMissingList = append(prTrigger.Status.ImageMissingList, img)
+			}
+		}
+	}
+
+	return prQueueComponents, globalErr
 }
 
 func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA string, comps s2hv1.QueueComponents) error {

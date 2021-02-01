@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -78,8 +79,18 @@ func (c *controller) GetMissingVersions(ctx context.Context, teamInfo *rpc.TeamW
 		return nil, errors.Wrapf(err, "cannot get components of team %s", teamComp.Name)
 	}
 
+	return c.getMissingVersions(teamInfo, stableList, comps)
+}
+
+func (c *controller) getMissingVersions(teamInfo *rpc.TeamWithCurrentComponent, stableList *s2hv1.StableComponentList,
+	comps map[string]*s2hv1.Component) (*rpc.ImageList, error) {
+
 	// detect image missing of all stable components and current components concurrently
+	timeout := 300 * time.Second
 	missingImagesCh := make(chan []*rpc.Image, 2)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	defer cancelFunc()
 
 	// get image missing of stable components
 	go func() {
@@ -113,6 +124,7 @@ func (c *controller) GetMissingVersions(ctx context.Context, teamInfo *rpc.TeamW
 		missingImages := make([]*rpc.Image, 0)
 		for i := 0; i < len(stableList.Items); i++ {
 			select {
+
 			case missingImage := <-missingImageCh:
 				if missingImage.Repository != "" {
 					missingImages = append(missingImages, missingImage)
@@ -165,9 +177,16 @@ func (c *controller) GetMissingVersions(ctx context.Context, teamInfo *rpc.TeamW
 
 	imgList := &rpc.ImageList{}
 	for i := 0; i < 2; i++ {
-		missingImages := <-missingImagesCh
-		if len(missingImages) > 0 {
-			imgList.Images = append(imgList.Images, missingImages...)
+		select {
+		case <-ctx.Done():
+			logger.Error(s2herrors.ErrRequestTimeout,
+				fmt.Sprintf("detect missing images took longer than %v", timeout))
+			return nil, errors.Wrapf(s2herrors.ErrRequestTimeout, "detect missing images took longer than %v",
+				timeout)
+		case missingImages := <-missingImagesCh:
+			if len(missingImages) > 0 {
+				imgList.Images = append(imgList.Images, missingImages...)
+			}
 		}
 	}
 
