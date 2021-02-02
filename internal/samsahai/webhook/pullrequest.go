@@ -80,6 +80,7 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 		jsonData.CommitSHA, mapCompTag)
 	if err != nil {
 		h.error(w, http.StatusInternalServerError, err)
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
