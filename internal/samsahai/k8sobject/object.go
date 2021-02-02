@@ -564,6 +564,8 @@ func isDeploymentChanged(found, target interface{}) bool {
 	foundLabels := found.(*appsv1.Deployment).Labels
 	targetLabels := target.(*appsv1.Deployment).Labels
 	if !deepEqual(foundLabels, targetLabels) {
+		logger.Debug("found deployment labels changed",
+			"foundLabels", foundLabels, "targetLabels", targetLabels)
 		isObjChanged = true
 		found.(*appsv1.Deployment).Labels = targetLabels
 	}
@@ -571,6 +573,8 @@ func isDeploymentChanged(found, target interface{}) bool {
 	foundSpecTmplLabels := found.(*appsv1.Deployment).Spec.Template.Labels
 	targetSpecTmplLabels := target.(*appsv1.Deployment).Spec.Template.Labels
 	if !deepEqual(foundSpecTmplLabels, targetSpecTmplLabels) {
+		logger.Debug("found pod template labels changed",
+			"foundLabels", foundSpecTmplLabels, "targetLabels", targetSpecTmplLabels)
 		isObjChanged = true
 		found.(*appsv1.Deployment).Spec.Template.Labels = targetSpecTmplLabels
 	}
@@ -581,6 +585,8 @@ func isDeploymentChanged(found, target interface{}) bool {
 		targetTmplContainer := target.(*appsv1.Deployment).Spec.Template.Spec.Containers[i]
 
 		if !areContainersEqual(foundTmplContainer, targetTmplContainer) {
+			logger.Debug("found containers changed",
+				"foundContainers", foundTmplContainer, "targetContainers", targetTmplContainer)
 			isObjChanged = true
 			found.(*appsv1.Deployment).Spec.Template.Spec.Containers[i] = targetTmplContainer
 		}
@@ -609,6 +615,8 @@ func isResourceQuotaChanged(found, target interface{}) bool {
 	foundSpec := found.(*corev1.ResourceQuota).Spec
 	targetSpec := target.(*corev1.ResourceQuota).Spec
 	if !deepEqual(foundSpec, targetSpec) {
+		logger.Debug("found resource quota changed",
+			"foundSpec", foundSpec, "targetSpec", targetSpec)
 		found.(*corev1.ResourceQuota).Spec = targetSpec
 		return true
 	}

@@ -91,8 +91,9 @@ func NewComponentUpgradeReporter(comp *rpc.ComponentUpgrade, s2hConfig SamsahaiC
 type StatusType string
 
 const (
-	StatusSuccess StatusType = "Success"
-	StatusFailure StatusType = "Failure"
+	StatusSuccess  StatusType = "Success"
+	StatusFailure  StatusType = "Failure"
+	StatusCanceled StatusType = "Canceled"
 )
 
 // IssueType represents an issue type of component upgrade failure
@@ -176,27 +177,30 @@ func NewImageMissingReporter(image s2hv1.Image, s2hConfig SamsahaiConfig,
 
 // PullRequestTriggerReporter manages pull request trigger report
 type PullRequestTriggerReporter struct {
-	TeamName      string       `json:"teamName,omitempty"`
-	ComponentName string       `json:"componentName,omitempty"`
-	PRNumber      string       `json:"prNumber,omitempty"`
-	Result        string       `json:"result,omitempty"`
-	Image         *s2hv1.Image `json:"image,omitempty"`
+	TeamName   string                               `json:"teamName,omitempty"`
+	BundleName string                               `json:"bundleName,omitempty"`
+	PRNumber   string                               `json:"prNumber,omitempty"`
+	Result     string                               `json:"result,omitempty"`
+	Components []*s2hv1.PullRequestTriggerComponent `json:"components,omitempty"`
+	NoOfRetry  int                                  `json:"noOfRetry,omitempty"`
 	s2hv1.PullRequestTriggerStatus
 	SamsahaiConfig
 }
 
 // NewPullRequestTriggerResultReporter creates pull request trigger result reporter object
 func NewPullRequestTriggerResultReporter(status s2hv1.PullRequestTriggerStatus, s2hConfig SamsahaiConfig,
-	teamName, compName, prNumber, result string, image *s2hv1.Image) *PullRequestTriggerReporter {
+	teamName, bundleName, prNumber, result string, noOfRetry int,
+	comps []*s2hv1.PullRequestTriggerComponent) *PullRequestTriggerReporter {
 
 	c := &PullRequestTriggerReporter{
 		PullRequestTriggerStatus: status,
 		TeamName:                 teamName,
-		ComponentName:            compName,
+		BundleName:               bundleName,
 		PRNumber:                 prNumber,
 		Result:                   result,
-		Image:                    image,
+		Components:               comps,
 		SamsahaiConfig:           s2hConfig,
+		NoOfRetry:                noOfRetry,
 	}
 
 	return c
@@ -239,6 +243,8 @@ func convertStatusType(statusType rpc.ComponentUpgrade_UpgradeStatus) StatusType
 	switch statusType {
 	case rpc.ComponentUpgrade_UpgradeStatus_SUCCESS:
 		return StatusSuccess
+	case rpc.ComponentUpgrade_UpgradeStatus_CANCELED:
+		return StatusCanceled
 	default:
 		return StatusFailure
 	}

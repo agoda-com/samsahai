@@ -221,28 +221,33 @@ spec:
       # default value is 30
       maxRetry: 10
 
-      # what components do you want to verify per pull request?
-      components:
-        # the service name must be defined in "components" configuration
-        - name: <pr_service_name>
+      # what bundle of components do you want to verify per pull request?
+      bundles:
+        # bundle name must consist of lower case alphanumeric characters, '-' or '.',
+        # and must start and end with an alphanumeric character
+        - name: <pr_bundle_name>
           # how many resources for pull request namespace?
           resources: null
           # cpu: '4'
           # memory: 4Gi
 
-          # [optional] image repository and image tag pattern of the pull request component
-          # if not define, will use the image from "components" configuration matching with component name
-          image:
-            repository: <service_image_repository>
-            # [optional] samsahai will retrieve the latest image version matching with a defined pattern
-            # support {{ .PRNumber }} parameter
-            pattern: <service_image_tag_pattern>
+          # what components do you want to verify in the same pull request namespace?
+          components:
+            # the service name must be defined in "spec.components" configuration
+            - name: <service_name>
+              # [optional] image repository and image tag pattern of the pull request component
+              # if not define, will use the image from "spec.components" configuration matching with component name
+              image:
+                repository: <service_image_repository>
+                # [optional] samsahai will retrieve the latest image version matching with a defined pattern
+                # support {{ .PRNumber }} parameter
+                pattern: <service_image_tag_pattern>
 
-          # image source for checking desired version of components
-          # use 'public-registry' for retrieving latest version from public registry e.g. hub.docker.com
-          # use 'harbor' for retrieving latest version from harbor
-          # use 'samsahai-stable' for retrieving version from stable component version of other teams in samsahai itself
-          source: public-registry
+              # image source for checking desired version of components
+              # use 'public-registry' for retrieving latest version from public registry e.g. hub.docker.com
+              # use 'harbor' for retrieving latest version from harbor
+              # use 'samsahai-stable' for retrieving version from stable component version of other teams in samsahai itself
+              source: public-registry
 
           # deployment flow of active environment configuration
           deployment:
@@ -283,7 +288,7 @@ spec:
               pollingTime: 10s
 
           # dependencies of pull request component
-          # the dependency name must be defined in "components" configuration
+          # the dependency name must be defined in "spec.components" configuration
           dependencies:
             - <pull_request_dependencies_service_name>
 
@@ -333,6 +338,13 @@ spec:
         # use 'success' for sending slack notification when pull request queue is success only
         # use 'failure' for sending slack notification when pull request queue is failure only <default>
         # use 'both' for sending slack notification whether pull request queue is success or failure
+        criteria: failure
+
+      pullRequestTrigger:
+        # a criteria of sending pull request trigger notification
+        # use 'success' for sending slack notification when pull request trigger is success only
+        # use 'failure' for sending slack notification when pull request trigger is failure only <default>
+        # use 'both' for sending slack notification whether pull request trigger is success or failure
         criteria: failure
 
     # sending notification via Microsoft Teams
@@ -462,9 +474,9 @@ spec:
 
     # pull request environment will be applied when running pull request queue
     pull-request:
-      # component name must consist of lower case alphanumeric characters, '-' or '.',
+      # bundle name must consist of lower case alphanumeric characters, '-' or '.',
       # and must start and end with an alphanumeric character
-      <component_name>:
+      <pr_bundle_name>:
         - <values_file_url>
 
   # [optional] configuration and team values from <your_template_name> will be applied to your configuration and team

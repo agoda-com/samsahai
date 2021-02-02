@@ -324,9 +324,10 @@ definitions:
     type: object
   v1.ConfigPullRequest:
     properties:
-      components:
+      bundles:
+        description: Bundles represents a bundle of pull request components configuration
         items:
-          $ref: '#/definitions/v1.PullRequestComponent'
+          $ref: '#/definitions/v1.PullRequestBundle'
         type: array
       concurrences:
         description: |-
@@ -613,8 +614,14 @@ definitions:
         description: +optional
         type: boolean
     type: object
-  v1.PullRequestComponent:
+  v1.PullRequestBundle:
     properties:
+      components:
+        description: Components represents a list of pull request components which
+          are deployed together as a bundle
+        items:
+          $ref: '#/definitions/v1.PullRequestComponent'
+        type: array
       dependencies:
         description: |-
           Dependencies defines a list of components which are required to be deployed together with the main component
@@ -634,6 +641,22 @@ definitions:
           used for publishing commit status
           +optional
         type: string
+      maxRetry:
+        description: |-
+          MaxRetry defines max retry counts of pull request component upgrade
+          +optional
+        type: integer
+      name:
+        description: Name defines a bundle component name, can be any name
+        type: string
+      resources:
+        description: |-
+          Resources represents how many resources of pull request namespace
+          +optional
+        type: string
+    type: object
+  v1.PullRequestComponent:
+    properties:
       image:
         $ref: '#/definitions/v1.ComponentImage'
         description: |-
@@ -704,13 +727,13 @@ definitions:
     type: object
   v1.PullRequestQueueSpec:
     properties:
+      bundleName:
+        description: BundleName represents a pull request bundle name
+        type: string
       commitSHA:
         description: |-
           CommitSHA represents a commit SHA
           +optional
-        type: string
-      componentName:
-        description: ComponentName represents a pull request Component name
         type: string
       components:
         $ref: '#/definitions/v1.QueueComponents'
@@ -1318,6 +1341,13 @@ definitions:
     additionalProperties:
       type: object
     type: object
+  webhook.Components:
+    properties:
+      name:
+        type: string
+      tag:
+        type: string
+    type: object
   webhook.activePromotion:
     properties:
       inQueues:
@@ -1367,13 +1397,15 @@ definitions:
     type: object
   webhook.pullRequestWebhookEventJSON:
     properties:
+      bundleName:
+        type: string
       commitSHA:
         type: string
-      component:
-        type: string
+      components:
+        items:
+          $ref: '#/definitions/webhook.Components'
+        type: array
       prNumber:
-        type: string
-      tag:
         type: string
     type: object
   webhook.teamActivePromotion:

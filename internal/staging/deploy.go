@@ -160,7 +160,8 @@ func (c *controller) getAllComponentsFromQueueType(q *s2hv1.Queue) (
 
 	configCtrl := c.getConfigController()
 	if q.IsPullRequestQueue() {
-		comps, err = configCtrl.GetPullRequestComponents(c.teamName)
+		prBundleName := q.Spec.Name
+		comps, err = configCtrl.GetPullRequestComponents(c.teamName, prBundleName, true)
 		if err != nil {
 			return
 		}
@@ -438,6 +439,12 @@ func (c *controller) deployComponents(
 	isDeployedCh := make(chan bool, 2)
 	errCh := make(chan error, 2)
 	go func() {
+		if queue.Spec.Type == s2hv1.QueueTypePullRequest {
+			isDeployedCh <- true
+			errCh <- nil
+			return
+		}
+
 		isDeployed, err := c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout)
 		if err != nil {
 			logger.Error(err, "cannot deploy components except current queue",
@@ -511,9 +518,6 @@ func (c *controller) deployComponentsExceptQueue(
 	stableMap map[string]s2hv1.StableComponent,
 	deployTimeout time.Duration,
 ) (isDeployed bool, err error) {
-	if queue.Spec.Type == s2hv1.QueueTypePullRequest {
-		return true, nil
-	}
 
 	configCtrl := c.getConfigController()
 	parentComps, err := configCtrl.GetParentComponents(c.teamName)
@@ -589,15 +593,16 @@ func (c *controller) deployQueueComponent(
 			}
 
 			envType := s2hv1.EnvBase
+			parentBaseValues := s2hv1.ComponentValues{}
 			if queue.IsPullRequestQueue() {
 				envType = s2hv1.EnvPullRequest
-			}
-
-			// get parent values from queue type
-			parentBaseValues, err := configctrl.GetEnvComponentValues(cfg, parentName, c.teamName, envType)
-			if err != nil {
-				errCh <- err
-				return
+			} else {
+				// get parent values except pull request queue type
+				parentBaseValues, err = configctrl.GetEnvComponentValues(cfg, parentName, c.teamName, envType)
+				if err != nil {
+					errCh <- err
+					return
+				}
 			}
 
 			values := valuesutil.GenStableComponentValues(
@@ -610,7 +615,8 @@ func (c *controller) deployQueueComponent(
 				// merge stable only matched component or dependencies
 				for _, comp := range queueComps {
 					if queue.IsPullRequestQueue() {
-						envValues, err := configctrl.GetEnvComponentValues(cfg, comp.Name, c.teamName, envType)
+						bundleName := queue.Spec.Name
+						envValues, err := configctrl.GetEnvComponentValues(cfg, bundleName, c.teamName, envType)
 						if err != nil {
 							errCh <- err
 							return

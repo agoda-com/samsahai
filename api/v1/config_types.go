@@ -356,16 +356,12 @@ const (
 // ChartValuesURLs represents values file URL of each chart
 type ChartValuesURLs map[string][]string
 
-// PullRequestComponent represents a pull request component configuration
-type PullRequestComponent struct {
-	// Name defines a main component name which is deployed per pull request
+// PullRequestBundle represents a bundle of pull request components configuration
+type PullRequestBundle struct {
+	// Name defines a bundle component name, can be any name
 	Name string `json:"name"`
-	// Image defines an image repository, tag and pattern of pull request component which is a regex of tag
-	// +optional
-	Image ComponentImage `json:"image,omitempty"`
-	// Source defines a source for image repository
-	// +optional
-	Source *UpdatingSource `json:"source,omitempty"`
+	// Components represents a list of pull request components which are deployed together as a bundle
+	Components []*PullRequestComponent `json:"components"`
 	// Deployment represents configuration about deploy
 	// +optional
 	Deployment *ConfigDeploy `json:"deployment,omitempty"`
@@ -376,6 +372,19 @@ type PullRequestComponent struct {
 	// used for publishing commit status
 	// +optional
 	GitRepository          string `json:"gitRepository,omitempty"`
+	PullRequestExtraConfig `json:",inline"`
+}
+
+// PullRequestComponent represents a pull request component configuration
+type PullRequestComponent struct {
+	// Name defines a main component name which is deployed per pull request
+	Name string `json:"name"`
+	// Image defines an image repository, tag and pattern of pull request component which is a regex of tag
+	// +optional
+	Image ComponentImage `json:"image,omitempty"`
+	// Source defines a source for image repository
+	// +optional
+	Source                 *UpdatingSource `json:"source,omitempty"`
 	PullRequestExtraConfig `json:",inline"`
 }
 
@@ -406,8 +415,9 @@ type ConfigPullRequest struct {
 	MaxHistoryDays int `json:"maxHistoryDays,omitempty"`
 	// Trigger represents a pull request trigger configuration
 	// +optional
-	Trigger    PullRequestTriggerConfig `json:"trigger,omitempty"`
-	Components []*PullRequestComponent  `json:"components"`
+	Trigger PullRequestTriggerConfig `json:"trigger,omitempty"`
+	// Bundles represents a bundle of pull request components configuration
+	Bundles []*PullRequestBundle `json:"bundles,omitempty"`
 	// Concurrences defines a parallel number of pull request queue
 	// +optional
 	Concurrences           int `json:"concurrences,omitempty"`

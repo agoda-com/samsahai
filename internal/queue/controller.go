@@ -569,7 +569,7 @@ func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace strin
 }
 
 // EnsurePullRequestComponents ensures that pull request components were deployed with `pull-request` config and tested
-func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName, prCompName, prNumber string,
+func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName, prBundleName, prNumber string,
 	comps s2hv1.QueueComponents, noOfRetry int) (q *s2hv1.Queue, err error) {
 
 	q = &s2hv1.Queue{
@@ -578,7 +578,7 @@ func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName
 			Namespace: namespace,
 		},
 		Spec: s2hv1.QueueSpec{
-			Name:       prCompName,
+			Name:       prBundleName,
 			Type:       s2hv1.QueueTypePullRequest,
 			TeamName:   teamName,
 			PRNumber:   prNumber,

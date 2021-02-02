@@ -25,7 +25,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		defer close(done)
 
 		namespace = os.Getenv("POD_NAMESPACE")
-		Expect(namespace).NotTo(BeEmpty(), "Please provided POD_NAMESPACE")
+		Expect(namespace).NotTo(BeEmpty(), "Please provide POD_NAMESPACE")
 
 		cfg, err := config.GetConfig()
 		Expect(err).To(BeNil(), "Please provide credential for accessing k8s cluster")

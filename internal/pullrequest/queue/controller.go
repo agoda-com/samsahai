@@ -56,11 +56,11 @@ func WithClient(client client.Client) Option {
 	}
 }
 
-func NewPullRequestQueue(teamName, namespace, componentName, prNumber, commitSHA string,
+func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA string,
 	comps []*s2hv1.QueueComponent) *s2hv1.PullRequestQueue {
 
-	qLabels := getPullRequestQueueLabels(teamName, componentName, prNumber)
-	prQueueName := internal.GenPullRequestComponentName(componentName, prNumber)
+	qLabels := getPullRequestQueueLabels(teamName, bundleName, prNumber)
+	prQueueName := internal.GenPullRequestBundleName(bundleName, prNumber)
 
 	return &s2hv1.PullRequestQueue{
 		ObjectMeta: metav1.ObjectMeta{
@@ -70,7 +70,7 @@ func NewPullRequestQueue(teamName, namespace, componentName, prNumber, commitSHA
 		},
 		Spec: s2hv1.PullRequestQueueSpec{
 			TeamName:           teamName,
-			ComponentName:      componentName,
+			BundleName:         bundleName,
 			PRNumber:           prNumber,
 			CommitSHA:          commitSHA,
 			Components:         comps,
@@ -180,7 +180,7 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, prQueue *s
 	if prQueue.Status.State == s2hv1.PullRequestQueueFinished {
 		if prQueue.ObjectMeta.DeletionTimestamp.IsZero() {
 			logger.Debug("process has been finished and pull request queue has been deleted",
-				"team", c.teamName, "component", prQueue.Spec.ComponentName,
+				"team", c.teamName, "bundle", prQueue.Spec.BundleName,
 				"prNumber", prQueue.Spec.PRNumber)
 
 			if err = c.deletePullRequestQueue(ctx, prQueue); err != nil {
@@ -237,13 +237,13 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, prQueue *s
 
 func (c *controller) setup(prQueue *s2hv1.PullRequestQueue) {
 	logger.Info("pull request queue has been created", "team", c.teamName,
-		"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PRNumber)
+		"bundle", prQueue.Spec.BundleName, "prNumber", prQueue.Spec.PRNumber)
 
 	c.appendStateLabel(prQueue, stateWaiting)
 	prQueue.SetState(s2hv1.PullRequestQueueWaiting)
 
 	logger.Info("pull request is waiting in queue", "team", c.teamName,
-		"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PRNumber)
+		"bundle", prQueue.Spec.BundleName, "prNumber", prQueue.Spec.PRNumber)
 }
 
 const (
@@ -277,9 +277,9 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 		return
 	}
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithComponentName{
-		TeamName:      c.teamName,
-		ComponentName: currentPRQueue.Spec.ComponentName,
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{
+		TeamName:   c.teamName,
+		BundleName: currentPRQueue.Spec.BundleName,
 	})
 	if err != nil {
 		return
@@ -310,7 +310,7 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 
 	if prQueueConcurrences-len(runningPRQueues.Items) > 0 {
 		logger.Info("start running pull request queue", "team", c.teamName,
-			"component", waitingPRQueues.Items[0].Name, "prNumber", waitingPRQueues.Items[0].Spec.PRNumber)
+			"bundle", waitingPRQueues.Items[0].Name, "prNumber", waitingPRQueues.Items[0].Spec.PRNumber)
 
 		c.addFinalizer(&waitingPRQueues.Items[0])
 		c.appendStateLabel(&waitingPRQueues.Items[0], stateRunning)

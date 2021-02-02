@@ -18,9 +18,9 @@ import (
 func (c *controller) createPullRequestEnvironment(ctx context.Context, prQueue *s2hv1.PullRequestQueue) error {
 	prNamespace := fmt.Sprintf("%s%s-%s", internal.AppPrefix, c.teamName, prQueue.Name)
 	_, err := c.s2hClient.CreatePullRequestEnvironment(ctx, &samsahairpc.TeamWithPullRequest{
-		TeamName:      c.teamName,
-		Namespace:     prNamespace,
-		ComponentName: prQueue.Spec.ComponentName,
+		TeamName:   c.teamName,
+		Namespace:  prNamespace,
+		BundleName: prQueue.Spec.BundleName,
 	})
 	if err != nil {
 		return err
@@ -53,9 +53,9 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 	prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondEnvDestroyed, corev1.ConditionTrue,
 		"Pull request environment has been destroyed")
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithComponentName{
-		TeamName:      c.teamName,
-		ComponentName: prQueue.Spec.ComponentName,
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{
+		TeamName:   c.teamName,
+		BundleName: prQueue.Spec.BundleName,
 	})
 	if err != nil {
 		return
@@ -94,7 +94,7 @@ func (c *controller) ensurePullRequestComponentsDeploying(ctx context.Context, p
 	prComps := prQueue.Spec.Components
 	prNamespace := prQueue.Status.PullRequestNamespace
 
-	err := c.updatePullRequestComponentDependenciesVersion(ctx, c.teamName, prQueue.Spec.ComponentName, &prComps)
+	err := c.updatePullRequestComponentDependenciesVersion(ctx, c.teamName, prQueue.Spec.BundleName, &prComps)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (c *controller) ensurePullRequestComponentsDeploying(ctx context.Context, p
 		if deployedQueue.IsDeploySuccess() {
 			// in case successful deployment
 			logger.Debug("components has been deployed successfully",
-				"team", c.teamName, "component", prQueue.Spec.ComponentName,
+				"team", c.teamName, "component", prQueue.Spec.BundleName,
 				"prNumber", prQueue.Spec.PRNumber)
 			prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondDeployed, corev1.ConditionTrue,
 				"Components have been deployed successfully")
@@ -149,7 +149,7 @@ func (c *controller) ensurePullRequestComponentsTesting(ctx context.Context, prQ
 		if deployedQueue.IsTestSuccess() {
 			// in case successful test
 			logger.Debug("components have been tested successfully",
-				"team", c.teamName, "component", prQueue.Spec.ComponentName,
+				"team", c.teamName, "component", prQueue.Spec.BundleName,
 				"prNumber", prQueue.Spec.PRNumber)
 			prQueue.Status.SetResult(s2hv1.PullRequestQueueSuccess)
 			prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondTested, corev1.ConditionTrue,
@@ -169,16 +169,16 @@ func (c *controller) ensurePullRequestComponentsTesting(ctx context.Context, prQ
 	return s2herrors.ErrEnsureComponentTested
 }
 
-func (c *controller) updatePullRequestComponentDependenciesVersion(ctx context.Context, teamName, prCompName string,
+func (c *controller) updatePullRequestComponentDependenciesVersion(ctx context.Context, teamName, prBundleName string,
 	prComps *s2hv1.QueueComponents) error {
 
 	if prComps == nil {
 		return nil
 	}
 
-	prDependencies, err := c.s2hClient.GetPullRequestComponentDependencies(ctx, &samsahairpc.TeamWithComponentName{
-		TeamName:      teamName,
-		ComponentName: prCompName,
+	prDependencies, err := c.s2hClient.GetPullRequestBundleDependencies(ctx, &samsahairpc.TeamWithBundleName{
+		TeamName:   teamName,
+		BundleName: prBundleName,
 	})
 	if err != nil {
 		return err
@@ -219,7 +219,7 @@ func (c *controller) ensurePullRequestComponents(
 
 	prNamespace := prQueue.Status.PullRequestNamespace
 	deployedQueue, err := queue.EnsurePullRequestComponents(runtimeClient, c.teamName, prNamespace, prQueue.Name,
-		prQueue.Spec.ComponentName, prQueue.Spec.PRNumber, prComps, prQueue.Spec.NoOfRetry)
+		prQueue.Spec.BundleName, prQueue.Spec.PRNumber, prComps, prQueue.Spec.NoOfRetry)
 	if err != nil {
 		return nil, err
 	}

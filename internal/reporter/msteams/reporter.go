@@ -195,13 +195,17 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	}
 
 	if msTeamsConfig.PullRequestTrigger != nil {
-		err := util.CheckMatchingCriteria(msTeamsConfig.PullRequestTrigger.Criteria, string(prTriggerRpt.Result))
+		err := util.CheckMatchingCriteria(msTeamsConfig.PullRequestTrigger.Criteria, prTriggerRpt.Result)
 		if err != nil {
 			return nil
 		}
 	}
 
 	message := r.makePullRequestTriggerResultReport(prTriggerRpt)
+	if len(prTriggerRpt.ImageMissingList) > 0 {
+		message += "\n"
+		message += r.makeImageMissingListReport(prTriggerRpt.ImageMissingList, "")
+	}
 
 	return r.post(msTeamsConfig, message, internal.PullRequestTriggerType)
 }
@@ -231,7 +235,7 @@ func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeRep
 	message := `
 <b>Pull Request Queue:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure{{ end }}</span>
 {{- if .PullRequestComponent }}
-<br/><b>Component:</b> {{ .PullRequestComponent.ComponentName }}
+<br/><b>Component:</b> {{ .PullRequestComponent.BundleName }}
 <br/><b>PR Number:</b> {{ .PullRequestComponent.PRNumber }}
 {{- end }}
 ` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL)
@@ -248,8 +252,8 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
 <br/><b>Components</b>
 {{- range .Components }}
 <li><b>- Name:</b> {{ .Name }}</li>
-<li><b>&nbsp;&nbsp;Version:</b> {{ .Image.Tag }}</li>
-<li><b>&nbsp;&nbsp;Repository:</b> {{ .Image.Repository }}</li>
+<li><b>&nbsp;&nbsp;Version:</b> {{ if .Image.Tag }}{{ .Image.Tag }}{{ else }}<code>no stable/active image tag found, using from values file</code>{{ end }}</li>
+<li><b>&nbsp;&nbsp;Repository:</b> {{ if .Image.Repository }}{{ .Image.Repository }}{{ else }}<code>no stable/active image repository found, using from values file</code>{{ end }}</li>
 {{- end }}
 <br/><b>Owner:</b> {{ .TeamName }}
 <br/><b>Namespace:</b> {{ .Namespace }}
@@ -378,15 +382,23 @@ func (r *reporter) makeImageMissingListReport(images []s2hv1.Image, reason strin
 func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.PullRequestTriggerReporter) string {
 	var message = `
 <b>Pull Request Trigger:</b>  <span {{ if eq .Result "Success" }}` + styleInfo + `{{ else if eq .Result "Failure" }}` + styleDanger + `{{ end }}>{{ .Result }}</span>
-<br/><b>Component:</b> {{ .ComponentName }}
+<br/><b>Bundle:</b> {{ .BundleName }}
 <br/><b>PR Number:</b> {{ .PRNumber }}
-<br/><b>Image:</b> {{ if .Image }}{{ .Image.Repository }}:{{ .Image.Tag }}{{ else }}no image defined{{ end }}
-<br/><b>NO of Retry:</b> {{ if .NoOfRetry }}{{ .NoOfRetry }}{{ else }}0{{ end }}
+<br/><b>Components:</b>
+{{- if .Components }}
+{{- range .Components }}
+<li><b>- Name:</b> {{ .ComponentName }}</li>
+<li><b>&nbsp;&nbsp;Image:</b> {{ if .Image }}{{ .Image.Repository }}:{{ .Image.Tag }}{{ else }}no image defined{{ end }}
+{{- end }}
+{{- else }}
+<br/><code>no components defined</code>
+{{- end }}
+<br/><b>NO of Retry:</b> {{ .NoOfRetry }}
 <br/><b>Owner:</b> {{ .TeamName }}
 <br/><b>Start at:</b> {{ .CreatedAt | TimeFormat }}
 `
 
-	return strings.TrimSpace(template.TextRender("SlackPullRequestTriggerResult", message, prTriggerRpt))
+	return strings.TrimSpace(template.TextRender("MSTeamsPullRequestTriggerResult", message, prTriggerRpt))
 }
 
 func (r *reporter) post(msTeamsConfig *s2hv1.ReporterMSTeams, message string, event internal.EventType) error {
