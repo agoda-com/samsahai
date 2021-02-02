@@ -212,7 +212,8 @@ Find more configuration information in [examples](https://www.github.com/agoda-c
     ```
     > Now, `s2h-example` staging namespace should be created.
 
-<h5 id="minikube-upgrade-components">Upgrade Components</h2>
+<h5 id="minikube-upgrade-components">Upgrade Components</h5>
+
 1. Upgrade `redis` and `mariadb` components by using Swagger `http://<minikube_ip>:<node_port>/swagger/index.html#`
     - `POST /webhook/component`
     ```
@@ -261,7 +262,8 @@ Find more configuration information in [examples](https://www.github.com/agoda-c
    ```
 To save the cluster resources once every upgrade component verification has finished, the running components will be terminated immediately. 
 
-<h5 id="minikube-promote-new-active">Promote New Active</h2>
+<h5 id="minikube-promote-new-active">Promote New Active</h5>
+
 1. Apply active-promotion
     ```
     kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/active-promotion-example.yaml
@@ -285,7 +287,8 @@ To save the cluster resources once every upgrade component verification has fini
     s2h-staging-ctrl-c566b7f66-5q9bh                        1/1     Running   0          2m43s
     ```
    
-<h5 id="minikube-deploy-pull-request-components">Deploy Pull Request Components</h2>
+<h5 id="minikube-deploy-pull-request-components">Deploy Pull Request Components</h5>
+ 
 1. Deploying all components in `redis-bundle` by using Swagger `http://<minikube_ip>:<node_port>/swagger/index.html#`
     - `POST /teams/example/pullrequest/trigger`
     ```
@@ -423,7 +426,7 @@ To save the cluster resources once every upgrade component verification has fini
       "component": "mariadb"
     }
     ```
-After this step, you can see the result following [minikube upgrade component](#minikube-upgrade-component) part.
+After this step, you can see the result following [minikube upgrade components](#minikube-upgrade-components) part.
 
 ##### Promote New Active
 1. Apply active-promotion
