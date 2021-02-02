@@ -558,15 +558,15 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1.Team, teamNsOpt TeamN
 		if !teamComp.Status.IsConditionTrue(s2hv1.TeamFirstNotifyComponentChanged) {
 			logger.Debug("start notifying component", "team", teamComp.Name, "namespace", namespace)
 			if err := c.notifyComponentChanged(teamComp.Name); err != nil {
-				logger.Error(err, "cannot notify component changed while creating staging namespace",
+				return errors.Wrapf(err, "cannot notify component changed while creating staging namespace",
 					"team", teamComp.Name, "namespace", namespace)
-				return errors.ErrTeamNamespaceComponentNotified
 			}
 
 			teamComp.Status.SetCondition(
 				s2hv1.TeamFirstNotifyComponentChanged,
 				corev1.ConditionTrue,
 				"notified component changed successfully")
+			return errors.ErrTeamNamespaceComponentNotified
 		}
 
 		if c.configs.ActivePromotion.PromoteOnTeamCreation &&
@@ -575,15 +575,15 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1.Team, teamNsOpt TeamN
 			logger.Debug("start creating active promotion",
 				"team", teamComp.Name, "namespace", namespace)
 			if err := c.createActivePromotion(teamComp.Name); err != nil {
-				logger.Error(err, "cannot create active promotion while creating staging namespace",
+				return errors.Wrapf(err, "cannot create active promotion while creating staging namespace",
 					"namespace", namespace)
-				return errors.ErrTeamNamespacePromotionCreated
 			}
 
 			teamComp.Status.SetCondition(
 				s2hv1.TeamFirstActivePromotionRun,
 				corev1.ConditionTrue,
 				"triggered active promotion successfully")
+			return errors.ErrTeamNamespacePromotionCreated
 		}
 	}
 

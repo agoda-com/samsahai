@@ -227,11 +227,11 @@ func (r *reporter) getGithubRepository(comp *internal.ComponentUpgradeReporter,
 	}
 
 	repository := ""
-	prCompName := comp.PullRequestComponent.ComponentName
-	if config.Status.Used.PullRequest != nil && len(config.Status.Used.PullRequest.Components) > 0 {
-		for _, comp := range config.Status.Used.PullRequest.Components {
-			if comp.Name == prCompName {
-				repository = comp.GitRepository
+	prBundleName := comp.PullRequestComponent.BundleName
+	if config.Status.Used.PullRequest != nil && len(config.Status.Used.PullRequest.Bundles) > 0 {
+		for _, bundle := range config.Status.Used.PullRequest.Bundles {
+			if bundle.Name == prBundleName {
+				repository = bundle.GitRepository
 				break
 			}
 		}

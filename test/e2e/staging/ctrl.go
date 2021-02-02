@@ -61,6 +61,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	ctx := context.TODO()
 
+	redisBundleName := "redis-bd"
 	redisCompName := "redis"
 	mariaDBCompName := "mariadb"
 	wordpressCompName := "wordpress"
@@ -234,12 +235,17 @@ var _ = Describe("[e2e] Staging controller", func() {
 	}
 
 	configPR := s2hv1.ConfigPullRequest{
-		Components: []*s2hv1.PullRequestComponent{
+		Bundles: []*s2hv1.PullRequestBundle{
 			{
-				Name:       redisCompName,
-				Image:      prImage,
-				Source:     &compSource,
+				Name:       redisBundleName,
 				Deployment: &deployConfig,
+				Components: []*s2hv1.PullRequestComponent{
+					{
+						Name:   redisCompName,
+						Image:  prImage,
+						Source: &compSource,
+					},
+				},
 			},
 		},
 	}
@@ -260,7 +266,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 				redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/active/redis.yaml"},
 			},
 			"pull-request": map[string][]string{
-				redisCompName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/pull-request/redis.yaml"},
+				redisBundleName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/pull-request/redis.yaml"},
 			},
 		},
 		Staging: &s2hv1.ConfigStaging{
@@ -556,10 +562,9 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		By("Ensure Pre Active Components")
 		redisServiceName := fmt.Sprintf("%s-redis-master", namespace)
-		skipTest := true
 
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
-			queue, err := queue.EnsurePreActiveComponents(client, teamName, namespace, skipTest)
+			queue, err := queue.EnsurePreActiveComponents(client, teamName, namespace, true)
 			if err != nil {
 				logger.Error(err, "cannot ensure pre-active components")
 				return false, nil
@@ -586,7 +591,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Ensure Pre Active error")
 
-		q, err := queue.EnsurePreActiveComponents(client, teamName, namespace, skipTest)
+		q, err := queue.EnsurePreActiveComponents(client, teamName, namespace, true)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(q.IsDeploySuccess()).To(BeTrue())
 		Expect(q.IsTestSuccess()).To(BeTrue())
@@ -695,9 +700,8 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Ensure Pull Request Components")
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			retry := 0
-			queue, err := queue.EnsurePullRequestComponents(client, teamName, namespace, redisCompName, redisCompName,
-				"123",
-				prComps, retry)
+			queue, err := queue.EnsurePullRequestComponents(client, teamName, namespace, redisBundleName,
+				redisBundleName, "123", prComps, retry)
 			if err != nil {
 				logger.Error(err, "cannot ensure pull request components")
 				return false, nil
@@ -726,7 +730,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(svc.Spec.ExternalName).To(ContainSubstring(expectedExtSvcName))
 
 		By("Delete Pull Request Queue")
-		Expect(queue.DeletePullRequestQueue(client, namespace, redisCompName))
+		Expect(queue.DeletePullRequestQueue(client, namespace, redisBundleName))
 	}, 300)
 
 	It("should create error log in case of deploy failed", func(done Done) {

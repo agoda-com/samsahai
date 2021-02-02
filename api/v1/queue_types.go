@@ -76,7 +76,7 @@ const (
 	// Deleting queue is being removed
 	Deleting QueueState = "deleting"
 
-	// Cancelling queue is being cancelled (deleted by user)
+	// Cancelling queue is being canceled (deleted by user)
 	Cancelling QueueState = "cancelling"
 
 	// Finished queue is in finished state, waiting for next process (for preActive, promoteToActive)

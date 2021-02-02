@@ -55,8 +55,8 @@ var _ = Describe("shell command reporter", func() {
 			comp := internal.NewComponentUpgradeReporter(&rpc.ComponentUpgrade{
 				Status: 1,
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					ComponentName: "pr-comp1",
-					PRNumber:      "pr1234",
+					BundleName: "bundle-1",
+					PRNumber:   "pr1234",
 				},
 			}, internal.SamsahaiConfig{})
 			err := r.SendPullRequestQueue(configCtrl, comp)
@@ -120,8 +120,18 @@ var _ = Describe("shell command reporter", func() {
 			configCtrl := newMockConfigCtrl("")
 
 			status := s2hv1.PullRequestTriggerStatus{}
+			prComps := []*s2hv1.PullRequestTriggerComponent{
+				{
+					ComponentName: "bundle1-comp1",
+					Image:         &s2hv1.Image{Repository: "registry/comp-1", Tag: "1.0.0"},
+				},
+				{
+					ComponentName: "bundle1-comp2",
+					Image:         &s2hv1.Image{Repository: "registry/comp-2", Tag: "2.0.0"},
+				},
+			}
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", "Failure", nil)
+				"owner", "bundle-1", "1234", "Failure", 0, prComps)
 			err := r.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
 			g.Expect(err).NotTo(HaveOccurred())
 
@@ -295,7 +305,7 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1.Component, error) {
+func (c *mockConfigCtrl) GetPullRequestComponents(configName, prBundleName string, depIncluded bool) (map[string]*s2hv1.Component, error) {
 	return map[string]*s2hv1.Component{}, nil
 }
 
@@ -311,7 +321,7 @@ func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1.ConfigP
 	return nil, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
+func (c *mockConfigCtrl) GetPullRequestBundleDependencies(configName, prBundleName string) ([]string, error) {
 	return nil, nil
 }
 

@@ -172,20 +172,26 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 }
 
 // SendPullRequestTriggerResult implements the reporter SendPullRequestTriggerResult function
-func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigController, prTriggerRpt *internal.PullRequestTriggerReporter) error {
+func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigController,
+	prTriggerRpt *internal.PullRequestTriggerReporter) error {
+
 	slackConfig, err := r.getSlackConfig(prTriggerRpt.TeamName, configCtrl)
 	if err != nil {
 		return nil
 	}
 
 	if slackConfig.PullRequestTrigger != nil {
-		err := util.CheckMatchingCriteria(slackConfig.PullRequestTrigger.Criteria, string(prTriggerRpt.Result))
+		err := util.CheckMatchingCriteria(slackConfig.PullRequestTrigger.Criteria, prTriggerRpt.Result)
 		if err != nil {
 			return nil
 		}
 	}
 
 	message := r.makePullRequestTriggerResultReport(prTriggerRpt)
+	if len(prTriggerRpt.ImageMissingList) > 0 {
+		message += "\n"
+		message += r.makeImageMissingListReport(prTriggerRpt.ImageMissingList, "")
+	}
 
 	return r.post(slackConfig, message, internal.PullRequestTriggerType)
 }
@@ -227,7 +233,7 @@ func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeRep
 	message := `
 *Pull Request Queue:* {{ .StatusStr }}
 {{- if .PullRequestComponent }}
-*Component:* {{ .PullRequestComponent.ComponentName }}
+*Bundle:* {{ .PullRequestComponent.BundleName }}
 *PR Number:* {{ .PullRequestComponent.PRNumber }}
 {{- end }}
 ` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL)
@@ -244,8 +250,8 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
 *Components* 
 {{- range .Components }}
 >- *Name:* {{ .Name }}
->   *Version:* {{ .Image.Tag }}
->   *Repository:* {{ .Image.Repository }}
+>   *Version:* {{ if .Image.Tag }}{{ .Image.Tag }}{{ else }}` + "`no stable/active image tag found, using from values file`" + `{{ end }}
+>   *Repository:* {{ if .Image.Repository }}{{ .Image.Repository }}{{ else }}` + "`no stable/active image repository found, using from values file`" + `{{ end }}
 {{- end }}
 *Owner:* {{ .TeamName }}
 *Namespace:* {{ .Namespace }}
@@ -373,10 +379,18 @@ func (r *reporter) makeImageMissingListReport(images []s2hv1.Image, reason strin
 func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.PullRequestTriggerReporter) string {
 	var message = `
 *Pull Request Trigger:* {{ .Result }}
-*Component:* {{ .ComponentName }}
+*Bundle:* {{ .BundleName }}
 *PR Number:* {{ .PRNumber }}
-*Image:* {{ if .Image }}{{ .Image.Repository }}:{{ .Image.Tag }}{{ else }}no image defined{{ end }}
-*NO of Retry:* {{ if .NoOfRetry }}{{ .NoOfRetry }}{{ else }}0{{ end }}
+*Components* 
+{{- if .Components }}
+{{- range .Components }}
+>- *Name:* {{ .ComponentName }}
+>   *Image:* {{ if .Image }}{{ .Image.Repository }}:{{ .Image.Tag }}{{ else }}no image defined{{ end }}
+{{- end }}
+{{- else }}
+` + "`no components defined`" + `
+{{- end }}
+*NO of Retry:* {{ .NoOfRetry }}
 *Owner:* {{ .TeamName }}
 *Start at:* {{ .CreatedAt | TimeFormat }}
 `

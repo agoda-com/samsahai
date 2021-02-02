@@ -14,11 +14,16 @@ import (
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
 
+type Components struct {
+	Name string `json:"name"`
+	Tag  string `json:"tag,omitempty"`
+}
+
 type pullRequestWebhookEventJSON struct {
-	Component string             `json:"component"`
-	PRNumber  intstr.IntOrString `json:"prNumber"`
-	CommitSHA string             `json:"commitSHA,omitempty"`
-	Tag       string             `json:"tag,omitempty"`
+	BundleName string             `json:"bundleName"`
+	PRNumber   intstr.IntOrString `json:"prNumber"`
+	CommitSHA  string             `json:"commitSHA,omitempty"`
+	Components []Components       `json:"components,omitempty"`
 }
 
 type teamPRQueueJSON struct {
@@ -61,8 +66,18 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
-	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.Component, jsonData.Tag,
-		jsonData.PRNumber.String(), jsonData.CommitSHA)
+	if jsonData.BundleName == "" || jsonData.PRNumber.String() == "" {
+		h.error(w, http.StatusBadRequest, fmt.Errorf("must define bundleName and prNumber"))
+		return
+	}
+
+	mapCompTag := make(map[string]string)
+	for _, comp := range jsonData.Components {
+		mapCompTag[comp.Name] = comp.Tag
+	}
+
+	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.BundleName, jsonData.PRNumber.String(),
+		jsonData.CommitSHA, mapCompTag)
 	if err != nil {
 		h.error(w, http.StatusInternalServerError, err)
 	}

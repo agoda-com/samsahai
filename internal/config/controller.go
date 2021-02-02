@@ -152,15 +152,18 @@ func (c *controller) GetParentComponents(configName string) (map[string]*s2hv1.C
 	return filteredComps, nil
 }
 
-// GetPullRequestComponents returns all pull request components from `Configuration` that has valid `Source`
-func (c *controller) GetPullRequestComponents(configName string) (map[string]*s2hv1.Component, error) {
+// GetPullRequestComponents returns all pull request components of a given bundle name
+// with or without dependencies from `Configuration` that has valid `Source`
+func (c *controller) GetPullRequestComponents(configName, prBundleName string, depIncluded bool) (
+	map[string]*s2hv1.Component, error) {
+
 	config, err := c.Get(configName)
 	if err != nil {
 		logger.Error(err, "cannot get Config", "name", configName)
 		return map[string]*s2hv1.Component{}, err
 	}
 
-	if config.Status.Used.PullRequest == nil || config.Status.Used.PullRequest.Components == nil {
+	if config.Status.Used.PullRequest == nil || config.Status.Used.PullRequest.Bundles == nil {
 		return map[string]*s2hv1.Component{}, nil
 	}
 
@@ -170,23 +173,31 @@ func (c *controller) GetPullRequestComponents(configName string) (map[string]*s2
 	}
 
 	filteredPRComps := map[string]*s2hv1.Component{}
-	prComps := config.Status.Used.PullRequest.Components
+	prBundles := config.Status.Used.PullRequest.Bundles
 	for compName, comp := range filteredComps {
-		for _, prComp := range prComps {
-			if prComp.Name == compName {
-				filteredPRComps[compName] = &s2hv1.Component{
-					Parent: comp.Parent,
-					Name:   prComp.Name,
-					Chart:  comp.Chart,
-					Image:  prComp.Image,
-					Source: prComp.Source,
+		for _, prBundle := range prBundles {
+			if prBundle.Name == prBundleName {
+				for _, prComp := range prBundle.Components {
+					if prComp.Name == compName {
+						filteredPRComps[compName] = &s2hv1.Component{
+							Parent: comp.Parent,
+							Name:   prComp.Name,
+							Chart:  comp.Chart,
+							Image:  prComp.Image,
+							Source: prComp.Source,
+						}
+					}
 				}
-			}
 
-			for _, prDepCompName := range prComp.Dependencies {
-				if prDepCompName == compName {
-					filteredPRComps[compName] = comp
+				if depIncluded {
+					for _, prDepCompName := range prBundle.Dependencies {
+						if prDepCompName == compName {
+							filteredPRComps[compName] = comp
+						}
+					}
 				}
+
+				break
 			}
 		}
 	}
@@ -216,8 +227,8 @@ func (c *controller) GetPriorityQueues(configName string) ([]string, error) {
 	return config.Status.Used.PriorityQueues, nil
 }
 
-// GetPullRequestComponentDependencies returns a pull request component dependencies from configuration
-func (c *controller) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
+// GetPullRequestBundleDependencies returns dependencies list of a pull request bundle from configuration
+func (c *controller) GetPullRequestBundleDependencies(configName, prBundleName string) ([]string, error) {
 	config, err := c.Get(configName)
 	if err != nil {
 		logger.Error(err, "cannot get Config", "name", configName)
@@ -226,9 +237,9 @@ func (c *controller) GetPullRequestComponentDependencies(configName, prCompName 
 
 	prDeps := make([]string, 0)
 	if config.Status.Used.PullRequest != nil {
-		for _, prComp := range config.Status.Used.PullRequest.Components {
-			if prComp.Name == prCompName {
-				prDeps = prComp.Dependencies
+		for _, prBundle := range config.Status.Used.PullRequest.Bundles {
+			if prBundle.Name == prBundleName {
+				prDeps = prBundle.Dependencies
 				break
 			}
 		}

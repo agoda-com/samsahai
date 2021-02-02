@@ -16,7 +16,7 @@ import (
 )
 
 func (c *controller) createPullRequestQueueHistory(ctx context.Context, prQueue *s2hv1.PullRequestQueue) error {
-	prQueueLabels := getPullRequestQueueLabels(c.teamName, prQueue.Spec.ComponentName, prQueue.Spec.PRNumber)
+	prQueueLabels := getPullRequestQueueLabels(c.teamName, prQueue.Spec.BundleName, prQueue.Spec.PRNumber)
 
 	if err := c.deletePullRequestQueueHistoryOutOfRange(ctx); err != nil {
 		return err
@@ -54,7 +54,7 @@ func (c *controller) deletePullRequestQueueHistoryOutOfRange(ctx context.Context
 		return errors.Wrapf(err, "cannot list pull request queue histories of namespace: %s", c.namespace)
 	}
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithComponentName{TeamName: c.teamName})
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{TeamName: c.teamName})
 	if err != nil {
 		return err
 	}

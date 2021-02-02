@@ -467,7 +467,7 @@ func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2h
 	return comps, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1.Component, error) {
+func (c *mockConfigCtrl) GetPullRequestComponents(configName, prBundleName string, depIncluded bool) (map[string]*s2hv1.Component, error) {
 	return map[string]*s2hv1.Component{}, nil
 }
 
@@ -483,7 +483,7 @@ func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1.ConfigP
 	return nil, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
+func (c *mockConfigCtrl) GetPullRequestBundleDependencies(configName, prBundleName string) ([]string, error) {
 	return nil, nil
 }
 

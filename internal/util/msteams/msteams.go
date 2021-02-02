@@ -175,7 +175,7 @@ func WithContentType(contentType MessageContentType) PostMsgOption {
 
 // PostMessage implements the Microsoft Teams PostMessage function
 func (c *Client) PostMessage(groupID, channelID, message, accessToken string, opts ...PostMsgOption) error {
-	logger.Debug("Posting message", "groupID", groupID, "channelID", channelID)
+	logger.Debug("posting message", "groupID", groupID, "channelID", channelID)
 
 	// apply the new options
 	for _, opt := range opts {
