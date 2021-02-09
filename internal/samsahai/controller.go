@@ -1529,7 +1529,6 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error {
 	}
 
 	if teamComp.Status.TemplateUID != hashID {
-
 		teamComp.Status.TemplateUID = hashID
 		teamComp.Status.SetCondition(
 			s2hv1.TeamUsedUpdated,
@@ -1667,7 +1666,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when config exists")
 		}
-		return reconcile.Result{}, err
+		return reconcile.Result{}, nil
 	}
 
 	if err := c.EnsureTeamTemplateChanged(teamComp); err != nil {
@@ -1700,7 +1699,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is invalid")
 		}
 
-		return reconcile.Result{}, err
+		return reconcile.Result{}, nil
 	}
 
 	if !teamComp.Status.IsConditionTrue(s2hv1.TeamRequiredFieldsValidated) {

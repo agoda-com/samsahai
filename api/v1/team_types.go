@@ -210,7 +210,8 @@ func (ts *TeamStatus) UpdateDesiredComponentImageCreatedTime(compName, image str
 	}
 
 	descCreatedTime := SortByCreatedTimeDESC(ts.DesiredComponentImageCreatedTime[compName])
-	if strings.EqualFold(descCreatedTime[0].Image, image) {
+	if strings.EqualFold(descCreatedTime[0].Image, image) &&
+		descCreatedTime[0].ImageTime.IsImageMissing == desiredImageTime.IsImageMissing {
 		return
 	}
 
@@ -227,8 +228,10 @@ func (ts *TeamStatus) RemoveDesiredComponentImageCreatedTime(compName string) {
 }
 
 type DesiredImageTime struct {
-	*Image      `json:"image"`
-	CreatedTime metav1.Time `json:"createdTime"`
+	*Image         `json:"image"`
+	CreatedTime    metav1.Time `json:"createdTime"`
+	CheckedTime    metav1.Time `json:"checkedTime"`
+	IsImageMissing bool        `json:"isImageMissing"`
 }
 
 type TeamNamespace struct {
