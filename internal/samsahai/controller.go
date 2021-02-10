@@ -1698,8 +1698,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is invalid")
 		}
-
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, err
 	}
 
 	if !teamComp.Status.IsConditionTrue(s2hv1.TeamRequiredFieldsValidated) {
