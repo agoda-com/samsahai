@@ -1894,7 +1894,6 @@ var (
 					stringutils.ConcatImageString(mariaDBImage.Repository, mariaDBImage.Tag): s2hv1.DesiredImageTime{
 						Image:          &s2hv1.Image{Repository: mariaDBImage.Repository, Tag: mariaDBImage.Tag},
 						CreatedTime:    metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
-						CheckedTime:    metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 						IsImageMissing: false,
 					},
 				},
@@ -1902,7 +1901,6 @@ var (
 					stringutils.ConcatImageString(redisImage.Repository, redisImage.Tag): s2hv1.DesiredImageTime{
 						Image:          &s2hv1.Image{Repository: redisImage.Repository, Tag: redisImage.Tag},
 						CreatedTime:    metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
-						CheckedTime:    metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 						IsImageMissing: false,
 					},
 				},
@@ -1910,7 +1908,6 @@ var (
 					stringutils.ConcatImageString(wordpressImage.Repository, wordpressImage.Tag): s2hv1.DesiredImageTime{
 						Image:          &s2hv1.Image{Repository: wordpressImage.Repository, Tag: wordpressImage.Tag},
 						CreatedTime:    metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
-						CheckedTime:    metav1.Time{Time: time.Date(2019, 10, 1, 9, 0, 0, 0, time.UTC)},
 						IsImageMissing: false,
 					},
 				},

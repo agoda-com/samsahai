@@ -1690,6 +1690,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if err := c.validateTeamRequiredField(teamComp); err != nil {
+		logger.Error(err, "team require fields cannot be empty")
 		teamComp.Status.SetCondition(
 			s2hv1.TeamRequiredFieldsValidated,
 			corev1.ConditionFalse,
@@ -1698,7 +1699,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is invalid")
 		}
-
 		return reconcile.Result{}, nil
 	}
 

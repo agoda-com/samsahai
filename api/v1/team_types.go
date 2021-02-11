@@ -230,7 +230,6 @@ func (ts *TeamStatus) RemoveDesiredComponentImageCreatedTime(compName string) {
 type DesiredImageTime struct {
 	*Image         `json:"image"`
 	CreatedTime    metav1.Time `json:"createdTime"`
-	CheckedTime    metav1.Time `json:"checkedTime"`
 	IsImageMissing bool        `json:"isImageMissing"`
 }
 
