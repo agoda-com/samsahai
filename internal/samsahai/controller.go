@@ -1644,7 +1644,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if err := c.ensureAndUpdateConfig(teamComp); err != nil {
-		logger.Error(err, "cannot ensure and update controller reference of config")
+		logger.Error(err, "cannot ensure and update controller reference of config","team", teamComp.Name, "namespace", teamComp.Namespace)
 		teamComp.Status.SetCondition(
 			s2hv1.TeamConfigExisted,
 			corev1.ConditionFalse,
@@ -1691,7 +1691,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if err := c.validateTeamRequiredField(teamComp); err != nil {
-		logger.Error(err, "team require fields cannot be empty")
+		logger.Error(err, "team require fields cannot be empty", "team", teamComp.Name, "namespace", teamComp.Namespace)
 		teamComp.Status.SetCondition(
 			s2hv1.TeamRequiredFieldsValidated,
 			corev1.ConditionFalse,
