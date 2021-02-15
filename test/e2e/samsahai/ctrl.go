@@ -326,14 +326,23 @@ var _ = Describe("[e2e] Main controller", func() {
 		smd := stableMariaDB
 		Expect(client.Create(ctx, &smd)).To(BeNil())
 
-		time.Sleep(1 * time.Second)
 		By("Checking stable component has been set")
-		teamComp := s2hv1.Team{}
-		Expect(client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp))
-		teamSpecStableComps := teamComp.Status.StableComponents[mariaDBCompName].Spec
-		Expect(teamSpecStableComps.Name).To(Equal(stableAtvMariaDB.Spec.Name))
-		Expect(teamSpecStableComps.Repository).To(Equal(stableAtvMariaDB.Spec.Repository))
-		Expect(teamSpecStableComps.Version).To(Equal(stableAtvMariaDB.Spec.Version))
+		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
+			teamComp := s2hv1.Team{}
+			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &teamComp)
+			if err != nil {
+				return false, nil
+			}
+
+			teamSpecStableComps := teamComp.Status.StableComponents[mariaDBCompName].Spec
+			if teamSpecStableComps.Name != stableAtvMariaDB.Spec.Name ||
+				teamSpecStableComps.Repository != stableAtvMariaDB.Spec.Repository ||
+				teamSpecStableComps.Version != stableAtvMariaDB.Spec.Version {
+				return false, nil
+			}
+
+			return true, nil
+		})
 
 		By("Creating ActivePromotionHistory 1")
 		atpHist := activePromotionHistory
@@ -399,10 +408,23 @@ var _ = Describe("[e2e] Main controller", func() {
 		}
 
 		By("Checking pre-active namespace has been set")
-		Expect(client.Get(ctx, types.NamespacedName{Name: atp.Name}, &teamComp))
-		Expect(teamComp.Status.Namespace.PreActive).ToNot(BeEmpty())
-		Expect(atpRes.Status.TargetNamespace).To(Equal(teamComp.Status.Namespace.PreActive))
-		Expect(atpRes.Status.PreviousActiveNamespace).To(Equal(atvNamespace))
+		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
+			teamComp := s2hv1.Team{}
+			err = client.Get(ctx, types.NamespacedName{Name: atp.Name}, &teamComp)
+			if err != nil {
+				return false, nil
+			}
+
+			if teamComp.Status.Namespace.PreActive == "" {
+				return false, nil
+			}
+			if atpRes.Status.TargetNamespace != teamComp.Status.Namespace.PreActive ||
+				atpRes.Status.PreviousActiveNamespace != atvNamespace {
+				return false, nil
+			}
+
+			return true, nil
+		})
 
 		By("Checking stable components has been deployed to target namespace")
 		stableComps := &s2hv1.StableComponentList{}
@@ -435,7 +457,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
 
 		By("Checking active, previous namespace and active promoted by has been reset")
-		teamComp = s2hv1.Team{}
+		teamComp := s2hv1.Team{}
 		err = client.Get(ctx, types.NamespacedName{Name: atp.Name}, &teamComp)
 		Expect(err).To(BeNil())
 		Expect(teamComp.Status.Namespace.Active).To(Equal(preActiveNs))

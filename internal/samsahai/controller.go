@@ -1644,7 +1644,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	if err := c.ensureAndUpdateConfig(teamComp); err != nil {
-		logger.Error(err, "cannot ensure and update controller reference of config","team", teamComp.Name, "namespace", teamComp.Namespace)
+		logger.Error(err, "cannot ensure and update controller reference of config", "team", teamComp.Name, "namespace", teamComp.Namespace)
 		teamComp.Status.SetCondition(
 			s2hv1.TeamConfigExisted,
 			corev1.ConditionFalse,

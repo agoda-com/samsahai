@@ -868,7 +868,7 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	}
 
 	if err := ValidateConfigRequiredField(configComp); err != nil {
-		logger.Error(err, "cannot validate required fields of config","team", req.Name)
+		logger.Error(err, "cannot validate required fields of config", "team", req.Name)
 		configComp.Status.SetCondition(
 			s2hv1.ConfigRequiredFieldsValidated,
 			corev1.ConditionFalse,
