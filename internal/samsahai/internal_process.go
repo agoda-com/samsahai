@@ -206,7 +206,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	// TODO: do caching for better performance
 	version, vErr := checker.GetVersion(compRepository, compName, checkPattern)
 	switch {
-	case vErr == nil: // do nothing
+	case vErr == nil:
 	case errors.IsImageNotFound(vErr) || errors.IsErrRequestTimeout(vErr):
 	case errors.IsInternalCheckerError(vErr):
 		c.sendImageMissingReport(updateInfo.TeamName, updateInfo.ComponentName, compRepository, version, vErr.Error())
@@ -226,10 +226,14 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 			Repository: compRepository,
 			Tag:        version,
 		},
-		CreatedTime: now,
+		CreatedTime:    now,
+		IsImageMissing: true,
 	}
 
-	// update desired component version created time mapping
+	if vErr == nil {
+		desiredImageTime.IsImageMissing = false
+	}
+	//update desired component version created time mapping
 	team.Status.UpdateDesiredComponentImageCreatedTime(updateInfo.ComponentName, desiredImage, desiredImageTime)
 	deleteDesiredMappingOutOfRange(team, maxDesiredMappingPerComp)
 	if err := c.updateTeam(team); err != nil {

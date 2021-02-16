@@ -374,12 +374,15 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: bundledPRNamespace}, &queue)
 		Expect(err).NotTo(HaveOccurred(), "Queue bundled components should have been updated")
 		Expect(queue.Spec.Components).To(HaveLen(2))
-		Expect(queue.Spec.Components[0].Name).To(Equal(prComps[1].Name))
-		Expect(queue.Spec.Components[0].Repository).To(Equal(prComps[1].Repository))
-		Expect(queue.Spec.Components[0].Version).To(Equal(mariaDBImageTag))
-		Expect(queue.Spec.Components[1].Name).To(Equal(prComps[0].Name))
-		Expect(queue.Spec.Components[1].Repository).To(Equal(prComps[0].Repository))
-		Expect(queue.Spec.Components[1].Version).To(Equal(prComps[0].Version))
+		for _, comp := range queue.Spec.Components {
+			if comp.Name == prComps[0].Name {
+				Expect(comp.Repository).To(Equal(prComps[0].Repository))
+				Expect(comp.Version).To(Equal(prComps[0].Version))
+			} else {
+				Expect(comp.Repository).To(Equal(prComps[1].Repository))
+				Expect(comp.Version).To(Equal(mariaDBImageTag))
+			}
+		}
 
 		By("Updating mock pull-request Queue type")
 		queue.Status.State = s2hv1.Finished
