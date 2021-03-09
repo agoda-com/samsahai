@@ -9,11 +9,16 @@ import (
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
+	"github.com/agoda-com/samsahai/internal/errors"
 )
 
 // TriggerPullRequestDeployment creates/updates PullRequestTrigger crd object
 func (c *controller) TriggerPullRequestDeployment(teamName, bundleName, prNumber, commitSHA string,
 	bundleCompsTag map[string]string) error {
+
+	if err := c.validatePullRequestBundleName(teamName, bundleName); err != nil {
+		return err
+	}
 
 	ctx := context.TODO()
 
@@ -66,7 +71,22 @@ func (c *controller) TriggerPullRequestDeployment(teamName, bundleName, prNumber
 	}
 
 	return nil
+}
 
+func (c *controller) validatePullRequestBundleName(teamName, prBundleName string) error {
+	configCtrl := c.GetConfigController()
+	prConfig, err := configCtrl.GetPullRequestConfig(teamName)
+	if err != nil {
+		return err
+	}
+
+	for _, configBundle := range prConfig.Bundles {
+		if configBundle.Name == prBundleName {
+			return nil
+		}
+	}
+
+	return errors.ErrPullRequestBundleNotFound
 }
 
 func getPullRequestTriggerLabels(teamName, bundle, prNumber string) map[string]string {

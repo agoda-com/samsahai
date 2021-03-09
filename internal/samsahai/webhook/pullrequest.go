@@ -79,6 +79,12 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.BundleName, jsonData.PRNumber.String(),
 		jsonData.CommitSHA, mapCompTag)
 	if err != nil {
+		if s2herrors.IsErrPullRequestBundleNotFound(err) {
+			h.error(w, http.StatusBadRequest,
+				fmt.Errorf("there is no '%s' bundle name exists in configuration", jsonData.BundleName))
+			return
+		}
+
 		h.error(w, http.StatusInternalServerError, err)
 		return
 	}

@@ -40,6 +40,8 @@ const (
 	ErrRollingBackActivePromotion        = Error("rolling back active promotion process")
 	ErrEnsureStableComponentsDestroyed   = Error("all stable components has not been destroyed")
 
+	ErrPullRequestBundleNotFound = Error("pull request bundle name not found in configuration")
+
 	ErrUnauthorized      = Error("unauthorized")
 	ErrAuthTokenNotFound = Error("auth token not found")
 	ErrInvalidJSONData   = Error("invalid json data")
@@ -178,4 +180,9 @@ func IsErrReleaseFailed(err error) bool {
 // IsEnsuringStableComponentsDestroyed checks ensuring all stable components destroyed
 func IsEnsuringStableComponentsDestroyed(err error) bool {
 	return ErrEnsureStableComponentsDestroyed.Error() == err.Error()
+}
+
+// IsErrPullRequestBundleNotFound checks pull request bundle not found error
+func IsErrPullRequestBundleNotFound(err error) bool {
+	return ErrPullRequestBundleNotFound.Error() == err.Error()
 }
