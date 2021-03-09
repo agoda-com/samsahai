@@ -90,7 +90,7 @@ func (c *controller) deployEnvironment(queue *s2hv1.Queue) error {
 				corev1.ConditionFalse,
 				fmt.Sprintf("release deployment failed: %s", err.Error()))
 
-			logger.Error(s2herrors.ErrReleaseFailed, fmt.Sprintf("queue: %s release failed", queue.Name))
+			logger.Error(err, fmt.Sprintf("queue: %s release failed", queue.Name))
 
 			return c.updateQueueWithState(queue, s2hv1.Collecting)
 		}
@@ -111,6 +111,8 @@ func (c *controller) deployEnvironment(queue *s2hv1.Queue) error {
 	}
 
 	if len(releases) == 0 && !deployEngine.IsMocked() {
+		logger.Debug("there is no release found, release has been being installed",
+			"queue", queue.Name)
 		return nil
 	}
 
@@ -425,15 +427,16 @@ func (c *controller) deployComponents(
 	}
 
 	releaseRevision := make(map[string]int)
-	releases, err := deployEngine.GetReleases()
+	preInstalledReleases, err := deployEngine.GetReleases()
 	if err != nil {
 		return false, err
 	}
-	for _, rel := range releases {
+	for _, rel := range preInstalledReleases {
 		releaseRevision[rel.Name] = rel.Version
 	}
 
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 2*time.Minute)
+	timeout := 5 * time.Second
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
 
 	isDeployedCh := make(chan bool, 2)
@@ -473,23 +476,30 @@ func (c *controller) deployComponents(
 	for i := 0; i < 2; i++ {
 		select {
 		case <-ctx.Done():
-			releases, err = deployEngine.GetReleases()
+			logger.Warnf("validating helm release took longer than %.0f seconds, queue: %s", timeout.Seconds(),
+				queue.Name)
+
+			var postInstalledReleases []*release.Release
+			postInstalledReleases, err = deployEngine.GetReleases()
 			if err != nil {
 				return
 			}
 
-			if len(releases) == 0 {
-				err = fmt.Errorf("release is being deployed")
+			if len(postInstalledReleases) == 0 {
+				logger.Warn("there is no release found", "queue", queue.Name)
 				return
 			}
-			for _, rel := range releases {
+			for _, rel := range postInstalledReleases {
 				if revision, ok := releaseRevision[rel.Name]; ok {
 					if rel.Version <= revision {
-						err = fmt.Errorf("release is being deployed")
+						logger.Warn("there is no latest revision of release found",
+							"queue", queue.Name)
 						return
 					}
 				}
 			}
+
+			return
 
 		case isDeployed := <-isDeployedCh:
 			err := <-errCh
