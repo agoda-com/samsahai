@@ -292,6 +292,12 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		jsonPRData, _ := json.Marshal(map[string]interface{}{
 			"bundleName": bundledCompPRBundleName,
 			"prNumber":   prNumber,
+			"components": []map[string]interface{}{
+				{
+					"name": mariaDBCompName,
+					"tag":  mariaDBImageTag,
+				},
+			},
 		})
 		apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
 		_, _, err = utilhttp.Post(apiURL, jsonPRData)
@@ -1127,6 +1133,11 @@ var (
 	bundledPRTriggerName = internal.GenPullRequestBundleName(bundledCompPRBundleName, prNumber)
 
 	configSpec = s2hv1.ConfigSpec{
+		Envs: map[s2hv1.EnvType]s2hv1.ChartValuesURLs{
+			"pull-request": map[string][]string{
+				bundledPRTriggerName: {"https://raw.githubusercontent.com/agoda-com/samsahai-example/master/envs/pull-request/wordpress-missing-mariadb-image.yaml"},
+			},
+		},
 		Staging: &s2hv1.ConfigStaging{
 			Deployment: &s2hv1.ConfigDeploy{},
 		},
