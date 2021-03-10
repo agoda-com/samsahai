@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/julienschmidt/httprouter"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -13,6 +14,8 @@ import (
 	v1 "github.com/agoda-com/samsahai/api/v1"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
+
+const validK8sNamePattern = `^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`
 
 type Components struct {
 	Name string `json:"name"`
@@ -71,6 +74,12 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
+	matched, err := regexp.Match(validK8sNamePattern, []byte(jsonData.PRNumber.String()))
+	if err != nil || !matched {
+		h.error(w, http.StatusBadRequest, fmt.Errorf("invalid prNumber, must match regex %s", validK8sNamePattern))
+		return
+	}
+
 	mapCompTag := make(map[string]string)
 	for _, comp := range jsonData.Components {
 		mapCompTag[comp.Name] = comp.Tag
@@ -79,6 +88,12 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.BundleName, jsonData.PRNumber.String(),
 		jsonData.CommitSHA, mapCompTag)
 	if err != nil {
+		if s2herrors.IsErrPullRequestBundleNotFound(err) {
+			h.error(w, http.StatusBadRequest,
+				fmt.Errorf("there is no '%s' bundle name exists in configuration", jsonData.BundleName))
+			return
+		}
+
 		h.error(w, http.StatusInternalServerError, err)
 		return
 	}
