@@ -990,7 +990,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger deleted error")
 	}, 45)
 
-	It("should return error on trigger if there is no pull request bundle name in configuration", func(done Done) {
+	It("should return error on trigger if there is no pull request bundle name in configuration or invalid input", func(done Done) {
 		defer close(done)
 
 		By("Starting Samsahai internal process")
@@ -1033,7 +1033,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		server := httptest.NewServer(mux)
 		defer server.Close()
 
-		By("Send webhook")
+		By("Send webhook with missing pull request bundle name")
 		jsonPRData, _ := json.Marshal(map[string]interface{}{
 			"bundleName": "missing-comp",
 			"prNumber":   prNumber,
@@ -1042,6 +1042,16 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		_, _, err = utilhttp.Post(apiURL, jsonPRData)
 		Expect(err).To(HaveOccurred(),
 			"Should get status code error due to pull request bundle name not found")
+
+		By("Send webhook with invalid input")
+		jsonPRData, _ = json.Marshal(map[string]interface{}{
+			"bundleName": singlePRTriggerName,
+			"prNumber":   "Invalid/123",
+		})
+		apiURL = fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
+		_, _, err = utilhttp.Post(apiURL, jsonPRData)
+		Expect(err).To(HaveOccurred(),
+			"Should get status code error due to invalid prNumber")
 	}, 20)
 })
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/julienschmidt/httprouter"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -13,6 +14,8 @@ import (
 	v1 "github.com/agoda-com/samsahai/api/v1"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
+
+const validK8sNamePattern = `^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`
 
 type Components struct {
 	Name string `json:"name"`
@@ -68,6 +71,12 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 
 	if jsonData.BundleName == "" || jsonData.PRNumber.String() == "" {
 		h.error(w, http.StatusBadRequest, fmt.Errorf("must define bundleName and prNumber"))
+		return
+	}
+
+	matched, err := regexp.Match(validK8sNamePattern, []byte(jsonData.PRNumber.String()))
+	if err != nil || !matched {
+		h.error(w, http.StatusBadRequest, fmt.Errorf("invalid prNumber, must match regex %s", validK8sNamePattern))
 		return
 	}
 
