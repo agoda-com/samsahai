@@ -989,6 +989,60 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger deleted error")
 	}, 45)
+
+	It("should return error on trigger if there is no pull request bundle name in configuration", func(done Done) {
+		defer close(done)
+
+		By("Starting Samsahai internal process")
+		setupSamsahai()
+		go samsahaiCtrl.Start(chStop)
+
+		By("Starting Staging internal process")
+		stagingCtrl, _ := setupStaging(stgNamespace)
+		go stagingCtrl.Start(chStop)
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		teamComp := mockTeam
+		Expect(client.Create(ctx, &teamComp)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Starting http server")
+		mux := http.NewServeMux()
+		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
+		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		By("Send webhook")
+		jsonPRData, _ := json.Marshal(map[string]interface{}{
+			"bundleName": "missing-comp",
+			"prNumber":   prNumber,
+		})
+		apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
+		_, _, err = utilhttp.Post(apiURL, jsonPRData)
+		Expect(err).To(HaveOccurred(),
+			"Should get status code error due to pull request bundle name not found")
+	}, 20)
 })
 
 var (
