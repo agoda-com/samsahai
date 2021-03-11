@@ -435,7 +435,7 @@ func (c *controller) deployComponents(
 		releaseRevision[rel.Name] = rel.Version
 	}
 
-	timeout := 5 * time.Second
+	timeout := 5 * time.Minute
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
 
