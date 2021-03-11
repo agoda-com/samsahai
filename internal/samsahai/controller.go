@@ -50,6 +50,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 	"github.com/agoda-com/samsahai/internal/util/cmd"
+	"github.com/agoda-com/samsahai/internal/util/random"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
@@ -1648,13 +1649,14 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		teamComp.Status.SetCondition(
 			s2hv1.TeamConfigExisted,
 			corev1.ConditionFalse,
-			err.Error())
+			fmt.Sprintf("%s, errId: %s", err.Error(), random.GenerateRandomString(8)))
 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err,
 				"cannot update team conditions when config does not exist")
 		}
 
+		// no need to return error due to team updated with failure condition
 		return reconcile.Result{}, nil
 	}
 

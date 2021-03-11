@@ -270,8 +270,8 @@ func startCtrlCmd() *cobra.Command {
 		"Microsoft Teams password used for initializing Microsoft Teams reporter.")
 	cmd.Flags().Int(s2h.VKActivePromotionConcurrences, 1, "Concurrent active promotions.")
 	cmd.Flags().Duration(s2h.VKActivePromotionTimeout, 60*time.Minute, "Active promotion timeout.")
-	cmd.Flags().Duration(s2h.VKActivePromotionDemotionTimeout, 3*time.Minute, "Active demotion timeout.")
-	cmd.Flags().Duration(s2h.VKActivePromotionRollbackTimeout, 5*time.Minute,
+	cmd.Flags().Duration(s2h.VKActivePromotionDemotionTimeout, 5*time.Minute, "Active demotion timeout.")
+	cmd.Flags().Duration(s2h.VKActivePromotionRollbackTimeout, 15*time.Minute,
 		"Active promotion rollback timeout.")
 	cmd.Flags().Duration(s2h.VKActivePromotionTearDownDuration, 20*time.Minute,
 		"Previous active environment teardown duration.")
