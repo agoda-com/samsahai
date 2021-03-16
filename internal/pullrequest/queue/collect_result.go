@@ -60,7 +60,6 @@ func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2
 				compUpgradeStatus = samsahairpc.ComponentUpgrade_UpgradeStatus_SUCCESS
 			}
 		}
-		// check status that trigger fail then should not send noti
 
 		prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{
 			TeamName:   c.teamName,
@@ -80,7 +79,6 @@ func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2
 		}
 
 		prQueueHistName, prQueueHistNamespace := prQueue.Status.PullRequestQueueHistoryName, c.namespace
-		// check not send if status trigger
 		comp := queue.GetComponentUpgradeRPCFromQueue(compUpgradeStatus, prQueueHistName,
 			prQueueHistNamespace, deploymentQueue, prQueueRPC)
 		if _, err := c.s2hClient.RunPostPullRequestQueue(ctx, comp); err != nil {

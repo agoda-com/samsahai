@@ -1054,7 +1054,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			"Should get status code error due to invalid prNumber")
 	}, 20)
 
-	FIt("should create pull request queue even pull request trigger failed", func(done Done) {
+	It("should create pull request queue even pull request trigger failed", func(done Done) {
 		defer close(done)
 
 		By("Starting Samsahai internal process")
@@ -1113,7 +1113,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Pull request webhook sent error")
 
 		By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
-		err = wait.PollImmediate(verifyTime1s, 60*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, 90*time.Second, func() (ok bool, err error) {
 			prQueue := s2hv1.PullRequestQueue{}
 			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prQueue)
 			if err != nil {
