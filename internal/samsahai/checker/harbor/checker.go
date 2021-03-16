@@ -3,9 +3,12 @@ package harbor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/docker/distribution/reference"
@@ -23,6 +26,9 @@ const (
 
 	MaxRequestsTimeout   = 60 * time.Second
 	MaxOneRequestTimeout = 10 * time.Second
+
+	pageSize     = 1
+	maximumPages = 100
 )
 
 type checker struct {
@@ -30,7 +36,11 @@ type checker struct {
 }
 
 type harborRes struct {
-	Tag string `json:"name"`
+	Tags []harborTag `json:"tags"`
+}
+
+type harborTag struct {
+	Name string `json:"name"`
 }
 
 func New(opts ...http.Option) internal.DesiredComponentChecker {
@@ -85,17 +95,30 @@ func (c *checker) EnsureVersion(repository, name, version string) error {
 	return err
 }
 
-// DockerHubFindTag returns matched tag from docker.io (hub.docker.com)
-func (c *checker) check(ctx context.Context, domain, repository string, matcher *regexp.Regexp) (<-chan string, <-chan error) {
+// check returns matched tag from harbor
+func (c *checker) check(ctx context.Context, domain, fullRepository string, matcher *regexp.Regexp) (<-chan string, <-chan error) {
 	tagCh := make(chan string)
 	errCh := make(chan error)
 
 	go func() {
-		reqURL := fmt.Sprintf("https://%s/api/repositories/%s/tags", domain, repository)
-		var data []byte
-		var err error
+		project, repository := extractProjectAndRepository(fullRepository)
+		if project == "" || repository == "" {
+			err := fmt.Errorf("invalid image repository of harbor, expected `<project_name>/<repository_name>`, got %s",
+				fullRepository)
+			logger.Error(err, "invalid image repository of harbor", "image", fullRepository)
+			errCh <- err
+			return
+		}
 
+		currentPage := 0
+		var matchedTags []string
 		for {
+			currentPage++
+			reqURL := fmt.Sprintf("https://%s/api/v2.0/projects/%s/repositories/%s/artifacts?tags=*&page=%d&page_size=%d",
+				domain, project, repository, currentPage, pageSize)
+			var data []byte
+			var err error
+
 			opts := []http.Option{
 				http.WithTimeout(MaxOneRequestTimeout),
 				http.WithContext(ctx),
@@ -117,10 +140,11 @@ func (c *checker) check(ctx context.Context, domain, repository string, matcher 
 				return
 			}
 
-			var matchedTags []string
-			for _, tag := range respJSON {
-				if matcher.MatchString(tag.Tag) {
-					matchedTags = append(matchedTags, tag.Tag)
+			for _, artifact := range respJSON {
+				for _, tag := range artifact.Tags {
+					if matcher.MatchString(tag.Name) {
+						matchedTags = append(matchedTags, tag.Name)
+					}
 				}
 			}
 
@@ -130,9 +154,32 @@ func (c *checker) check(ctx context.Context, domain, repository string, matcher 
 				return
 			}
 
-			errCh <- s2herrors.ErrImageVersionNotFound
+			if len(respJSON) == 0 || currentPage >= maximumPages {
+				break
+			}
 		}
+
+		errCh <- s2herrors.ErrImageVersionNotFound
 	}()
 
 	return tagCh, errCh
+}
+
+func doubleEscapeParam(str string) string {
+	return url.QueryEscape(url.QueryEscape(str))
+}
+
+func extractProjectAndRepository(fullRepository string) (project, repository string) {
+	paths := strings.Split(fullRepository, "/")
+	if len(paths) < 2 {
+		logger.Error(errors.New("invalid harbor image repository path"), "there is no repository defined",
+			"repository", fullRepository)
+		return
+	}
+
+	project = paths[0]
+	repository = strings.Replace(fullRepository, fmt.Sprintf("%s/", project), "", -1)
+
+	// harbor requires double escape
+	return project, doubleEscapeParam(repository)
 }
