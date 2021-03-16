@@ -38,16 +38,18 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 	skipReconcile bool, err error) {
 
 	prNamespace := prQueue.Status.PullRequestNamespace
-	if err = queue.DeletePullRequestQueue(c.client, prNamespace, prQueue.Name); err != nil {
-		return
-	}
+	if prNamespace != "" {
+		if err = queue.DeletePullRequestQueue(c.client, prNamespace, prQueue.Name); err != nil {
+			return
+		}
 
-	_, err = c.s2hClient.DestroyPullRequestEnvironment(ctx, &samsahairpc.TeamWithNamespace{
-		TeamName:  c.teamName,
-		Namespace: prNamespace,
-	})
-	if err != nil {
-		return
+		_, err = c.s2hClient.DestroyPullRequestEnvironment(ctx, &samsahairpc.TeamWithNamespace{
+			TeamName:  c.teamName,
+			Namespace: prNamespace,
+		})
+		if err != nil {
+			return
+		}
 	}
 
 	prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondEnvDestroyed, corev1.ConditionTrue,
@@ -71,7 +73,7 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 		return
 	}
 
-	if prQueue.IsFailure() {
+	if prQueue.IsFailure() && prQueue.Status.IsConditionTrue(s2hv1.PullRequestQueueCondTriggerImagesVerified) {
 		maxRetryQueue := int(prConfig.MaxRetry)
 		if prQueue.Spec.NoOfRetry < maxRetryQueue {
 			prQueue.Spec.NoOfRetry++
@@ -127,7 +129,7 @@ func (c *controller) ensurePullRequestComponentsDeploying(ctx context.Context, p
 		prQueue.Status.SetResult(s2hv1.PullRequestQueueFailure)
 		prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondDeployed, corev1.ConditionFalse,
 			"Deployment failed")
-		prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondTested, corev1.ConditionTrue,
+		prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondTested, corev1.ConditionFalse,
 			"Skipped running test due to deployment failed")
 		prQueue.SetState(s2hv1.PullRequestQueueCollecting)
 

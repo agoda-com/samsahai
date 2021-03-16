@@ -741,6 +741,9 @@ definitions:
           Components represents a list of components which are deployed
           +optional
         type: object
+      gitRepository:
+        description: GitRepository represents a github repository of the pull request
+        type: string
       noOfOrder:
         description: |-
           NoOfOrder defines the position in queue
@@ -791,6 +794,13 @@ definitions:
           ComponentUpgrade defines a deployed pull request queue
           +optional
         type: object
+      imageMissingList:
+        description: |-
+          ImageMissingList defines image missing lists
+          +optional
+        items:
+          $ref: '#/definitions/v1.Image'
+        type: array
       pullRequestNamespace:
         description: PullRequestNamespace represents a current pull request namespace
         type: string

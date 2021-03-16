@@ -56,8 +56,8 @@ func WithClient(client client.Client) Option {
 	}
 }
 
-func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA string,
-	comps []*s2hv1.QueueComponent) *s2hv1.PullRequestQueue {
+func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA, gitRrepo string,
+	comps []*s2hv1.QueueComponent, prQueueStatus *s2hv1.PullRequestQueueStatus) *s2hv1.PullRequestQueue {
 
 	qLabels := getPullRequestQueueLabels(teamName, bundleName, prNumber)
 	prQueueName := internal.GenPullRequestBundleName(bundleName, prNumber)
@@ -76,8 +76,9 @@ func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA st
 			Components:         comps,
 			UpcomingCommitSHA:  commitSHA,
 			UpcomingComponents: comps,
+			GitRepository:      gitRrepo,
 		},
-		Status: s2hv1.PullRequestQueueStatus{},
+		Status: *prQueueStatus,
 	}
 }
 

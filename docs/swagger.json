@@ -1697,6 +1697,10 @@
                     "type": "object",
                     "$ref": "#/definitions/v1.QueueComponents"
                 },
+                "gitRepository": {
+                    "description": "GitRepository represents a github repository of the pull request",
+                    "type": "string"
+                },
                 "noOfOrder": {
                     "description": "NoOfOrder defines the position in queue\nlower is will be picked first",
                     "type": "integer"
@@ -1742,6 +1746,13 @@
                     "description": "ComponentUpgrade defines a deployed pull request queue\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1.Queue"
+                },
+                "imageMissingList": {
+                    "description": "ImageMissingList defines image missing lists\n+optional",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.Image"
+                    }
                 },
                 "pullRequestNamespace": {
                     "description": "PullRequestNamespace represents a current pull request namespace",
