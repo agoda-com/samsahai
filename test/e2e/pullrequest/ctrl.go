@@ -1099,12 +1099,11 @@ var _ = Describe("[e2e] Pull request controller", func() {
 
 		By("Send webhook with missing image")
 		jsonPRData, _ := json.Marshal(map[string]interface{}{
-			"bundleName": bundledCompPRBundleName,
+			"bundleName": invalidCompPRBundleName,
 			"prNumber":   prNumber,
 			"components": []map[string]interface{}{
 				{
-					"name": mariaDBCompName,
-					"tag":  "missing",
+					"name": wordpressCompName,
 				},
 			},
 		})
@@ -1113,10 +1112,19 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Pull request webhook sent error")
 
 		By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
-		err = wait.PollImmediate(verifyTime1s, 90*time.Second, func() (ok bool, err error) {
-			prQueue := s2hv1.PullRequestQueue{}
-			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prQueue)
-			if err != nil {
+		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
+			prQueueHistList := s2hv1.PullRequestQueueHistoryList{}
+			err = client.List(ctx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})
+			//err = client.Get(ctx, types.NamespacedName{Name: invalidPRTriggerName, Namespace: stgNamespace}, &prQueueHistList)
+			if err != nil || k8serrors.IsNotFound(err) {
+				return false, nil
+			}
+
+			if len(prQueueHistList.Items) == 0 {
+				return false, nil
+			}
+			
+			if len(prQueueHistList.Items) != 1 && !strings.Contains(prQueueHistList.Items[0].Name, invalidPRTriggerName){
 				return false, nil
 			}
 
@@ -1130,7 +1138,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue created error")
 
-	}, 110)
+	}, 90)
 })
 
 var (
@@ -1170,6 +1178,7 @@ var (
 	wordpressBundleName        = "wordpress-bd"
 	mariaDBCompName            = "mariadb"
 	wordpressCompName          = "wordpress"
+	invalidCompPRBundleName    = "invalid-wordpress"
 	bundledCompPRBundleName    = wordpressMariadbBundleName
 	singleCompPRBundleName     = wordpressBundleName
 	prDepCompName              = mariaDBCompName
@@ -1243,6 +1252,11 @@ var (
 	}
 	wordpressImageTag = "5.3.2-debian-10-r32"
 
+	wordpressInvalidImage = s2hv1.ComponentImage{
+		Repository: "invalid/wordpress",
+		Pattern:    "invalid-{{ .PRNumber }}",
+	}
+
 	mariaDBImage = s2hv1.ComponentImage{
 		Repository: "bitnami/mariadb",
 		Pattern:    "10.5.8-debian-10-r{{ .PRNumber }}",
@@ -1273,6 +1287,7 @@ var (
 	maxPRTriggerRetry    = 2
 	singlePRTriggerName  = internal.GenPullRequestBundleName(singleCompPRBundleName, prNumber)
 	bundledPRTriggerName = internal.GenPullRequestBundleName(bundledCompPRBundleName, prNumber)
+	invalidPRTriggerName = internal.GenPullRequestBundleName(invalidCompPRBundleName, prNumber)
 
 	configSpec = s2hv1.ConfigSpec{
 		Envs: map[s2hv1.EnvType]s2hv1.ChartValuesURLs{
@@ -1315,6 +1330,17 @@ var (
 						{
 							Name:   mariaDBCompName,
 							Image:  mariaDBImage,
+							Source: &compSource,
+						},
+					},
+					Deployment: &s2hv1.ConfigDeploy{},
+				},
+				{
+					Name: invalidCompPRBundleName ,
+					Components: []*s2hv1.PullRequestComponent{
+						{
+							Name:   wordpressCompName,
+							Image:  wordpressInvalidImage,
 							Source: &compSource,
 						},
 					},
