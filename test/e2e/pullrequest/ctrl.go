@@ -863,6 +863,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				State:                s2hv1.PullRequestQueueEnvDestroying,
 				Result:               s2hv1.PullRequestQueueFailure,
 				PullRequestNamespace: singlePRNamespace,
+				Conditions:           []s2hv1.PullRequestQueueCondition{mockPrQueueCondition},
 			},
 		}
 		Expect(client.Create(ctx, &prQueue)).NotTo(HaveOccurred(), "Mock queue created error")
@@ -1123,8 +1124,8 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			if len(prQueueHistList.Items) == 0 {
 				return false, nil
 			}
-			
-			if len(prQueueHistList.Items) != 1 && !strings.Contains(prQueueHistList.Items[0].Name, invalidPRTriggerName){
+
+			if len(prQueueHistList.Items) != 1 && !strings.Contains(prQueueHistList.Items[0].Name, invalidPRTriggerName) {
 				return false, nil
 			}
 
@@ -1226,6 +1227,12 @@ var (
 		},
 		Data: map[string][]byte{},
 		Type: "Opaque",
+	}
+
+	mockPrQueueCondition = s2hv1.PullRequestQueueCondition{
+		Type:               s2hv1.PullRequestQueueCondTriggerImagesVerified,
+		Status:             corev1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
 	}
 
 	compSource          = s2hv1.UpdatingSource("public-registry")
@@ -1336,7 +1343,7 @@ var (
 					Deployment: &s2hv1.ConfigDeploy{},
 				},
 				{
-					Name: invalidCompPRBundleName ,
+					Name: invalidCompPRBundleName,
 					Components: []*s2hv1.PullRequestComponent{
 						{
 							Name:   wordpressCompName,
