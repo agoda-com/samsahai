@@ -727,10 +727,6 @@ definitions:
     type: object
   v1.PullRequestQueueSpec:
     properties:
-      PullRequestTriggerCreatedAt:
-        description: PullRequestTriggerCreatedAt represents time when pull request
-          trigger has been start
-        type: string
       bundleName:
         description: BundleName represents a pull request bundle name
         type: string
@@ -756,8 +752,9 @@ definitions:
           $ref: '#/definitions/v1.Image'
         type: array
       isPullRequestTriggerFailed:
-        description: IsPullRequestTriggerFailed represents the result of pull request
-          trigger
+        description: |-
+          IsPullRequestTriggerFailed represents the result of pull request trigger
+          +optional
         type: boolean
       noOfOrder:
         description: |-
@@ -771,6 +768,11 @@ definitions:
         type: integer
       prNumber:
         description: PRNumber represents a pull request number
+        type: string
+      pullRequestTriggerCreatedAt:
+        description: |-
+          PullRequestTriggerCreatedAt represents time when pull request trigger has been start
+          +optional
         type: string
       teamName:
         description: TeamName represents team owner of the pull request queue

@@ -465,7 +465,6 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 }
 
 func ensurePullRequestQueueStatus(prQueue *s2hv1.PullRequestQueue) bool {
-	//if prQueue.Status.IsConditionTrue(s2hv1.PullRequestQueueCondTriggerImagesVerified) ||
 	if len(prQueue.Status.Conditions) != 0 {
 		return false
 	}
@@ -474,7 +473,7 @@ func ensurePullRequestQueueStatus(prQueue *s2hv1.PullRequestQueue) bool {
 		prQueue.Status.SetCondition(
 			s2hv1.PullRequestQueueCondTriggerImagesVerified,
 			corev1.ConditionFalse,
-			"Pull request trigger Images does not exist")
+			"Pull request trigger images does not exist")
 		prQueue.Status.SetCondition(
 			s2hv1.PullRequestQueueCondStarted,
 			corev1.ConditionFalse,
@@ -501,7 +500,7 @@ func ensurePullRequestQueueStatus(prQueue *s2hv1.PullRequestQueue) bool {
 
 	} else {
 		prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondTriggerImagesVerified,
-			corev1.ConditionTrue, "Pull request trigger Images has been verified")
+			corev1.ConditionTrue, "Pull request trigger images has been verified")
 	}
 	return true
 }

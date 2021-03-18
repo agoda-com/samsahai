@@ -162,11 +162,19 @@ var _ = Describe("[e2e] Config controller", func() {
 		Expect(cfg.Spec.ActivePromotion).NotTo(BeNil())
 
 		By("Get components")
-		Expect(configCtrl.EnsureConfigTemplateChanged(config)).To(BeNil())
-		Expect(configCtrl.Update(config)).To(BeNil())
-		comps, err := configCtrl.GetComponents(teamTest)
-		Expect(err).To(BeNil())
-		Expect(len(comps)).To(Equal(3))
+		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
+			if err = configCtrl.EnsureConfigTemplateChanged(config); err != nil {
+				return false, nil
+			}
+			if err = configCtrl.Update(config); err != nil {
+				return false, nil
+			}
+			if comps, err := configCtrl.GetComponents(teamTest); err != nil || len(comps) != 3 {
+				return false, nil
+			}
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Get components error")
 
 		By("Get parent components")
 		parentComps, err := configCtrl.GetParentComponents(teamTest)

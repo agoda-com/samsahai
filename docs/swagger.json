@@ -1684,10 +1684,6 @@
         "v1.PullRequestQueueSpec": {
             "type": "object",
             "properties": {
-                "PullRequestTriggerCreatedAt": {
-                    "description": "PullRequestTriggerCreatedAt represents time when pull request trigger has been start",
-                    "type": "string"
-                },
                 "bundleName": {
                     "description": "BundleName represents a pull request bundle name",
                     "type": "string"
@@ -1713,7 +1709,7 @@
                     }
                 },
                 "isPullRequestTriggerFailed": {
-                    "description": "IsPullRequestTriggerFailed represents the result of pull request trigger",
+                    "description": "IsPullRequestTriggerFailed represents the result of pull request trigger\n+optional",
                     "type": "boolean"
                 },
                 "noOfOrder": {
@@ -1726,6 +1722,10 @@
                 },
                 "prNumber": {
                     "description": "PRNumber represents a pull request number",
+                    "type": "string"
+                },
+                "pullRequestTriggerCreatedAt": {
+                    "description": "PullRequestTriggerCreatedAt represents time when pull request trigger has been start\n+optional",
                     "type": "string"
                 },
                 "teamName": {

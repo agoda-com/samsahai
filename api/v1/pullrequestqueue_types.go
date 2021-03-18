@@ -66,10 +66,12 @@ type PullRequestQueueSpec struct {
 	ImageMissingList []Image `json:"imageMissingList,omitempty"`
 
 	// IsPullRequestTriggerFailed represents the result of pull request trigger
+	// +optional
 	IsPullRequestTriggerFailed bool `json:"isPullRequestTriggerFailed,omitempty"`
 
 	// PullRequestTriggerCreatedAt represents time when pull request trigger has been start
-	PullRequestTriggerCreatedAt *metav1.Time `json:"PullRequestTriggerCreatedAt,omitempty"`
+	// +optional
+	PullRequestTriggerCreatedAt *metav1.Time `json:"pullRequestTriggerCreatedAt,omitempty"`
 }
 
 // PullRequestQueueConditionType represents a condition type of pull request queue
