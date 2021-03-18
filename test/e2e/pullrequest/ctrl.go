@@ -1116,7 +1116,6 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
 			prQueueHistList := s2hv1.PullRequestQueueHistoryList{}
 			err = client.List(ctx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})
-			//err = client.Get(ctx, types.NamespacedName{Name: invalidPRTriggerName, Namespace: stgNamespace}, &prQueueHistList)
 			if err != nil || k8serrors.IsNotFound(err) {
 				return false, nil
 			}

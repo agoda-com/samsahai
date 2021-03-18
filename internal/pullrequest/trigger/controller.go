@@ -139,9 +139,11 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	maxRetry := prConfig.Trigger.MaxRetry
 	gitRepo := prConfig.GitRepository
 	if maxRetry >= 0 && noOfRetry != nil && *noOfRetry >= int(maxRetry) {
-		prQueueFailedStatus := genPullRequestQueueFailedStatus(prTrigger.Status.ImageMissingList)
+		isPRTriggerFailed := true
+		imageMissingList := prTrigger.Status.ImageMissingList
+		prTriggerCreateAt := prTrigger.Status.CreatedAt
 		err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, gitRepo,
-			s2hv1.QueueComponents{}, prQueueFailedStatus)
+			s2hv1.QueueComponents{}, imageMissingList, isPRTriggerFailed, prTriggerCreateAt)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -207,16 +209,11 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	// successfully get component version from image registry
 	prTrigger.Status.SetResult(s2hv1.PullRequestTriggerSuccess)
-	prQueueConditionSuccess := []s2hv1.PullRequestQueueCondition{
-		{
-			Type:               s2hv1.PullRequestQueueCondTriggerImagesVerified,
-			Status:             corev1.ConditionTrue,
-			LastTransitionTime: now,
-			Message:            "Pull request trigger Images has been verified",
-		},
-	}
+	isPRTriggerFailed := false
+	imageMissingList := prTrigger.Status.ImageMissingList
+	prTriggerCreateAt := prTrigger.Status.CreatedAt
 	err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, gitRepo,
-		prQueueComponents, &s2hv1.PullRequestQueueStatus{Conditions: prQueueConditionSuccess})
+		prQueueComponents, imageMissingList, isPRTriggerFailed, prTriggerCreateAt)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -416,9 +413,10 @@ func (c *controller) getPRQueueComponentsIfImageExisted(ctx context.Context, prT
 	return prQueueComponents, globalErr
 }
 
-func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA, gitRepo string, comps s2hv1.QueueComponents,
-	prQueueStatus *s2hv1.PullRequestQueueStatus) error {
-	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, name, prNumber, commitSHA, gitRepo, comps, prQueueStatus)
+func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA, gitRepo string,
+	comps s2hv1.QueueComponents, imageMissingList []s2hv1.Image, isPRTriggerFailed bool, createAt *metav1.Time) error {
+	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, name, prNumber, commitSHA, gitRepo, comps,
+		imageMissingList, isPRTriggerFailed, createAt)
 	if err := c.prQueueCtrl.Add(prQueue, nil); err != nil {
 		return err
 	}
@@ -426,7 +424,8 @@ func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA
 	return nil
 }
 
-func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context, prTrigger *s2hv1.PullRequestTrigger) error {
+func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context,
+	prTrigger *s2hv1.PullRequestTrigger) error {
 	outImgList := make([]*samsahairpc.Image, 0)
 	for _, img := range prTrigger.Status.ImageMissingList {
 		outImgList = append(outImgList, &samsahairpc.Image{Repository: img.Repository, Tag: img.Tag})
@@ -450,57 +449,4 @@ func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context, 
 	}
 
 	return nil
-}
-
-func genPullRequestQueueFailedStatus(imageMissingList []s2hv1.Image) *s2hv1.PullRequestQueueStatus {
-	now := metav1.Now()
-	prQueueConds := []s2hv1.PullRequestQueueCondition{
-		{
-			Type:               s2hv1.PullRequestQueueCondTriggerImagesVerified,
-			Status:             corev1.ConditionFalse,
-			LastTransitionTime: now,
-			Message:            "Pull request trigger Images does not exist",
-		},
-		{
-			Type:               s2hv1.PullRequestQueueCondStarted,
-			Status:             corev1.ConditionFalse,
-			LastTransitionTime: now,
-			Message:            "Pull request queue has not been started due to pull request trigger failed",
-		},
-		{
-			Type:               s2hv1.PullRequestQueueCondEnvCreated,
-			Status:             corev1.ConditionFalse,
-			LastTransitionTime: now,
-			Message:            "Skipped creating environment due to pull request trigger failed",
-		},
-		{
-			Type:               s2hv1.PullRequestQueueCondDependenciesUpdated,
-			Status:             corev1.ConditionFalse,
-			LastTransitionTime: now,
-			Message:            "Skipped updating dependencies due to pull request trigger failed",
-		},
-		{
-			Type:               s2hv1.PullRequestQueueCondDeployed,
-			Status:             corev1.ConditionFalse,
-			LastTransitionTime: now,
-			Message:            "Skipped deploying due to pull request trigger failed",
-		},
-		{
-			Type:               s2hv1.PullRequestQueueCondTested,
-			Status:             corev1.ConditionFalse,
-			LastTransitionTime: now,
-			Message:            "Skipped running test due to pull request trigger failed",
-		},
-	}
-
-	prQueueStatus := s2hv1.PullRequestQueueStatus{
-		CreatedAt:        &now,
-		UpdatedAt:        &now,
-		State:            s2hv1.PullRequestQueueCollecting,
-		Result:           s2hv1.PullRequestQueueFailure,
-		Conditions:       prQueueConds,
-		ImageMissingList: imageMissingList,
-	}
-
-	return &prQueueStatus
 }

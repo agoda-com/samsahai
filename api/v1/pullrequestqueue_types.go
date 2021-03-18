@@ -60,6 +60,16 @@ type PullRequestQueueSpec struct {
 
 	// GitRepository represents a github repository of the pull request
 	GitRepository string `json:"gitRepository,omitempty"`
+
+	// ImageMissingList represents image missing lists
+	// +optional
+	ImageMissingList []Image `json:"imageMissingList,omitempty"`
+
+	// IsPullRequestTriggerFailed represents the result of pull request trigger
+	IsPullRequestTriggerFailed bool `json:"isPullRequestTriggerFailed,omitempty"`
+
+	// PullRequestTriggerCreatedAt represents time when pull request trigger has been start
+	PullRequestTriggerCreatedAt *metav1.Time `json:"PullRequestTriggerCreatedAt,omitempty"`
 }
 
 // PullRequestQueueConditionType represents a condition type of pull request queue
@@ -162,10 +172,6 @@ type PullRequestQueueStatus struct {
 	// ComponentUpgrade defines a deployed pull request queue
 	// +optional
 	DeploymentQueue *Queue `json:"deploymentQueue,omitempty"`
-
-	// ImageMissingList defines image missing lists
-	// +optional
-	ImageMissingList []Image `json:"imageMissingList,omitempty"`
 }
 
 func (prqs *PullRequestQueueStatus) SetPullRequestNamespace(namespace string) {

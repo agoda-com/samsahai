@@ -1684,6 +1684,10 @@
         "v1.PullRequestQueueSpec": {
             "type": "object",
             "properties": {
+                "PullRequestTriggerCreatedAt": {
+                    "description": "PullRequestTriggerCreatedAt represents time when pull request trigger has been start",
+                    "type": "string"
+                },
                 "bundleName": {
                     "description": "BundleName represents a pull request bundle name",
                     "type": "string"
@@ -1700,6 +1704,17 @@
                 "gitRepository": {
                     "description": "GitRepository represents a github repository of the pull request",
                     "type": "string"
+                },
+                "imageMissingList": {
+                    "description": "ImageMissingList represents image missing lists\n+optional",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.Image"
+                    }
+                },
+                "isPullRequestTriggerFailed": {
+                    "description": "IsPullRequestTriggerFailed represents the result of pull request trigger",
+                    "type": "boolean"
                 },
                 "noOfOrder": {
                     "description": "NoOfOrder defines the position in queue\nlower is will be picked first",
@@ -1746,13 +1761,6 @@
                     "description": "ComponentUpgrade defines a deployed pull request queue\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1.Queue"
-                },
-                "imageMissingList": {
-                    "description": "ImageMissingList defines image missing lists\n+optional",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1.Image"
-                    }
                 },
                 "pullRequestNamespace": {
                     "description": "PullRequestNamespace represents a current pull request namespace",

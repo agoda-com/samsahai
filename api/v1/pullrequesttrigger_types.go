@@ -46,6 +46,8 @@ type PullRequestTriggerSpec struct {
 	NextProcessAt *metav1.Time `json:"nextProcessAt,omitempty"`
 	// +optional
 	NoOfRetry *int `json:"noOfRetry,omitempty"`
+	// GitRepository represents a github repository of the pull request
+	GitRepository string `json:"gitRepository,omitempty"`
 }
 
 // PullRequestTriggerResult represents the result status of a pull request trigger

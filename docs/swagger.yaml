@@ -727,6 +727,10 @@ definitions:
     type: object
   v1.PullRequestQueueSpec:
     properties:
+      PullRequestTriggerCreatedAt:
+        description: PullRequestTriggerCreatedAt represents time when pull request
+          trigger has been start
+        type: string
       bundleName:
         description: BundleName represents a pull request bundle name
         type: string
@@ -744,6 +748,17 @@ definitions:
       gitRepository:
         description: GitRepository represents a github repository of the pull request
         type: string
+      imageMissingList:
+        description: |-
+          ImageMissingList represents image missing lists
+          +optional
+        items:
+          $ref: '#/definitions/v1.Image'
+        type: array
+      isPullRequestTriggerFailed:
+        description: IsPullRequestTriggerFailed represents the result of pull request
+          trigger
+        type: boolean
       noOfOrder:
         description: |-
           NoOfOrder defines the position in queue
@@ -794,13 +809,6 @@ definitions:
           ComponentUpgrade defines a deployed pull request queue
           +optional
         type: object
-      imageMissingList:
-        description: |-
-          ImageMissingList defines image missing lists
-          +optional
-        items:
-          $ref: '#/definitions/v1.Image'
-        type: array
       pullRequestNamespace:
         description: PullRequestNamespace represents a current pull request namespace
         type: string
