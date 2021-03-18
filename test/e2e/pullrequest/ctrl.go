@@ -863,6 +863,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				State:                s2hv1.PullRequestQueueEnvDestroying,
 				Result:               s2hv1.PullRequestQueueFailure,
 				PullRequestNamespace: singlePRNamespace,
+				Conditions:           []s2hv1.PullRequestQueueCondition{mockPrQueueCondition},
 			},
 		}
 		Expect(client.Create(ctx, &prQueue)).NotTo(HaveOccurred(), "Mock queue created error")
@@ -1053,6 +1054,91 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).To(HaveOccurred(),
 			"Should get status code error due to invalid prNumber")
 	}, 20)
+
+	It("should create pull request queue even pull request trigger failed", func(done Done) {
+		defer close(done)
+
+		By("Starting Samsahai internal process")
+		setupSamsahai()
+		go samsahaiCtrl.Start(chStop)
+
+		By("Starting Staging internal process")
+		stagingCtrl, _ := setupStaging(stgNamespace)
+		go stagingCtrl.Start(chStop)
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		teamComp := mockTeam
+		Expect(client.Create(ctx, &teamComp)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamComp.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Starting http server")
+		mux := http.NewServeMux()
+		mux.Handle(samsahaiCtrl.PathPrefix(), samsahaiCtrl)
+		mux.Handle("/", s2hhttp.New(samsahaiCtrl))
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		By("Send webhook with missing image")
+		jsonPRData, _ := json.Marshal(map[string]interface{}{
+			"bundleName": invalidCompPRBundleName,
+			"prNumber":   prNumber,
+			"components": []map[string]interface{}{
+				{
+					"name": wordpressCompName,
+				},
+			},
+		})
+		apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
+		_, _, err = utilhttp.Post(apiURL, jsonPRData)
+		Expect(err).NotTo(HaveOccurred(), "Pull request webhook sent error")
+
+		By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
+		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
+			prQueueHistList := s2hv1.PullRequestQueueHistoryList{}
+			err = client.List(ctx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})
+			if err != nil || k8serrors.IsNotFound(err) {
+				return false, nil
+			}
+
+			if len(prQueueHistList.Items) == 0 {
+				return false, nil
+			}
+
+			if len(prQueueHistList.Items) != 1 && !strings.Contains(prQueueHistList.Items[0].Name, invalidPRTriggerName) {
+				return false, nil
+			}
+
+			prTrigger := s2hv1.PullRequestTrigger{}
+			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prTrigger)
+			if err != nil && k8serrors.IsNotFound(err) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue created error")
+
+	}, 90)
 })
 
 var (
@@ -1092,6 +1178,7 @@ var (
 	wordpressBundleName        = "wordpress-bd"
 	mariaDBCompName            = "mariadb"
 	wordpressCompName          = "wordpress"
+	invalidCompPRBundleName    = "invalid-wordpress"
 	bundledCompPRBundleName    = wordpressMariadbBundleName
 	singleCompPRBundleName     = wordpressBundleName
 	prDepCompName              = mariaDBCompName
@@ -1141,6 +1228,12 @@ var (
 		Type: "Opaque",
 	}
 
+	mockPrQueueCondition = s2hv1.PullRequestQueueCondition{
+		Type:               s2hv1.PullRequestQueueCondTriggerImagesVerified,
+		Status:             corev1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+	}
+
 	compSource          = s2hv1.UpdatingSource("public-registry")
 	configCompWordpress = s2hv1.Component{
 		Name: wordpressCompName,
@@ -1164,6 +1257,11 @@ var (
 		Pattern:    "5.3.2-debian-10-r{{ .PRNumber }}",
 	}
 	wordpressImageTag = "5.3.2-debian-10-r32"
+
+	wordpressInvalidImage = s2hv1.ComponentImage{
+		Repository: "invalid/wordpress",
+		Pattern:    "invalid-{{ .PRNumber }}",
+	}
 
 	mariaDBImage = s2hv1.ComponentImage{
 		Repository: "bitnami/mariadb",
@@ -1195,6 +1293,7 @@ var (
 	maxPRTriggerRetry    = 2
 	singlePRTriggerName  = internal.GenPullRequestBundleName(singleCompPRBundleName, prNumber)
 	bundledPRTriggerName = internal.GenPullRequestBundleName(bundledCompPRBundleName, prNumber)
+	invalidPRTriggerName = internal.GenPullRequestBundleName(invalidCompPRBundleName, prNumber)
 
 	configSpec = s2hv1.ConfigSpec{
 		Envs: map[s2hv1.EnvType]s2hv1.ChartValuesURLs{
@@ -1237,6 +1336,17 @@ var (
 						{
 							Name:   mariaDBCompName,
 							Image:  mariaDBImage,
+							Source: &compSource,
+						},
+					},
+					Deployment: &s2hv1.ConfigDeploy{},
+				},
+				{
+					Name: invalidCompPRBundleName,
+					Components: []*s2hv1.PullRequestComponent{
+						{
+							Name:   wordpressCompName,
+							Image:  wordpressInvalidImage,
 							Source: &compSource,
 						},
 					},

@@ -448,8 +448,10 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 		maxRetryVerification = prConfig.MaxRetry
 	}
 
+	var gitRepository string
 	for _, bundle := range prConfig.Bundles {
 		if bundle.Name == teamWithComp.BundleName {
+			gitRepository = bundle.GitRepository
 			if bundle.MaxRetry != nil {
 				maxRetryVerification = bundle.MaxRetry
 			}
@@ -470,6 +472,7 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 			MaxRetry:    int32(*maxRetryTrigger),
 			PollingTime: pollingTimeTrigger.Duration.String(),
 		},
+		GitRepository: gitRepository,
 	}
 
 	return rpcPRConfig, nil
@@ -564,16 +567,20 @@ func (c *controller) DeployActiveServicesIntoPullRequestEnvironment(ctx context.
 		return nil, err
 	}
 
-	prSvcList := &corev1.ServiceList{}
-	listOpts := &client.ListOptions{Namespace: prNamespace}
-	if err := c.client.List(ctx, prSvcList, listOpts); err != nil {
+	activeNs := teamComp.Status.Namespace.Active
+	if activeNs == "" {
+		return &rpc.Empty{}, nil
+	}
+
+	activeSvcList := &corev1.ServiceList{}
+	listOpts := &client.ListOptions{Namespace: activeNs}
+	if err := c.client.List(ctx, activeSvcList, listOpts); err != nil {
 		return nil, err
 	}
 
-	activeNs := teamComp.Status.Namespace.Active
-	activeSvcList := &corev1.ServiceList{}
-	listOpts = &client.ListOptions{Namespace: activeNs}
-	if err := c.client.List(ctx, activeSvcList, listOpts); err != nil {
+	prSvcList := &corev1.ServiceList{}
+	listOpts = &client.ListOptions{Namespace: prNamespace}
+	if err := c.client.List(ctx, prSvcList, listOpts); err != nil {
 		return nil, err
 	}
 

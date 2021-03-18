@@ -57,12 +57,29 @@ type PullRequestQueueSpec struct {
 
 	// TeamName represents team owner of the pull request queue
 	TeamName string `json:"teamName"`
+
+	// GitRepository represents a github repository of the pull request
+	GitRepository string `json:"gitRepository,omitempty"`
+
+	// ImageMissingList represents image missing lists
+	// +optional
+	ImageMissingList []Image `json:"imageMissingList,omitempty"`
+
+	// IsPullRequestTriggerFailed represents the result of pull request trigger
+	// +optional
+	IsPullRequestTriggerFailed bool `json:"isPullRequestTriggerFailed,omitempty"`
+
+	// PullRequestTriggerCreatedAt represents time when pull request trigger has been start
+	// +optional
+	PullRequestTriggerCreatedAt *metav1.Time `json:"pullRequestTriggerCreatedAt,omitempty"`
 }
 
 // PullRequestQueueConditionType represents a condition type of pull request queue
 type PullRequestQueueConditionType string
 
 const (
+	// PullRequestQueueCondTriggerImagesVerified means the component's images from pull request trigger has been verified
+	PullRequestQueueCondTriggerImagesVerified PullRequestQueueConditionType = "PullRequestQueueCondTriggerImagesVerified"
 	// PullRequestQueueCondStarted means the pull request queue has been started
 	PullRequestQueueCondStarted PullRequestQueueConditionType = "PullRequestQueueStarted"
 	// PullRequestQueueCondEnvCreated means the pull request queue environment has been created

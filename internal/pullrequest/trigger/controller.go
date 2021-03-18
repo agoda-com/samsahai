@@ -132,9 +132,22 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			prConfig.Trigger.PollingTime)
 	}
 
+	name := prTrigger.Spec.BundleName
+	prNumber := prTrigger.Spec.PRNumber
+	commitSHA := prTrigger.Spec.CommitSHA
 	noOfRetry := prTrigger.Spec.NoOfRetry
 	maxRetry := prConfig.Trigger.MaxRetry
+	gitRepo := prConfig.GitRepository
 	if maxRetry >= 0 && noOfRetry != nil && *noOfRetry >= int(maxRetry) {
+		isPRTriggerFailed := true
+		imageMissingList := prTrigger.Status.ImageMissingList
+		prTriggerCreateAt := prTrigger.Status.CreatedAt
+		err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, gitRepo,
+			s2hv1.QueueComponents{}, imageMissingList, isPRTriggerFailed, prTriggerCreateAt)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
 		if err := c.deleteAndSendPullRequestTriggerResult(ctx, prTrigger); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -196,11 +209,11 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	// successfully get component version from image registry
 	prTrigger.Status.SetResult(s2hv1.PullRequestTriggerSuccess)
-
-	name := prTrigger.Spec.BundleName
-	prNumber := prTrigger.Spec.PRNumber
-	commitSHA := prTrigger.Spec.CommitSHA
-	err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, prQueueComponents)
+	isPRTriggerFailed := false
+	imageMissingList := prTrigger.Status.ImageMissingList
+	prTriggerCreateAt := prTrigger.Status.CreatedAt
+	err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, gitRepo,
+		prQueueComponents, imageMissingList, isPRTriggerFailed, prTriggerCreateAt)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -212,7 +225,8 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	return reconcile.Result{}, nil
 }
 
-func (c *controller) fillEmptyData(prTrigger *s2hv1.PullRequestTrigger, prCompSources []*samsahairpc.ComponentSource) (changed bool) {
+func (c *controller) fillEmptyData(prTrigger *s2hv1.PullRequestTrigger,
+	prCompSources []*samsahairpc.ComponentSource) (changed bool) {
 	now := metav1.Now()
 
 	if prTrigger.Status.CreatedAt == nil {
@@ -399,8 +413,10 @@ func (c *controller) getPRQueueComponentsIfImageExisted(ctx context.Context, prT
 	return prQueueComponents, globalErr
 }
 
-func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA string, comps s2hv1.QueueComponents) error {
-	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, name, prNumber, commitSHA, comps)
+func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA, gitRepo string,
+	comps s2hv1.QueueComponents, imageMissingList []s2hv1.Image, isPRTriggerFailed bool, createAt *metav1.Time) error {
+	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, name, prNumber, commitSHA, gitRepo, comps,
+		imageMissingList, isPRTriggerFailed, createAt)
 	if err := c.prQueueCtrl.Add(prQueue, nil); err != nil {
 		return err
 	}
@@ -408,7 +424,8 @@ func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA
 	return nil
 }
 
-func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context, prTrigger *s2hv1.PullRequestTrigger) error {
+func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context,
+	prTrigger *s2hv1.PullRequestTrigger) error {
 	outImgList := make([]*samsahairpc.Image, 0)
 	for _, img := range prTrigger.Status.ImageMissingList {
 		outImgList = append(outImgList, &samsahairpc.Image{Repository: img.Repository, Tag: img.Tag})
