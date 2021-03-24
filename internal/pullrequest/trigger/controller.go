@@ -142,8 +142,9 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		isPRTriggerFailed := true
 		imageMissingList := prTrigger.Status.ImageMissingList
 		prTriggerCreateAt := prTrigger.Status.CreatedAt
+		prTriggerFinishedAt := prTrigger.Status.UpdatedAt
 		err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, gitRepo,
-			s2hv1.QueueComponents{}, imageMissingList, isPRTriggerFailed, prTriggerCreateAt)
+			s2hv1.QueueComponents{}, imageMissingList, isPRTriggerFailed, prTriggerCreateAt, prTriggerFinishedAt)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -212,8 +213,9 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	isPRTriggerFailed := false
 	imageMissingList := prTrigger.Status.ImageMissingList
 	prTriggerCreateAt := prTrigger.Status.CreatedAt
+	prTriggerFinishedAt := prTrigger.Status.UpdatedAt
 	err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, gitRepo,
-		prQueueComponents, imageMissingList, isPRTriggerFailed, prTriggerCreateAt)
+		prQueueComponents, imageMissingList, isPRTriggerFailed, prTriggerCreateAt, prTriggerFinishedAt)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -413,10 +415,10 @@ func (c *controller) getPRQueueComponentsIfImageExisted(ctx context.Context, prT
 	return prQueueComponents, globalErr
 }
 
-func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA, gitRepo string,
-	comps s2hv1.QueueComponents, imageMissingList []s2hv1.Image, isPRTriggerFailed bool, createAt *metav1.Time) error {
+func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA, gitRepo string, comps s2hv1.QueueComponents,
+	imageMissingList []s2hv1.Image, isPRTriggerFailed bool, createAt, finishedAt *metav1.Time) error {
 	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, name, prNumber, commitSHA, gitRepo, comps,
-		imageMissingList, isPRTriggerFailed, createAt)
+		imageMissingList, isPRTriggerFailed, createAt, finishedAt)
 	if err := c.prQueueCtrl.Add(prQueue, nil); err != nil {
 		return err
 	}

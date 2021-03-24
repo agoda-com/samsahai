@@ -751,9 +751,9 @@ definitions:
         items:
           $ref: '#/definitions/v1.Image'
         type: array
-      isPullRequestTriggerFailed:
+      isPrTriggerFailed:
         description: |-
-          IsPullRequestTriggerFailed represents the result of pull request trigger
+          IsPRTriggerFailed represents the result of pull request trigger
           +optional
         type: boolean
       noOfOrder:
@@ -769,9 +769,14 @@ definitions:
       prNumber:
         description: PRNumber represents a pull request number
         type: string
-      pullRequestTriggerCreatedAt:
+      prTriggerCreatedAt:
         description: |-
-          PullRequestTriggerCreatedAt represents time when pull request trigger has been start
+          PRTriggerCreatedAt represents time when pull request trigger has been start
+          +optional
+        type: string
+      prTriggerFinishedAt:
+        description: |-
+          PRTriggerFinishedAt represents time when pull request trigger has been finish
           +optional
         type: string
       teamName:

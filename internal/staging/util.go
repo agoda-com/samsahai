@@ -117,7 +117,8 @@ func (c *controller) deleteQueue(q *s2hv1.Queue) error {
 	} else if isReverify {
 		// reverify
 		// TODO: fix me, 24 hours hard-code
-		if err := c.queueCtrl.SetRetryQueue(q, 0, time.Now().Add(24*time.Hour)); err != nil {
+		if err := c.queueCtrl.SetRetryQueue(q, 0, time.Now().Add(24*time.Hour),
+			nil, nil, nil); err != nil {
 			logger.Error(err, "cannot set retry queue")
 			return err
 		}
@@ -144,7 +145,8 @@ func (c *controller) deleteQueue(q *s2hv1.Queue) error {
 				return err
 			}
 		} else {
-			if err := c.queueCtrl.SetRetryQueue(q, q.Spec.NoOfRetry, time.Now()); err != nil {
+			if err := c.queueCtrl.SetRetryQueue(q, q.Spec.NoOfRetry, time.Now(),
+				nil, nil, nil); err != nil {
 				logger.Error(err, "cannot set retry queue")
 				return err
 			}
