@@ -345,10 +345,7 @@ func ensurePullRequestQueueStatus(prQueue *s2hv1.PullRequestQueue) bool {
 		return false
 	}
 
-	if prQueue.Spec.IsPRTriggerFailed == nil {
-		triggerResult := false
-		prQueue.Spec.IsPRTriggerFailed = &triggerResult
-	} else if *prQueue.Spec.IsPRTriggerFailed {
+	if *prQueue.Spec.IsPRTriggerFailed {
 		prQueue.Status.SetCondition(
 			s2hv1.PullRequestQueueCondStarted,
 			corev1.ConditionFalse,
@@ -374,6 +371,9 @@ func ensurePullRequestQueueStatus(prQueue *s2hv1.PullRequestQueue) bool {
 		prQueue.Status.Result = s2hv1.PullRequestQueueFailure
 
 		return true
+	} else if prQueue.Spec.IsPRTriggerFailed == nil {
+		triggerResult := false
+		prQueue.Spec.IsPRTriggerFailed = &triggerResult
 	}
 
 	return false

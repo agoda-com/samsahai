@@ -860,8 +860,6 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				Components:          prComps,
 				NoOfRetry:           1,
 				IsPRTriggerFailed:   &resultFalse,
-				PRTriggerCreatedAt:  nil,
-				PRTriggerFinishedAt: nil,
 			},
 			Status: s2hv1.PullRequestQueueStatus{
 				State:                s2hv1.PullRequestQueueEnvDestroying,
