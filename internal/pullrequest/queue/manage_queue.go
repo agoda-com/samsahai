@@ -81,7 +81,8 @@ func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
 	return nil
 }
 
-func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time) error {
+func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time,
+	isTriggerFailed *bool, triggerCreateAt, triggerFinishedAt *metav1.Time) error {
 	prQueue, ok := obj.(*s2hv1.PullRequestQueue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
@@ -102,6 +103,9 @@ func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt tim
 	}
 	prQueue.Spec.NoOfRetry = noOfRetry
 	prQueue.Spec.NoOfOrder = list.LastQueueOrder()
+	prQueue.Spec.IsPRTriggerFailed = isTriggerFailed
+	prQueue.Spec.PRTriggerCreatedAt = triggerCreateAt
+	prQueue.Spec.PRTriggerFinishedAt = triggerFinishedAt
 	return c.client.Update(context.TODO(), prQueue)
 }
 

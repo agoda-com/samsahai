@@ -1514,8 +1514,17 @@ func (in *PullRequestQueueSpec) DeepCopyInto(out *PullRequestQueueSpec) {
 		*out = make([]Image, len(*in))
 		copy(*out, *in)
 	}
-	if in.PullRequestTriggerCreatedAt != nil {
-		in, out := &in.PullRequestTriggerCreatedAt, &out.PullRequestTriggerCreatedAt
+	if in.IsPRTriggerFailed != nil {
+		in, out := &in.IsPRTriggerFailed, &out.IsPRTriggerFailed
+		*out = new(bool)
+		**out = **in
+	}
+	if in.PRTriggerCreatedAt != nil {
+		in, out := &in.PRTriggerCreatedAt, &out.PRTriggerCreatedAt
+		*out = (*in).DeepCopy()
+	}
+	if in.PRTriggerFinishedAt != nil {
+		in, out := &in.PRTriggerFinishedAt, &out.PRTriggerFinishedAt
 		*out = (*in).DeepCopy()
 	}
 }

@@ -467,7 +467,8 @@ func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time) error {
+func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time,
+	isTriggerFailed *bool, createdAt, finishedAt *metav1.Time) error {
 	q, ok := obj.(*s2hv1.Queue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject

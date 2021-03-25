@@ -56,8 +56,8 @@ func WithClient(client client.Client) Option {
 	}
 }
 
-func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA, gitRepo string,
-	comps []*s2hv1.QueueComponent, imageMissingList []s2hv1.Image, isFailed bool, createAt *metav1.Time) *s2hv1.PullRequestQueue {
+func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA, gitRepo string, comps []*s2hv1.QueueComponent,
+	imageMissingList []s2hv1.Image, isFailed bool, createAt, finishedAt *metav1.Time) *s2hv1.PullRequestQueue {
 
 	qLabels := getPullRequestQueueLabels(teamName, bundleName, prNumber)
 	prQueueName := internal.GenPullRequestBundleName(bundleName, prNumber)
@@ -69,17 +69,18 @@ func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA, g
 			Labels:    qLabels,
 		},
 		Spec: s2hv1.PullRequestQueueSpec{
-			TeamName:                    teamName,
-			BundleName:                  bundleName,
-			PRNumber:                    prNumber,
-			CommitSHA:                   commitSHA,
-			Components:                  comps,
-			UpcomingCommitSHA:           commitSHA,
-			UpcomingComponents:          comps,
-			GitRepository:               gitRepo,
-			ImageMissingList:            imageMissingList,
-			IsPullRequestTriggerFailed:  isFailed,
-			PullRequestTriggerCreatedAt: createAt,
+			TeamName:            teamName,
+			BundleName:          bundleName,
+			PRNumber:            prNumber,
+			CommitSHA:           commitSHA,
+			Components:          comps,
+			UpcomingCommitSHA:   commitSHA,
+			UpcomingComponents:  comps,
+			GitRepository:       gitRepo,
+			ImageMissingList:    imageMissingList,
+			IsPRTriggerFailed:   &isFailed,
+			PRTriggerCreatedAt:  createAt,
+			PRTriggerFinishedAt: finishedAt,
 		},
 		Status: s2hv1.PullRequestQueueStatus{},
 	}
@@ -339,6 +340,45 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 	return
 }
 
+func ensurePullRequestQueueStatus(prQueue *s2hv1.PullRequestQueue) bool {
+	if len(prQueue.Status.Conditions) != 0 {
+		return false
+	}
+
+	if prQueue.Spec.IsPRTriggerFailed == nil {
+		triggerResult := false
+		prQueue.Spec.IsPRTriggerFailed = &triggerResult
+	} else if *prQueue.Spec.IsPRTriggerFailed {
+		prQueue.Status.SetCondition(
+			s2hv1.PullRequestQueueCondStarted,
+			corev1.ConditionFalse,
+			"Pull request queue has not been started due to pull request trigger failed")
+		prQueue.Status.SetCondition(
+			s2hv1.PullRequestQueueCondEnvCreated,
+			corev1.ConditionFalse,
+			"Skipped creating environment due to pull request trigger failed")
+		prQueue.Status.SetCondition(
+			s2hv1.PullRequestQueueCondDependenciesUpdated,
+			corev1.ConditionFalse,
+			"Skipped updating dependencies due to pull request trigger failed")
+		prQueue.Status.SetCondition(
+			s2hv1.PullRequestQueueCondDeployed,
+			corev1.ConditionFalse,
+			"Skipped deploying due to pull request trigger failed")
+		prQueue.Status.SetCondition(
+			s2hv1.PullRequestQueueCondTested,
+			corev1.ConditionFalse,
+			"Skipped running test due to pull request trigger failed")
+
+		prQueue.Status.State = s2hv1.PullRequestQueueCollecting
+		prQueue.Status.Result = s2hv1.PullRequestQueueFailure
+
+		return true
+	}
+
+	return false
+}
+
 // Reconcile reads that state of the cluster for a PullRequestQueue object and makes changes based on the state read
 // and what is in the PullRequestQueue.Spec
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=pullrequestqueues,verbs=get;list;watch;create;update;patch;delete
@@ -462,45 +502,4 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	return reconcile.Result{}, nil
-}
-
-func ensurePullRequestQueueStatus(prQueue *s2hv1.PullRequestQueue) bool {
-	if len(prQueue.Status.Conditions) != 0 {
-		return false
-	}
-
-	if prQueue.Spec.IsPullRequestTriggerFailed {
-		prQueue.Status.SetCondition(
-			s2hv1.PullRequestQueueCondTriggerImagesVerified,
-			corev1.ConditionFalse,
-			"Pull request trigger images does not exist")
-		prQueue.Status.SetCondition(
-			s2hv1.PullRequestQueueCondStarted,
-			corev1.ConditionFalse,
-			"Pull request queue has not been started due to pull request trigger failed")
-		prQueue.Status.SetCondition(
-			s2hv1.PullRequestQueueCondEnvCreated,
-			corev1.ConditionFalse,
-			"Skipped creating environment due to pull request trigger failed")
-		prQueue.Status.SetCondition(
-			s2hv1.PullRequestQueueCondDependenciesUpdated,
-			corev1.ConditionFalse,
-			"Skipped updating dependencies due to pull request trigger failed")
-		prQueue.Status.SetCondition(
-			s2hv1.PullRequestQueueCondDeployed,
-			corev1.ConditionFalse,
-			"Skipped deploying due to pull request trigger failed")
-		prQueue.Status.SetCondition(
-			s2hv1.PullRequestQueueCondTested,
-			corev1.ConditionFalse,
-			"Skipped running test due to pull request trigger failed")
-
-		prQueue.Status.State = s2hv1.PullRequestQueueCollecting
-		prQueue.Status.Result = s2hv1.PullRequestQueueFailure
-
-	} else {
-		prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondTriggerImagesVerified,
-			corev1.ConditionTrue, "Pull request trigger images has been verified")
-	}
-	return true
 }

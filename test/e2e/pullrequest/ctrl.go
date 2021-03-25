@@ -848,22 +848,23 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
 
 		By("Creating mock PullRequestQueue")
+		resultFalse := false
 		prQueue := s2hv1.PullRequestQueue{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      singlePRTriggerName,
 				Namespace: stgNamespace,
 			},
 			Spec: s2hv1.PullRequestQueueSpec{
-				BundleName: singleCompPRBundleName,
-				PRNumber:   prNumber,
-				Components: prComps,
-				NoOfRetry:  1,
+				BundleName:          singleCompPRBundleName,
+				PRNumber:            prNumber,
+				Components:          prComps,
+				NoOfRetry:           1,
+				IsPRTriggerFailed:   &resultFalse,
 			},
 			Status: s2hv1.PullRequestQueueStatus{
 				State:                s2hv1.PullRequestQueueEnvDestroying,
 				Result:               s2hv1.PullRequestQueueFailure,
 				PullRequestNamespace: singlePRNamespace,
-				Conditions:           []s2hv1.PullRequestQueueCondition{mockPrQueueCondition},
 			},
 		}
 		Expect(client.Create(ctx, &prQueue)).NotTo(HaveOccurred(), "Mock queue created error")
@@ -1226,12 +1227,6 @@ var (
 		},
 		Data: map[string][]byte{},
 		Type: "Opaque",
-	}
-
-	mockPrQueueCondition = s2hv1.PullRequestQueueCondition{
-		Type:               s2hv1.PullRequestQueueCondTriggerImagesVerified,
-		Status:             corev1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
 	}
 
 	compSource          = s2hv1.UpdatingSource("public-registry")

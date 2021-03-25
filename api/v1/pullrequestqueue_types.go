@@ -65,21 +65,23 @@ type PullRequestQueueSpec struct {
 	// +optional
 	ImageMissingList []Image `json:"imageMissingList,omitempty"`
 
-	// IsPullRequestTriggerFailed represents the result of pull request trigger
+	// IsPRTriggerFailed represents the result of pull request trigger
 	// +optional
-	IsPullRequestTriggerFailed bool `json:"isPullRequestTriggerFailed,omitempty"`
+	IsPRTriggerFailed *bool `json:"isPrTriggerFailed,omitempty"`
 
-	// PullRequestTriggerCreatedAt represents time when pull request trigger has been start
+	// PRTriggerCreatedAt represents time when pull request trigger has been start
 	// +optional
-	PullRequestTriggerCreatedAt *metav1.Time `json:"pullRequestTriggerCreatedAt,omitempty"`
+	PRTriggerCreatedAt *metav1.Time `json:"prTriggerCreatedAt,omitempty"`
+
+	// PRTriggerFinishedAt represents time when pull request trigger has been finish
+	// +optional
+	PRTriggerFinishedAt *metav1.Time `json:"prTriggerFinishedAt,omitempty"`
 }
 
 // PullRequestQueueConditionType represents a condition type of pull request queue
 type PullRequestQueueConditionType string
 
 const (
-	// PullRequestQueueCondTriggerImagesVerified means the component's images from pull request trigger has been verified
-	PullRequestQueueCondTriggerImagesVerified PullRequestQueueConditionType = "PullRequestQueueCondTriggerImagesVerified"
 	// PullRequestQueueCondStarted means the pull request queue has been started
 	PullRequestQueueCondStarted PullRequestQueueConditionType = "PullRequestQueueStarted"
 	// PullRequestQueueCondEnvCreated means the pull request queue environment has been created

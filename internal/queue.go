@@ -3,6 +3,7 @@ package internal
 import (
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -30,7 +31,8 @@ type QueueController interface {
 	SetReverifyQueueAtFirst(q runtime.Object) error
 
 	// SetRetryQueue sets Queue to retry one time
-	SetRetryQueue(q runtime.Object, noOfRetry int, nextAt time.Time) error
+	SetRetryQueue(q runtime.Object, noOfRetry int, nextAt time.Time,
+		isTriggerFailed *bool, triggerCreateAt, triggerFinishedAt *metav1.Time) error
 
 	// RemoveAllQueues removes all queues
 	RemoveAllQueues(namespace string) error

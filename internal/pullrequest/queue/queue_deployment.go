@@ -64,7 +64,8 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 	}
 
 	if prQueue.Spec.CommitSHA != prQueue.Spec.UpcomingCommitSHA {
-		if err = c.SetRetryQueue(prQueue, 0, time.Now()); err != nil {
+		if err = c.SetRetryQueue(prQueue, 0, time.Now(), prQueue.Spec.IsPRTriggerFailed,
+			prQueue.Spec.PRTriggerCreatedAt, prQueue.Spec.PRTriggerFinishedAt); err != nil {
 			return
 		}
 
@@ -73,11 +74,12 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 		return
 	}
 
-	if prQueue.IsFailure() && prQueue.Status.IsConditionTrue(s2hv1.PullRequestQueueCondTriggerImagesVerified) {
+	if prQueue.IsFailure() && !*prQueue.Spec.IsPRTriggerFailed && prQueue.Spec.IsPRTriggerFailed != nil {
 		maxRetryQueue := int(prConfig.MaxRetry)
 		if prQueue.Spec.NoOfRetry < maxRetryQueue {
 			prQueue.Spec.NoOfRetry++
-			if err = c.SetRetryQueue(prQueue, prQueue.Spec.NoOfRetry, time.Now()); err != nil {
+			if err = c.SetRetryQueue(prQueue, prQueue.Spec.NoOfRetry, time.Now(), prQueue.Spec.IsPRTriggerFailed,
+				prQueue.Spec.PRTriggerCreatedAt, prQueue.Spec.PRTriggerFinishedAt); err != nil {
 				return
 			}
 
