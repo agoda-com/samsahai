@@ -16,7 +16,7 @@ func (c *controller) collectPullRequestQueueResult(ctx context.Context, prQueue 
 	prComps := prQueue.Spec.Components
 	prNamespace := prQueue.Status.PullRequestNamespace
 
-	if !*prQueue.Spec.IsPRTriggerFailed {
+	if prQueue.Spec.IsPRTriggerFailed != nil && !*prQueue.Spec.IsPRTriggerFailed {
 		deployedQueue, err := c.ensurePullRequestComponents(prQueue, prComps)
 		if err != nil {
 			return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
@@ -37,7 +37,7 @@ func (c *controller) collectPullRequestQueueResult(ctx context.Context, prQueue 
 		prQueue.Status.SetPullRequestQueueHistoryName(prQueueHistName)
 
 		// sent report only when pull request trigger success
-		if !*prQueue.Spec.IsPRTriggerFailed {
+		if prQueue.Spec.IsPRTriggerFailed != nil && !*prQueue.Spec.IsPRTriggerFailed {
 			if err := c.sendPullRequestQueueReport(ctx, prQueue); err != nil {
 				return err
 			}

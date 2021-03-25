@@ -74,7 +74,7 @@ func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue 
 		return
 	}
 
-	if prQueue.IsFailure() && !*prQueue.Spec.IsPRTriggerFailed {
+	if prQueue.IsFailure() && !*prQueue.Spec.IsPRTriggerFailed && prQueue.Spec.IsPRTriggerFailed != nil {
 		maxRetryQueue := int(prConfig.MaxRetry)
 		if prQueue.Spec.NoOfRetry < maxRetryQueue {
 			prQueue.Spec.NoOfRetry++
