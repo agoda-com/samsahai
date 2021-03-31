@@ -27,7 +27,7 @@ const (
 	MaxRequestsTimeout   = 60 * time.Second
 	MaxOneRequestTimeout = 10 * time.Second
 
-	pageSize     = 1
+	pageSize     = 100
 	maximumPages = 100
 )
 
@@ -157,6 +157,9 @@ func (c *checker) check(ctx context.Context, domain, fullRepository string, matc
 			if len(respJSON) == 0 || currentPage >= maximumPages {
 				break
 			}
+
+			logger.Debug(fmt.Sprintf("#%d GET image not found", currentPage),
+				"url", reqURL, "image", fullRepository)
 		}
 
 		errCh <- s2herrors.ErrImageVersionNotFound
