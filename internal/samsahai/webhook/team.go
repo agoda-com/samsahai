@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/julienschmidt/httprouter"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,6 +35,8 @@ func (h *handler) getTeams(w http.ResponseWriter, r *http.Request, params httpro
 	for _, team := range teamList.Items {
 		teams = append(teams, team.Name)
 	}
+
+	sort.Strings(teams)
 
 	h.JSON(w, http.StatusOK, &teamsJSON{
 		Teams: teams,
