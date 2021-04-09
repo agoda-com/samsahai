@@ -1207,6 +1207,20 @@
                 }
             }
         },
+        "v1.ConfigGitlab": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "type": "string"
+                },
+                "pipelineToken": {
+                    "type": "string"
+                },
+                "projectID": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.ConfigPullRequest": {
             "type": "object",
             "properties": {
@@ -1395,6 +1409,11 @@
         "v1.ConfigTestRunner": {
             "type": "object",
             "properties": {
+                "gitlab": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigGitlab"
+                },
                 "pollingTime": {
                     "description": "+optional",
                     "type": "string"
@@ -1513,6 +1532,20 @@
                 "restartCount": {
                     "description": "RestartCount defines the number of times the container has been restarted",
                     "type": "integer"
+                }
+            }
+        },
+        "v1.Gitlab": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "type": "string"
+                },
+                "pipelineID": {
+                    "type": "string"
+                },
+                "pipelineURL": {
+                    "type": "string"
                 }
             }
         },
@@ -2409,6 +2442,10 @@
         "v1.TestRunner": {
             "type": "object",
             "properties": {
+                "gitlab": {
+                    "type": "object",
+                    "$ref": "#/definitions/v1.Gitlab"
+                },
                 "teamcity": {
                     "type": "object",
                     "$ref": "#/definitions/v1.Teamcity"

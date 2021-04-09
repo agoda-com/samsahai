@@ -322,6 +322,15 @@ definitions:
           +optional
         type: string
     type: object
+  v1.ConfigGitlab:
+    properties:
+      branch:
+        type: string
+      pipelineToken:
+        type: string
+      projectID:
+        type: string
+    type: object
   v1.ConfigPullRequest:
     properties:
       bundles:
@@ -494,6 +503,10 @@ definitions:
     type: object
   v1.ConfigTestRunner:
     properties:
+      gitlab:
+        $ref: '#/definitions/v1.ConfigGitlab'
+        description: +optional
+        type: object
       pollingTime:
         description: +optional
         type: string
@@ -588,6 +601,15 @@ definitions:
         description: RestartCount defines the number of times the container has been
           restarted
         type: integer
+    type: object
+  v1.Gitlab:
+    properties:
+      branch:
+        type: string
+      pipelineID:
+        type: string
+      pipelineURL:
+        type: string
     type: object
   v1.Image:
     properties:
@@ -1346,6 +1368,9 @@ definitions:
     type: object
   v1.TestRunner:
     properties:
+      gitlab:
+        $ref: '#/definitions/v1.Gitlab'
+        type: object
       teamcity:
         $ref: '#/definitions/v1.Teamcity'
         type: object

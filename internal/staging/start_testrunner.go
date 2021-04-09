@@ -9,6 +9,7 @@ import (
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
+	"github.com/agoda-com/samsahai/internal/staging/testrunner/gitlab"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/testmock"
 )
@@ -97,6 +98,8 @@ func (c *controller) checkTestConfig(queue *s2hv1.Queue) (skipTest bool, testRun
 
 	if testConfig.Teamcity != nil {
 		testRunner = c.testRunners[teamcity.TestRunnerName]
+	} else if testConfig.Gitlab != nil {
+		testRunner = c.testRunners[gitlab.TestRunnerName]
 	} else if testConfig.TestMock != nil {
 		testRunner = c.testRunners[testmock.TestRunnerName]
 	}

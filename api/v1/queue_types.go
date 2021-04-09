@@ -153,6 +153,7 @@ type QueueCondition struct {
 
 type TestRunner struct {
 	Teamcity Teamcity `json:"teamcity,omitempty"`
+	Gitlab   Gitlab   `json:"gitlab,omitempty"`
 }
 
 type Teamcity struct {
@@ -168,6 +169,18 @@ func (t *Teamcity) SetTeamcity(branch, buildID, buildTypeID, buildURL string) {
 	t.BuildID = buildID
 	t.BuildTypeID = buildTypeID
 	t.BuildURL = buildURL
+}
+
+type Gitlab struct {
+	Branch      string `json:"branch,omitempty"`
+	PipelineID  string `json:"pipelineID,omitempty"`
+	PipelineURL string `json:"pipelineURL,omitempty"`
+}
+
+func (t *Gitlab) SetGitlab(branch, pipelineID, pipelineURL string) {
+	t.Branch = branch
+	t.PipelineID = pipelineID
+	t.PipelineURL = pipelineURL
 }
 
 type FailureComponent struct {
