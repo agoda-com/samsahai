@@ -303,8 +303,13 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
   {{- end }} 
   {{- end }} 
 {{- end }}
-{{- if and .PreActiveQueue.TestRunner (and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL) }}
-<br/><b>Teamcity URL:</b> <a href="{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}">#{{ .PreActiveQueue.TestRunner.Teamcity.BuildNumber }}</a>
+{{- if .PreActiveQueue.TestRunner }}
+{{- if and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL }}
+*Teamcity URL:* <{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}|{{ .PreActiveQueue.TestRunner.Teamcity.BuildNumber }}>
+{{- end }}
+{{- if and .PreActiveQueue.TestRunner.Gitlab .PreActiveQueue.TestRunner.Gitlab.PipelineURL }}
+*GitLab URL:* <{{ .PreActiveQueue.TestRunner.Gitlab.PipelineURL }}|{{ .PreActiveQueue.TestRunner.Gitlab.PipelineNumber }}>
+{{- end }}
 {{- end }}
 {{- if eq .Result "Failure" }}
 <br/><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log">Download here</a>

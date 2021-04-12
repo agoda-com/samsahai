@@ -215,6 +215,11 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 		}
 	}
 
+	emptyTestRunner := s2hv1.TestRunner{}
+	if qHist.Spec.Queue.Status.TestRunner == emptyTestRunner {
+		qHist.Spec.Queue.Status.TestRunner = queueHist.Spec.Queue.Status.TestRunner
+	}
+
 	if err := c.sendDeploymentQueueReport(qHist.Name, qHist.Spec.Queue, comp); err != nil {
 		return nil, err
 	}

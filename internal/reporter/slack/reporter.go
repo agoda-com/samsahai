@@ -269,6 +269,9 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
   {{- if .TestRunner.Teamcity.BuildURL }}
 *Teamcity URL:* <{{ .TestRunner.Teamcity.BuildURL }}|{{ .TestRunner.Teamcity.BuildNumber }}>
   {{- end }}
+  {{- if .TestRunner.Gitlab.PipelineURL }}
+*GitLab URL:* <{{ .TestRunner.Gitlab.PipelineURL }}|{{ .TestRunner.Gitlab.PipelineNumber }}>
+  {{- end }}
 *Deployment Logs:* <` + queueLogURL + `|Download here>
 *Deployment History:* <` + queueHistURL + `|Click here>
 {{- end}}
@@ -301,8 +304,13 @@ func (r *reporter) makeActivePromotionStatusReport(atpRpt *internal.ActivePromot
   {{- end }} 
   {{- end }}
 {{- end }}
-{{- if and .PreActiveQueue.TestRunner (and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL) }}
+{{- if .PreActiveQueue.TestRunner }}
+{{- if and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL }}
 *Teamcity URL:* <{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}|{{ .PreActiveQueue.TestRunner.Teamcity.BuildNumber }}>
+{{- end }}
+{{- if and .PreActiveQueue.TestRunner.Gitlab .PreActiveQueue.TestRunner.Gitlab.PipelineURL }}
+*GitLab URL:* <{{ .PreActiveQueue.TestRunner.Gitlab.PipelineURL }}|{{ .PreActiveQueue.TestRunner.Gitlab.PipelineNumber }}>
+{{- end }}
 {{- end }}
 {{- if eq .Result "Failure" }}
 *Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log|Download here>

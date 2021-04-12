@@ -129,7 +129,9 @@ func (c *controller) triggerTest(queue *s2hv1.Queue, testRunner internal.Staging
 			return err
 		}
 		// set teamcity build number to message
-		queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
+		if tr := testRunner.GetName(); tr == teamcity.TestRunnerName {
+			queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
+		}
 
 		queue.Status.SetCondition(
 			s2hv1.QueueTestTriggered,

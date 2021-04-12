@@ -608,6 +608,8 @@ definitions:
         type: string
       pipelineID:
         type: string
+      pipelineNumber:
+        type: string
       pipelineURL:
         type: string
     type: object

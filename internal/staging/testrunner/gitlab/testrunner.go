@@ -30,15 +30,15 @@ const (
 	baseAPIPath = "api/v4/projects"
 
 	statusSuccess = "success"
-	
-	ParamEnvType        = "s2hEnvType"
-	ParamNamespace      = "s2hNamespace"
-	ParamVersion        = "s2hVersion"
-	ParamTeam           = "s2hTeam"
-	ParamGitCommit      = "s2hGitCommit"
-	ParamCompName       = "s2hComponentName"
-	ParamCompVersion    = "s2hComponentVersion"
-	ParamQueueType      = "s2hQueueType"
+
+	ParamEnvType     = "s2hEnvType"
+	ParamNamespace   = "s2hNamespace"
+	ParamVersion     = "s2hVersion"
+	ParamTeam        = "s2hTeam"
+	ParamGitCommit   = "s2hGitCommit"
+	ParamCompName    = "s2hComponentName"
+	ParamCompVersion = "s2hComponentVersion"
+	ParamQueueType   = "s2hQueueType"
 )
 
 type TriggerResponse struct {
@@ -65,7 +65,7 @@ type triggerBuildReq struct {
 // New creates a new gitlab test runner
 func New(client client.Client, baseURL string) internal.StagingTestRunner {
 	t := &testRunner{
-		client: client,
+		client:  client,
 		baseURL: baseURL,
 	}
 
@@ -146,7 +146,8 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 			return
 		}
 
-		currentQueue.Status.TestRunner.Gitlab.SetGitlab(branchName, strconv.Itoa(out.ID), out.WebURL)
+		currentQueue.Status.TestRunner.Gitlab.SetGitlab(branchName, strconv.Itoa(out.ID), out.WebURL,
+			fmt.Sprintf("#%d", out.ID))
 		if t.client != nil {
 			if err := t.client.Update(ctx, currentQueue); err != nil {
 				errCh <- err
@@ -197,7 +198,7 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	}
 
 	isBuildFinished = false
-	if !strings.EqualFold("", response.FinishedAt) {
+	if !strings.EqualFold("", response.StartedAt) && !strings.EqualFold("", response.FinishedAt) {
 		isBuildFinished = true
 	}
 
@@ -205,6 +206,5 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	if strings.EqualFold(statusSuccess, response.Status) {
 		isResultSuccess = true
 	}
-
 	return isResultSuccess, isBuildFinished, nil
 }
