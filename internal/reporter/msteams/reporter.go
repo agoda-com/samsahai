@@ -268,9 +268,14 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
     {{- end }}
 {{- end }} 
 {{- end }} 
+{{- if .PreActiveQueue.TestRunner }}
  {{- if .TestRunner.Teamcity.BuildURL }}
 <br/><b>Teamcity URL:</b> <a href="{{ .TestRunner.Teamcity.BuildURL }}">#{{ .TestRunner.Teamcity.BuildNumber }}</a>
  {{- end }}
+{{- if and .PreActiveQueue.TestRunner.Gitlab .PreActiveQueue.TestRunner.Gitlab.PipelineURL }}
+*GitLab URL:* <{{ .PreActiveQueue.TestRunner.Gitlab.PipelineURL }}|{{ .PreActiveQueue.TestRunner.Gitlab.PipelineNumber }}>
+{{- end }}
+{{- end }}
 <br/><b>Deployment Logs:</b> <a href="` + queueLogURL + `">Download here</a>
 <br/><b>Deployment History:</b> <a href="` + queueHistURL + `">Click here</a>
 {{- end}}
