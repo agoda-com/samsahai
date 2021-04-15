@@ -11,7 +11,6 @@ import (
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/gitlab"
-	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
 
@@ -199,8 +198,8 @@ var _ = Describe("GitLab", func() {
 				testConfig := mockTestConfig
 				currentQueue := mockQueue
 
-				tcRunner := teamcity.New(nil, server.URL, "", "")
-				_, _, err := tcRunner.GetResult(&testConfig, &currentQueue)
+				glRunner := gitlab.New(nil, server.URL)
+				_, _, err := glRunner.GetResult(&testConfig, &currentQueue)
 				g.Expect(err).NotTo(BeNil())
 			})
 		})
