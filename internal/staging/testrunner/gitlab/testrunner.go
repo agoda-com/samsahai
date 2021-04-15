@@ -85,7 +85,7 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 	}
 
 	projectID := testConfig.Gitlab.ProjectID
-	pipelineToken := testConfig.Gitlab.PipelineToken
+	pipelineTriggerToken := testConfig.Gitlab.PipelineTriggerToken
 	branchName := testConfig.Gitlab.Branch
 	prData := internal.PullRequestData{PRNumber: currentQueue.Spec.PRNumber}
 	if prData.PRNumber != "" {
@@ -108,7 +108,7 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 			compVersion = currentQueue.Spec.Components[0].Version
 		}
 		reqJSON := &triggerBuildReq{
-			Token: pipelineToken,
+			Token: pipelineTriggerToken,
 			Variables: map[string]string{
 				ParamEnvType:     currentQueue.GetEnvType(),
 				ParamNamespace:   currentQueue.Namespace,

@@ -1213,7 +1213,7 @@
                 "branch": {
                     "type": "string"
                 },
-                "pipelineToken": {
+                "pipelineTriggerToken": {
                     "type": "string"
                 },
                 "projectID": {

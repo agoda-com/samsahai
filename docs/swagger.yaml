@@ -326,7 +326,7 @@ definitions:
     properties:
       branch:
         type: string
-      pipelineToken:
+      pipelineTriggerToken:
         type: string
       projectID:
         type: string

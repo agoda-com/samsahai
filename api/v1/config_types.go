@@ -138,10 +138,11 @@ type ConfigTeamcity struct {
 	Branch      string `json:"branch" yaml:"branch"`
 }
 
+// ConfigGitlab defines a http rest configuration of gitlab
 type ConfigGitlab struct {
-	ProjectID     string `json:"projectID" yaml:"projectID"`
-	Branch        string `json:"branch" yaml:"branch"`
-	PipelineToken string `json:"pipelineToken" yaml:"pipelineToken"`
+	ProjectID            string `json:"projectID" yaml:"projectID"`
+	Branch               string `json:"branch" yaml:"branch"`
+	PipelineTriggerToken string `json:"pipelineTriggerToken" yaml:"pipelineTriggerToken"`
 }
 
 // ConfigTestMock defines a result of testmock

@@ -31,9 +31,9 @@ var _ = Describe("GitLab", func() {
 
 	mockTestConfig := s2hv1.ConfigTestRunner{
 		Gitlab: &s2hv1.ConfigGitlab{
-			ProjectID:     "1234",
-			Branch:        "main",
-			PipelineToken: "testpipelinetoken",
+			ProjectID:            "1234",
+			Branch:               "main",
+			PipelineTriggerToken: "testpipelineTriggertoken",
 		},
 	}
 
