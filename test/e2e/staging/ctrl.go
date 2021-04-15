@@ -475,7 +475,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		authToken := "12345"
 		stagingCfgCtrl := configctrl.New(mgr)
 		stagingCtrl = staging.NewController(teamName, namespace, authToken, nil, mgr, queueCtrl,
-			stagingCfgCtrl, "", "", "", internal.StagingConfig{})
+			stagingCfgCtrl, "", "", "", "", internal.StagingConfig{})
 
 		go stagingCtrl.Start(chStop)
 
@@ -660,7 +660,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		stagingCfgCtrl := configctrl.New(mgr)
 		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl,
-			stagingCfgCtrl, "", "", "", internal.StagingConfig{})
+			stagingCfgCtrl, "", "", "", "", internal.StagingConfig{})
 		go stagingCtrl.Start(chStop)
 
 		By("Creating Config")
@@ -759,7 +759,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		stagingCfgCtrl := configctrl.New(mgr)
 		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl,
-			stagingCfgCtrl, "", "", "", internal.StagingConfig{})
+			stagingCfgCtrl, "", "", "", "", internal.StagingConfig{})
 		go stagingCtrl.Start(chStop)
 
 		redis := queue.NewQueue(teamName, namespace, redisCompName, "",
@@ -799,7 +799,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		defer close(done)
 
 		stagingCtrl = staging.NewController(teamName, namespace, "", nil, mgr, queueCtrl,
-			nil, "", "", "", internal.StagingConfig{})
+			nil, "", "", "", "", internal.StagingConfig{})
 
 		server := httptest.NewServer(stagingCtrl)
 		defer server.Close()

@@ -94,7 +94,7 @@ func setupStaging(namespace string) (internal.StagingController, internal.QueueC
 	stagingCfgCtrl := configctrl.New(stagingMgr)
 	qctrl := queue.New(namespace, client)
 	stagingCtrl := staging.NewController(teamName, namespace, samsahaiAuthToken, samsahaiClient,
-		stagingMgr, qctrl, stagingCfgCtrl, "", "", "",
+		stagingMgr, qctrl, stagingCfgCtrl, "", "", "", "",
 		internal.StagingConfig{})
 
 	prQueueCtrl := prqueuectrl.New(teamName, namespace, stagingMgr, samsahaiAuthToken, samsahaiClient,
@@ -855,11 +855,11 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				Namespace: stgNamespace,
 			},
 			Spec: s2hv1.PullRequestQueueSpec{
-				BundleName:          singleCompPRBundleName,
-				PRNumber:            prNumber,
-				Components:          prComps,
-				NoOfRetry:           1,
-				IsPRTriggerFailed:   &resultFalse,
+				BundleName:        singleCompPRBundleName,
+				PRNumber:          prNumber,
+				Components:        prComps,
+				NoOfRetry:         1,
+				IsPRTriggerFailed: &resultFalse,
 			},
 			Status: s2hv1.PullRequestQueueStatus{
 				State:                s2hv1.PullRequestQueueEnvDestroying,

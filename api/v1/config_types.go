@@ -125,6 +125,8 @@ type ConfigTestRunner struct {
 	// +optional
 	PollingTime metav1.Duration `json:"pollingTime,omitempty"`
 	// +optional
+	Gitlab *ConfigGitlab `json:"gitlab,omitempty"`
+	// +optional
 	Teamcity *ConfigTeamcity `json:"teamcity,omitempty"`
 	// +optional
 	TestMock *ConfigTestMock `json:"testMock,omitempty"`
@@ -134,6 +136,13 @@ type ConfigTestRunner struct {
 type ConfigTeamcity struct {
 	BuildTypeID string `json:"buildTypeID" yaml:"buildTypeID"`
 	Branch      string `json:"branch" yaml:"branch"`
+}
+
+// ConfigGitlab defines a http rest configuration of gitlab
+type ConfigGitlab struct {
+	ProjectID            string `json:"projectID" yaml:"projectID"`
+	Branch               string `json:"branch" yaml:"branch"`
+	PipelineTriggerToken string `json:"pipelineTriggerToken" yaml:"pipelineTriggerToken"`
 }
 
 // ConfigTestMock defines a result of testmock

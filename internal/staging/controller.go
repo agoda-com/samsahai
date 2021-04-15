@@ -26,6 +26,7 @@ import (
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
+	"github.com/agoda-com/samsahai/internal/staging/testrunner/gitlab"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/testmock"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
@@ -63,6 +64,8 @@ type controller struct {
 	teamcityUsername string
 	teamcityPassword string
 
+	gitlabBaseURL string
+
 	configs internal.StagingConfig
 }
 
@@ -77,6 +80,7 @@ func NewController(
 	teamcityBaseURL string,
 	teamcityUsername string,
 	teamcityPassword string,
+	gitlabBaseURL string,
 	configs internal.StagingConfig,
 ) internal.StagingController {
 	if queueCtrl == nil {
@@ -103,6 +107,7 @@ func NewController(
 		teamcityBaseURL:         teamcityBaseURL,
 		teamcityUsername:        teamcityUsername,
 		teamcityPassword:        teamcityPassword,
+		gitlabBaseURL:           gitlabBaseURL,
 		configs:                 configs,
 	}
 
@@ -245,6 +250,10 @@ func (c *controller) loadTestRunners() {
 	// TODO: should load teamcity credentials from secret, default from samsahai
 	if c.teamcityBaseURL != "" && c.teamcityUsername != "" && c.teamcityPassword != "" {
 		testRunners = append(testRunners, teamcity.New(c.client, c.teamcityBaseURL, c.teamcityUsername, c.teamcityPassword))
+	}
+
+	if c.gitlabBaseURL != "" {
+		testRunners = append(testRunners, gitlab.New(c.client, c.gitlabBaseURL))
 	}
 
 	for _, r := range testRunners {
