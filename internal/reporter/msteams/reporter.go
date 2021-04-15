@@ -272,7 +272,7 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
 <br/><b>Teamcity URL:</b> <a href="{{ .TestRunner.Teamcity.BuildURL }}">#{{ .TestRunner.Teamcity.BuildNumber }}</a>
  {{- end }}
 {{- if .TestRunner.Gitlab.PipelineURL }}
-<br/><b>GitLab URL:</b> <a href="{{ .TestRunner.GitLab.PipelineURL }}">#{{ .TestRunner.Gitlab.PipelineNumber }}</a>
+<br/><b>GitLab URL:</b> <a href="{{ .TestRunner.Gitlab.PipelineURL }}">#{{ .TestRunner.Gitlab.PipelineNumber }}</a>
 {{- end }}
 <br/><b>Deployment Logs:</b> <a href="` + queueLogURL + `">Download here</a>
 <br/><b>Deployment History:</b> <a href="` + queueHistURL + `">Click here</a>
@@ -311,7 +311,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 <br/><b>Teamcity URL:</b> <a href="{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}">#{{ .PreActiveQueue.TestRunner.Teamcity.BuildNumber }}</a>
 {{- end }}
 {{- if and .PreActiveQueue.TestRunner.Gitlab .PreActiveQueue.TestRunner.Gitlab.PipelineURL }}
-<br/><b>GitLab URL:</b> <a href="{{ .PreActiveQueue.TestRunner.GitLab.PipelineURL }}">#{{ .PreActiveQueue.TestRunner.Gitlab.PipelineNumber }}</a>
+<br/><b>GitLab URL:</b> <a href="{{ .PreActiveQueue.TestRunner.Gitlab.PipelineURL }}">#{{ .PreActiveQueue.TestRunner.Gitlab.PipelineNumber }}</a>
 {{- end }}
 {{- end }}
 {{- if eq .Result "Failure" }}

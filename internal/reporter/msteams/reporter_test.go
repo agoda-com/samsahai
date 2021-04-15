@@ -197,6 +197,44 @@ var _ = Describe("send ms teams message", func() {
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("1.1.2"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("image-2"))
 		})
+
+		It("should correctly send component upgrade failure with tested on gitlab", func() {
+			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			rpcComp := &rpc.ComponentUpgrade{
+				Name:   "comp1",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "comp1",
+						Image: &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
+					},
+				},
+				TeamName:   "owner",
+				IsReverify: false,
+			}
+			mockMSTeamsCli := &mockMSTeams{}
+			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
+				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
+			testRunner := s2hv1.TestRunner{Gitlab: s2hv1.Gitlab{PipelineURL: "gitlab-url", PipelineNumber: "gitlab-pipeline-number"}}
+			comp := internal.NewComponentUpgradeReporter(
+				rpcComp,
+				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
+				internal.WithTestRunner(testRunner),
+				internal.WithQueueHistoryName("comp1-5678"),
+			)
+			err := r.SendComponentUpgrade(configCtrl, comp)
+			g.Expect(err).Should(BeNil())
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Component Upgrade"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Failure"))
+			// Should contain information
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("comp1"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("1.1.0"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("image-1"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="gitlab-url">#gitlab-pipeline-number</a>`))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("owner"))
+		})
 	})
 
 	Describe("send pull request queue", func() {
@@ -483,6 +521,31 @@ var _ = Describe("send ms teams message", func() {
 				"cannot rollback an active promotion"))
 			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(
 				"cannot demote a previous active environment, previous active namespace has been destroyed immediately"))
+			g.Expect(err).Should(BeNil())
+		})
+
+		It("should correctly send active promotion success with tested on gitlab", func() {
+			configCtrl := newMockConfigCtrl("", "", "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			status := s2hv1.ActivePromotionStatus{
+				Result:               s2hv1.ActivePromotionSuccess,
+				HasOutdatedComponent: false,
+				PreActiveQueue: s2hv1.QueueStatus{
+					TestRunner: s2hv1.TestRunner{
+						Gitlab: s2hv1.Gitlab{PipelineURL: "gitlab-url", PipelineNumber: "gitlab-pipeline-number"},
+					},
+				},
+			}
+			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner",
+				"owner-123456", 1)
+			mockMSTeamsCli := &mockMSTeams{}
+			r := s2hmsteams.New("tenantID", "clientID", "clientSecret", "user",
+				"pass", s2hmsteams.WithMSTeamsClient(mockMSTeamsCli))
+			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("Success"))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring(`<a href="gitlab-url">#gitlab-pipeline-number</a>`))
+			g.Expect(mockMSTeamsCli.message).Should(ContainSubstring("All components are up to date!"))
 			g.Expect(err).Should(BeNil())
 		})
 	})
