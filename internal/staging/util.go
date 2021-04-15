@@ -110,7 +110,7 @@ func (c *controller) deleteQueue(q *s2hv1.Queue) error {
 	if isDeploySuccess && isTestSuccess && !isReverify {
 		// success deploy and test without reverify state
 		// delete queue
-		if err := c.client.Delete(context.TODO(), q); err != nil {
+		if err := c.client.Delete(context.TODO(), q); err != nil && !k8serrors.IsNotFound(err) {
 			logger.Error(err, "deleting queue error")
 			return err
 		}
