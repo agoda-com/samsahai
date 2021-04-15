@@ -94,6 +94,18 @@ spec:
           # build branch which wants to run against desired components
           branch: <default>
 
+        # your gitlab pipeline configuration
+        gitlab:
+          # gitlab repository id which wants to run against desired components
+          projectID: <gitlab_project_id>
+
+          # pipeline branch which wants to run against desired components
+          branch: <pipeline_branch>
+
+          # pipeline trigger token of your ci/cd pipeline
+          # generate in gitlab repository which wants to run against desired components
+          pipelineTriggerToken: <pipeline_trigger_token>
+
         # how long all testing flows in teamcity should take?
         # support units are either <number>s, <number>m or <number>h
         # default value is 30m
@@ -167,6 +179,18 @@ spec:
 
           # build branch which wants to run against desired components
           branch: <default>
+
+        # your gitlab pipeline configuration
+        gitlab:
+          # gitlab repository id which wants to run against desired components
+          projectID: <gitlab_project_id>
+
+          # pipeline branch which wants to run against desired components
+          branch: <pipeline_branch>
+
+          # pipeline trigger token of your ci/cd pipeline
+          # generate in gitlab repository which wants to run against desired components
+          pipelineTriggerToken: <pipeline_trigger_token>
 
         # how long all testing flows in teamcity should take?
         # support units are either <number>s, <number>m or <number>h
@@ -276,6 +300,18 @@ spec:
                 # build branch which wants to run against desired components
                 # support {{ .PRNumber }} parameter
                 branch: 'pull/{{ .PRNumber }}'
+
+              # your gitlab pipeline configuration
+              gitlab:
+                # gitlab repository id which wants to run against desired components
+                projectID: <gitlab_project_id>
+
+                # pipeline branch which wants to run against desired components
+                branch: <pipeline_branch>
+
+                # pipeline trigger token of your ci/cd pipeline
+                # generate in gitlab repository which wants to run against desired components
+                pipelineTriggerToken: <pipeline_trigger_token>
 
               # how long all testing flows in teamcity should take?
               # support units are either <number>s, <number>m or <number>h
