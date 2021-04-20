@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
@@ -12,18 +12,19 @@ import (
 type EventType string
 
 const (
-	ComponentUpgradeType   EventType = "ComponentUpgrade"
-	ActivePromotionType    EventType = "ActivePromotion"
-	ImageMissingType       EventType = "ImageMissing"
-	PullRequestTriggerType EventType = "PullRequestTrigger"
-	PullRequestQueueType   EventType = "PullRequestQueue"
+	ComponentUpgradeType         EventType = "ComponentUpgrade"
+	ActivePromotionType          EventType = "ActivePromotion"
+	ImageMissingType             EventType = "ImageMissing"
+	PullRequestTriggerType       EventType = "PullRequestTrigger"
+	PullRequestQueueType         EventType = "PullRequestQueue"
+	ActiveEnvironmentDeletedType EventType = "ActiveEnvironmentDeleted"
 )
 
 // ComponentUpgradeOption allows specifying various configuration
 type ComponentUpgradeOption func(*ComponentUpgradeReporter)
 
 // WithTestRunner specifies test runner to override when creating component upgrade reporter object
-func WithTestRunner(tr s2hv1beta1.TestRunner) ComponentUpgradeOption {
+func WithTestRunner(tr s2hv1.TestRunner) ComponentUpgradeOption {
 	return func(c *ComponentUpgradeReporter) {
 		c.TestRunner = tr
 	}
@@ -47,13 +48,20 @@ func WithNamespace(ns string) ComponentUpgradeOption {
 	}
 }
 
+// WithComponentUpgradeOptCredential specifies credential to override when create component upgrade reporter object
+func WithComponentUpgradeOptCredential(creds s2hv1.Credential) ComponentUpgradeOption {
+	return func(c *ComponentUpgradeReporter) {
+		c.Credential = creds
+	}
+}
+
 // ComponentUpgradeReporter manages component upgrade report
 type ComponentUpgradeReporter struct {
-	IssueTypeStr IssueType             `json:"issueTypeStr,omitempty"`
-	StatusStr    StatusType            `json:"statusStr,omitempty"`
-	StatusInt    int32                 `json:"statusInt,omitempty"`
-	TestRunner   s2hv1beta1.TestRunner `json:"testRunner,omitempty"`
-	Credential   s2hv1beta1.Credential `json:"credential,omitempty"`
+	IssueTypeStr IssueType        `json:"issueTypeStr,omitempty"`
+	StatusStr    StatusType       `json:"statusStr,omitempty"`
+	StatusInt    int32            `json:"statusInt,omitempty"`
+	TestRunner   s2hv1.TestRunner `json:"testRunner,omitempty"`
+	Credential   s2hv1.Credential `json:"credential,omitempty"`
 	Envs         map[string]string
 
 	*rpc.ComponentUpgrade
@@ -83,8 +91,9 @@ func NewComponentUpgradeReporter(comp *rpc.ComponentUpgrade, s2hConfig SamsahaiC
 type StatusType string
 
 const (
-	StatusSuccess StatusType = "Success"
-	StatusFailure StatusType = "Failure"
+	StatusSuccess  StatusType = "Success"
+	StatusFailure  StatusType = "Failure"
+	StatusCanceled StatusType = "Canceled"
 )
 
 // IssueType represents an issue type of component upgrade failure
@@ -101,8 +110,8 @@ const (
 type ActivePromotionOption func(*ActivePromotionReporter)
 
 // TODO: should override tc credential per team
-// WithCredential specifies credential to override when create active promotion reporter object
-func WithCredential(creds s2hv1beta1.Credential) ActivePromotionOption {
+// WithActivePromotionOptCredential specifies credential to override when create active promotion reporter object
+func WithActivePromotionOptCredential(creds s2hv1.Credential) ActivePromotionOption {
 	return func(c *ActivePromotionReporter) {
 		c.Credential = creds
 	}
@@ -110,17 +119,17 @@ func WithCredential(creds s2hv1beta1.Credential) ActivePromotionOption {
 
 // ActivePromotionReporter manages active promotion report
 type ActivePromotionReporter struct {
-	TeamName               string                `json:"teamName,omitempty"`
-	CurrentActiveNamespace string                `json:"currentActiveNamespace,omitempty"`
-	Runs                   int                   `json:"runs,omitempty"`
-	Credential             s2hv1beta1.Credential `json:"credential,omitempty"`
+	TeamName               string           `json:"teamName,omitempty"`
+	CurrentActiveNamespace string           `json:"currentActiveNamespace,omitempty"`
+	Runs                   int              `json:"runs,omitempty"`
+	Credential             s2hv1.Credential `json:"credential,omitempty"`
 	Envs                   map[string]string
-	s2hv1beta1.ActivePromotionStatus
+	s2hv1.ActivePromotionStatus
 	SamsahaiConfig
 }
 
 // NewActivePromotionReporter creates active promotion reporter object
-func NewActivePromotionReporter(status s2hv1beta1.ActivePromotionStatus, s2hConfig SamsahaiConfig,
+func NewActivePromotionReporter(status s2hv1.ActivePromotionStatus, s2hConfig SamsahaiConfig,
 	teamName, currentNs string, runs int, opts ...ActivePromotionOption) *ActivePromotionReporter {
 	c := &ActivePromotionReporter{
 		SamsahaiConfig:         s2hConfig,
@@ -143,19 +152,24 @@ func NewActivePromotionReporter(status s2hv1beta1.ActivePromotionStatus, s2hConf
 type ImageMissingReporter struct {
 	TeamName      string `json:"teamName,omitempty"`
 	ComponentName string `json:"componentName,omitempty"`
-	Envs          map[string]string
-	s2hv1beta1.Image
+	// Reason represents error reason
+	Reason string `json:"reason,omitempty"`
+	Envs   map[string]string
+	s2hv1.Image
 	SamsahaiConfig
 }
 
 // NewImageMissingReporter creates image missing reporter object
-func NewImageMissingReporter(image s2hv1beta1.Image, s2hConfig SamsahaiConfig, teamName, compName string) *ImageMissingReporter {
+func NewImageMissingReporter(image s2hv1.Image, s2hConfig SamsahaiConfig,
+	teamName, compName, reason string) *ImageMissingReporter {
+
 	c := &ImageMissingReporter{
 		SamsahaiConfig: s2hConfig,
 		TeamName:       teamName,
 		ComponentName:  compName,
 		Image:          image,
 		Envs:           listEnv(),
+		Reason:         reason,
 	}
 
 	return c
@@ -163,27 +177,50 @@ func NewImageMissingReporter(image s2hv1beta1.Image, s2hConfig SamsahaiConfig, t
 
 // PullRequestTriggerReporter manages pull request trigger report
 type PullRequestTriggerReporter struct {
-	TeamName      string            `json:"teamName,omitempty"`
-	ComponentName string            `json:"componentName,omitempty"`
-	PRNumber      string            `json:"prNumber,omitempty"`
-	Result        string            `json:"result,omitempty"`
-	Image         *s2hv1beta1.Image `json:"image,omitempty"`
-	s2hv1beta1.PullRequestTriggerStatus
+	TeamName   string                               `json:"teamName,omitempty"`
+	BundleName string                               `json:"bundleName,omitempty"`
+	PRNumber   string                               `json:"prNumber,omitempty"`
+	Result     string                               `json:"result,omitempty"`
+	Components []*s2hv1.PullRequestTriggerComponent `json:"components,omitempty"`
+	NoOfRetry  int                                  `json:"noOfRetry,omitempty"`
+	s2hv1.PullRequestTriggerStatus
 	SamsahaiConfig
 }
 
 // NewPullRequestTriggerResultReporter creates pull request trigger result reporter object
-func NewPullRequestTriggerResultReporter(status s2hv1beta1.PullRequestTriggerStatus, s2hConfig SamsahaiConfig,
-	teamName, compName, prNumber, result string, image *s2hv1beta1.Image) *PullRequestTriggerReporter {
+func NewPullRequestTriggerResultReporter(status s2hv1.PullRequestTriggerStatus, s2hConfig SamsahaiConfig,
+	teamName, bundleName, prNumber, result string, noOfRetry int,
+	comps []*s2hv1.PullRequestTriggerComponent) *PullRequestTriggerReporter {
 
 	c := &PullRequestTriggerReporter{
 		PullRequestTriggerStatus: status,
 		TeamName:                 teamName,
-		ComponentName:            compName,
+		BundleName:               bundleName,
 		PRNumber:                 prNumber,
 		Result:                   result,
-		Image:                    image,
+		Components:               comps,
 		SamsahaiConfig:           s2hConfig,
+		NoOfRetry:                noOfRetry,
+	}
+
+	return c
+}
+
+// ActiveEnvironmentDeletedReporter manages active namespace deletion report
+type ActiveEnvironmentDeletedReporter struct {
+	TeamName        string `json:"teamName,omitempty"`
+	ActiveNamespace string `json:"activeNamespace,omitempty"`
+	DeletedBy       string `json:"deletedBy,omitempty"`
+	DeletedAt       string `json:"deletedAt,omitempty"`
+}
+
+// NewActiveEnvironmentDeletedReporter creates deleted active namespace reporter object
+func NewActiveEnvironmentDeletedReporter(teamname, activeNs, deletedBy, deleteAt string) *ActiveEnvironmentDeletedReporter {
+	c := &ActiveEnvironmentDeletedReporter{
+		TeamName:        teamname,
+		ActiveNamespace: activeNs,
+		DeletedBy:       deletedBy,
+		DeletedAt:       deleteAt,
 	}
 
 	return c
@@ -206,6 +243,8 @@ func convertStatusType(statusType rpc.ComponentUpgrade_UpgradeStatus) StatusType
 	switch statusType {
 	case rpc.ComponentUpgrade_UpgradeStatus_SUCCESS:
 		return StatusSuccess
+	case rpc.ComponentUpgrade_UpgradeStatus_CANCELED:
+		return StatusCanceled
 	default:
 		return StatusFailure
 	}
@@ -240,4 +279,7 @@ type Reporter interface {
 
 	// SendPullRequestTriggerResult sends pull request trigger result information
 	SendPullRequestTriggerResult(configCtrl ConfigController, prTriggerRpt *PullRequestTriggerReporter) error
+
+	// SendActiveEnvironmentDeleted send active namespace deleted information
+	SendActiveEnvironmentDeleted(configCtrl ConfigController, activeNsDeletedRpt *ActiveEnvironmentDeletedReporter) error
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -20,7 +20,7 @@ const (
 	ExecutionTimeout = 60 * time.Second
 )
 
-type execCommand func(ctx context.Context, configPath string, cmdObj *s2hv1beta1.CommandAndArgs) ([]byte, error)
+type execCommand func(ctx context.Context, configPath string, cmdObj *s2hv1.CommandAndArgs) ([]byte, error)
 
 type reporter struct {
 	timeout     time.Duration
@@ -174,7 +174,29 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return nil
 }
 
-func (r *reporter) execute(cmdObj *s2hv1beta1.CommandAndArgs, event internal.EventType) error {
+// SendActiveEnvironmentDeleted implement the reporter SendActiveEnvironmentDeleted function
+func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController, activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
+	config, err := configCtrl.Get(activeNsDeletedRpt.TeamName)
+	if err != nil {
+		return err
+	}
+
+	if config.Status.Used.Reporter == nil ||
+		config.Status.Used.Reporter.Shell == nil ||
+		config.Status.Used.Reporter.Shell.ActiveEnvironmentDeleted == nil {
+		return nil
+	}
+
+	cmdObj := cmd.RenderTemplate(config.Status.Used.Reporter.Shell.ActiveEnvironmentDeleted.Command,
+		config.Status.Used.Reporter.Shell.ActiveEnvironmentDeleted.Args, activeNsDeletedRpt)
+	if err := r.execute(cmdObj, internal.ActiveEnvironmentDeletedType); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *reporter) execute(cmdObj *s2hv1.CommandAndArgs, event internal.EventType) error {
 	logger.Debug("start executing command", "event", event)
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), r.timeout)

@@ -11,12 +11,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
 
 func (c *controller) Add(obj runtime.Object, priorityQueues []string) error {
-	prQueue, ok := obj.(*s2hv1beta1.PullRequestQueue)
+	prQueue, ok := obj.(*s2hv1.PullRequestQueue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
 	}
@@ -41,7 +41,7 @@ func (c *controller) Size(namespace string) int {
 
 // does not support first queue
 func (c *controller) First(namespace string) (runtime.Object, error) {
-	return &s2hv1beta1.PullRequestQueue{}, nil
+	return &s2hv1.PullRequestQueue{}, nil
 }
 
 func (c *controller) Remove(obj runtime.Object) error {
@@ -49,11 +49,11 @@ func (c *controller) Remove(obj runtime.Object) error {
 }
 
 func (c *controller) RemoveAllQueues(namespace string) error {
-	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.PullRequestQueue{}, client.InNamespace(namespace))
+	return c.client.DeleteAllOf(context.TODO(), &s2hv1.PullRequestQueue{}, client.InNamespace(namespace))
 }
 
 func (c *controller) SetLastOrder(obj runtime.Object) error {
-	prQueue, ok := obj.(*s2hv1beta1.PullRequestQueue)
+	prQueue, ok := obj.(*s2hv1.PullRequestQueue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
 	}
@@ -65,11 +65,11 @@ func (c *controller) SetLastOrder(obj runtime.Object) error {
 		return err
 	}
 
-	prQueue.Labels = c.getStateLabel(stateWaiting)
+	c.appendStateLabel(prQueue, stateWaiting)
 	prQueue.Spec.NoOfOrder = queueList.LastQueueOrder()
 
 	createdAt := prQueue.Status.CreatedAt
-	prQueue.Status = s2hv1beta1.PullRequestQueueStatus{
+	prQueue.Status = s2hv1.PullRequestQueueStatus{
 		CreatedAt: createdAt,
 	}
 
@@ -81,8 +81,9 @@ func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
 	return nil
 }
 
-func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time) error {
-	prQueue, ok := obj.(*s2hv1beta1.PullRequestQueue)
+func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time,
+	isTriggerFailed *bool, triggerCreateAt, triggerFinishedAt *metav1.Time) error {
+	prQueue, ok := obj.(*s2hv1.PullRequestQueue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
 	}
@@ -95,17 +96,20 @@ func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt tim
 	}
 
 	now := metav1.Now()
-	prQueue.Labels = c.getStateLabel(stateWaiting)
-	prQueue.Status = s2hv1beta1.PullRequestQueueStatus{
+	c.appendStateLabel(prQueue, stateWaiting)
+	prQueue.Status = s2hv1.PullRequestQueueStatus{
 		CreatedAt: &now,
-		State:     s2hv1beta1.PullRequestQueueWaiting,
+		State:     s2hv1.PullRequestQueueWaiting,
 	}
 	prQueue.Spec.NoOfRetry = noOfRetry
 	prQueue.Spec.NoOfOrder = list.LastQueueOrder()
+	prQueue.Spec.IsPRTriggerFailed = isTriggerFailed
+	prQueue.Spec.PRTriggerCreatedAt = triggerCreateAt
+	prQueue.Spec.PRTriggerFinishedAt = triggerFinishedAt
 	return c.client.Update(context.TODO(), prQueue)
 }
 
-func (c *controller) addQueue(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue, atTop bool) error {
+func (c *controller) addQueue(ctx context.Context, prQueue *s2hv1.PullRequestQueue, atTop bool) error {
 	c.resetQueueOrder(ctx)
 
 	prQueueList, err := c.listPullRequestQueues(nil, prQueue.Namespace)
@@ -115,7 +119,7 @@ func (c *controller) addQueue(ctx context.Context, prQueue *s2hv1beta1.PullReque
 		return err
 	}
 
-	tmpPRQueue := &s2hv1beta1.PullRequestQueue{}
+	tmpPRQueue := &s2hv1.PullRequestQueue{}
 	err = c.client.Get(ctx, types.NamespacedName{
 		Namespace: c.namespace,
 		Name:      prQueue.Name,
@@ -139,7 +143,8 @@ func (c *controller) addQueue(ctx context.Context, prQueue *s2hv1beta1.PullReque
 	currentRetry := tmpPRQueue.Spec.NoOfRetry
 
 	// update pull request queue
-	tmpPRQueue.Spec = prQueue.Spec
+	tmpPRQueue.Spec.UpcomingCommitSHA = prQueue.Spec.UpcomingCommitSHA
+	tmpPRQueue.Spec.UpcomingComponents = prQueue.Spec.UpcomingComponents
 	tmpPRQueue.Spec.NoOfOrder = currentOrder
 	tmpPRQueue.Spec.NoOfRetry = currentRetry
 	if err := c.client.Update(ctx, tmpPRQueue); err != nil {
@@ -170,7 +175,7 @@ func (c *controller) resetQueueOrder(ctx context.Context) {
 	}
 
 	runningPRQueues.Sort()
-	updateList := make([]s2hv1beta1.PullRequestQueue, 0)
+	updateList := make([]s2hv1.PullRequestQueue, 0)
 
 	// set order for all running queues
 	count := 1

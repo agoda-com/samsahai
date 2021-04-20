@@ -13,13 +13,14 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
@@ -29,7 +30,7 @@ import (
 )
 
 // deployEnvironment deploy components into namespace
-func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
+func (c *controller) deployEnvironment(queue *s2hv1.Queue) error {
 	deployTimeout := metav1.Duration{Duration: 1800 * time.Second}
 
 	if deployConfig := c.getDeployConfiguration(queue); deployConfig != nil && deployConfig.Timeout.Duration != 0 {
@@ -43,8 +44,8 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 		return err
 	}
 
-	queueComps := make(map[string]*s2hv1beta1.Component)       // map[component name]component
-	queueParentComps := make(map[string]*s2hv1beta1.Component) // map[parent component name]parent component
+	queueComps := make(map[string]*s2hv1.Component)       // map[component name]component
+	queueParentComps := make(map[string]*s2hv1.Component) // map[parent component name]parent component
 
 	switch {
 	case queue.IsActivePromotionQueue():
@@ -73,7 +74,7 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 	}
 
 	// Deploy
-	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueDeployStarted) {
+	if !queue.Status.IsConditionTrue(s2hv1.QueueDeployStarted) {
 		isDeployed, err := c.deployComponents(deployEngine, queue, queueComps, queueParentComps, deployTimeout.Duration)
 		if err != nil {
 			if !isDeployed {
@@ -81,22 +82,22 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 			}
 
 			queue.Status.SetCondition(
-				s2hv1beta1.QueueDeployStarted,
+				s2hv1.QueueDeployStarted,
 				corev1.ConditionTrue,
 				"queue started to deploy")
 
 			queue.Status.SetCondition(
-				s2hv1beta1.QueueDeployed,
+				s2hv1.QueueDeployed,
 				corev1.ConditionFalse,
 				fmt.Sprintf("release deployment failed: %s", err.Error()))
 
-			logger.Error(s2herrors.ErrReleaseFailed, fmt.Sprintf("queue: %s release failed", queue.Name))
+			logger.Error(err, fmt.Sprintf("queue: %s release failed", queue.Name))
 
-			return c.updateQueueWithState(queue, s2hv1beta1.Collecting)
+			return c.updateQueueWithState(queue, s2hv1.Collecting)
 		}
 
 		queue.Status.SetCondition(
-			s2hv1beta1.QueueDeployStarted,
+			s2hv1.QueueDeployStarted,
 			corev1.ConditionTrue,
 			"queue started to deploy")
 		if err := c.updateQueue(queue); err != nil {
@@ -111,11 +112,15 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 	}
 
 	if len(releases) == 0 && !deployEngine.IsMocked() {
+		logger.Debug("there is no release found, release has been being installed",
+			"queue", queue.Name)
 		return nil
 	}
 
 	if len(releases) != 0 && queue.IsPullRequestQueue() {
 		if err := c.deployActiveServicesIntoPullRequestEnvironment(); err != nil {
+			logger.Error(err, "cannot deploy active services into pull request environment",
+				"queue", queue.Name)
 			return err
 		}
 	}
@@ -123,13 +128,13 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 	isDeployed, isFailed, errMsg := c.checkAllReleasesDeployed(deployEngine, releases)
 	if isFailed {
 		queue.Status.SetCondition(
-			s2hv1beta1.QueueDeployed,
+			s2hv1.QueueDeployed,
 			corev1.ConditionFalse,
 			fmt.Sprintf("release deployment failed: %s", errMsg))
 
 		logger.Error(s2herrors.ErrReleaseFailed, fmt.Sprintf("queue: %s release failed", queue.Name))
 
-		return c.updateQueueWithState(queue, s2hv1beta1.Collecting)
+		return c.updateQueueWithState(queue, s2hv1.Collecting)
 	} else if !isDeployed {
 		time.Sleep(2 * time.Second)
 		return nil
@@ -147,18 +152,19 @@ func (c *controller) deployEnvironment(queue *s2hv1beta1.Queue) error {
 
 	// environment is ready
 	queue.Status.SetCondition(
-		s2hv1beta1.QueueDeployed,
+		s2hv1.QueueDeployed,
 		corev1.ConditionTrue,
 		"queue deployment succeeded")
-	return c.updateQueueWithState(queue, s2hv1beta1.Testing)
+	return c.updateQueueWithState(queue, s2hv1.Testing)
 }
 
-func (c *controller) getAllComponentsFromQueueType(q *s2hv1beta1.Queue) (
-	comps map[string]*s2hv1beta1.Component, err error) {
+func (c *controller) getAllComponentsFromQueueType(q *s2hv1.Queue) (
+	comps map[string]*s2hv1.Component, err error) {
 
 	configCtrl := c.getConfigController()
 	if q.IsPullRequestQueue() {
-		comps, err = configCtrl.GetPullRequestComponents(c.teamName)
+		prBundleName := q.Spec.Name
+		comps, err = configCtrl.GetPullRequestComponents(c.teamName, prBundleName, true)
 		if err != nil {
 			return
 		}
@@ -172,11 +178,11 @@ func (c *controller) getAllComponentsFromQueueType(q *s2hv1beta1.Queue) (
 	return
 }
 
-func (c *controller) getParentAndQueueCompsFromQueueType(q *s2hv1beta1.Queue) (
-	queueParentComps, queueComps map[string]*s2hv1beta1.Component, err error) {
+func (c *controller) getParentAndQueueCompsFromQueueType(q *s2hv1.Queue) (
+	queueParentComps, queueComps map[string]*s2hv1.Component, err error) {
 
-	queueComps = make(map[string]*s2hv1beta1.Component)       // map[component name]component
-	queueParentComps = make(map[string]*s2hv1beta1.Component) // map[parent component name]parent component
+	queueComps = make(map[string]*s2hv1.Component)       // map[component name]component
+	queueParentComps = make(map[string]*s2hv1.Component) // map[parent component name]parent component
 
 	comps, err := c.getAllComponentsFromQueueType(q)
 	if err != nil {
@@ -194,20 +200,30 @@ func (c *controller) getParentAndQueueCompsFromQueueType(q *s2hv1beta1.Queue) (
 
 		if comp.Parent != "" {
 			delete(queueParentComps, qComp.Name)
-			queueParentComps[comp.Parent] = comps[comp.Parent]
+			if _, ok := comps[comp.Parent]; !ok {
+				var parentComps map[string]*s2hv1.Component
+				configCtrl := c.getConfigController()
+				parentComps, err = configCtrl.GetParentComponents(c.teamName)
+				if err != nil {
+					return
+				}
+				queueParentComps[comp.Parent] = parentComps[comp.Parent]
+			} else {
+				queueParentComps[comp.Parent] = comps[comp.Parent]
+			}
 		}
 	}
 
 	return
 }
 
-func (c *controller) updateQueueComponentsSpec(q *s2hv1beta1.Queue) error {
+func (c *controller) updateQueueComponentsSpec(q *s2hv1.Queue) error {
 	comps, err := c.getAllComponentsFromQueueType(q)
 	if err != nil {
 		return err
 	}
 
-	newComps := make([]*s2hv1beta1.QueueComponent, 0)
+	newComps := make([]*s2hv1.QueueComponent, 0)
 	for _, qComp := range q.Spec.Components {
 		if _, ok := comps[qComp.Name]; !ok {
 			continue
@@ -229,7 +245,7 @@ func (c *controller) updateQueueComponentsSpec(q *s2hv1beta1.Queue) error {
 
 // checkDeployTimeout checks if deploy duration was longer than timeout.
 // change state to `Collecting` if timeout
-func (c *controller) checkDeployTimeout(queue *s2hv1beta1.Queue, deployTimeout metav1.Duration) error {
+func (c *controller) checkDeployTimeout(queue *s2hv1.Queue, deployTimeout metav1.Duration) error {
 	now := metav1.Now()
 
 	if queue.Status.StartDeployTime == nil {
@@ -238,12 +254,12 @@ func (c *controller) checkDeployTimeout(queue *s2hv1beta1.Queue, deployTimeout m
 	} else if now.Sub(queue.Status.StartDeployTime.Time) > deployTimeout.Duration {
 		// deploy timeout
 		queue.Status.SetCondition(
-			s2hv1beta1.QueueDeployed,
+			s2hv1.QueueDeployed,
 			corev1.ConditionFalse,
 			"queue deployment timeout")
 
 		// update queue back to k8s
-		if err := c.updateQueueWithState(queue, s2hv1beta1.Collecting); err != nil {
+		if err := c.updateQueueWithState(queue, s2hv1.Collecting); err != nil {
 			return err
 		}
 
@@ -256,7 +272,7 @@ func (c *controller) checkDeployTimeout(queue *s2hv1beta1.Queue, deployTimeout m
 }
 
 // validateStagingQueue checks if Queue exist in Configuration.
-func (c *controller) validateStagingQueue(queue *s2hv1beta1.Queue) (bool, error) {
+func (c *controller) validateStagingQueue(queue *s2hv1.Queue) (bool, error) {
 	configCtrl := c.getConfigController()
 	comps, err := configCtrl.GetComponents(c.teamName)
 	if err != nil {
@@ -287,7 +303,7 @@ func (c *controller) validateStagingQueue(queue *s2hv1beta1.Queue) (bool, error)
 	}
 
 	if isNotExist {
-		if err := c.client.Delete(context.TODO(), queue); err != nil {
+		if err := c.client.Delete(context.TODO(), queue); err != nil && !k8serrors.IsNotFound(err) {
 			logger.Error(err, "deleting queue error")
 			return false, err
 		}
@@ -297,8 +313,8 @@ func (c *controller) validateStagingQueue(queue *s2hv1beta1.Queue) (bool, error)
 	return true, nil
 }
 
-func (c *controller) getStableComponentsMapFromQueueType(q *s2hv1beta1.Queue) (
-	stableMap map[string]s2hv1beta1.StableComponent, err error) {
+func (c *controller) getStableComponentsMapFromQueueType(q *s2hv1.Queue) (
+	stableMap map[string]s2hv1.StableComponent, err error) {
 
 	namespace := c.namespace
 	if q.IsPullRequestQueue() {
@@ -340,7 +356,7 @@ func (c *controller) getTeamActiveNamespace() (string, error) {
 	return teamWithNs.Namespace, nil
 }
 
-func genCompValueFromQueue(compName string, qComps []*s2hv1beta1.QueueComponent) map[string]interface{} {
+func genCompValueFromQueue(compName string, qComps []*s2hv1.QueueComponent) map[string]interface{} {
 	for _, qComp := range qComps {
 		if qComp.Name == compName {
 			image := make(map[string]interface{})
@@ -362,23 +378,23 @@ func genCompValueFromQueue(compName string, qComps []*s2hv1beta1.QueueComponent)
 
 // applyEnvBaseConfig applies input values with specific env. configuration based on Queue.Spec.Type
 func applyEnvBaseConfig(
-	cfg *s2hv1beta1.ConfigSpec,
+	cfg *s2hv1.ConfigSpec,
 	values map[string]interface{},
-	qt s2hv1beta1.QueueType,
-	comp *s2hv1beta1.Component,
+	qt s2hv1.QueueType,
+	comp *s2hv1.Component,
 	teamName string,
 ) map[string]interface{} {
-	var target map[string]s2hv1beta1.ComponentValues
+	var target map[string]s2hv1.ComponentValues
 	var err error
 
 	switch qt {
-	case s2hv1beta1.QueueTypePreActive:
-		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvPreActive, teamName)
-	case s2hv1beta1.QueueTypePromoteToActive:
-		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvActive, teamName)
-	case s2hv1beta1.QueueTypeUpgrade, s2hv1beta1.QueueTypeReverify:
-		target, err = configctrl.GetEnvValues(cfg, s2hv1beta1.EnvStaging, teamName)
-	case s2hv1beta1.QueueTypeDemoteFromActive:
+	case s2hv1.QueueTypePreActive:
+		target, err = configctrl.GetEnvValues(cfg, s2hv1.EnvPreActive, teamName)
+	case s2hv1.QueueTypePromoteToActive:
+		target, err = configctrl.GetEnvValues(cfg, s2hv1.EnvActive, teamName)
+	case s2hv1.QueueTypeUpgrade, s2hv1.QueueTypeReverify:
+		target, err = configctrl.GetEnvValues(cfg, s2hv1.EnvStaging, teamName)
+	case s2hv1.QueueTypeDemoteFromActive:
 		return values
 	default:
 		return values
@@ -400,9 +416,9 @@ func applyEnvBaseConfig(
 // deployComponents
 func (c *controller) deployComponents(
 	deployEngine internal.DeployEngine,
-	queue *s2hv1beta1.Queue,
-	queueComps map[string]*s2hv1beta1.Component,
-	queueParentComps map[string]*s2hv1beta1.Component,
+	queue *s2hv1.Queue,
+	queueComps map[string]*s2hv1.Component,
+	queueParentComps map[string]*s2hv1.Component,
 	deployTimeout time.Duration,
 ) (isDeployed bool, err error) {
 	isDeployed = true
@@ -412,20 +428,27 @@ func (c *controller) deployComponents(
 	}
 
 	releaseRevision := make(map[string]int)
-	releases, err := deployEngine.GetReleases()
+	preInstalledReleases, err := deployEngine.GetReleases()
 	if err != nil {
 		return false, err
 	}
-	for _, rel := range releases {
+	for _, rel := range preInstalledReleases {
 		releaseRevision[rel.Name] = rel.Version
 	}
 
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 2*time.Minute)
+	timeout := 5 * time.Minute
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
 
 	isDeployedCh := make(chan bool, 2)
 	errCh := make(chan error, 2)
 	go func() {
+		if queue.Spec.Type == s2hv1.QueueTypePullRequest {
+			isDeployedCh <- true
+			errCh <- nil
+			return
+		}
+
 		isDeployed, err := c.deployComponentsExceptQueue(deployEngine, queue, queueParentComps, stableMap, deployTimeout)
 		if err != nil {
 			logger.Error(err, "cannot deploy components except current queue",
@@ -454,23 +477,30 @@ func (c *controller) deployComponents(
 	for i := 0; i < 2; i++ {
 		select {
 		case <-ctx.Done():
-			releases, err = deployEngine.GetReleases()
+			logger.Warnf("validating helm release took longer than %.0f seconds, queue: %s", timeout.Seconds(),
+				queue.Name)
+
+			var postInstalledReleases []*release.Release
+			postInstalledReleases, err = deployEngine.GetReleases()
 			if err != nil {
 				return
 			}
 
-			if len(releases) == 0 {
-				err = fmt.Errorf("release is being deployed")
+			if len(postInstalledReleases) == 0 {
+				logger.Warn("there is no release found", "queue", queue.Name)
 				return
 			}
-			for _, rel := range releases {
+			for _, rel := range postInstalledReleases {
 				if revision, ok := releaseRevision[rel.Name]; ok {
 					if rel.Version <= revision {
-						err = fmt.Errorf("release is being deployed")
+						logger.Warn("there is no latest revision of release found",
+							"queue", queue.Name)
 						return
 					}
 				}
 			}
+
+			return
 
 		case isDeployed := <-isDeployedCh:
 			err := <-errCh
@@ -483,25 +513,22 @@ func (c *controller) deployComponents(
 	return
 }
 
-func (c *controller) isUpgradeRelatedQueue(q *s2hv1beta1.Queue) bool {
-	return q.Spec.Type == s2hv1beta1.QueueTypeUpgrade || q.Spec.Type == s2hv1beta1.QueueTypeReverify
+func (c *controller) isUpgradeRelatedQueue(q *s2hv1.Queue) bool {
+	return q.Spec.Type == s2hv1.QueueTypeUpgrade || q.Spec.Type == s2hv1.QueueTypeReverify
 }
 
-func (c *controller) isPullRequestRelatedQueue(q *s2hv1beta1.Queue) bool {
-	return q.Spec.Type == s2hv1beta1.QueueTypePullRequest
+func (c *controller) isPullRequestRelatedQueue(q *s2hv1.Queue) bool {
+	return q.Spec.Type == s2hv1.QueueTypePullRequest
 }
 
 // deployComponentsExceptQueue ensures other components deployed with StableComponents
 func (c *controller) deployComponentsExceptQueue(
 	deployEngine internal.DeployEngine,
-	queue *s2hv1beta1.Queue,
-	queueParentComps map[string]*s2hv1beta1.Component,
-	stableMap map[string]s2hv1beta1.StableComponent,
+	queue *s2hv1.Queue,
+	queueParentComps map[string]*s2hv1.Component,
+	stableMap map[string]s2hv1.StableComponent,
 	deployTimeout time.Duration,
 ) (isDeployed bool, err error) {
-	if queue.Spec.Type == s2hv1beta1.QueueTypePullRequest {
-		return true, nil
-	}
 
 	configCtrl := c.getConfigController()
 	parentComps, err := configCtrl.GetParentComponents(c.teamName)
@@ -520,7 +547,7 @@ func (c *controller) deployComponentsExceptQueue(
 			continue
 		}
 
-		baseValues, err := configctrl.GetEnvComponentValues(cfg, name, c.teamName, s2hv1beta1.EnvBase)
+		baseValues, err := configctrl.GetEnvComponentValues(cfg, name, c.teamName, s2hv1.EnvBase)
 		if err != nil {
 			return false, err
 		}
@@ -528,10 +555,11 @@ func (c *controller) deployComponentsExceptQueue(
 		values := valuesutil.GenStableComponentValues(
 			comp,
 			stableMap,
-			baseValues)
+			baseValues,
+		)
 
 		switch queue.Spec.Type {
-		case s2hv1beta1.QueueTypeDemoteFromActive:
+		case s2hv1.QueueTypeDemoteFromActive:
 			// rollback current active instead of upgrading
 			if err := deployEngine.Rollback(c.genReleaseName(comp), 1); err != nil {
 				return true, err
@@ -551,10 +579,10 @@ func (c *controller) deployComponentsExceptQueue(
 // will be skipped if queue type is not upgrade or reverify
 func (c *controller) deployQueueComponent(
 	deployEngine internal.DeployEngine,
-	queue *s2hv1beta1.Queue,
-	queueComps map[string]*s2hv1beta1.Component,
-	queueParentComps map[string]*s2hv1beta1.Component,
-	stableMap map[string]s2hv1beta1.StableComponent,
+	queue *s2hv1.Queue,
+	queueComps map[string]*s2hv1.Component,
+	queueParentComps map[string]*s2hv1.Component,
+	stableMap map[string]s2hv1.StableComponent,
 	deployTimeout time.Duration,
 ) error {
 	cfg, err := c.getConfiguration()
@@ -568,26 +596,43 @@ func (c *controller) deployQueueComponent(
 	defer cancelFunc()
 
 	// deploy current queue
-	for name, parentComp := range queueParentComps {
-		go func(name string, parentComp *s2hv1beta1.Component) {
-			envType := s2hv1beta1.EnvBase
-			if queue.IsPullRequestQueue() {
-				envType = s2hv1beta1.EnvPullRequest
+	for parentName, parentComp := range queueParentComps {
+		go func(parentName string, parentComp *s2hv1.Component) {
+			if parentComp == nil {
+				errCh <- fmt.Errorf("parent components should not be empty, component: %s", parentName)
+				return
 			}
 
-			baseValues, err := configctrl.GetEnvComponentValues(cfg, name, c.teamName, envType)
-			if err != nil {
-				errCh <- err
-				return
+			envType := s2hv1.EnvBase
+			parentBaseValues := s2hv1.ComponentValues{}
+			if queue.IsPullRequestQueue() {
+				envType = s2hv1.EnvPullRequest
+			} else {
+				// get parent values except pull request queue type
+				parentBaseValues, err = configctrl.GetEnvComponentValues(cfg, parentName, c.teamName, envType)
+				if err != nil {
+					errCh <- err
+					return
+				}
 			}
 
 			values := valuesutil.GenStableComponentValues(
 				parentComp,
 				stableMap,
-				baseValues,
+				parentBaseValues,
 			)
 
-			if queue.Spec.Type == s2hv1beta1.QueueTypeUpgrade || queue.Spec.Type == s2hv1beta1.QueueTypePullRequest {
+			if queue.IsComponentUpgradeQueue() || queue.IsPullRequestQueue() {
+				if queue.IsPullRequestQueue() {
+					bundleName := queue.Spec.Name
+					envValues, err := configctrl.GetEnvComponentValues(cfg, bundleName, c.teamName, envType)
+					if err != nil {
+						errCh <- err
+						return
+					}
+					values = valuesutil.MergeValues(values, envValues)
+				}
+
 				// merge stable only matched component or dependencies
 				for _, comp := range queueComps {
 					v := genCompValueFromQueue(comp.Name, queue.Spec.Components)
@@ -611,7 +656,7 @@ func (c *controller) deployQueueComponent(
 			}
 
 			errCh <- nil
-		}(name, parentComp)
+		}(parentName, parentComp)
 	}
 
 	for i := 0; i < len(queueParentComps); i++ {
@@ -628,7 +673,7 @@ func (c *controller) deployQueueComponent(
 	return nil
 }
 
-func (c *controller) waitForComponentsReady(deployEngine internal.DeployEngine, q *s2hv1beta1.Queue) (bool, error) {
+func (c *controller) waitForComponentsReady(deployEngine internal.DeployEngine, q *s2hv1.Queue) (bool, error) {
 	parentComps, _, err := c.getParentAndQueueCompsFromQueueType(q)
 	if err != nil {
 		return false, err
@@ -715,10 +760,6 @@ func (c *controller) isPodsReady(listOpt *client.ListOptions) (bool, error) {
 	if err != nil {
 		logger.Error(err, "list pods error", "namespace", c.namespace)
 		return false, err
-	}
-
-	if len(pods.Items) == 0 {
-		return false, nil
 	}
 
 	for _, pod := range pods.Items {

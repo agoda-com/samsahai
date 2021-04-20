@@ -1,17 +1,16 @@
-name: Samsahai
+name: Build and test
 on:
   push:
-    branches:
-      - master
+    branches: [ master ]
   pull_request:
-    branches:
-      - master
+    branches: [ master ]
 
 jobs:
-  build-test-release:
-    name: Build & Test & Release
+  build-test:
+    name: Build & Test
     runs-on: ubuntu-16.04
     env:
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       CI: true
       KUBECONFIG: /tmp/s2h/k3s-kubeconfig
       POD_NAMESPACE: default
@@ -32,15 +31,11 @@ jobs:
       # BUILD
       - uses: actions/setup-go@v1
         with:
-          go-version: '1.13.6'
+          go-version: '1.15.4'
 
       - uses: actions/checkout@v1
         with:
           path: go/src/github.com/agoda-com/samsahai
-
-      - uses: webfactory/ssh-agent@v0.4.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Prepare ENV
         run: |
@@ -110,26 +105,3 @@ jobs:
         with:
           name: test-result
           path: ./test/result
-
-      # RELEASE
-      - name: Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        env:
-          GITHUB_TOKEN: ${{ secrets.TEST_GIT_PASSWORD }}
-          GITHUB_REPO: agoda-com/samsahai
-          DOCKER_USER: ${{ secrets.QUAY_DOCKER_USER }}
-          DOCKER_PASSWORD: ${{ secrets.QUAY_DOCKER_TOKEN }}
-        run: |
-          export INSTALL_DIR="$(pwd)/bin/"
-
-          git config --global url."ssh://git@github.com".insteadOf "https://github.com" || true
-          git config --global gc.auto 0 || true
-
-          ls -al
-          rm -rf tmp
-          make auto-release SUDO="sudo "
-
-      - name: Docker logout
-        if: always()
-        run: |
-          make .docker-logout

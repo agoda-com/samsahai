@@ -134,16 +134,16 @@ This flow is for checking pull request image in a registry.
 
 ## Installation
 ### Prerequisites
-1. Install and setup [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), please use the version below v1.16.0.
+1. Install and setup [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/).
     ```
-    curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.15.10/bin/darwin/amd64/kubectl
+    curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.18.10/bin/darwin/amd64/kubectl
     ```
    > Note: This is our preferred `kubectl` version. If you've already run the command above, do not forget to run step 2 and 3 following the official document.
 2. Install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) with HyperKit driver
 3. Install [minikube driver](https://minikube.sigs.k8s.io/docs/reference/drivers/)
    > Note: In our guideline, we use `HyperKit` driver.
 4. Install [helm3](https://helm.sh/docs/intro/install/)
-5. Install [Go v1.13](https://golang.org/doc/install#install)
+5. Install [Go v1.15](https://golang.org/doc/install#install)
 
 ### Environment Setup
 - [Configuration](#configuration)
@@ -165,7 +165,7 @@ Find more configuration information in [examples](https://www.github.com/agoda-c
       --vm-driver=hyperkit \
       --cpus=4 \
       --memory=8192 \
-      --kubernetes-version=v1.15.10
+      --kubernetes-version=v1.18.10
     ```
 4. Install CRDs
     ```
@@ -212,7 +212,8 @@ Find more configuration information in [examples](https://www.github.com/agoda-c
     ```
     > Now, `s2h-example` staging namespace should be created.
 
-##### Upgrade Components
+<h5 id="minikube-upgrade-components">Upgrade Components</h5>
+
 1. Upgrade `redis` and `mariadb` components by using Swagger `http://<minikube_ip>:<node_port>/swagger/index.html#`
     - `POST /webhook/component`
     ```
@@ -261,7 +262,8 @@ Find more configuration information in [examples](https://www.github.com/agoda-c
    ```
 To save the cluster resources once every upgrade component verification has finished, the running components will be terminated immediately. 
 
-##### Promote New Active
+<h5 id="minikube-promote-new-active">Promote New Active</h5>
+
 1. Apply active-promotion
     ```
     kubectl apply -f https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/configs/crds/active-promotion-example.yaml
@@ -285,21 +287,27 @@ To save the cluster resources once every upgrade component verification has fini
     s2h-staging-ctrl-c566b7f66-5q9bh                        1/1     Running   0          2m43s
     ```
    
-##### Deploy Pull Request Components
-1. Deploying `redis` components by using Swagger `http://<minikube_ip>:<node_port>/swagger/index.html#`
+<h5 id="minikube-deploy-pull-request-components">Deploy Pull Request Components</h5>
+ 
+1. Deploying all components in `redis-bundle` by using Swagger `http://<minikube_ip>:<node_port>/swagger/index.html#`
     - `POST /teams/example/pullrequest/trigger`
     ```
     {
-      "component": "redis",
+      "bundleName": "redis-bundle",
       "prNumber": 56
     }
     ```
     or
     ```
     {
-      "component": "redis",
+      "bundleName": "redis-bundle",
       "prNumber": "any",
-      "tag": "5.0.7-debian-9-r56"
+      "components": [
+         {
+           "name": "redis",
+           "tag": "5.0.7-debian-9-r56"
+         }
+      ]
     } 
     ```
      
@@ -310,8 +318,8 @@ To save the cluster resources once every upgrade component verification has fini
 
    - `kubectl get pullrequesttriggers` (see pull request triggers)
    ```
-   NAME      AGE
-   redis-56  10s
+   NAME             AGE
+   redis-bundle-56  10s
    ```
    
    - waiting until `kubectl get pullrequesttriggers` no resources found
@@ -321,37 +329,37 @@ To save the cluster resources once every upgrade component verification has fini
 
    - `kubectl get pullrequestqueues` (see pull request queues created by pull request trigger)
    ```
-   NAME      AGE
-   redis-56  30s
+   NAME             AGE
+   redis-bundle-56  30s
    ```
    
    - `kubectl get namespaces` (you will see a pull request namespace has been created)
    ``` 
-   NAME                   STATUS   AGE
-   s2h-example-redis-56   Active   49s
+   NAME                          STATUS   AGE
+   s2h-example-redis-bundle-56   Active   49s
    ...
    ```
 
-3. Switch to `s2h-example-redis-56` namespace
+3. Switch to `s2h-example-redis-bundle-56` namespace
    ```
-   kubectl config set-context --current --namespace=s2h-example-redis-56
+   kubectl config set-context --current --namespace=s2h-example-redis-bundle-56
    ```
 
-   - `kubectl get pods` (in s2h-example-redis-56 namespace, you will see all pull request components that you specify in config are running)
+   - `kubectl get pods` (in s2h-example-redis-bundle-56 namespace, you will see all pull request components that you specify in config are running)
    ```
    NAME                                                    READY   STATUS    RESTARTS   AGE
-   s2h-example-redis-56-redis-master-0                     1/1     Running   0          65s
+   s2h-example-redis-bundle-56-redis-master-0              1/1     Running   0          65s
    s2h-staging-ctrl-55c757978f-jx6lj                       1/1     Running   0          89s
    ```
 
-   - `kubectl get services` (in s2h-example-redis-56 namespace, you will see services which link to the components in active namespace)
+   - `kubectl get services` (in s2h-example-redis-bundle-56 namespace, you will see services which link to the components in active namespace)
    ```
-   NAME                                     TYPE           CLUSTER-IP      EXTERNAL-IP                                                                 PORT(S)    AGE
-   s2h-example-redis-56-redis-master        ClusterIP      10.97.174.107   <none>                                                                      6379/TCP   61s
-   s2h-example-redis-56-redis-headless      ClusterIP      None            <none>                                                                      6379/TCP   61s
-   s2h-example-redis-56-wordpress           ExternalName   <none>          s2h-example-8ncrwx-wordpress.s2h-example-8ncrwx.svc.cluster.local           <none>     6s
-   s2h-example-redis-56-wordpress-mariadb   ExternalName   <none>          s2h-example-8ncrwx-wordpress-mariadb.s2h-example-8ncrwx.svc.cluster.local   <none>     6s
-   s2h-staging-ctrl                         ClusterIP      10.96.174.13    <none>                                                                      8090/TCP   90s
+   NAME                                            TYPE           CLUSTER-IP      EXTERNAL-IP                                                                 PORT(S)    AGE
+   s2h-example-redis-bundle-56-redis-master        ClusterIP      10.97.174.107   <none>                                                                      6379/TCP   61s
+   s2h-example-redis-bundle-56-redis-headless      ClusterIP      None            <none>                                                                      6379/TCP   61s
+   s2h-example-redis-bundle-56-wordpress           ExternalName   <none>          s2h-example-8ncrwx-wordpress.s2h-example-8ncrwx.svc.cluster.local           <none>     6s
+   s2h-example-redis-bundle-56-wordpress-mariadb   ExternalName   <none>          s2h-example-8ncrwx-wordpress-mariadb.s2h-example-8ncrwx.svc.cluster.local   <none>     6s
+   s2h-staging-ctrl                                ClusterIP      10.96.174.13    <none>                                                                      8090/TCP   90s
    ```
 
 4. Switch back to `s2h-example` namespace
@@ -361,8 +369,8 @@ To save the cluster resources once every upgrade component verification has fini
    
    - `kubectl get pullrequestqueuehistories.env.samsahai.io -o=custom-columns=NAME:.metadata.name,RESULT:spec.pullRequestQueue.status.result` (in s2h-example namespace, you will see the result of the previous pull request queue)
    ```
-   NAME                         RESULT
-   redis-56-20200927-103006-0   Success
+   NAME                                RESULT
+   redis-bundle-56-20200927-103006-0   Success
    ```
 
 
@@ -418,7 +426,7 @@ To save the cluster resources once every upgrade component verification has fini
       "component": "mariadb"
     }
     ```
-After this step, you can see the result following [minikube upgrade component](#upgrade-component) part.
+After this step, you can see the result following [minikube upgrade components](#minikube-upgrade-components) part.
 
 ##### Promote New Active
 1. Apply active-promotion
@@ -430,27 +438,32 @@ After this step, you can see the result following [minikube upgrade component](#
     ```
     --pod-namespace s2h-example-abcdzx
     ```
-After this step, you can see the result following [minikube promote new active](#promote-new-active) part.
+After this step, you can see the result following [minikube promote new active](#minikube-promote-new-active) part.
 
 ##### Deploy Pull Request Components
-1. Deploying `redis` components by using Swagger `http://<minikube_ip>:<node_port>/swagger/index.html#`
+1. Deploying all components in `redis-bundle` bundle by using Swagger `http://<minikube_ip>:<node_port>/swagger/index.html#`
    - `POST /teams/example/pullrequest/trigger`
    ```
    {
-     "component": "redis",
+     "bundleName": "redis-bundle",
      "prNumber": 56
    }
    ```
    or
    ```
    {
-     "component": "redis",
+     "bundleName": "redis-bundle",
      "prNumber": "any",
-     "tag": "5.0.7-debian-9-r56"
+     "components": [
+       {
+         "name": "redis",
+         "tag": "5.0.7-debian-9-r56"
+       }
+     ]
    } 
    ```
-        
-After this step, you can see the result following [minikube deploy pull request components](#deploy-pull-request-components) part.
+
+After this step, you can see the result following [minikube deploy pull request components](#minikube-deploy-pull-request-components) part.
 
 ## Contribution Policy
 Samsahai is an open source project, and depends on its users to improve it. We are more than happy to find you are interested in taking the project forward.

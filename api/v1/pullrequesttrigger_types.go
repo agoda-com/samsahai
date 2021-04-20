@@ -14,23 +14,40 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// PullRequestTriggerSpec defines the desired state of PullRequestTrigger
-type PullRequestTriggerSpec struct {
-	Component string `json:"component"`
-	PRNumber  string `json:"prNumber"`
-	// +optional
-	Image *Image `json:"image,omitempty"`
+// PullRequestTriggerComponent represents a pull request component in bundle
+type PullRequestTriggerComponent struct {
+	// ComponentName defines a name of bundle component
+	ComponentName string `json:"componentName"`
+	// Image defines an image repository and tag
+	Image *Image `json:"image"`
+	// Pattern defines a pattern of bundle component which is a regex of tag
 	// +optional
 	Pattern string `json:"pattern,omitempty"`
 	// +optional
 	Source UpdatingSource `json:"source,omitempty"`
+}
+
+// PullRequestTriggerSpec defines the desired state of PullRequestTrigger
+type PullRequestTriggerSpec struct {
+	BundleName string `json:"bundleName"`
+	PRNumber   string `json:"prNumber"`
+	// +optional
+	CommitSHA string `json:"commitSHA,omitempty"`
+	// +optional
+	Components []*PullRequestTriggerComponent `json:"components,omitempty"`
+	// +optional
+	NextProcessAt *metav1.Time `json:"nextProcessAt,omitempty"`
+	// +optional
+	NoOfRetry *int `json:"noOfRetry,omitempty"`
+	// GitRepository represents a github repository of the pull request
+	GitRepository string `json:"gitRepository,omitempty"`
 }
 
 // PullRequestTriggerResult represents the result status of a pull request trigger
@@ -49,17 +66,13 @@ type PullRequestTriggerStatus struct {
 	// UpdatedAt represents time when pull request has been re-triggered
 	UpdatedAt *metav1.Time `json:"updatedAt,omitempty"`
 
-	// NextProcessAt represents time to re-check the image in the target registry
-	// +optional
-	NextProcessAt *metav1.Time `json:"nextProcessAt,omitempty"`
-
-	// NoOfRetry defines how many times this pull request has been triggered
-	// +optional
-	NoOfRetry *int `json:"noOfRetry,omitempty"`
-
 	// Result represents a result of the pull request trigger
 	// +optional
 	Result PullRequestTriggerResult `json:"result,omitempty"`
+
+	// ImageMissingList defines image missing lists
+	// +optional
+	ImageMissingList []Image `json:"imageMissingList,omitempty"`
 
 	// Conditions contains observations of the resource's state e.g.,
 	// Queue deployed, being tested

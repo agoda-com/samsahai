@@ -41,7 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	docs2 "github.com/agoda-com/samsahai/docs"
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -74,8 +74,7 @@ func init() {
 	cobra.OnInitialize(util.InitViper)
 
 	_ = clientgoscheme.AddToScheme(scheme)
-	_ = s2hv1beta1.AddToScheme(scheme)
-	//_ = appv1beta1.AddToScheme(scheme)
+	_ = s2hv1.AddToScheme(scheme)
 
 	cmd.PersistentFlags().Bool(s2h.VKDebug, false, "More debugging log.")
 
@@ -139,6 +138,7 @@ func startCtrlCmd() *cobra.Command {
 			configs := s2h.SamsahaiConfig{
 				// TODO: move to credential
 				TeamcityURL: viper.GetString(s2h.VKTeamcityURL),
+				GithubURL:   viper.GetString(s2h.VKGithubURL),
 				SamsahaiURL: fmt.Sprintf("%s://%s.%s:%s",
 					viper.GetString(s2h.VKS2HServiceScheme),
 					viper.GetString(s2h.VKS2HServiceName),
@@ -167,6 +167,7 @@ func startCtrlCmd() *cobra.Command {
 				SamsahaiCredential: s2h.SamsahaiCredential{
 					InternalAuthToken: authToken,
 					SlackToken:        viper.GetString(s2h.VKSlackToken),
+					GithubToken:       viper.GetString(s2h.VKGithubToken),
 					TeamcityUsername:  viper.GetString(s2h.VKTeamcityUsername),
 					TeamcityPassword:  viper.GetString(s2h.VKTeamcityPassword),
 					MSTeams: s2h.MSTeamsCredential{
@@ -188,9 +189,6 @@ func startCtrlCmd() *cobra.Command {
 			s2hCtrl := samsahai.New(mgr, namespace, configs)
 			activepromotion.New(mgr, s2hCtrl, configs)
 			stablecomponent.New(mgr, s2hCtrl)
-
-			logger.Info("setup signal handler")
-			stop := signals.SetupSignalHandler()
 
 			// setup http server
 			logger.Info("setup http server")
@@ -215,7 +213,11 @@ func startCtrlCmd() *cobra.Command {
 				}
 			}()
 
-			go s2hCtrl.Start(stop)
+			chStop := make(chan struct{})
+			go s2hCtrl.Start(chStop)
+
+			logger.Info("setup signal handler")
+			stop := signals.SetupSignalHandler()
 
 			logger.Info("starting manager")
 			if err := mgr.Start(stop); err != nil {
@@ -243,11 +245,13 @@ func startCtrlCmd() *cobra.Command {
 	cmd.Flags().String(s2h.VKServerHTTPPort, s2h.SamsahaiDefaultPort, "The port for http server to listens to.")
 	cmd.Flags().String(s2h.VKMetricHTTPPort, "8081", "The port for prometheus metric to binds to.")
 	cmd.Flags().String(s2h.VKS2HAuthToken, "<random>", "Samsahai server authentication token.")
-	cmd.Flags().String(s2h.VKSlackToken, "", "Slack token for send notification if using slack.")
+	cmd.Flags().String(s2h.VKSlackToken, "", "Slack token for sending notification if using slack.")
 	cmd.Flags().String(s2h.VKS2HImage, defaultImage, "Docker image for running Staging.")
 	cmd.Flags().String(s2h.VKS2HServiceScheme, "http", "Scheme to use for connecting to Samsahai.")
 	cmd.Flags().String(s2h.VKS2HServiceName, "samsahai", "Service name for connecting to Samsahai.")
 	cmd.Flags().String(s2h.VKS2HExternalURL, "http://localhost:8080", "External url for Samsahai.")
+	cmd.Flags().String(s2h.VKGithubToken, "", "Github access token for publishing commit status into github.")
+	cmd.Flags().String(s2h.VKGithubURL, "", "Github base URL used for initializing Github reporter.")
 	cmd.Flags().String(s2h.VKTeamcityURL, "",
 		"Teamcity base URL used for initializing Teamcity test runner.")
 	cmd.Flags().String(s2h.VKTeamcityUsername, "",
@@ -266,8 +270,8 @@ func startCtrlCmd() *cobra.Command {
 		"Microsoft Teams password used for initializing Microsoft Teams reporter.")
 	cmd.Flags().Int(s2h.VKActivePromotionConcurrences, 1, "Concurrent active promotions.")
 	cmd.Flags().Duration(s2h.VKActivePromotionTimeout, 60*time.Minute, "Active promotion timeout.")
-	cmd.Flags().Duration(s2h.VKActivePromotionDemotionTimeout, 3*time.Minute, "Active demotion timeout.")
-	cmd.Flags().Duration(s2h.VKActivePromotionRollbackTimeout, 5*time.Minute,
+	cmd.Flags().Duration(s2h.VKActivePromotionDemotionTimeout, 5*time.Minute, "Active demotion timeout.")
+	cmd.Flags().Duration(s2h.VKActivePromotionRollbackTimeout, 15*time.Minute,
 		"Active promotion rollback timeout.")
 	cmd.Flags().Duration(s2h.VKActivePromotionTearDownDuration, 20*time.Minute,
 		"Previous active environment teardown duration.")

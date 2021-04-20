@@ -7,12 +7,12 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 )
 
-func (c *controller) getTargetNamespace(atpComp *s2hv1beta1.ActivePromotion) string {
+func (c *controller) getTargetNamespace(atpComp *s2hv1.ActivePromotion) string {
 	if atpComp.Status.TargetNamespace == "" {
 		logger.Warn("target namespace has not been set, getting namespace from team", "team",
 			atpComp.Name)
@@ -28,7 +28,7 @@ func (c *controller) getTargetNamespace(atpComp *s2hv1beta1.ActivePromotion) str
 	return atpComp.Status.TargetNamespace
 }
 
-func (c *controller) updateActivePromotion(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) updateActivePromotion(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	if err := c.client.Update(ctx, atpComp); err != nil {
 		return errors.Wrapf(err, "cannot update activepromotion %s", atpComp.Name)
 	}
@@ -39,7 +39,7 @@ func (c *controller) updateActivePromotion(ctx context.Context, atpComp *s2hv1be
 	return nil
 }
 
-func (c *controller) forceDeleteActivePromotion(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) forceDeleteActivePromotion(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	if err := c.removeFinalizerObject(ctx, atpComp); err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func (c *controller) forceDeleteActivePromotion(ctx context.Context, atpComp *s2
 	return nil
 }
 
-func (c *controller) deleteActivePromotion(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) deleteActivePromotion(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	logger.Info("deleting activepromotion", "team", atpComp.Name)
 	if err := c.client.Delete(ctx, atpComp); err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -64,8 +64,8 @@ func (c *controller) deleteActivePromotion(ctx context.Context, atpComp *s2hv1be
 	return nil
 }
 
-func (c *controller) removeFinalizerObject(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
-	atpCompTmp := &s2hv1beta1.ActivePromotion{}
+func (c *controller) removeFinalizerObject(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
+	atpCompTmp := &s2hv1.ActivePromotion{}
 	err := c.client.Get(ctx, types.NamespacedName{Name: atpComp.Name}, atpCompTmp)
 	if err != nil && k8serrors.IsNotFound(err) {
 		return nil
@@ -81,10 +81,10 @@ func (c *controller) removeFinalizerObject(ctx context.Context, atpComp *s2hv1be
 	return nil
 }
 
-func (c *controller) getTeam(ctx context.Context, teamName string) (*s2hv1beta1.Team, error) {
-	teamComp := &s2hv1beta1.Team{}
+func (c *controller) getTeam(ctx context.Context, teamName string) (*s2hv1.Team, error) {
+	teamComp := &s2hv1.Team{}
 	if err := c.client.Get(ctx, types.NamespacedName{Name: teamName}, teamComp); err != nil {
-		return &s2hv1beta1.Team{}, err
+		return &s2hv1.Team{}, err
 	}
 
 	return teamComp, nil
@@ -94,6 +94,14 @@ const (
 	stateWaiting = "waiting"
 	stateRunning = "running"
 )
+
+func (c *controller) appendStateLabel(atpComp *s2hv1.ActivePromotion, state string) {
+	if atpComp.Labels == nil {
+		atpComp.Labels = make(map[string]string)
+	}
+
+	atpComp.Labels["state"] = state
+}
 
 func (c *controller) getStateLabel(state string) map[string]string {
 	return map[string]string{"state": state}

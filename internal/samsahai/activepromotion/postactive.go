@@ -6,12 +6,12 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/util/outdated"
 )
 
-func (c *controller) runPostActive(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) runPostActive(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	if atpComp.Status.ActivePromotionHistoryName == "" {
 		if err := c.setOutdatedDuration(ctx, atpComp); err != nil {
 			return err
@@ -46,11 +46,11 @@ func (c *controller) runPostActive(ctx context.Context, atpComp *s2hv1beta1.Acti
 	return nil
 }
 
-func (c *controller) sendReport(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) sendReport(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	currentNs := c.getTargetNamespace(atpComp)
-	if atpComp.Status.Result != s2hv1beta1.ActivePromotionSuccess {
+	if atpComp.Status.Result != s2hv1.ActivePromotionSuccess {
 		currentNs = atpComp.Status.PreviousActiveNamespace
-		if atpComp.Status.DemotionStatus == s2hv1beta1.ActivePromotionDemotionFailure {
+		if atpComp.Status.DemotionStatus == s2hv1.ActivePromotionDemotionFailure {
 			currentNs = ""
 		}
 	}
@@ -72,14 +72,14 @@ func (c *controller) sendReport(ctx context.Context, atpComp *s2hv1beta1.ActiveP
 		atpComp.Name,
 		currentNs,
 		runs,
-		internal.WithCredential(teamComp.Status.Used.Credential),
+		internal.WithActivePromotionOptCredential(teamComp.Status.Used.Credential),
 	)
 	c.s2hCtrl.NotifyActivePromotionReport(atpRpt)
 
 	return nil
 }
 
-func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	configCtrl := c.s2hCtrl.GetConfigController()
 	config, err := configCtrl.Get(atpComp.Name)
 	if err != nil {
@@ -87,11 +87,11 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta
 	}
 
 	targetNs := c.getTargetNamespace(atpComp)
-	if atpComp.Status.Result != s2hv1beta1.ActivePromotionSuccess {
+	if atpComp.Status.Result != s2hv1.ActivePromotionSuccess {
 		targetNs = atpComp.Status.PreviousActiveNamespace
 	}
 
-	stableCompList := &s2hv1beta1.StableComponentList{}
+	stableCompList := &s2hv1.StableComponentList{}
 	if targetNs != "" {
 		err = c.client.List(ctx, stableCompList, &client.ListOptions{Namespace: targetNs})
 		if err != nil {
@@ -99,9 +99,9 @@ func (c *controller) setOutdatedDuration(ctx context.Context, atpComp *s2hv1beta
 		}
 	}
 
-	var currentActiveComps = make(map[string]s2hv1beta1.StableComponent)
+	var currentActiveComps = make(map[string]s2hv1.StableComponent)
 	for _, stableComp := range stableCompList.Items {
-		currentActiveComps[stableComp.Name] = s2hv1beta1.StableComponent{
+		currentActiveComps[stableComp.Name] = s2hv1.StableComponent{
 			Spec: stableComp.Spec,
 		}
 	}

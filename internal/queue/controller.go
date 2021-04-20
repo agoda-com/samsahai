@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -30,27 +30,27 @@ type controller struct {
 
 var _ internal.QueueController = &controller{}
 
-func NewQueue(teamName, namespace, name, bundle string, comps []*s2hv1beta1.QueueComponent, queueType s2hv1beta1.QueueType) *s2hv1beta1.Queue {
+func NewQueue(teamName, namespace, name, bundle string, comps []*s2hv1.QueueComponent, queueType s2hv1.QueueType) *s2hv1.Queue {
 	queueName := name
 	if bundle != "" {
 		queueName = bundle
 	}
 
 	qLabels := getQueueLabels(teamName, queueName)
-	return &s2hv1beta1.Queue{
+	return &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      queueName,
 			Namespace: namespace,
 			Labels:    qLabels,
 		},
-		Spec: s2hv1beta1.QueueSpec{
+		Spec: s2hv1.QueueSpec{
 			Name:       queueName,
 			TeamName:   teamName,
 			Bundle:     bundle,
 			Components: comps,
 			Type:       queueType,
 		},
-		Status: s2hv1beta1.QueueStatus{},
+		Status: s2hv1.QueueStatus{},
 	}
 }
 
@@ -64,7 +64,7 @@ func New(ns string, runtimeClient client.Client) internal.QueueController {
 }
 
 func (c *controller) Add(obj runtime.Object, priorityQueues []string) error {
-	q, ok := obj.(*s2hv1beta1.Queue)
+	q, ok := obj.(*s2hv1.Queue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
 	}
@@ -73,7 +73,7 @@ func (c *controller) Add(obj runtime.Object, priorityQueues []string) error {
 }
 
 func (c *controller) AddTop(obj runtime.Object) error {
-	q, ok := obj.(*s2hv1beta1.Queue)
+	q, ok := obj.(*s2hv1.Queue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
 	}
@@ -121,12 +121,12 @@ func (c *controller) Remove(obj runtime.Object) error {
 }
 
 func (c *controller) RemoveAllQueues(namespace string) error {
-	return c.client.DeleteAllOf(context.TODO(), &s2hv1beta1.Queue{}, client.InNamespace(namespace))
+	return c.client.DeleteAllOf(context.TODO(), &s2hv1.Queue{}, client.InNamespace(namespace))
 }
 
 // incoming s`queue` always contains 1 component
 // will add component into queue ordering by priority
-func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop bool, priorityQueues []string) error {
+func (c *controller) add(ctx context.Context, queue *s2hv1.Queue, atTop bool, priorityQueues []string) error {
 	if len(queue.Spec.Components) == 0 {
 		return fmt.Errorf("components should not be empty, queueName: %s", queue.Name)
 	}
@@ -144,7 +144,7 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 		return nil
 	}
 
-	pQueue := &s2hv1beta1.Queue{}
+	pQueue := &s2hv1.Queue{}
 	isAlreadyInQueue := false
 	isAlreadyInBundle := false
 	for i, q := range queueList.Items {
@@ -167,7 +167,7 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 			updatingList[i].Spec.Components.Sort()
 			updatingList[i].Spec.NoOfRetry = 0
 			updatingList[i].Spec.NextProcessAt = nil
-			updatingList[i].Status.State = s2hv1beta1.Waiting
+			updatingList[i].Status.State = s2hv1.Waiting
 			updatingList[i].Spec.Components.Sort()
 			if err := c.client.Update(ctx, &updatingList[i]); err != nil {
 				return err
@@ -182,7 +182,7 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 			isAlreadyInBundle = true
 			updatingList[i].Spec.NoOfRetry = 0
 			updatingList[i].Spec.NextProcessAt = nil
-			updatingList[i].Status.State = s2hv1beta1.Waiting
+			updatingList[i].Status.State = s2hv1.Waiting
 			updatingList[i].Spec.Components.Sort()
 			if err := c.client.Update(ctx, &updatingList[i]); err != nil {
 				return err
@@ -220,7 +220,7 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 				queue.Spec.NoOfOrder = queueList.TopQueueOrder()
 			}
 
-			queue.Status.State = s2hv1beta1.Waiting
+			queue.Status.State = s2hv1.Waiting
 			queue.Status.CreatedAt = &now
 			queue.Status.UpdatedAt = &now
 
@@ -235,14 +235,14 @@ func (c *controller) add(ctx context.Context, queue *s2hv1beta1.Queue, atTop boo
 }
 
 // queue always contains 1 component
-func (c *controller) isMatchWithStableComponent(ctx context.Context, q *s2hv1beta1.Queue) (isMatch bool, err error) {
+func (c *controller) isMatchWithStableComponent(ctx context.Context, q *s2hv1.Queue) (isMatch bool, err error) {
 	if len(q.Spec.Components) == 0 {
 		isMatch = true
 		return
 	}
 
 	qComp := q.Spec.Components[0]
-	stableComp := &s2hv1beta1.StableComponent{}
+	stableComp := &s2hv1.StableComponent{}
 	err = c.client.Get(ctx, types.NamespacedName{Namespace: c.namespace, Name: qComp.Name}, stableComp)
 	if err != nil && k8serrors.IsNotFound(err) {
 		return false, nil
@@ -257,17 +257,17 @@ func (c *controller) isMatchWithStableComponent(ctx context.Context, q *s2hv1bet
 }
 
 // expect sorted queue list
-func (c *controller) setQueueOrderFollowingPriorityQueues(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList, priorityQueues []string) []s2hv1beta1.Queue {
+func (c *controller) setQueueOrderFollowingPriorityQueues(queue *s2hv1.Queue, list *s2hv1.QueueList, priorityQueues []string) []s2hv1.Queue {
 	targetNo := c.getPriorityNo(queue, priorityQueues)
 	if targetNo == -1 || len(list.Items) == 0 {
 		queue.Spec.NoOfOrder = list.LastQueueOrder()
-		return []s2hv1beta1.Queue{}
+		return []s2hv1.Queue{}
 	}
 
 	existingQueueNo := c.getExistingQueueNumberInList(queue, list)
 
-	var items []s2hv1beta1.Queue
-	var updating []s2hv1beta1.Queue
+	var items []s2hv1.Queue
+	var updating []s2hv1.Queue
 	var found, foundTop bool
 	expectedNo := list.LastQueueOrder()
 	for i, q := range list.Items {
@@ -306,7 +306,7 @@ func (c *controller) setQueueOrderFollowingPriorityQueues(queue *s2hv1beta1.Queu
 	return updating
 }
 
-func (c *controller) getPriorityNo(queue *s2hv1beta1.Queue, priorityQueues []string) int {
+func (c *controller) getPriorityNo(queue *s2hv1.Queue, priorityQueues []string) int {
 	for i, priorComp := range priorityQueues {
 		if queue.Spec.Name == priorComp {
 			return i
@@ -322,7 +322,7 @@ func (c *controller) getPriorityNo(queue *s2hv1beta1.Queue, priorityQueues []str
 	return -1
 }
 
-func (c *controller) getExistingQueueNumberInList(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) int {
+func (c *controller) getExistingQueueNumberInList(queue *s2hv1.Queue, list *s2hv1.QueueList) int {
 	for i, q := range list.Items {
 		for _, qComp := range q.Spec.Components {
 			// queue already existed
@@ -336,13 +336,13 @@ func (c *controller) getExistingQueueNumberInList(queue *s2hv1beta1.Queue, list 
 }
 
 // addExistingBundleQueue returns updated bundle queue list
-func (c *controller) addExistingBundleQueue(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) []s2hv1beta1.Queue {
+func (c *controller) addExistingBundleQueue(queue *s2hv1.Queue, list *s2hv1.QueueList) []s2hv1.Queue {
 	if queue.Spec.Bundle == "" {
-		return []s2hv1beta1.Queue{}
+		return []s2hv1.Queue{}
 	}
 
-	updating := make([]s2hv1beta1.Queue, len(list.Items))
-	var items []s2hv1beta1.Queue
+	updating := make([]s2hv1.Queue, len(list.Items))
+	var items []s2hv1.Queue
 	var containComp = false
 	for i, q := range list.Items {
 		if !containComp && q.ContainSameComponent(queue.Spec.Name, queue.Spec.Components[0]) {
@@ -376,11 +376,11 @@ func (c *controller) addExistingBundleQueue(queue *s2hv1beta1.Queue, list *s2hv1
 }
 
 // removeAndUpdateSimilarQueue removes similar component/queue (same `component name` from queue) from QueueList
-func (c *controller) removeAndUpdateSimilarQueue(queue *s2hv1beta1.Queue, list *s2hv1beta1.QueueList) (
-	removing []s2hv1beta1.Queue, updating []s2hv1beta1.Queue) {
+func (c *controller) removeAndUpdateSimilarQueue(queue *s2hv1.Queue, list *s2hv1.QueueList) (
+	removing []s2hv1.Queue, updating []s2hv1.Queue) {
 
-	updating = make([]s2hv1beta1.Queue, len(list.Items))
-	var items []s2hv1beta1.Queue
+	updating = make([]s2hv1.Queue, len(list.Items))
+	var items []s2hv1.Queue
 	var containComp = false
 
 	for i, q := range list.Items {
@@ -388,7 +388,7 @@ func (c *controller) removeAndUpdateSimilarQueue(queue *s2hv1beta1.Queue, list *
 			// only add one `queue` to items
 			containComp = true
 		} else {
-			newComps := make([]*s2hv1beta1.QueueComponent, 0)
+			newComps := make([]*s2hv1.QueueComponent, 0)
 			for _, qComp := range q.Spec.Components {
 				if qComp.Name == queue.Spec.Components[0].Name {
 					continue
@@ -414,8 +414,8 @@ func (c *controller) removeAndUpdateSimilarQueue(queue *s2hv1beta1.Queue, list *
 	return
 }
 
-func (c *controller) list(opts *client.ListOptions) (list *s2hv1beta1.QueueList, err error) {
-	list = &s2hv1beta1.QueueList{}
+func (c *controller) list(opts *client.ListOptions) (list *s2hv1.QueueList, err error) {
+	list = &s2hv1.QueueList{}
 	if opts == nil {
 		opts = &client.ListOptions{Namespace: c.namespace}
 	}
@@ -426,7 +426,7 @@ func (c *controller) list(opts *client.ListOptions) (list *s2hv1beta1.QueueList,
 }
 
 func (c *controller) SetLastOrder(obj runtime.Object) error {
-	q, ok := obj.(*s2hv1beta1.Queue)
+	q, ok := obj.(*s2hv1.Queue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
 	}
@@ -444,7 +444,7 @@ func (c *controller) SetLastOrder(obj runtime.Object) error {
 }
 
 func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
-	q, ok := obj.(*s2hv1beta1.Queue)
+	q, ok := obj.(*s2hv1.Queue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
 	}
@@ -457,18 +457,19 @@ func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
 	}
 
 	now := metav1.Now()
-	q.Status = s2hv1beta1.QueueStatus{
+	q.Status = s2hv1.QueueStatus{
 		CreatedAt:     &now,
 		NoOfProcessed: q.Status.NoOfProcessed,
-		State:         s2hv1beta1.Waiting,
+		State:         s2hv1.Waiting,
 	}
-	q.Spec.Type = s2hv1beta1.QueueTypeReverify
+	q.Spec.Type = s2hv1.QueueTypeReverify
 	q.Spec.NoOfOrder = list.TopQueueOrder()
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time) error {
-	q, ok := obj.(*s2hv1beta1.Queue)
+func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time,
+	isTriggerFailed *bool, createdAt, finishedAt *metav1.Time) error {
+	q, ok := obj.(*s2hv1.Queue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
 	}
@@ -481,19 +482,19 @@ func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt tim
 	}
 
 	now := metav1.Now()
-	q.Status = s2hv1beta1.QueueStatus{
+	q.Status = s2hv1.QueueStatus{
 		CreatedAt:     &now,
 		NoOfProcessed: q.Status.NoOfProcessed,
-		State:         s2hv1beta1.Waiting,
+		State:         s2hv1.Waiting,
 	}
 	q.Spec.NextProcessAt = &metav1.Time{Time: nextAt}
 	q.Spec.NoOfRetry = noOfRetry
-	q.Spec.Type = s2hv1beta1.QueueTypeUpgrade
+	q.Spec.Type = s2hv1.QueueTypeUpgrade
 	q.Spec.NoOfOrder = list.LastQueueOrder()
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) updateQueueList(ql *s2hv1beta1.QueueList) error {
+func (c *controller) updateQueueList(ql *s2hv1.QueueList) error {
 	for i := range ql.Items {
 		if err := c.client.Update(context.TODO(), &ql.Items[i]); err != nil {
 			logger.Error(err, "cannot update queue list", "queue", ql.Items[i].Name)
@@ -505,7 +506,7 @@ func (c *controller) updateQueueList(ql *s2hv1beta1.QueueList) error {
 }
 
 // resetQueueOrderWithCurrentQueue resets order of all queues to start with 1 respectively
-func (c *controller) resetQueueOrderWithCurrentQueue(ql *s2hv1beta1.QueueList, currentQueue *s2hv1beta1.Queue) {
+func (c *controller) resetQueueOrderWithCurrentQueue(ql *s2hv1.QueueList, currentQueue *s2hv1.Queue) {
 	ql.Sort()
 	count := 2
 	for i := range ql.Items {
@@ -519,14 +520,14 @@ func (c *controller) resetQueueOrderWithCurrentQueue(ql *s2hv1beta1.QueueList, c
 }
 
 // EnsurePreActiveComponents ensures that components were deployed with `pre-active` config and tested
-func EnsurePreActiveComponents(c client.Client, teamName, namespace string, skipTest bool) (q *s2hv1beta1.Queue, err error) {
-	q = &s2hv1beta1.Queue{
+func EnsurePreActiveComponents(c client.Client, teamName, namespace string, skipTest bool) (q *s2hv1.Queue, err error) {
+	q = &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      string(s2hv1beta1.EnvPreActive),
+			Name:      string(s2hv1.EnvPreActive),
 			Namespace: namespace,
 		},
-		Spec: s2hv1beta1.QueueSpec{
-			Type:           s2hv1beta1.QueueTypePreActive,
+		Spec: s2hv1.QueueSpec{
+			Type:           s2hv1.QueueTypePreActive,
 			TeamName:       teamName,
 			SkipTestRunner: skipTest,
 		},
@@ -537,14 +538,14 @@ func EnsurePreActiveComponents(c client.Client, teamName, namespace string, skip
 }
 
 // EnsurePromoteToActiveComponents ensures that components were deployed with `active` config
-func EnsurePromoteToActiveComponents(c client.Client, teamName, namespace string) (q *s2hv1beta1.Queue, err error) {
-	q = &s2hv1beta1.Queue{
+func EnsurePromoteToActiveComponents(c client.Client, teamName, namespace string) (q *s2hv1.Queue, err error) {
+	q = &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      string(s2hv1beta1.EnvActive),
+			Name:      string(s2hv1.EnvActive),
 			Namespace: namespace,
 		},
-		Spec: s2hv1beta1.QueueSpec{
-			Type:     s2hv1beta1.QueueTypePromoteToActive,
+		Spec: s2hv1.QueueSpec{
+			Type:     s2hv1.QueueTypePromoteToActive,
 			TeamName: teamName,
 		},
 	}
@@ -553,14 +554,14 @@ func EnsurePromoteToActiveComponents(c client.Client, teamName, namespace string
 }
 
 // EnsureDemoteFromActiveComponents ensures that components were deployed without `active` config
-func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace string) (q *s2hv1beta1.Queue, err error) {
-	q = &s2hv1beta1.Queue{
+func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace string) (q *s2hv1.Queue, err error) {
+	q = &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      string(s2hv1beta1.EnvDeActive),
+			Name:      string(s2hv1.EnvDeActive),
 			Namespace: namespace,
 		},
-		Spec: s2hv1beta1.QueueSpec{
-			Type:     s2hv1beta1.QueueTypeDemoteFromActive,
+		Spec: s2hv1.QueueSpec{
+			Type:     s2hv1.QueueTypeDemoteFromActive,
 			TeamName: teamName,
 		},
 	}
@@ -569,17 +570,17 @@ func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace strin
 }
 
 // EnsurePullRequestComponents ensures that pull request components were deployed with `pull-request` config and tested
-func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName, prNumber string,
-	comps s2hv1beta1.QueueComponents, noOfRetry int) (q *s2hv1beta1.Queue, err error) {
+func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName, prBundleName, prNumber string,
+	comps s2hv1.QueueComponents, noOfRetry int) (q *s2hv1.Queue, err error) {
 
-	q = &s2hv1beta1.Queue{
+	q = &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      queueName,
 			Namespace: namespace,
 		},
-		Spec: s2hv1beta1.QueueSpec{
-			Name:       queueName,
-			Type:       s2hv1beta1.QueueTypePullRequest,
+		Spec: s2hv1.QueueSpec{
+			Name:       prBundleName,
+			Type:       s2hv1.QueueTypePullRequest,
 			TeamName:   teamName,
 			PRNumber:   prNumber,
 			Components: comps,
@@ -592,15 +593,15 @@ func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName
 }
 
 func DeletePreActiveQueue(c client.Client, ns string) error {
-	return deleteQueue(c, ns, string(s2hv1beta1.EnvPreActive))
+	return deleteQueue(c, ns, string(s2hv1.EnvPreActive))
 }
 
 func DeletePromoteToActiveQueue(c client.Client, ns string) error {
-	return deleteQueue(c, ns, string(s2hv1beta1.EnvActive))
+	return deleteQueue(c, ns, string(s2hv1.EnvActive))
 }
 
 func DeleteDemoteFromActiveQueue(c client.Client, ns string) error {
-	return deleteQueue(c, ns, string(s2hv1beta1.EnvDeActive))
+	return deleteQueue(c, ns, string(s2hv1.EnvDeActive))
 }
 
 func DeletePullRequestQueue(c client.Client, ns, queueName string) error {
@@ -609,7 +610,7 @@ func DeletePullRequestQueue(c client.Client, ns, queueName string) error {
 
 // deleteQueue removes Queue in target namespace by name
 func deleteQueue(c client.Client, ns, name string) error {
-	q := &s2hv1beta1.Queue{
+	q := &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
@@ -623,8 +624,8 @@ func deleteQueue(c client.Client, ns, name string) error {
 	return errors.Wrap(err, "cannot delete queue")
 }
 
-func ensureQueue(ctx context.Context, c client.Client, q *s2hv1beta1.Queue) (err error) {
-	fetched := &s2hv1beta1.Queue{}
+func ensureQueue(ctx context.Context, c client.Client, q *s2hv1.Queue) (err error) {
+	fetched := &s2hv1.Queue{}
 	err = c.Get(ctx, types.NamespacedName{Namespace: q.Namespace, Name: q.Name}, fetched)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -650,7 +651,7 @@ func GetComponentUpgradeRPCFromQueue(
 	comStatus samsahairpc.ComponentUpgrade_UpgradeStatus,
 	queueHistName string,
 	queueHistNamespace string,
-	queue *s2hv1beta1.Queue,
+	queue *s2hv1.Queue,
 	prQueueRPC *samsahairpc.TeamWithPullRequest,
 ) *samsahairpc.ComponentUpgrade {
 
@@ -700,7 +701,7 @@ func GetComponentUpgradeRPCFromQueue(
 	return comp
 }
 
-func getIssueTypeRPC(imageMissingList []*samsahairpc.Image, queue *s2hv1beta1.Queue) samsahairpc.ComponentUpgrade_IssueType {
+func getIssueTypeRPC(imageMissingList []*samsahairpc.Image, queue *s2hv1.Queue) samsahairpc.ComponentUpgrade_IssueType {
 	switch {
 	case len(imageMissingList) > 0:
 		return samsahairpc.ComponentUpgrade_IssueType_IMAGE_MISSING
@@ -713,7 +714,7 @@ func getIssueTypeRPC(imageMissingList []*samsahairpc.Image, queue *s2hv1beta1.Qu
 	}
 }
 
-func getReverificationStatusRPC(queue *s2hv1beta1.Queue) samsahairpc.ComponentUpgrade_ReverificationStatus {
+func getReverificationStatusRPC(queue *s2hv1.Queue) samsahairpc.ComponentUpgrade_ReverificationStatus {
 	if !queue.IsReverify() {
 		return samsahairpc.ComponentUpgrade_ReverificationStatus_UNKNOWN
 	}
@@ -725,7 +726,7 @@ func getReverificationStatusRPC(queue *s2hv1beta1.Queue) samsahairpc.ComponentUp
 	return samsahairpc.ComponentUpgrade_ReverificationStatus_FAILURE
 }
 
-func getDeploymentIssuesRPC(queue *s2hv1beta1.Queue) []*samsahairpc.DeploymentIssue {
+func getDeploymentIssuesRPC(queue *s2hv1.Queue) []*samsahairpc.DeploymentIssue {
 	deploymentIssues := make([]*samsahairpc.DeploymentIssue, 0)
 	for _, deploymentIssue := range queue.Status.DeploymentIssues {
 		failureComps := make([]*samsahairpc.FailureComponent, 0)

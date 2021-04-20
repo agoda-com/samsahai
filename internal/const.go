@@ -1,7 +1,7 @@
 package internal
 
 import (
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 )
 
 const (
@@ -38,7 +38,10 @@ const (
 	VKTeamcityURL                     = "teamcity-url"
 	VKTeamcityUsername                = "teamcity-username"
 	VKTeamcityPassword                = "teamcity-password"
+	VKGitlabURL                       = "gitlab-url"
 	VKSlackToken                      = "slack-token"
+	VKGithubURL                       = "github-url"
+	VKGithubToken                     = "github-token"
 	VKMSTeamsTenantID                 = "ms-teams-tenant-id"
 	VKMSTeamsClientID                 = "ms-teams-client-id"
 	VKMSTeamsClientSecret             = "ms-teams-client-secret"
@@ -61,6 +64,6 @@ const (
 )
 
 type ConfigurationJSON struct {
-	GitRevision   string                 `json:"gitRevision"`
-	Configuration *s2hv1beta1.ConfigSpec `json:"config"`
+	GitRevision   string            `json:"gitRevision"`
+	Configuration *s2hv1.ConfigSpec `json:"config"`
 }

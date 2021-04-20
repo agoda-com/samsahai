@@ -2,8 +2,6 @@ package samsahai
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -33,11 +31,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	"github.com/agoda-com/samsahai/internal/reporter/github"
 	"github.com/agoda-com/samsahai/internal/reporter/msteams"
 	"github.com/agoda-com/samsahai/internal/reporter/reportermock"
 	"github.com/agoda-com/samsahai/internal/reporter/rest"
@@ -48,7 +47,10 @@ import (
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
 	"github.com/agoda-com/samsahai/internal/samsahai/k8sobject"
 	"github.com/agoda-com/samsahai/internal/samsahai/plugin"
+	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
+	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
 	"github.com/agoda-com/samsahai/internal/util/cmd"
+	"github.com/agoda-com/samsahai/internal/util/random"
 	"github.com/agoda-com/samsahai/internal/util/stringutils"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
@@ -205,6 +207,7 @@ func (c *controller) loadReporters() {
 		reportermock.New(),
 		rest.New(),
 		shell.New(),
+		github.New(github.WithGithubURL(c.configs.GithubURL), github.WithGithubToken(cred.GithubToken)),
 	}
 
 	if cred.SlackToken != "" {
@@ -213,8 +216,8 @@ func (c *controller) loadReporters() {
 
 	if cred.MSTeams.TenantID != "" && cred.MSTeams.ClientID != "" && cred.MSTeams.ClientSecret != "" &&
 		cred.MSTeams.Username != "" && cred.MSTeams.Password != "" {
-		reporters = append(reporters, msteams.New(cred.MSTeams.TenantID, cred.MSTeams.ClientID, cred.MSTeams.ClientSecret,
-			cred.MSTeams.Username, cred.MSTeams.Password))
+		reporters = append(reporters, msteams.New(cred.MSTeams.TenantID, cred.MSTeams.ClientID,
+			cred.MSTeams.ClientSecret, cred.MSTeams.Username, cred.MSTeams.Password))
 	}
 
 	for _, reporter := range reporters {
@@ -284,58 +287,59 @@ func (c *controller) GetPlugins() map[string]internal.Plugin {
 	return c.plugins
 }
 
-type TeamNamespaceStatusOption func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType)
+type TeamNamespaceStatusOption func(teamComp *s2hv1.Team) (string, corev1.ResourceList, s2hv1.TeamConditionType)
 
 func withTeamStagingNamespaceStatus(namespace string, isDelete ...bool) TeamNamespaceStatusOption {
-	return func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType) {
+	return func(teamComp *s2hv1.Team) (string, corev1.ResourceList, s2hv1.TeamConditionType) {
 		teamComp.Status.Namespace.Staging = namespace
 		if len(isDelete) > 0 && isDelete[0] {
 			teamComp.Status.Namespace.Staging = ""
 		}
 
-		return namespace, nil, s2hv1beta1.TeamNamespaceStagingCreated
+		return namespace, nil, s2hv1.TeamNamespaceStagingCreated
 	}
 }
 
 func withTeamPreActiveNamespaceStatus(namespace string, isDelete ...bool) TeamNamespaceStatusOption {
-	return func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType) {
+	return func(teamComp *s2hv1.Team) (string, corev1.ResourceList, s2hv1.TeamConditionType) {
 		teamComp.Status.Namespace.PreActive = namespace
 		if len(isDelete) > 0 && isDelete[0] {
 			teamComp.Status.Namespace.PreActive = ""
 		}
 
-		return namespace, nil, s2hv1beta1.TeamNamespacePreActiveCreated
+		return namespace, nil, s2hv1.TeamNamespacePreActiveCreated
 	}
 }
 
 func withTeamPreviousActiveNamespaceStatus(namespace string, isDelete ...bool) TeamNamespaceStatusOption {
-	return func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType) {
+	return func(teamComp *s2hv1.Team) (string, corev1.ResourceList, s2hv1.TeamConditionType) {
 		teamComp.Status.Namespace.PreviousActive = namespace
 		if len(isDelete) > 0 && isDelete[0] {
 			teamComp.Status.Namespace.PreviousActive = ""
 		}
 
-		return namespace, nil, s2hv1beta1.TeamNamespacePreviousActiveCreated
+		return namespace, nil, s2hv1.TeamNamespacePreviousActiveCreated
 	}
 }
 
 func withTeamActiveNamespaceStatus(namespace, promotedBy string, isDelete ...bool) TeamNamespaceStatusOption {
-	return func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType) {
+	return func(teamComp *s2hv1.Team) (string, corev1.ResourceList, s2hv1.TeamConditionType) {
 		teamComp.Status.Namespace.Active = namespace
 		if promotedBy != "" {
 			teamComp.Status.ActivePromotedBy = promotedBy
+			teamComp.Status.ActiveDeletedBy = ""
 		}
 		if len(isDelete) > 0 && isDelete[0] {
 			teamComp.Status.Namespace.Active = ""
 			teamComp.Status.ActivePromotedBy = ""
 		}
 
-		return namespace, nil, s2hv1beta1.TeamNamespaceActiveCreated
+		return namespace, nil, s2hv1.TeamNamespaceActiveCreated
 	}
 }
 
 func withTeamPullRequestNamespaceStatus(namespace string, resources corev1.ResourceList, isDelete ...bool) TeamNamespaceStatusOption {
-	return func(teamComp *s2hv1beta1.Team) (string, corev1.ResourceList, s2hv1beta1.TeamConditionType) {
+	return func(teamComp *s2hv1.Team) (string, corev1.ResourceList, s2hv1.TeamConditionType) {
 		if len(teamComp.Status.Namespace.PullRequests) == 0 {
 			teamComp.Status.Namespace.PullRequests = make([]string, 0)
 		}
@@ -363,8 +367,16 @@ func withTeamPullRequestNamespaceStatus(namespace string, resources corev1.Resou
 			teamComp.Status.Namespace.PullRequests = newPRNamespaces
 		}
 
-		return namespace, resources, s2hv1beta1.TeamNamespacePullRequestCreated
+		return namespace, resources, getPullRequestNamespaceCreatedConditionType(namespace)
 	}
+}
+
+func getPullRequestNamespaceCreatedConditionType(namespace string) s2hv1.TeamConditionType {
+	return s2hv1.TeamNamespacePullRequestCreated + s2hv1.TeamConditionType("-"+namespace)
+}
+
+func getPostPullRequestNamespaceRunConditionType(namespace string) s2hv1.TeamConditionType {
+	return s2hv1.TeamPostPullRequestNamespaceCreationRun + s2hv1.TeamConditionType("-"+namespace)
 }
 
 func (c *controller) CreateStagingEnvironment(teamName, namespace string) error {
@@ -376,10 +388,10 @@ func (c *controller) CreatePreActiveEnvironment(teamName, namespace string) erro
 }
 
 func (c *controller) PromoteActiveEnvironment(
-	teamComp *s2hv1beta1.Team,
+	teamComp *s2hv1.Team,
 	namespace string,
 	promotedBy string,
-	comps map[string]s2hv1beta1.StableComponent,
+	comps map[string]s2hv1.StableComponent,
 ) error {
 	preActiveNamespace := teamComp.Status.Namespace.PreActive
 	activeNamespace := teamComp.Status.Namespace.Active
@@ -396,15 +408,15 @@ func (c *controller) PromoteActiveEnvironment(
 		}
 
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamNamespaceActiveCreated,
+			s2hv1.TeamNamespaceActiveCreated,
 			corev1.ConditionTrue,
 			fmt.Sprintf("%s namespace is switched to active", preActiveNamespace))
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamNamespacePreviousActiveCreated,
+			s2hv1.TeamNamespacePreviousActiveCreated,
 			corev1.ConditionTrue,
 			fmt.Sprintf("%s namespace is switched to previous active", activeNamespace))
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamNamespacePreActiveCreated,
+			s2hv1.TeamNamespacePreActiveCreated,
 			corev1.ConditionFalse,
 			"pre-active namespace is reset")
 
@@ -425,13 +437,13 @@ func (c *controller) PromoteActiveEnvironment(
 		preActiveNamespace + " (team pre-active namespace), so this pre-active namespace cannot be switched")
 }
 
-func (c *controller) storeActiveComponentsToTeam(teamComp *s2hv1beta1.Team, comps map[string]s2hv1beta1.StableComponent) error {
+func (c *controller) storeActiveComponentsToTeam(teamComp *s2hv1.Team, comps map[string]s2hv1.StableComponent) error {
 	teamComp.Status.SetActiveComponents(comps)
 	return nil
 }
 
 func (c *controller) createNamespace(teamName string, teamNsOpt TeamNamespaceStatusOption) error {
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamName, teamComp); err != nil {
 		return err
 	}
@@ -467,7 +479,7 @@ func (c *controller) createNamespace(teamName string, teamNsOpt TeamNamespaceSta
 	return nil
 }
 
-func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt TeamNamespaceStatusOption) error {
+func (c *controller) createNamespaceByTeam(teamComp *s2hv1.Team, teamNsOpt TeamNamespaceStatusOption) error {
 	namespace, resources, nsConditionType := teamNsOpt(teamComp)
 	namespaceObj := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -479,19 +491,19 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 	if err := c.client.Get(ctx, types.NamespacedName{Name: namespace}, &namespaceObj); err != nil {
 		if k8serrors.IsNotFound(err) {
 			logger.Debug("start creating namespace", "team", teamComp.Name, "namespace", namespace)
-			if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
+			if nsConditionType == s2hv1.TeamNamespaceStagingCreated {
 				if err := controllerutil.SetControllerReference(teamComp, &namespaceObj, c.scheme); err != nil {
 					return err
 				}
 
 				teamComp.Status.SetCondition(
-					s2hv1beta1.TeamFirstNotifyComponentChanged,
+					s2hv1.TeamFirstNotifyComponentChanged,
 					corev1.ConditionFalse,
 					"namespace has been being created")
 
 				if c.configs.ActivePromotion.PromoteOnTeamCreation {
 					teamComp.Status.SetCondition(
-						s2hv1beta1.TeamFirstActivePromotionRun,
+						s2hv1.TeamFirstActivePromotionRun,
 						corev1.ConditionFalse,
 						"namespace has been being created")
 				}
@@ -503,7 +515,7 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 
 			if c.configs.PostNamespaceCreation != nil {
 				setPostNamespaceCreationCondition(teamComp, nsConditionType, corev1.ConditionFalse,
-					"namespace has been being created")
+					namespace, "namespace has been being created")
 			}
 
 			return errors.ErrTeamNamespaceStillCreating
@@ -522,12 +534,14 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 
 	if !teamComp.Status.IsConditionTrue(nsConditionType) {
 		if c.configs.PostNamespaceCreation != nil {
-			postStagingNsNotRun := nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated &&
-				!teamComp.Status.IsConditionTrue(s2hv1beta1.TeamPostStagingNamespaceCreationRun)
-			postPreActiveNsNotRun := nsConditionType == s2hv1beta1.TeamNamespacePreActiveCreated &&
-				!teamComp.Status.IsConditionTrue(s2hv1beta1.TeamPostPreActiveNamespaceCreationRun)
+			postStagingNsNotRun := nsConditionType == s2hv1.TeamNamespaceStagingCreated &&
+				!teamComp.Status.IsConditionTrue(s2hv1.TeamPostStagingNamespaceCreationRun)
+			postPreActiveNsNotRun := nsConditionType == s2hv1.TeamNamespacePreActiveCreated &&
+				!teamComp.Status.IsConditionTrue(s2hv1.TeamPostPreActiveNamespaceCreationRun)
+			postPullRequestNsNotRun := nsConditionType == getPullRequestNamespaceCreatedConditionType(namespace) &&
+				!teamComp.Status.IsConditionTrue(getPostPullRequestNamespaceRunConditionType(namespace))
 
-			if postStagingNsNotRun || postPreActiveNsNotRun {
+			if postStagingNsNotRun || postPreActiveNsNotRun || postPullRequestNsNotRun {
 				logger.Debug("start executing command after creating namespace",
 					"team", teamComp.Name, "namespace", namespace)
 				if err := c.runPostNamespaceCreation(namespace, teamComp); err != nil {
@@ -536,54 +550,53 @@ func (c *controller) createNamespaceByTeam(teamComp *s2hv1beta1.Team, teamNsOpt 
 				}
 
 				setPostNamespaceCreationCondition(teamComp, nsConditionType, corev1.ConditionTrue,
-					"post namespace creation has been executed successfully")
+					namespace, "post namespace creation has been executed successfully")
+			}
+		}
+	}
+
+	if nsConditionType == s2hv1.TeamNamespaceStagingCreated {
+		if !teamComp.Status.IsConditionTrue(s2hv1.TeamFirstNotifyComponentChanged) {
+			logger.Debug("start notifying component", "team", teamComp.Name, "namespace", namespace)
+			if err := c.notifyComponentChanged(teamComp.Name); err != nil {
+				return errors.Wrapf(err, "cannot notify component changed while creating staging namespace",
+					"team", teamComp.Name, "namespace", namespace)
 			}
 
+			teamComp.Status.SetCondition(
+				s2hv1.TeamFirstNotifyComponentChanged,
+				corev1.ConditionTrue,
+				"notified component changed successfully")
+			return errors.ErrTeamNamespaceComponentNotified
 		}
 
-		if nsConditionType == s2hv1beta1.TeamNamespaceStagingCreated {
-			if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstNotifyComponentChanged) {
-				logger.Debug("start notifying component", "team", teamComp.Name, "namespace", namespace)
-				if err := c.notifyComponentChanged(teamComp.Name); err != nil {
-					logger.Error(err, "cannot notify component changed while creating staging namespace",
-						"team", teamComp.Name, "namespace", namespace)
-					return errors.ErrTeamNamespaceComponentNotified
-				}
+		if c.configs.ActivePromotion.PromoteOnTeamCreation &&
+			!teamComp.Status.IsConditionTrue(s2hv1.TeamFirstActivePromotionRun) {
 
-				teamComp.Status.SetCondition(
-					s2hv1beta1.TeamFirstNotifyComponentChanged,
-					corev1.ConditionTrue,
-					fmt.Sprintf("notified component changed successfully"))
+			logger.Debug("start creating active promotion",
+				"team", teamComp.Name, "namespace", namespace)
+			if err := c.createActivePromotion(teamComp.Name); err != nil {
+				return errors.Wrapf(err, "cannot create active promotion while creating staging namespace",
+					"namespace", namespace)
 			}
 
-			if c.configs.ActivePromotion.PromoteOnTeamCreation &&
-				!teamComp.Status.IsConditionTrue(s2hv1beta1.TeamFirstActivePromotionRun) {
-
-				logger.Debug("start creating active promotion",
-					"team", teamComp.Name, "namespace", namespace)
-				if err := c.createActivePromotion(teamComp.Name); err != nil {
-					logger.Error(err, "cannot create active promotion while creating staging namespace",
-						"namespace", namespace)
-					return errors.ErrTeamNamespacePromotionCreated
-				}
-
-				teamComp.Status.SetCondition(
-					s2hv1beta1.TeamFirstActivePromotionRun,
-					corev1.ConditionTrue,
-					fmt.Sprintf("triggered active promotion successfully"))
-			}
+			teamComp.Status.SetCondition(
+				s2hv1.TeamFirstActivePromotionRun,
+				corev1.ConditionTrue,
+				"triggered active promotion successfully")
+			return errors.ErrTeamNamespacePromotionCreated
 		}
 	}
 
 	return nil
 }
 
-func (c *controller) runPostNamespaceCreation(ns string, team *s2hv1beta1.Team) error {
+func (c *controller) runPostNamespaceCreation(ns string, team *s2hv1.Team) error {
 	cmdAndArgs := c.configs.PostNamespaceCreation.CommandAndArgs
 
 	creationObj := internal.PostNamespaceCreation{
 		Namespace: ns,
-		Team: s2hv1beta1.Team{
+		Team: s2hv1.Team{
 			Spec:   team.Status.Used,
 			Status: team.Status,
 		},
@@ -600,7 +613,7 @@ func (c *controller) runPostNamespaceCreation(ns string, team *s2hv1beta1.Team) 
 	return nil
 }
 
-func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespace string, resources corev1.ResourceList) error {
+func (c *controller) createEnvironmentObjects(teamComp *s2hv1.Team, namespace string, resources corev1.ResourceList) error {
 	secretKVs := []k8sobject.KeyValue{
 		{
 			Key:   internal.VKS2HAuthToken,
@@ -637,13 +650,11 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 		k8sObjects = append(k8sObjects, deploymentObj)
 	}
 
-	if len(teamComp.Status.Used.Resources) > 0 {
-		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, nil)
-		k8sObjects = append(k8sObjects, quotaObj)
-	}
-
 	if len(resources) > 0 {
 		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, resources)
+		k8sObjects = append(k8sObjects, quotaObj)
+	} else if len(teamComp.Status.Used.Resources) > 0 {
+		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, nil)
 		k8sObjects = append(k8sObjects, quotaObj)
 	}
 
@@ -656,18 +667,36 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1beta1.Team, namespa
 	return nil
 }
 
-func setPostNamespaceCreationCondition(teamComp *s2hv1beta1.Team, nsConditionType s2hv1beta1.TeamConditionType,
-	cond corev1.ConditionStatus, message string) {
+func (c *controller) sendActiveEnvironmentDeleted(teamName, activeNs, deletedBy string) error {
+	configCtrl := c.GetConfigController()
+	deletedAt := metav1.Now().UTC().Format("2006-01-02T15:04:05")
+	activeNsDeletedRpt := internal.NewActiveEnvironmentDeletedReporter(teamName, activeNs, deletedBy, deletedAt)
+	for _, reporter := range c.reporters {
+		if err := reporter.SendActiveEnvironmentDeleted(configCtrl, activeNsDeletedRpt); err != nil {
+			logger.Error(err, "cannot send deleted active namespace report", "team", teamName)
+			return err
+		}
+	}
+	return nil
+}
+
+func setPostNamespaceCreationCondition(teamComp *s2hv1.Team, nsConditionType s2hv1.TeamConditionType,
+	cond corev1.ConditionStatus, namespace, message string) {
 
 	switch nsConditionType {
-	case s2hv1beta1.TeamNamespaceStagingCreated:
+	case s2hv1.TeamNamespaceStagingCreated:
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamPostStagingNamespaceCreationRun,
+			s2hv1.TeamPostStagingNamespaceCreationRun,
 			cond,
 			message)
-	case s2hv1beta1.TeamNamespacePreActiveCreated:
+	case s2hv1.TeamNamespacePreActiveCreated:
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamPostPreActiveNamespaceCreationRun,
+			s2hv1.TeamPostPreActiveNamespaceCreationRun,
+			cond,
+			message)
+	case getPullRequestNamespaceCreatedConditionType(namespace):
+		teamComp.Status.SetCondition(
+			getPostPullRequestNamespaceRunConditionType(namespace),
 			cond,
 			message)
 	}
@@ -690,7 +719,8 @@ func deployStagingCtrl(c client.Client, obj runtime.Object) error {
 	}
 
 	if k8sobject.IsK8sObjectChanged(obj, target) {
-		logger.Debug(fmt.Sprintf("%s of %s namespace has some changes", obj.GetObjectKind().GroupVersionKind(), objKey.Namespace))
+		logger.Debug(fmt.Sprintf("%s of %s namespace has some changes",
+			obj.GetObjectKind().GroupVersionKind(), objKey.Namespace))
 		if err := c.Update(ctx, obj); err != nil {
 			return err
 		}
@@ -699,7 +729,7 @@ func deployStagingCtrl(c client.Client, obj runtime.Object) error {
 	return nil
 }
 
-func getAllTeamNamespaces(teamComp *s2hv1beta1.Team, isDelete bool) []TeamNamespaceStatusOption {
+func getAllTeamNamespaces(teamComp *s2hv1.Team, isDelete bool) []TeamNamespaceStatusOption {
 	var teamNsOpts []TeamNamespaceStatusOption
 	stagingNs := teamComp.Status.Namespace.Staging
 	if !strings.EqualFold("", stagingNs) {
@@ -744,7 +774,7 @@ func (c *controller) DestroyPreviousActiveEnvironment(teamName, namespace string
 }
 
 func (c *controller) destroyNamespace(teamName string, teamNsOpt TeamNamespaceStatusOption) error {
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamName, teamComp); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil
@@ -756,7 +786,7 @@ func (c *controller) destroyNamespace(teamName string, teamNsOpt TeamNamespaceSt
 	return c.destroyNamespaces(teamComp, teamNsOpt)
 }
 
-func (c *controller) destroyNamespaces(teamComp *s2hv1beta1.Team, teamNsOpts ...TeamNamespaceStatusOption) error {
+func (c *controller) destroyNamespaces(teamComp *s2hv1.Team, teamNsOpts ...TeamNamespaceStatusOption) error {
 	ctx := context.TODO()
 	for _, teamNsOpt := range teamNsOpts {
 		namespace, _, nsConditionType := teamNsOpt(teamComp)
@@ -822,7 +852,7 @@ func (c *controller) destroyNamespaces(teamComp *s2hv1beta1.Team, teamNsOpts ...
 	return nil
 }
 
-func (c *controller) SetPreviousActiveNamespace(teamComp *s2hv1beta1.Team, namespace string) error {
+func (c *controller) SetPreviousActiveNamespace(teamComp *s2hv1.Team, namespace string) error {
 	msg := fmt.Sprintf("%s namespace is switched to previous active", namespace)
 	cond := corev1.ConditionTrue
 	if namespace == "" {
@@ -831,14 +861,14 @@ func (c *controller) SetPreviousActiveNamespace(teamComp *s2hv1beta1.Team, names
 	}
 
 	teamComp.Status.SetCondition(
-		s2hv1beta1.TeamNamespacePreviousActiveCreated,
+		s2hv1.TeamNamespacePreviousActiveCreated,
 		cond,
 		msg)
 
 	return c.updateTeamNamespacesStatus(teamComp, withTeamPreviousActiveNamespaceStatus(namespace))
 }
 
-func (c *controller) SetPreActiveNamespace(teamComp *s2hv1beta1.Team, namespace string) error {
+func (c *controller) SetPreActiveNamespace(teamComp *s2hv1.Team, namespace string) error {
 	msg := fmt.Sprintf("%s namespace is switched to pre-active", namespace)
 	cond := corev1.ConditionTrue
 	if namespace == "" {
@@ -847,14 +877,14 @@ func (c *controller) SetPreActiveNamespace(teamComp *s2hv1beta1.Team, namespace 
 	}
 
 	teamComp.Status.SetCondition(
-		s2hv1beta1.TeamNamespacePreActiveCreated,
+		s2hv1.TeamNamespacePreActiveCreated,
 		cond,
 		msg)
 
 	return c.updateTeamNamespacesStatus(teamComp, withTeamPreActiveNamespaceStatus(namespace))
 }
 
-func (c *controller) SetActiveNamespace(teamComp *s2hv1beta1.Team, namespace string) error {
+func (c *controller) SetActiveNamespace(teamComp *s2hv1.Team, namespace string) error {
 	msg := fmt.Sprintf("%s namespace is switched to active", namespace)
 	cond := corev1.ConditionTrue
 	if namespace == "" {
@@ -863,14 +893,14 @@ func (c *controller) SetActiveNamespace(teamComp *s2hv1beta1.Team, namespace str
 	}
 
 	teamComp.Status.SetCondition(
-		s2hv1beta1.TeamNamespaceActiveCreated,
+		s2hv1.TeamNamespaceActiveCreated,
 		cond,
 		msg)
 
 	return c.updateTeamNamespacesStatus(teamComp, withTeamActiveNamespaceStatus(namespace, ""))
 }
 
-func (c *controller) updateTeamNamespacesStatus(teamComp *s2hv1beta1.Team, teamNsOpts ...TeamNamespaceStatusOption) error {
+func (c *controller) updateTeamNamespacesStatus(teamComp *s2hv1.Team, teamNsOpts ...TeamNamespaceStatusOption) error {
 	for _, teamNsOpt := range teamNsOpts {
 		teamNsOpt(teamComp)
 	}
@@ -878,7 +908,7 @@ func (c *controller) updateTeamNamespacesStatus(teamComp *s2hv1beta1.Team, teamN
 	return c.updateTeam(teamComp)
 }
 
-func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
+func (c *controller) LoadTeamSecret(teamComp *s2hv1.Team) error {
 	s2hSecret := corev1.Secret{}
 	secretName := teamComp.Status.Used.Credential.SecretName
 	if secretName == "" {
@@ -890,6 +920,7 @@ func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
 		return errors.Wrapf(err, "cannot find %s secret in %s namespace", secretName, c.namespace)
 	}
 
+	// currently, has been used only sending reporter not test runner
 	tcCred := teamComp.Status.Used.Credential.Teamcity
 	if tcCred != nil {
 		tcUsername := tcCred.UsernameRef
@@ -899,10 +930,16 @@ func (c *controller) LoadTeamSecret(teamComp *s2hv1beta1.Team) error {
 		teamComp.Status.Used.Credential.Teamcity.Password = string(s2hSecret.Data[tcPassword.Key])
 	}
 
+	gitCred := teamComp.Status.Used.Credential.Github
+	if gitCred != nil {
+		gitToken := gitCred.TokenRef
+		teamComp.Status.Used.Credential.Github.Token = string(s2hSecret.Data[gitToken.Key])
+	}
+
 	return nil
 }
 
-func (c *controller) GetTeam(teamName string, teamComp *s2hv1beta1.Team) error {
+func (c *controller) GetTeam(teamName string, teamComp *s2hv1.Team) error {
 	return c.getTeam(teamName, teamComp)
 }
 
@@ -989,49 +1026,49 @@ func (c *controller) GetConnections(namespace string) (map[string][]internal.Con
 	return data, nil
 }
 
-func (c *controller) GetTeams() (v *s2hv1beta1.TeamList, err error) {
-	v = &s2hv1beta1.TeamList{}
+func (c *controller) GetTeams() (v *s2hv1.TeamList, err error) {
+	v = &s2hv1.TeamList{}
 	err = c.client.List(context.TODO(), v, &client.ListOptions{})
 	return v, errors.Wrap(err, "cannot list teams")
 }
 
-func (c *controller) GetPullRequestQueueHistories(namespace string) (v *s2hv1beta1.PullRequestQueueHistoryList, err error) {
-	v = &s2hv1beta1.PullRequestQueueHistoryList{}
+func (c *controller) GetPullRequestQueueHistories(namespace string) (v *s2hv1.PullRequestQueueHistoryList, err error) {
+	v = &s2hv1.PullRequestQueueHistoryList{}
 	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})
 	return v, errors.Wrap(err, "cannot list pull request queue histories")
 }
 
-func (c *controller) GetPullRequestQueueHistory(name, namespace string) (v *s2hv1beta1.PullRequestQueueHistory, err error) {
-	v = &s2hv1beta1.PullRequestQueueHistory{}
+func (c *controller) GetPullRequestQueueHistory(name, namespace string) (v *s2hv1.PullRequestQueueHistory, err error) {
+	v = &s2hv1.PullRequestQueueHistory{}
 	err = c.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, v)
 	return
 }
 
-func (c *controller) GetPullRequestQueues(namespace string) (v *s2hv1beta1.PullRequestQueueList, err error) {
-	v = &s2hv1beta1.PullRequestQueueList{}
+func (c *controller) GetPullRequestQueues(namespace string) (v *s2hv1.PullRequestQueueList, err error) {
+	v = &s2hv1.PullRequestQueueList{}
 	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})
 	return v, errors.Wrap(err, "cannot list pull request queues")
 }
 
-func (c *controller) GetQueueHistories(namespace string) (v *s2hv1beta1.QueueHistoryList, err error) {
-	v = &s2hv1beta1.QueueHistoryList{}
+func (c *controller) GetQueueHistories(namespace string) (v *s2hv1.QueueHistoryList, err error) {
+	v = &s2hv1.QueueHistoryList{}
 	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})
 	return v, errors.Wrap(err, "cannot list queue histories")
 }
 
-func (c *controller) GetQueueHistory(name, namespace string) (v *s2hv1beta1.QueueHistory, err error) {
-	v = &s2hv1beta1.QueueHistory{}
+func (c *controller) GetQueueHistory(name, namespace string) (v *s2hv1.QueueHistory, err error) {
+	v = &s2hv1.QueueHistory{}
 	err = c.client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, v)
 	return
 }
 
-func (c *controller) GetQueues(namespace string) (v *s2hv1beta1.QueueList, err error) {
-	v = &s2hv1beta1.QueueList{}
+func (c *controller) GetQueues(namespace string) (v *s2hv1.QueueList, err error) {
+	v = &s2hv1.QueueList{}
 	err = c.client.List(context.TODO(), v, &client.ListOptions{Namespace: namespace})
 	return v, errors.Wrap(err, "cannot list queues")
 }
 
-func (c *controller) GetStableValues(team *s2hv1beta1.Team, comp *s2hv1beta1.Component) (s2hv1beta1.ComponentValues, error) {
+func (c *controller) GetStableValues(team *s2hv1.Team, comp *s2hv1.Component) (s2hv1.ComponentValues, error) {
 	// TODO: can get stable components map from team.status
 	stableComps, err := valuesutil.GetStableComponentsMap(c.client, team.Status.Namespace.Staging)
 	if err != nil {
@@ -1045,39 +1082,66 @@ func (c *controller) GetStableValues(team *s2hv1beta1.Team, comp *s2hv1beta1.Com
 		return nil, err
 	}
 
-	values, err := configctrl.GetEnvComponentValues(&config.Status.Used, comp.Name, team.Name, s2hv1beta1.EnvBase)
+	values, err := configctrl.GetEnvComponentValues(&config.Status.Used, comp.Name, team.Name, s2hv1.EnvBase)
 	if err != nil {
 		logger.Error(err, "cannot get values file",
-			"env", s2hv1beta1.EnvBase, "component", comp.Name, "team", team.Name)
+			"env", s2hv1.EnvBase, "component", comp.Name, "team", team.Name)
 		return nil, err
 	}
 
 	return valuesutil.GenStableComponentValues(comp, stableComps, values), nil
 }
 
-func (c *controller) GetActivePromotions() (v *s2hv1beta1.ActivePromotionList, err error) {
-	v = &s2hv1beta1.ActivePromotionList{}
+func (c *controller) GetActivePromotions() (v *s2hv1.ActivePromotionList, err error) {
+	v = &s2hv1.ActivePromotionList{}
 	err = c.client.List(context.TODO(), v, &client.ListOptions{})
 	return
 }
 
-func (c *controller) GetActivePromotion(name string) (v *s2hv1beta1.ActivePromotion, err error) {
-	v = &s2hv1beta1.ActivePromotion{}
+func (c *controller) GetActivePromotion(name string) (v *s2hv1.ActivePromotion, err error) {
+	v = &s2hv1.ActivePromotion{}
 	err = c.client.Get(context.TODO(), client.ObjectKey{Name: name}, v)
 	return
 }
 
-func (c *controller) GetActivePromotionHistories(selectors map[string]string) (v *s2hv1beta1.ActivePromotionHistoryList, err error) {
-	v = &s2hv1beta1.ActivePromotionHistoryList{}
+func (c *controller) GetActivePromotionHistories(selectors map[string]string) (v *s2hv1.ActivePromotionHistoryList, err error) {
+	v = &s2hv1.ActivePromotionHistoryList{}
 	listOpt := &client.ListOptions{LabelSelector: labels.SelectorFromSet(selectors)}
 	err = c.client.List(context.TODO(), v, listOpt)
 	return
 }
 
-func (c *controller) GetActivePromotionHistory(name string) (v *s2hv1beta1.ActivePromotionHistory, err error) {
-	v = &s2hv1beta1.ActivePromotionHistory{}
+func (c *controller) GetActivePromotionHistory(name string) (v *s2hv1.ActivePromotionHistory, err error) {
+	v = &s2hv1.ActivePromotionHistory{}
 	err = c.client.Get(context.TODO(), client.ObjectKey{Name: name}, v)
 	return
+}
+
+func (c *controller) GetActivePromotionDeployEngine(teamName, ns string) internal.DeployEngine {
+	var e string
+	configCtrl := c.GetConfigController()
+	config, err := configCtrl.Get(teamName)
+	if err != nil {
+		return mock.New()
+	}
+
+	atpConfig := config.Status.Used.ActivePromotion
+
+	if atpConfig == nil || atpConfig.Deployment == nil || atpConfig.Deployment.Engine == nil || *atpConfig.Deployment.Engine == "" {
+		e = mock.EngineName
+	} else {
+		e = *config.Status.Used.ActivePromotion.Deployment.Engine
+	}
+
+	var engine internal.DeployEngine
+
+	switch e {
+	case helm3.EngineName:
+		engine = helm3.New(ns, false)
+	default:
+		engine = mock.New()
+	}
+	return engine
 }
 
 func (c *controller) getComponentChecker(source string) (internal.DesiredComponentChecker, error) {
@@ -1105,11 +1169,11 @@ func (c *controller) notifyComponentChanged(teamName string) error {
 }
 
 func (c *controller) createActivePromotion(teamName string) error {
-	atp := &s2hv1beta1.ActivePromotion{
+	atp := &s2hv1.ActivePromotion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: teamName,
 		},
-		Spec: s2hv1beta1.ActivePromotionSpec{
+		Spec: s2hv1.ActivePromotionSpec{
 			PromotedBy: PromotedBySamsahai,
 		},
 	}
@@ -1146,11 +1210,11 @@ func getNodeIP(nodes *corev1.NodeList) string {
 
 func (c *controller) destroyAllStableComponents(namespace string) error {
 	ctx := context.TODO()
-	if err := c.client.DeleteAllOf(ctx, &s2hv1beta1.StableComponent{}, client.InNamespace(namespace)); err != nil {
+	if err := c.client.DeleteAllOf(ctx, &s2hv1.StableComponent{}, client.InNamespace(namespace)); err != nil {
 		return err
 	}
 
-	stableList := &s2hv1beta1.StableComponentList{}
+	stableList := &s2hv1.StableComponentList{}
 	if err := c.client.List(ctx, stableList, &client.ListOptions{Namespace: namespace}); err != nil {
 		logger.Error(err, "cannot list stable components", "namespace", namespace)
 		return err
@@ -1176,7 +1240,11 @@ func (c *controller) destroyClusterRole(namespace string) error {
 		return errors.Wrapf(err, "cannot get clusterrole name %s", clusterRoleName)
 	}
 
-	return c.client.Delete(ctx, clusterRole)
+	if err = c.client.Delete(ctx, clusterRole); err != nil &&
+		k8serrors.IsNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 func (c *controller) destroyClusterRoleBinding(namespace string) error {
@@ -1192,7 +1260,98 @@ func (c *controller) destroyClusterRoleBinding(namespace string) error {
 		return errors.Wrapf(err, "cannot get clusterrole name %s", clusterRoleBindingName)
 	}
 
-	return c.client.Delete(ctx, clusterRoleBinding)
+	if err = c.client.Delete(ctx, clusterRoleBinding); err != nil &&
+		k8serrors.IsNotFound(err) {
+		return nil
+	}
+	return err
+}
+
+func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy string) error {
+	teamComp := &s2hv1.Team{}
+	if err := c.getTeam(teamName, teamComp); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+	}
+
+	if !teamComp.Status.IsConditionTrue(s2hv1.TeamActiveEnvironmentDeletedReportSent) {
+		if err := c.sendActiveEnvironmentDeleted(teamName, namespace, deletedBy); err != nil {
+			teamComp.Status.SetCondition(
+				s2hv1.TeamActiveEnvironmentDeletedReportSent,
+				corev1.ConditionFalse,
+				"cannot sent deleted active namespace report")
+		} else {
+			teamComp.Status.SetCondition(
+				s2hv1.TeamActiveEnvironmentDeletedReportSent,
+				corev1.ConditionTrue,
+				"deleted active namespace report has been sent successfully")
+		}
+	}
+
+	if !teamComp.Status.IsConditionTrue(s2hv1.TeamActiveEnvironmentDeleted) {
+		if deletedBy != "" {
+			teamComp.Status.ActiveDeletedBy = deletedBy
+		}
+		teamComp.Status.SetCondition(
+			s2hv1.TeamActiveEnvironmentDeleted,
+			corev1.ConditionTrue,
+			fmt.Sprintf("%s namespace is deleting", namespace))
+	}
+
+	configCtrl := c.GetConfigController()
+
+	deployEngine := c.GetActivePromotionDeployEngine(teamName, namespace)
+
+	parentComps, err := configCtrl.GetParentComponents(teamName)
+	if err != nil {
+		return err
+	}
+
+	for compName := range parentComps {
+		refName := internal.GenReleaseName(namespace, compName)
+		if err := deployEngine.Delete(refName); err != nil &&
+			!k8serrors.IsNotFound(err) {
+			logger.Error(err, "cannot delete release",
+				"refName", refName,
+				"namespace", namespace,
+				"component", compName)
+		}
+	}
+
+	err = c.DestroyActiveEnvironment(teamName, namespace)
+	if err != nil && !errors.IsNamespaceStillExists(err) {
+		teamComp.Status.SetCondition(
+			s2hv1.TeamActiveEnvironmentDeleted,
+			corev1.ConditionTrue,
+			fmt.Sprintf("%s namespace is deleting", namespace))
+
+		if err := c.updateTeam(teamComp); err != nil {
+			logger.Error(err, "cannot update team conditions when active environment is deleting")
+		}
+		return err
+	}
+
+	teamComp.Status.Namespace.Active = ""
+	teamComp.Status.ActivePromotedBy = ""
+	teamComp.Status.SetCondition(
+		s2hv1.TeamActiveEnvironmentDeleted,
+		corev1.ConditionFalse,
+		fmt.Sprintf("%s namespace has been deleted successfully", namespace))
+	teamComp.Status.SetCondition(
+		s2hv1.TeamNamespaceActiveCreated,
+		corev1.ConditionFalse,
+		fmt.Sprintf("%s namespace is destroyed", namespace))
+	teamComp.Status.SetCondition(
+		s2hv1.TeamActiveEnvironmentDeletedReportSent,
+		corev1.ConditionFalse,
+		"deleted active namespace report has been sent successfully")
+
+	if err := c.updateTeam(teamComp); err != nil {
+		logger.Error(err, "cannot update team conditions when delete active environment completed")
+	}
+
+	return nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -1204,7 +1363,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watching changes of Team
-	err = c.Watch(&source.Kind{Type: &s2hv1beta1.Team{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &s2hv1.Team{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -1212,7 +1371,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watching changes of namespace belongs to Team
 	err = c.Watch(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &s2hv1beta1.Team{},
+		OwnerType:    &s2hv1.Team{},
 	})
 	if err != nil {
 		return err
@@ -1221,7 +1380,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watching changes of deployment belongs to Team
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &s2hv1beta1.Team{},
+		OwnerType:    &s2hv1.Team{},
 	})
 	if err != nil {
 		return err
@@ -1230,7 +1389,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watching changes of service belongs to Team
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &s2hv1beta1.Team{},
+		OwnerType:    &s2hv1.Team{},
 	})
 	if err != nil {
 		return err
@@ -1239,7 +1398,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watching changes of secret belongs to Team
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &s2hv1beta1.Team{},
+		OwnerType:    &s2hv1.Team{},
 	})
 	if err != nil {
 		return err
@@ -1248,11 +1407,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-func (c *controller) getTeam(teamName string, teamComp *s2hv1beta1.Team) (err error) {
+func (c *controller) getTeam(teamName string, teamComp *s2hv1.Team) (err error) {
 	return c.client.Get(context.TODO(), types.NamespacedName{Name: teamName}, teamComp)
 }
 
-func (c *controller) updateTeam(teamComp *s2hv1beta1.Team) error {
+func (c *controller) updateTeam(teamComp *s2hv1.Team) error {
 	if err := c.client.Update(context.TODO(), teamComp); err != nil {
 		return errors.Wrap(err, "cannot update team")
 	}
@@ -1260,7 +1419,7 @@ func (c *controller) updateTeam(teamComp *s2hv1beta1.Team) error {
 	return nil
 }
 
-func (c *controller) addFinalizer(teamComp *s2hv1beta1.Team) {
+func (c *controller) addFinalizer(teamComp *s2hv1.Team) {
 	// The object is not being deleted, so if it does not have our finalizer,
 	// then lets add the finalizer and update the object.
 	if !stringutils.ContainsString(teamComp.ObjectMeta.Finalizers, teamFinalizerName) {
@@ -1268,7 +1427,7 @@ func (c *controller) addFinalizer(teamComp *s2hv1beta1.Team) {
 	}
 }
 
-func (c *controller) deleteFinalizer(teamComp *s2hv1beta1.Team) error {
+func (c *controller) deleteFinalizer(teamComp *s2hv1.Team) error {
 	if stringutils.ContainsString(teamComp.ObjectMeta.Finalizers, teamFinalizerName) {
 		teamNs := getAllTeamNamespaces(teamComp, true)
 		if err := c.destroyNamespaces(teamComp, teamNs...); err != nil {
@@ -1301,7 +1460,7 @@ func (c *controller) deleteFinalizer(teamComp *s2hv1beta1.Team) error {
 }
 
 func (c *controller) ensureConfigDestroyed(configName string) error {
-	config := &s2hv1beta1.Config{
+	config := &s2hv1.Config{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: configName,
 		},
@@ -1317,7 +1476,7 @@ func (c *controller) ensureConfigDestroyed(configName string) error {
 	return errors.ErrEnsureConfigDestroyed
 }
 
-func (c *controller) ensureAndUpdateConfig(teamComp *s2hv1beta1.Team) error {
+func (c *controller) ensureAndUpdateConfig(teamComp *s2hv1.Team) error {
 	// ensure config of team is deployed
 	config, err := c.configCtrl.Get(teamComp.Name)
 	if err != nil {
@@ -1340,19 +1499,19 @@ func (c *controller) ensureAndUpdateConfig(teamComp *s2hv1beta1.Team) error {
 	return nil
 }
 
-func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error {
+func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error {
 	configComp, err := c.configCtrl.Get(teamComp.Name)
 	if err != nil {
 		logger.Error(err, "cannot get config", "name", teamComp.Name)
 		return err
 	}
 
-	template := configComp.Spec.Template
-	if template != "" && template != teamComp.Name {
-		templateObj := &s2hv1beta1.Team{}
-		err := c.getTeam(template, templateObj)
+	configTemplate := configComp.Spec.Template
+	if configTemplate != "" && configTemplate != teamComp.Name {
+		templateObj := &s2hv1.Team{}
+		err := c.getTeam(configTemplate, templateObj)
 		if err != nil {
-			logger.Error(err, "team template not found", "template", template)
+			logger.Error(err, "team template not found", "template", configTemplate)
 			return err
 		}
 
@@ -1364,19 +1523,16 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error 
 		teamComp.Status.Used = teamComp.Spec
 	}
 
-	bytesTeamComp, _ := json.Marshal(&teamComp.Status.Used)
-	bytesHashID := md5.Sum(bytesTeamComp)
-	hashID := fmt.Sprintf("%x", bytesHashID)
+	hashID := internal.GenTeamHashID(teamComp.Status)
 
 	if !teamComp.Status.SyncTemplate {
 		teamComp.Status.SyncTemplate = true
 	}
 
 	if teamComp.Status.TemplateUID != hashID {
-
 		teamComp.Status.TemplateUID = hashID
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamUsedUpdated,
+			s2hv1.TeamUsedUpdated,
 			corev1.ConditionFalse,
 			"need update team")
 	}
@@ -1385,14 +1541,14 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1beta1.Team) error 
 
 func (c *controller) ensureTriggerChildrenTeam(name string) error {
 	ctx := context.TODO()
-	configs := &s2hv1beta1.ConfigList{}
+	configs := &s2hv1.ConfigList{}
 	if err := c.client.List(ctx, configs, &client.ListOptions{}); err != nil {
 		logger.Error(err, "cannot list Configs ")
 		return err
 	}
 	for _, conf := range configs.Items {
 		if conf.Spec.Template == name {
-			team := &s2hv1beta1.Team{}
+			team := &s2hv1.Team{}
 			if err := c.getTeam(conf.Name, team); err != nil {
 				return err
 			}
@@ -1405,8 +1561,8 @@ func (c *controller) ensureTriggerChildrenTeam(name string) error {
 	return nil
 }
 
-func (c *controller) ValidateTeamRequiredField(teamComp *s2hv1beta1.Team) error {
-	emptyStagingCtrl := s2hv1beta1.StagingCtrl{}
+func (c *controller) validateTeamRequiredField(teamComp *s2hv1.Team) error {
+	emptyStagingCtrl := s2hv1.StagingCtrl{}
 	if teamComp.Status.Used.StagingCtrl == &emptyStagingCtrl ||
 		len(teamComp.Status.Used.Owners) == 0 {
 
@@ -1415,7 +1571,7 @@ func (c *controller) ValidateTeamRequiredField(teamComp *s2hv1beta1.Team) error 
 	return nil
 }
 
-func applyTeamTemplate(teamComp, teamTemplate *s2hv1beta1.Team) error {
+func applyTeamTemplate(teamComp, teamTemplate *s2hv1.Team) error {
 	teamComp.Status.Used = teamComp.Spec
 	if err := mergo.Merge(&teamComp.Status.Used, teamTemplate.Spec); err != nil {
 		return err
@@ -1448,7 +1604,8 @@ func applyTeamTemplate(teamComp, teamTemplate *s2hv1beta1.Team) error {
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=stablecomponents/status,verbs=get;update;patch
 func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.TODO()
-	teamComp := &s2hv1beta1.Team{}
+
+	teamComp := &s2hv1.Team{}
 	err := c.client.Get(ctx, types.NamespacedName{Name: req.NamespacedName.Name}, teamComp)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -1478,73 +1635,86 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 
 	c.addFinalizer(teamComp)
 
+	if teamComp.Status.Namespace.Active != "" && teamComp.Status.IsConditionTrue(s2hv1.TeamActiveEnvironmentDeleted) {
+		activeNamespace := teamComp.Status.Namespace.Active
+		if err := c.DeleteTeamActiveEnvironment(teamComp.Name, activeNamespace, ""); err != nil &&
+			!errors.IsNamespaceStillExists(err) {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
 	if err := c.ensureAndUpdateConfig(teamComp); err != nil {
+		logger.Error(err, "cannot ensure and update controller reference of config", "team", teamComp.Name, "namespace", teamComp.Namespace)
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamConfigExisted,
+			s2hv1.TeamConfigExisted,
 			corev1.ConditionFalse,
-			err.Error())
+			fmt.Sprintf("%s, errId: %s", err.Error(), random.GenerateRandomString(8)))
 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err,
 				"cannot update team conditions when config does not exist")
 		}
 
-		return reconcile.Result{}, err
+		// no need to return error due to team updated with failure condition
+		return reconcile.Result{}, nil
 	}
 
-	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamConfigExisted) {
+	if !teamComp.Status.IsConditionTrue(s2hv1.TeamConfigExisted) {
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamConfigExisted,
+			s2hv1.TeamConfigExisted,
 			corev1.ConditionTrue,
 			"Config exists")
 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when config exists")
 		}
+		return reconcile.Result{}, nil
 	}
 
 	if err := c.EnsureTeamTemplateChanged(teamComp); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamUsedUpdated) {
+	if !teamComp.Status.IsConditionTrue(s2hv1.TeamUsedUpdated) {
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamUsedUpdated,
+			s2hv1.TeamUsedUpdated,
 			corev1.ConditionTrue,
 			"update team template successfully")
 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, err
 		}
+		return reconcile.Result{}, nil
 	}
 
 	if err := c.ensureTriggerChildrenTeam(teamComp.Name); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	if err := c.ValidateTeamRequiredField(teamComp); err != nil {
+	if err := c.validateTeamRequiredField(teamComp); err != nil {
+		logger.Error(err, "team require fields cannot be empty", "team", teamComp.Name, "namespace", teamComp.Namespace)
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamRequiredFieldsValidated,
+			s2hv1.TeamRequiredFieldsValidated,
 			corev1.ConditionFalse,
 			"invalid required fields")
 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is invalid")
 		}
-
-		return reconcile.Result{}, err
+		return reconcile.Result{}, nil
 	}
 
-	if !teamComp.Status.IsConditionTrue(s2hv1beta1.TeamRequiredFieldsValidated) {
+	if !teamComp.Status.IsConditionTrue(s2hv1.TeamRequiredFieldsValidated) {
 		teamComp.Status.SetCondition(
-			s2hv1beta1.TeamRequiredFieldsValidated,
+			s2hv1.TeamRequiredFieldsValidated,
 			corev1.ConditionTrue,
 			"validate required fields successfully")
 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update team conditions when require fields is valid")
 		}
-
+		return reconcile.Result{}, nil
 	}
 
 	teamName := teamComp.GetName()

@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 )
 
 var _ = Describe("Set deployment issues in Queue", func() {
@@ -36,12 +36,12 @@ var _ = Describe("Set deployment issues in Queue", func() {
 				},
 			}}}
 
-			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			issuesMaps := make(map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent)
 			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
 
 			g.Expect(issuesMaps).To(HaveLen(1))
 
-			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueWaitForInitContainer]
+			failureComps := issuesMaps[s2hv1.DeploymentIssueWaitForInitContainer]
 			g.Expect(failureComps).To(HaveLen(1))
 			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
 			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal("wait-for-dep1"))
@@ -66,12 +66,12 @@ var _ = Describe("Set deployment issues in Queue", func() {
 				},
 			}}}
 
-			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			issuesMaps := make(map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent)
 			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
 
 			g.Expect(issuesMaps).To(HaveLen(1))
 
-			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueImagePullBackOff]
+			failureComps := issuesMaps[s2hv1.DeploymentIssueImagePullBackOff]
 			g.Expect(failureComps).To(HaveLen(1))
 			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
 			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal(compName))
@@ -97,12 +97,12 @@ var _ = Describe("Set deployment issues in Queue", func() {
 				},
 			}}}
 
-			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			issuesMaps := make(map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent)
 			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
 
 			g.Expect(issuesMaps).To(HaveLen(1))
 
-			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueCrashLoopBackOff]
+			failureComps := issuesMaps[s2hv1.DeploymentIssueCrashLoopBackOff]
 			g.Expect(failureComps).To(HaveLen(1))
 			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
 			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal(compName))
@@ -128,12 +128,12 @@ var _ = Describe("Set deployment issues in Queue", func() {
 				},
 			}}}
 
-			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			issuesMaps := make(map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent)
 			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
 
 			g.Expect(issuesMaps).To(HaveLen(1))
 
-			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueCrashLoopBackOff]
+			failureComps := issuesMaps[s2hv1.DeploymentIssueCrashLoopBackOff]
 			g.Expect(failureComps).To(HaveLen(1))
 			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
 			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal(compName))
@@ -159,12 +159,12 @@ var _ = Describe("Set deployment issues in Queue", func() {
 				},
 			}}}
 
-			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			issuesMaps := make(map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent)
 			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
 
 			g.Expect(issuesMaps).To(HaveLen(1))
 
-			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueReadinessProbeFailed]
+			failureComps := issuesMaps[s2hv1.DeploymentIssueReadinessProbeFailed]
 			g.Expect(failureComps).To(HaveLen(1))
 			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
 			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal(compName))
@@ -189,12 +189,12 @@ var _ = Describe("Set deployment issues in Queue", func() {
 				},
 			}}}
 
-			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			issuesMaps := make(map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent)
 			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
 
 			g.Expect(issuesMaps).To(HaveLen(1))
 
-			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueContainerCreating]
+			failureComps := issuesMaps[s2hv1.DeploymentIssueContainerCreating]
 			g.Expect(failureComps).To(HaveLen(1))
 			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
 			g.Expect(failureComps[0].FirstFailureContainerName).To(Equal(compName))
@@ -211,12 +211,12 @@ var _ = Describe("Set deployment issues in Queue", func() {
 				},
 			}}}
 
-			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			issuesMaps := make(map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent)
 			stagingCtrl.extractDeploymentIssues(&corev1.PodList{Items: []corev1.Pod{}}, &jobs, issuesMaps)
 
 			g.Expect(issuesMaps).To(HaveLen(1))
 
-			failureComps := issuesMaps[s2hv1beta1.DeploymentIssueJobNotComplete]
+			failureComps := issuesMaps[s2hv1.DeploymentIssueJobNotComplete]
 			g.Expect(failureComps).To(HaveLen(1))
 			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
 			g.Expect(failureComps[0].FirstFailureContainerName).To(BeEmpty())
@@ -232,12 +232,12 @@ var _ = Describe("Set deployment issues in Queue", func() {
 				},
 			}}}
 
-			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			issuesMaps := make(map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent)
 			stagingCtrl.extractDeploymentIssues(&pods, &batchv1.JobList{Items: []batchv1.Job{}}, issuesMaps)
 
 			g.Expect(issuesMaps).To(HaveLen(1))
 
-			failureComps := issuesMaps[s2hv1beta1.DeploymentIssuePending]
+			failureComps := issuesMaps[s2hv1.DeploymentIssuePending]
 			g.Expect(failureComps).To(HaveLen(1))
 			g.Expect(failureComps[0].ComponentName).To(Equal(compName))
 			g.Expect(failureComps[0].FirstFailureContainerName).To(BeEmpty())
@@ -296,19 +296,19 @@ var _ = Describe("Set deployment issues in Queue", func() {
 				},
 			}}}
 
-			issuesMaps := make(map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent)
+			issuesMaps := make(map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent)
 			stagingCtrl.extractDeploymentIssues(&pods, &jobs, issuesMaps)
 
 			g.Expect(issuesMaps).To(HaveLen(2))
 
-			failureComps1 := issuesMaps[s2hv1beta1.DeploymentIssueImagePullBackOff]
+			failureComps1 := issuesMaps[s2hv1.DeploymentIssueImagePullBackOff]
 			g.Expect(failureComps1).To(HaveLen(1))
 			g.Expect(failureComps1[0].ComponentName).To(Equal("multi-comp1"))
 			g.Expect(failureComps1[0].FirstFailureContainerName).To(Equal("multi-comp1"))
 			g.Expect(failureComps1[0].RestartCount).To(BeZero())
 			g.Expect(failureComps1[0].NodeName).To(Equal("node-11"))
 
-			failureComps2 := issuesMaps[s2hv1beta1.DeploymentIssueCrashLoopBackOff]
+			failureComps2 := issuesMaps[s2hv1.DeploymentIssueCrashLoopBackOff]
 			g.Expect(failureComps2).To(HaveLen(1))
 			g.Expect(failureComps2[0].ComponentName).To(Equal("multi-comp2"))
 			g.Expect(failureComps2[0].FirstFailureContainerName).To(Equal("multi-comp2"))
@@ -319,8 +319,8 @@ var _ = Describe("Set deployment issues in Queue", func() {
 
 	Describe("Convert deployment issues maps into list", func() {
 		It("should correctly convert deployment issues maps into list", func() {
-			issuesMaps := map[s2hv1beta1.DeploymentIssueType][]s2hv1beta1.FailureComponent{
-				s2hv1beta1.DeploymentIssueUndefined: {
+			issuesMaps := map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent{
+				s2hv1.DeploymentIssueUndefined: {
 					{
 						ComponentName:             "comp-1",
 						FirstFailureContainerName: "comp-1",
@@ -334,7 +334,7 @@ var _ = Describe("Set deployment issues in Queue", func() {
 						NodeName:                  "node-2",
 					},
 				},
-				s2hv1beta1.DeploymentIssueWaitForInitContainer: {
+				s2hv1.DeploymentIssueWaitForInitContainer: {
 					{
 						ComponentName:             "comp-3",
 						FirstFailureContainerName: "wait-for-dep3",
@@ -346,9 +346,9 @@ var _ = Describe("Set deployment issues in Queue", func() {
 
 			issues := stagingCtrl.convertToDeploymentIssues(issuesMaps)
 			g.Expect(issues).To(HaveLen(2))
-			g.Expect(issues).Should(ContainElement(s2hv1beta1.DeploymentIssue{
-				IssueType: s2hv1beta1.DeploymentIssueUndefined,
-				FailureComponents: []s2hv1beta1.FailureComponent{
+			g.Expect(issues).Should(ContainElement(s2hv1.DeploymentIssue{
+				IssueType: s2hv1.DeploymentIssueUndefined,
+				FailureComponents: []s2hv1.FailureComponent{
 					{
 						ComponentName:             "comp-1",
 						FirstFailureContainerName: "comp-1",
@@ -363,9 +363,9 @@ var _ = Describe("Set deployment issues in Queue", func() {
 					},
 				},
 			}))
-			g.Expect(issues).Should(ContainElement(s2hv1beta1.DeploymentIssue{
-				IssueType: s2hv1beta1.DeploymentIssueWaitForInitContainer,
-				FailureComponents: []s2hv1beta1.FailureComponent{
+			g.Expect(issues).Should(ContainElement(s2hv1.DeploymentIssue{
+				IssueType: s2hv1.DeploymentIssueWaitForInitContainer,
+				FailureComponents: []s2hv1.FailureComponent{
 					{
 						ComponentName:             "comp-3",
 						FirstFailureContainerName: "wait-for-dep3",

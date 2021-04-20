@@ -5,19 +5,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/julienschmidt/httprouter"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	v1 "github.com/agoda-com/samsahai/api/v1"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
 
+const validK8sNamePattern = `^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`
+
+type Components struct {
+	Name string `json:"name"`
+	Tag  string `json:"tag,omitempty"`
+}
+
 type pullRequestWebhookEventJSON struct {
-	Component string             `json:"component"`
-	PRNumber  intstr.IntOrString `json:"prNumber"`
-	Tag       string             `json:"tag,omitempty"`
+	BundleName string             `json:"bundleName"`
+	PRNumber   intstr.IntOrString `json:"prNumber"`
+	CommitSHA  string             `json:"commitSHA,omitempty"`
+	Components []Components       `json:"components,omitempty"`
 }
 
 type teamPRQueueJSON struct {
@@ -25,10 +34,10 @@ type teamPRQueueJSON struct {
 	NoOfQueue int `json:"noOfQueue"`
 
 	// +Optional
-	Current *v1beta1.PullRequestQueue `json:"current"`
+	Current *v1.PullRequestQueue `json:"current"`
 
 	// +Optional
-	Queues []v1beta1.PullRequestQueue `json:"queues"`
+	Queues []v1.PullRequestQueue `json:"queues"`
 
 	Histories []string `json:"historyNames"`
 }
@@ -60,9 +69,33 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
-	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.Component, jsonData.Tag, jsonData.PRNumber.String())
+	if jsonData.BundleName == "" || jsonData.PRNumber.String() == "" {
+		h.error(w, http.StatusBadRequest, fmt.Errorf("must define bundleName and prNumber"))
+		return
+	}
+
+	matched, err := regexp.Match(validK8sNamePattern, []byte(jsonData.PRNumber.String()))
+	if err != nil || !matched {
+		h.error(w, http.StatusBadRequest, fmt.Errorf("invalid prNumber, must match regex %s", validK8sNamePattern))
+		return
+	}
+
+	mapCompTag := make(map[string]string)
+	for _, comp := range jsonData.Components {
+		mapCompTag[comp.Name] = comp.Tag
+	}
+
+	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.BundleName, jsonData.PRNumber.String(),
+		jsonData.CommitSHA, mapCompTag)
 	if err != nil {
+		if s2herrors.IsErrPullRequestBundleNotFound(err) {
+			h.error(w, http.StatusBadRequest,
+				fmt.Errorf("there is no '%s' bundle name exists in configuration", jsonData.BundleName))
+			return
+		}
+
 		h.error(w, http.StatusInternalServerError, err)
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -104,7 +137,7 @@ func (h *handler) getTeamPullRequestQueue(w http.ResponseWriter, r *http.Request
 		}
 	}
 	for i, prQueue := range prQueues.Items {
-		if prQueue.Status.State != v1beta1.PullRequestQueueWaiting {
+		if prQueue.Status.State != v1.PullRequestQueueWaiting {
 			data.Current = &prQueues.Items[i]
 		}
 	}
@@ -118,7 +151,7 @@ func (h *handler) getTeamPullRequestQueue(w http.ResponseWriter, r *http.Request
 // @Tags GET
 // @Param team path string true "Team name"
 // @Param queue path string true "pull request queue history name"
-// @Success 200 {object} v1beta1.PullRequestQueueHistory
+// @Success 200 {object} v1.PullRequestQueueHistory
 // @Failure 404 {object} errResp "Team not found"
 // @Failure 404 {object} errResp "pull request queue history not found"
 // @Failure 500 {object} errResp
@@ -156,7 +189,7 @@ func (h *handler) getTeamPullRequestQueueHistory(w http.ResponseWriter, r *http.
 // @Tags GET
 // @Param team path string true "Team name"
 // @Param queue path string true "pull request queue history name"
-// @Success 200 {object} v1beta1.PullRequestQueueHistory
+// @Success 200 {object} v1.PullRequestQueueHistory
 // @Failure 404 {object} errResp "Team not found"
 // @Failure 404 {object} errResp "pull request queue history not found"
 // @Failure 500 {object} errResp

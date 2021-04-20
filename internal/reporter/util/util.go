@@ -3,7 +3,7 @@ package util
 import (
 	"strings"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
 
@@ -12,9 +12,9 @@ const (
 	statusFailure = "failure"
 )
 
-func CheckMatchingInterval(interval s2hv1beta1.ReporterInterval, isReverify bool) error {
+func CheckMatchingInterval(interval s2hv1.ReporterInterval, isReverify bool) error {
 	switch interval {
-	case s2hv1beta1.IntervalEveryTime:
+	case s2hv1.IntervalEveryTime:
 	default:
 		if !isReverify {
 			return s2herrors.New("interval was not matched")
@@ -24,12 +24,12 @@ func CheckMatchingInterval(interval s2hv1beta1.ReporterInterval, isReverify bool
 	return nil
 }
 
-func CheckMatchingCriteria(criteria s2hv1beta1.ReporterCriteria, result string) error {
+func CheckMatchingCriteria(criteria s2hv1.ReporterCriteria, result string) error {
 	lowerCaseResult := strings.ToLower(result)
 
 	switch criteria {
-	case s2hv1beta1.CriteriaBoth:
-	case s2hv1beta1.CriteriaSuccess:
+	case s2hv1.CriteriaBoth:
+	case s2hv1.CriteriaSuccess:
 		if lowerCaseResult != statusSuccess {
 			return s2herrors.New("criteria was not matched")
 		}

@@ -1,14 +1,14 @@
 definitions:
-  v1beta1.ActivePromotion:
+  v1.ActivePromotion:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.ActivePromotionSpec'
+        $ref: '#/definitions/v1.ActivePromotionSpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.ActivePromotionStatus'
+        $ref: '#/definitions/v1.ActivePromotionStatus'
         type: object
     type: object
-  v1beta1.ActivePromotionCondition:
+  v1.ActivePromotionCondition:
     properties:
       lastTransitionTime:
         description: +optional
@@ -24,19 +24,19 @@ definitions:
       type:
         type: string
     type: object
-  v1beta1.ActivePromotionHistory:
+  v1.ActivePromotionHistory:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.ActivePromotionHistorySpec'
+        $ref: '#/definitions/v1.ActivePromotionHistorySpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.ActivePromotionHistoryStatus'
+        $ref: '#/definitions/v1.ActivePromotionHistoryStatus'
         type: object
     type: object
-  v1beta1.ActivePromotionHistorySpec:
+  v1.ActivePromotionHistorySpec:
     properties:
       activePromotion:
-        $ref: '#/definitions/v1beta1.ActivePromotion'
+        $ref: '#/definitions/v1.ActivePromotion'
         type: object
       createdAt:
         description: 'TODO: store values file of all components'
@@ -46,9 +46,9 @@ definitions:
       teamName:
         type: string
     type: object
-  v1beta1.ActivePromotionHistoryStatus:
+  v1.ActivePromotionHistoryStatus:
     type: object
-  v1beta1.ActivePromotionSpec:
+  v1.ActivePromotionSpec:
     properties:
       noOfRetry:
         description: |-
@@ -71,7 +71,7 @@ definitions:
           +optional
         type: string
     type: object
-  v1beta1.ActivePromotionStatus:
+  v1.ActivePromotionStatus:
     properties:
       activeComponents:
         description: |-
@@ -91,7 +91,7 @@ definitions:
           +patchMergeKey=type
           +patchStrategy=merge
         items:
-          $ref: '#/definitions/v1beta1.ActivePromotionCondition'
+          $ref: '#/definitions/v1.ActivePromotionCondition'
         type: array
       demotionStatus:
         description: |-
@@ -124,7 +124,7 @@ definitions:
           +optional
         type: object
       preActiveQueue:
-        $ref: '#/definitions/v1beta1.QueueStatus'
+        $ref: '#/definitions/v1.QueueStatus'
         description: |-
           PreActiveQueue represents a pre-active queue status
           +optional
@@ -165,7 +165,7 @@ definitions:
           +optional
         type: string
     type: object
-  v1beta1.CommandAndArgs:
+  v1.CommandAndArgs:
     properties:
       args:
         description: +optional
@@ -177,18 +177,18 @@ definitions:
           type: string
         type: array
     type: object
-  v1beta1.Component:
+  v1.Component:
     properties:
       chart:
-        $ref: '#/definitions/v1beta1.ComponentChart'
+        $ref: '#/definitions/v1.ComponentChart'
         type: object
       dependencies:
         description: +optional
         items:
-          $ref: '#/definitions/v1beta1.Component'
+          $ref: '#/definitions/v1.Dependency'
         type: array
       image:
-        $ref: '#/definitions/v1beta1.ComponentImage'
+        $ref: '#/definitions/v1.ComponentImage'
         type: object
       name:
         type: string
@@ -204,11 +204,13 @@ definitions:
         description: +optional
         type: string
       values:
-        $ref: '#/definitions/v1beta1.ComponentValues'
-        description: +optional
+        $ref: '#/definitions/v1.ComponentValues'
+        description: |-
+          +optional
+          +kubebuilder:pruning:PreserveUnknownFields
         type: object
     type: object
-  v1beta1.ComponentChart:
+  v1.ComponentChart:
     properties:
       name:
         type: string
@@ -218,7 +220,7 @@ definitions:
         description: +optional
         type: string
     type: object
-  v1beta1.ComponentImage:
+  v1.ComponentImage:
     properties:
       pattern:
         description: +optional
@@ -229,11 +231,11 @@ definitions:
         description: +optional
         type: string
     type: object
-  v1beta1.ComponentValues:
+  v1.ComponentValues:
     additionalProperties:
       type: object
     type: object
-  v1beta1.ConfigActivePromotion:
+  v1.ConfigActivePromotion:
     properties:
       demotionTimeout:
         description: |-
@@ -241,8 +243,10 @@ definitions:
           +optional
         type: string
       deployment:
-        $ref: '#/definitions/v1beta1.ConfigDeploy'
-        description: Deployment represents configuration about deploy
+        $ref: '#/definitions/v1.ConfigDeploy'
+        description: |-
+          Deployment represents configuration about deploy
+          +optional
         type: object
       maxHistories:
         description: |-
@@ -255,7 +259,7 @@ definitions:
           +optional
         type: integer
       outdatedNotification:
-        $ref: '#/definitions/v1beta1.OutdatedNotification'
+        $ref: '#/definitions/v1.OutdatedNotification'
         description: |-
           OutdatedNotification defines a configuration of outdated notification
           +optional
@@ -276,12 +280,12 @@ definitions:
           +optional
         type: string
     type: object
-  v1beta1.ConfigBundles:
+  v1.ConfigBundles:
     additionalProperties:
       items: {}
       type: array
     type: object
-  v1beta1.ConfigComponentUpgradeReport:
+  v1.ConfigComponentUpgradeReport:
     properties:
       criteria:
         description: +optional
@@ -290,7 +294,7 @@ definitions:
         description: +optional
         type: string
     type: object
-  v1beta1.ConfigDeploy:
+  v1.ConfigDeploy:
     properties:
       componentCleanupTimeout:
         description: |-
@@ -307,7 +311,7 @@ definitions:
           +optional
         type: string
       testRunner:
-        $ref: '#/definitions/v1beta1.ConfigTestRunner'
+        $ref: '#/definitions/v1.ConfigTestRunner'
         description: |-
           TestRunner represents configuration about test
           +optional
@@ -318,21 +322,27 @@ definitions:
           +optional
         type: string
     type: object
-  v1beta1.ConfigPullRequest:
+  v1.ConfigGitlab:
     properties:
-      components:
+      branch:
+        type: string
+      pipelineTriggerToken:
+        type: string
+      projectID:
+        type: string
+    type: object
+  v1.ConfigPullRequest:
+    properties:
+      bundles:
+        description: Bundles represents a bundle of pull request components configuration
         items:
-          $ref: '#/definitions/v1beta1.PullRequestComponent'
+          $ref: '#/definitions/v1.PullRequestBundle'
         type: array
       concurrences:
         description: |-
           Concurrences defines a parallel number of pull request queue
           +optional
         type: integer
-      deployment:
-        $ref: '#/definitions/v1beta1.ConfigDeploy'
-        description: Deployment represents configuration about deploy
-        type: object
       maxHistoryDays:
         description: |-
           MaxHistoryDays defines maximum days of PullRequestQueueHistory stored
@@ -349,13 +359,13 @@ definitions:
           +optional
         type: string
       trigger:
-        $ref: '#/definitions/v1beta1.PullRequestTriggerConfig'
+        $ref: '#/definitions/v1.PullRequestTriggerConfig'
         description: |-
           Trigger represents a pull request trigger configuration
           +optional
         type: object
     type: object
-  v1beta1.ConfigPullRequestQueueReport:
+  v1.ConfigPullRequestQueueReport:
     properties:
       criteria:
         description: +optional
@@ -364,49 +374,53 @@ definitions:
         description: +optional
         type: string
     type: object
-  v1beta1.ConfigPullRequestTriggerReport:
+  v1.ConfigPullRequestTriggerReport:
     properties:
       criteria:
         description: +optional
         type: string
     type: object
-  v1beta1.ConfigReporter:
+  v1.ConfigReporter:
     properties:
       cmd:
-        $ref: '#/definitions/v1beta1.Shell'
+        $ref: '#/definitions/v1.ReporterShell'
+        description: +optional
+        type: object
+      github:
+        $ref: '#/definitions/v1.ReporterGithub'
         description: +optional
         type: object
       msTeams:
-        $ref: '#/definitions/v1beta1.MSTeams'
+        $ref: '#/definitions/v1.ReporterMSTeams'
         description: +optional
         type: object
       optionals:
         description: +optional
         items:
-          $ref: '#/definitions/v1beta1.ReportOption'
+          $ref: '#/definitions/v1.ReportOption'
         type: array
       reportMock:
         description: +optional
         type: boolean
       rest:
-        $ref: '#/definitions/v1beta1.Rest'
+        $ref: '#/definitions/v1.ReporterRest'
         description: +optional
         type: object
       slack:
-        $ref: '#/definitions/v1beta1.Slack'
+        $ref: '#/definitions/v1.ReporterSlack'
         description: +optional
         type: object
     type: object
-  v1beta1.ConfigSpec:
+  v1.ConfigSpec:
     properties:
       activePromotion:
-        $ref: '#/definitions/v1beta1.ConfigActivePromotion'
+        $ref: '#/definitions/v1.ConfigActivePromotion'
         description: |-
           ActivePromotion represents configuration about active promotion
           +optional
         type: object
       bundles:
-        $ref: '#/definitions/v1beta1.ConfigBundles'
+        $ref: '#/definitions/v1.ConfigBundles'
         description: |-
           Bundles represents a group of component for each bundle
           +optional
@@ -416,7 +430,7 @@ definitions:
           Components represents all components that are managed
           +optional
         items:
-          $ref: '#/definitions/v1beta1.Component'
+          $ref: '#/definitions/v1.Component'
         type: array
       envs:
         description: |-
@@ -433,19 +447,19 @@ definitions:
           type: string
         type: array
       pullRequest:
-        $ref: '#/definitions/v1beta1.ConfigPullRequest'
+        $ref: '#/definitions/v1.ConfigPullRequest'
         description: |-
           PullRequest represents configuration about pull request
           +optional
         type: object
       report:
-        $ref: '#/definitions/v1beta1.ConfigReporter'
+        $ref: '#/definitions/v1.ConfigReporter'
         description: |-
           Reporter represents configuration about reporter
           +optional
         type: object
       staging:
-        $ref: '#/definitions/v1beta1.ConfigStaging'
+        $ref: '#/definitions/v1.ConfigStaging'
         description: |-
           Staging represents configuration about staging
           +optional
@@ -456,11 +470,13 @@ definitions:
           +optional
         type: string
     type: object
-  v1beta1.ConfigStaging:
+  v1.ConfigStaging:
     properties:
       deployment:
-        $ref: '#/definitions/v1beta1.ConfigDeploy'
-        description: Deployment represents configuration about deploy
+        $ref: '#/definitions/v1.ConfigDeploy'
+        description: |-
+          Deployment represents configuration about deploy
+          +optional
         type: object
       maxHistoryDays:
         description: |-
@@ -473,64 +489,103 @@ definitions:
           +optional
         type: integer
     type: object
-  v1beta1.ConfigTeamcity:
+  v1.ConfigTeamcity:
     properties:
       branch:
         type: string
       buildTypeID:
         type: string
     type: object
-  v1beta1.ConfigTestMock:
+  v1.ConfigTestMock:
     properties:
       result:
         type: boolean
     type: object
-  v1beta1.ConfigTestRunner:
+  v1.ConfigTestRunner:
     properties:
+      gitlab:
+        $ref: '#/definitions/v1.ConfigGitlab'
+        description: +optional
+        type: object
       pollingTime:
         description: +optional
         type: string
       teamcity:
-        $ref: '#/definitions/v1beta1.ConfigTeamcity'
+        $ref: '#/definitions/v1.ConfigTeamcity'
         description: +optional
         type: object
       testMock:
-        $ref: '#/definitions/v1beta1.ConfigTestMock'
+        $ref: '#/definitions/v1.ConfigTestMock'
         description: +optional
         type: object
       timeout:
         description: +optional
         type: string
     type: object
-  v1beta1.Credential:
+  v1.Credential:
     properties:
+      github:
+        $ref: '#/definitions/v1.TokenCredential'
+        description: |-
+          Github
+          +optional
+        type: object
       secretName:
         description: SecretName
         type: string
       teamcity:
-        $ref: '#/definitions/v1beta1.UsernamePasswordCredential'
+        $ref: '#/definitions/v1.UsernamePasswordCredential'
         description: |-
           Teamcity
           +optional
         type: object
     type: object
-  v1beta1.DeploymentIssue:
+  v1.Dependency:
+    properties:
+      chart:
+        $ref: '#/definitions/v1.ComponentChart'
+        description: +optional
+        type: object
+      image:
+        $ref: '#/definitions/v1.ComponentImage'
+        type: object
+      name:
+        type: string
+      parent:
+        description: +optional
+        type: string
+      schedules:
+        description: +optional
+        items:
+          type: string
+        type: array
+      source:
+        description: +optional
+        type: string
+      values:
+        $ref: '#/definitions/v1.ComponentValues'
+        description: |-
+          +optional
+          +kubebuilder:pruning:PreserveUnknownFields
+        type: object
+    type: object
+  v1.DeploymentIssue:
     properties:
       failureComponents:
         description: FailureComponents defines a list of failure components
         items:
-          $ref: '#/definitions/v1beta1.FailureComponent'
+          $ref: '#/definitions/v1.FailureComponent'
         type: array
       issueType:
         description: IssueType defines a deployment issue type
         type: string
     type: object
-  v1beta1.Endpoint:
+  v1.Endpoint:
     properties:
       url:
         type: string
     type: object
-  v1beta1.FailureComponent:
+  v1.FailureComponent:
     properties:
       componentName:
         description: ComponentName defines a name of component
@@ -547,33 +602,25 @@ definitions:
           restarted
         type: integer
     type: object
-  v1beta1.Image:
+  v1.Gitlab:
+    properties:
+      branch:
+        type: string
+      pipelineID:
+        type: string
+      pipelineNumber:
+        type: string
+      pipelineURL:
+        type: string
+    type: object
+  v1.Image:
     properties:
       repository:
         type: string
       tag:
         type: string
     type: object
-  v1beta1.MSTeams:
-    properties:
-      componentUpgrade:
-        $ref: '#/definitions/v1beta1.ConfigComponentUpgradeReport'
-        description: +optional
-        type: object
-      groups:
-        items:
-          $ref: '#/definitions/v1beta1.MSTeamsGroup'
-        type: array
-      pullRequestQueue:
-        $ref: '#/definitions/v1beta1.ConfigPullRequestQueueReport'
-        description: +optional
-        type: object
-      pullRequestTrigger:
-        $ref: '#/definitions/v1beta1.ConfigPullRequestTriggerReport'
-        description: +optional
-        type: object
-    type: object
-  v1beta1.MSTeamsGroup:
+  v1.MSTeamsGroup:
     properties:
       channelNameOrIDs:
         items:
@@ -582,7 +629,7 @@ definitions:
       groupNameOrID:
         type: string
     type: object
-  v1beta1.OutdatedNotification:
+  v1.OutdatedNotification:
     properties:
       exceedDuration:
         description: +optional
@@ -591,8 +638,14 @@ definitions:
         description: +optional
         type: boolean
     type: object
-  v1beta1.PullRequestComponent:
+  v1.PullRequestBundle:
     properties:
+      components:
+        description: Components represents a list of pull request components which
+          are deployed together as a bundle
+        items:
+          $ref: '#/definitions/v1.PullRequestComponent'
+        type: array
       dependencies:
         description: |-
           Dependencies defines a list of components which are required to be deployed together with the main component
@@ -600,12 +653,45 @@ definitions:
         items:
           type: string
         type: array
+      deployment:
+        $ref: '#/definitions/v1.ConfigDeploy'
+        description: |-
+          Deployment represents configuration about deploy
+          +optional
+        type: object
+      gitRepository:
+        description: |-
+          GitRepository represents a string of git "<owner>/<repository>" e.g., agoda-com/samsahai
+          used for publishing commit status
+          +optional
+        type: string
+      maxRetry:
+        description: |-
+          MaxRetry defines max retry counts of pull request component upgrade
+          +optional
+        type: integer
+      name:
+        description: Name defines a bundle component name, can be any name
+        type: string
+      resources:
+        description: |-
+          Resources represents how many resources of pull request namespace
+          +optional
+        type: string
+    type: object
+  v1.PullRequestComponent:
+    properties:
       image:
-        $ref: '#/definitions/v1beta1.ComponentImage'
+        $ref: '#/definitions/v1.ComponentImage'
         description: |-
           Image defines an image repository, tag and pattern of pull request component which is a regex of tag
           +optional
         type: object
+      maxRetry:
+        description: |-
+          MaxRetry defines max retry counts of pull request component upgrade
+          +optional
+        type: integer
       name:
         description: Name defines a main component name which is deployed per pull
           request
@@ -621,16 +707,16 @@ definitions:
           +optional
         type: string
     type: object
-  v1beta1.PullRequestQueue:
+  v1.PullRequestQueue:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.PullRequestQueueSpec'
+        $ref: '#/definitions/v1.PullRequestQueueSpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.PullRequestQueueStatus'
+        $ref: '#/definitions/v1.PullRequestQueueStatus'
         type: object
     type: object
-  v1beta1.PullRequestQueueCondition:
+  v1.PullRequestQueueCondition:
     properties:
       lastTransitionTime:
         description: +optional
@@ -646,34 +732,54 @@ definitions:
       type:
         type: string
     type: object
-  v1beta1.PullRequestQueueHistory:
+  v1.PullRequestQueueHistory:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.PullRequestQueueHistorySpec'
+        $ref: '#/definitions/v1.PullRequestQueueHistorySpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.PullRequestQueueHistoryStatus'
+        $ref: '#/definitions/v1.PullRequestQueueHistoryStatus'
         type: object
     type: object
-  v1beta1.PullRequestQueueHistorySpec:
+  v1.PullRequestQueueHistorySpec:
     properties:
       pullRequestQueue:
-        $ref: '#/definitions/v1beta1.PullRequestQueue'
+        $ref: '#/definitions/v1.PullRequestQueue'
         type: object
     type: object
-  v1beta1.PullRequestQueueHistoryStatus:
+  v1.PullRequestQueueHistoryStatus:
     type: object
-  v1beta1.PullRequestQueueSpec:
+  v1.PullRequestQueueSpec:
     properties:
-      componentName:
-        description: ComponentName represents a pull request Component name
+      bundleName:
+        description: BundleName represents a pull request bundle name
+        type: string
+      commitSHA:
+        description: |-
+          CommitSHA represents a commit SHA
+          +optional
         type: string
       components:
-        $ref: '#/definitions/v1beta1.QueueComponents'
+        $ref: '#/definitions/v1.QueueComponents'
         description: |-
           Components represents a list of components which are deployed
           +optional
         type: object
+      gitRepository:
+        description: GitRepository represents a github repository of the pull request
+        type: string
+      imageMissingList:
+        description: |-
+          ImageMissingList represents image missing lists
+          +optional
+        items:
+          $ref: '#/definitions/v1.Image'
+        type: array
+      isPrTriggerFailed:
+        description: |-
+          IsPRTriggerFailed represents the result of pull request trigger
+          +optional
+        type: boolean
       noOfOrder:
         description: |-
           NoOfOrder defines the position in queue
@@ -687,11 +793,32 @@ definitions:
       prNumber:
         description: PRNumber represents a pull request number
         type: string
+      prTriggerCreatedAt:
+        description: |-
+          PRTriggerCreatedAt represents time when pull request trigger has been start
+          +optional
+        type: string
+      prTriggerFinishedAt:
+        description: |-
+          PRTriggerFinishedAt represents time when pull request trigger has been finish
+          +optional
+        type: string
       teamName:
         description: TeamName represents team owner of the pull request queue
         type: string
+      upcomingCommitSHA:
+        description: |-
+          UpcomingCommitSHA represents an upcoming commit SHA in case queue is running
+          +optional
+        type: string
+      upcomingComponents:
+        $ref: '#/definitions/v1.QueueComponents'
+        description: |-
+          UpcomingComponents represents an upcoming components which are deployed in case queue is running
+          +optional
+        type: object
     type: object
-  v1beta1.PullRequestQueueStatus:
+  v1.PullRequestQueueStatus:
     properties:
       conditions:
         description: |-
@@ -701,14 +828,14 @@ definitions:
           +patchMergeKey=type
           +patchStrategy=merge
         items:
-          $ref: '#/definitions/v1beta1.PullRequestQueueCondition'
+          $ref: '#/definitions/v1.PullRequestQueueCondition'
         type: array
       createdAt:
         description: CreatedAt represents time when the component has been added to
           queue
         type: string
       deploymentQueue:
-        $ref: '#/definitions/v1beta1.Queue'
+        $ref: '#/definitions/v1.Queue'
         description: |-
           ComponentUpgrade defines a deployed pull request queue
           +optional
@@ -733,7 +860,7 @@ definitions:
         description: UpdatedAt represents time when the component was processed
         type: string
     type: object
-  v1beta1.PullRequestTriggerConfig:
+  v1.PullRequestTriggerConfig:
     properties:
       maxRetry:
         description: |-
@@ -746,16 +873,16 @@ definitions:
           +optional
         type: string
     type: object
-  v1beta1.Queue:
+  v1.Queue:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.QueueSpec'
+        $ref: '#/definitions/v1.QueueSpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.QueueStatus'
+        $ref: '#/definitions/v1.QueueStatus'
         type: object
     type: object
-  v1beta1.QueueComponent:
+  v1.QueueComponent:
     properties:
       name:
         description: Name represents Component name
@@ -767,7 +894,7 @@ definitions:
         description: Version represents Docker image tag version
         type: string
     type: object
-  v1beta1.QueueComponents:
+  v1.QueueComponents:
     items:
       properties:
         name:
@@ -781,7 +908,7 @@ definitions:
           type: string
       type: object
     type: array
-  v1beta1.QueueCondition:
+  v1.QueueCondition:
     properties:
       lastTransitionTime:
         description: +optional
@@ -797,19 +924,19 @@ definitions:
       type:
         type: string
     type: object
-  v1beta1.QueueHistory:
+  v1.QueueHistory:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.QueueHistorySpec'
+        $ref: '#/definitions/v1.QueueHistorySpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.QueueHistoryStatus'
+        $ref: '#/definitions/v1.QueueHistoryStatus'
         type: object
     type: object
-  v1beta1.QueueHistorySpec:
+  v1.QueueHistorySpec:
     properties:
       appliedValues:
-        $ref: '#/definitions/v1beta1.Values'
+        $ref: '#/definitions/v1.Values'
         type: object
       createdAt:
         type: string
@@ -820,16 +947,16 @@ definitions:
       isTestSuccess:
         type: boolean
       queue:
-        $ref: '#/definitions/v1beta1.Queue'
+        $ref: '#/definitions/v1.Queue'
         type: object
       stableComponents:
         items:
-          $ref: '#/definitions/v1beta1.StableComponent'
+          $ref: '#/definitions/v1.StableComponent'
         type: array
     type: object
-  v1beta1.QueueHistoryStatus:
+  v1.QueueHistoryStatus:
     type: object
-  v1beta1.QueueSpec:
+  v1.QueueSpec:
     properties:
       bundle:
         description: |-
@@ -837,7 +964,7 @@ definitions:
           +optional
         type: string
       components:
-        $ref: '#/definitions/v1beta1.QueueComponents'
+        $ref: '#/definitions/v1.QueueComponents'
         description: |-
           Components represents a list of components which are deployed
           +optional
@@ -875,7 +1002,7 @@ definitions:
         description: Type represents how we will process this queue
         type: string
     type: object
-  v1beta1.QueueStatus:
+  v1.QueueStatus:
     properties:
       conditions:
         description: |-
@@ -885,7 +1012,7 @@ definitions:
           +patchMergeKey=type
           +patchStrategy=merge
         items:
-          $ref: '#/definitions/v1beta1.QueueCondition'
+          $ref: '#/definitions/v1.QueueCondition'
         type: array
       createdAt:
         description: CreatedAt represents time when the component has been added to
@@ -899,12 +1026,12 @@ definitions:
           DeploymentIssues defines a list of deployment issue types
           +optional
         items:
-          $ref: '#/definitions/v1beta1.DeploymentIssue'
+          $ref: '#/definitions/v1.DeploymentIssue'
         type: array
       imageMissingList:
         description: ImageMissingList defines image missing lists
         items:
-          $ref: '#/definitions/v1beta1.Image'
+          $ref: '#/definitions/v1.Image'
         type: array
       kubeZipLog:
         description: KubeZipLog defines log of k8s resources during deployment in
@@ -930,102 +1057,138 @@ definitions:
         description: State represents current status of this queue
         type: string
       testRunners:
-        $ref: '#/definitions/v1beta1.TestRunner'
+        $ref: '#/definitions/v1.TestRunner'
         description: TestRunner defines the test runner
         type: object
       updatedAt:
         description: UpdatedAt represents time when the component was processed
         type: string
     type: object
-  v1beta1.ReportOption:
+  v1.ReportOption:
     properties:
       key:
         type: string
       value:
         type: string
     type: object
-  v1beta1.Rest:
+  v1.ReporterGithub:
     properties:
-      activePromotion:
-        $ref: '#/definitions/v1beta1.RestObject'
-        description: +optional
-        type: object
-      componentUpgrade:
-        $ref: '#/definitions/v1beta1.RestObject'
-        description: +optional
-        type: object
-      imageMissing:
-        $ref: '#/definitions/v1beta1.RestObject'
-        description: +optional
-        type: object
-      pullRequestQueue:
-        $ref: '#/definitions/v1beta1.RestObject'
-        description: +optional
-        type: object
-      pullRequestTrigger:
-        $ref: '#/definitions/v1beta1.RestObject'
-        description: +optional
-        type: object
+      baseURL:
+        description: |-
+          BaseURL represents a github base url e.g., https://github.com
+          +optional
+        type: string
+      enabled:
+        description: |-
+          Enabled represents an enabled flag
+          +optional
+        type: boolean
     type: object
-  v1beta1.RestObject:
+  v1.ReporterMSTeams:
     properties:
-      endpoints:
+      componentUpgrade:
+        $ref: '#/definitions/v1.ConfigComponentUpgradeReport'
+        description: +optional
+        type: object
+      groups:
         items:
-          $ref: '#/definitions/v1beta1.Endpoint'
+          $ref: '#/definitions/v1.MSTeamsGroup'
         type: array
-    type: object
-  v1beta1.Shell:
-    properties:
-      activePromotion:
-        $ref: '#/definitions/v1beta1.CommandAndArgs'
-        description: +optional
-        type: object
-      componentUpgrade:
-        $ref: '#/definitions/v1beta1.CommandAndArgs'
-        description: +optional
-        type: object
-      imageMissing:
-        $ref: '#/definitions/v1beta1.CommandAndArgs'
-        description: +optional
-        type: object
       pullRequestQueue:
-        $ref: '#/definitions/v1beta1.CommandAndArgs'
+        $ref: '#/definitions/v1.ConfigPullRequestQueueReport'
         description: +optional
         type: object
       pullRequestTrigger:
-        $ref: '#/definitions/v1beta1.CommandAndArgs'
+        $ref: '#/definitions/v1.ConfigPullRequestTriggerReport'
         description: +optional
         type: object
     type: object
-  v1beta1.Slack:
+  v1.ReporterRest:
+    properties:
+      activePromotion:
+        $ref: '#/definitions/v1.RestObject'
+        description: +optional
+        type: object
+      componentUpgrade:
+        $ref: '#/definitions/v1.RestObject'
+        description: +optional
+        type: object
+      imageMissing:
+        $ref: '#/definitions/v1.RestObject'
+        description: +optional
+        type: object
+      pullRequestQueue:
+        $ref: '#/definitions/v1.RestObject'
+        description: +optional
+        type: object
+      pullRequestTrigger:
+        $ref: '#/definitions/v1.RestObject'
+        description: +optional
+        type: object
+    type: object
+  v1.ReporterShell:
+    properties:
+      activeEnvironmentDeleted:
+        $ref: '#/definitions/v1.CommandAndArgs'
+        description: +optional
+        type: object
+      activePromotion:
+        $ref: '#/definitions/v1.CommandAndArgs'
+        description: +optional
+        type: object
+      componentUpgrade:
+        $ref: '#/definitions/v1.CommandAndArgs'
+        description: +optional
+        type: object
+      imageMissing:
+        $ref: '#/definitions/v1.CommandAndArgs'
+        description: +optional
+        type: object
+      pullRequestQueue:
+        $ref: '#/definitions/v1.CommandAndArgs'
+        description: +optional
+        type: object
+      pullRequestTrigger:
+        $ref: '#/definitions/v1.CommandAndArgs'
+        description: +optional
+        type: object
+    type: object
+  v1.ReporterSlack:
     properties:
       channels:
         items:
           type: string
         type: array
       componentUpgrade:
-        $ref: '#/definitions/v1beta1.ConfigComponentUpgradeReport'
+        $ref: '#/definitions/v1.ConfigComponentUpgradeReport'
         description: +optional
         type: object
       pullRequestQueue:
-        $ref: '#/definitions/v1beta1.ConfigPullRequestQueueReport'
+        $ref: '#/definitions/v1.ConfigPullRequestQueueReport'
         description: +optional
         type: object
       pullRequestTrigger:
-        $ref: '#/definitions/v1beta1.ConfigPullRequestTriggerReport'
+        $ref: '#/definitions/v1.ConfigPullRequestTriggerReport'
         description: +optional
         type: object
     type: object
-  v1beta1.StableComponent:
+  v1.RestObject:
+    properties:
+      endpoints:
+        items:
+          $ref: '#/definitions/v1.Endpoint'
+        type: array
+    type: object
+  v1.StableComponent:
     properties:
       spec:
-        $ref: '#/definitions/v1beta1.StableComponentSpec'
+        $ref: '#/definitions/v1.StableComponentSpec'
         type: object
       status:
-        $ref: '#/definitions/v1beta1.StableComponentStatus'
+        $ref: '#/definitions/v1.StableComponentStatus'
         type: object
     type: object
-  v1beta1.StableComponentSpec:
+  v1.StableComponentSpec:
     properties:
       name:
         description: Name represents Component name
@@ -1042,14 +1205,14 @@ definitions:
         description: Version represents Docker image tag version
         type: string
     type: object
-  v1beta1.StableComponentStatus:
+  v1.StableComponentStatus:
     properties:
       createdAt:
         type: string
       updatedAt:
         type: string
     type: object
-  v1beta1.StagingCtrl:
+  v1.StagingCtrl:
     properties:
       endpoint:
         description: Endpoint represents the staging endpoint endpoint.
@@ -1063,7 +1226,7 @@ definitions:
       resources:
         type: string
     type: object
-  v1beta1.TeamCondition:
+  v1.TeamCondition:
     properties:
       lastTransitionTime:
         description: +optional
@@ -1079,7 +1242,7 @@ definitions:
       type:
         type: string
     type: object
-  v1beta1.TeamNamespace:
+  v1.TeamNamespace:
     properties:
       active:
         description: +optional
@@ -1099,10 +1262,10 @@ definitions:
         description: +optional
         type: string
     type: object
-  v1beta1.TeamSpec:
+  v1.TeamSpec:
     properties:
       credential:
-        $ref: '#/definitions/v1beta1.Credential'
+        $ref: '#/definitions/v1.Credential'
         description: |-
           Credential
           +optional
@@ -1125,20 +1288,25 @@ definitions:
           +optional
         type: string
       stagingCtrl:
-        $ref: '#/definitions/v1beta1.StagingCtrl'
+        $ref: '#/definitions/v1.StagingCtrl'
         description: |-
           StagingCtrl represents configuration about the staging controller.
           For easier for developing, debugging and testing purposes
           +optional
         type: object
     type: object
-  v1beta1.TeamStatus:
+  v1.TeamStatus:
     properties:
       activeComponents:
         description: |-
           ActiveComponents represents a list of stable components in active namespace
           +optional
         type: object
+      activeDeletedBy:
+        description: |-
+          ActiveDeletedBy represents a person who deleted the Active environment
+          +optional
+        type: string
       activePromotedBy:
         description: |-
           ActivePromotedBy represents a person who promoted the ActivePromotion
@@ -1152,16 +1320,17 @@ definitions:
           +patchMergeKey=type
           +patchStrategy=merge
         items:
-          $ref: '#/definitions/v1beta1.TeamCondition'
+          $ref: '#/definitions/v1.TeamCondition'
         type: array
       desiredComponentImageCreatedTime:
         description: |-
           DesiredComponentImageCreatedTime represents mapping of desired component image and created time
           map[componentName][repository:tag] = image and createdTime
           +optional
+          +kubebuilder:pruning:PreserveUnknownFields
         type: object
       namespace:
-        $ref: '#/definitions/v1beta1.TeamNamespace'
+        $ref: '#/definitions/v1.TeamNamespace'
         description: +optional
         type: object
       stableComponents:
@@ -1180,13 +1349,13 @@ definitions:
           +optional
         type: string
       used:
-        $ref: '#/definitions/v1beta1.TeamSpec'
+        $ref: '#/definitions/v1.TeamSpec'
         description: |-
           Used represents overridden team specification
           +optional
         type: object
     type: object
-  v1beta1.Teamcity:
+  v1.Teamcity:
     properties:
       branch:
         type: string
@@ -1199,22 +1368,37 @@ definitions:
       buildURL:
         type: string
     type: object
-  v1beta1.TestRunner:
+  v1.TestRunner:
     properties:
+      gitlab:
+        $ref: '#/definitions/v1.Gitlab'
+        type: object
       teamcity:
-        $ref: '#/definitions/v1beta1.Teamcity'
+        $ref: '#/definitions/v1.Teamcity'
         type: object
     type: object
-  v1beta1.UsernamePasswordCredential:
+  v1.TokenCredential:
+    properties:
+      token:
+        type: string
+    type: object
+  v1.UsernamePasswordCredential:
     properties:
       password:
         type: string
       username:
         type: string
     type: object
-  v1beta1.Values:
+  v1.Values:
     additionalProperties:
       type: object
+    type: object
+  webhook.Components:
+    properties:
+      name:
+        type: string
+      tag:
+        type: string
     type: object
   webhook.activePromotion:
     properties:
@@ -1229,17 +1413,17 @@ definitions:
       running:
         description: +Optional
         items:
-          $ref: '#/definitions/v1beta1.ActivePromotion'
+          $ref: '#/definitions/v1.ActivePromotion'
         type: array
     type: object
   webhook.activePromotionHistories:
     items:
       properties:
         spec:
-          $ref: '#/definitions/v1beta1.ActivePromotionHistorySpec'
+          $ref: '#/definitions/v1.ActivePromotionHistorySpec'
           type: object
         status:
-          $ref: '#/definitions/v1beta1.ActivePromotionHistoryStatus'
+          $ref: '#/definitions/v1.ActivePromotionHistoryStatus'
           type: object
       type: object
     type: array
@@ -1265,17 +1449,21 @@ definitions:
     type: object
   webhook.pullRequestWebhookEventJSON:
     properties:
-      component:
+      bundleName:
         type: string
+      commitSHA:
+        type: string
+      components:
+        items:
+          $ref: '#/definitions/webhook.Components'
+        type: array
       prNumber:
-        type: string
-      tag:
         type: string
     type: object
   webhook.teamActivePromotion:
     properties:
       current:
-        $ref: '#/definitions/v1beta1.ActivePromotion'
+        $ref: '#/definitions/v1.ActivePromotion'
         description: +Optional
         type: object
       historyNames:
@@ -1291,15 +1479,15 @@ definitions:
     additionalProperties:
       properties:
         chart:
-          $ref: '#/definitions/v1beta1.ComponentChart'
+          $ref: '#/definitions/v1.ComponentChart'
           type: object
         dependencies:
           description: +optional
           items:
-            $ref: '#/definitions/v1beta1.Component'
+            $ref: '#/definitions/v1.Dependency'
           type: array
         image:
-          $ref: '#/definitions/v1beta1.ComponentImage'
+          $ref: '#/definitions/v1.ComponentImage'
           type: object
         name:
           type: string
@@ -1315,8 +1503,10 @@ definitions:
           description: +optional
           type: string
         values:
-          $ref: '#/definitions/v1beta1.ComponentValues'
-          description: +optional
+          $ref: '#/definitions/v1.ComponentValues'
+          description: |-
+            +optional
+            +kubebuilder:pruning:PreserveUnknownFields
           type: object
       type: object
     type: object
@@ -1327,6 +1517,11 @@ definitions:
         type: object
       preActive:
         description: +optional
+        type: object
+      pullRequest:
+        description: |-
+          PullRequest represents connection strings of all pull request environments
+          +optional
         type: object
       staging:
         description: +optional
@@ -1352,13 +1547,13 @@ definitions:
           type: string
         type: array
       spec:
-        $ref: '#/definitions/v1beta1.TeamSpec'
+        $ref: '#/definitions/v1.TeamSpec'
         type: object
       staging:
         description: +optional
         type: string
       status:
-        $ref: '#/definitions/v1beta1.TeamStatus'
+        $ref: '#/definitions/v1.TeamStatus'
         type: object
       teamName:
         type: string
@@ -1366,7 +1561,7 @@ definitions:
   webhook.teamPRQueueJSON:
     properties:
       current:
-        $ref: '#/definitions/v1beta1.PullRequestQueue'
+        $ref: '#/definitions/v1.PullRequestQueue'
         description: +Optional
         type: object
       historyNames:
@@ -1379,13 +1574,13 @@ definitions:
       queues:
         description: +Optional
         items:
-          $ref: '#/definitions/v1beta1.PullRequestQueue'
+          $ref: '#/definitions/v1.PullRequestQueue'
         type: array
     type: object
   webhook.teamQueueJSON:
     properties:
       current:
-        $ref: '#/definitions/v1beta1.Queue'
+        $ref: '#/definitions/v1.Queue'
         description: +Optional
         type: object
       historyNames:
@@ -1398,7 +1593,7 @@ definitions:
       queues:
         description: +Optional
         items:
-          $ref: '#/definitions/v1beta1.Queue'
+          $ref: '#/definitions/v1.Queue'
         type: array
     type: object
   webhook.teamsJSON:
@@ -1706,6 +1901,39 @@ paths:
       summary: get team configuration
       tags:
       - GET
+  /teams/{team}/environment/active/delete:
+    delete:
+      description: Delete the current active namespace.
+      parameters:
+      - description: Team name
+        in: path
+        name: team
+        required: true
+        type: string
+      - description: Delete by
+        in: query
+        name: deleted_by
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: There is no active namespace to destroy
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+        "404":
+          description: Team not found
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/webhook.errResp'
+      summary: Delete the current active namespace
+      tags:
+      - GET
   /teams/{team}/pullrequest/queue:
     get:
       description: Returns queue information of pull request deployment flow.
@@ -1749,7 +1977,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/v1beta1.PullRequestQueueHistory'
+            $ref: '#/definitions/v1.PullRequestQueueHistory'
         "404":
           description: pull request queue history not found
           schema:
@@ -1779,7 +2007,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/v1beta1.PullRequestQueueHistory'
+            $ref: '#/definitions/v1.PullRequestQueueHistory'
         "404":
           description: pull request queue history not found
           schema:
@@ -1870,7 +2098,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/v1beta1.QueueHistory'
+            $ref: '#/definitions/v1.QueueHistory'
         "404":
           description: Queue history not found
           schema:
@@ -1900,7 +2128,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/v1beta1.QueueHistory'
+            $ref: '#/definitions/v1.QueueHistory'
         "404":
           description: Queue history not found
           schema:

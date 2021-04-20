@@ -6,9 +6,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
+	"github.com/agoda-com/samsahai/internal/staging/testrunner/gitlab"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/testmock"
 )
@@ -18,7 +19,7 @@ const (
 	testPolling = 5 * time.Second
 )
 
-func (c *controller) startTesting(queue *s2hv1beta1.Queue) error {
+func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	testingTimeout := metav1.Duration{Duration: testTimeout}
 	if testConfig := c.getTestConfiguration(queue); testConfig != nil && testConfig.Timeout.Duration != 0 {
 		testingTimeout = testConfig.Timeout
@@ -49,7 +50,7 @@ func (c *controller) startTesting(queue *s2hv1beta1.Queue) error {
 	return nil
 }
 
-func (c *controller) checkTestTimeout(queue *s2hv1beta1.Queue, testingTimeout metav1.Duration) error {
+func (c *controller) checkTestTimeout(queue *s2hv1.Queue, testingTimeout metav1.Duration) error {
 	now := metav1.Now()
 
 	// check testing timeout
@@ -69,7 +70,7 @@ func (c *controller) checkTestTimeout(queue *s2hv1beta1.Queue, testingTimeout me
 }
 
 // checkTestConfig checks test configuration and return testRunner
-func (c *controller) checkTestConfig(queue *s2hv1beta1.Queue) (skipTest bool, testRunner internal.StagingTestRunner, err error) {
+func (c *controller) checkTestConfig(queue *s2hv1.Queue) (skipTest bool, testRunner internal.StagingTestRunner, err error) {
 	if queue.Spec.SkipTestRunner {
 		if err = c.updateTestQueueCondition(
 			queue,
@@ -97,6 +98,8 @@ func (c *controller) checkTestConfig(queue *s2hv1beta1.Queue) (skipTest bool, te
 
 	if testConfig.Teamcity != nil {
 		testRunner = c.testRunners[teamcity.TestRunnerName]
+	} else if testConfig.Gitlab != nil {
+		testRunner = c.testRunners[gitlab.TestRunnerName]
 	} else if testConfig.TestMock != nil {
 		testRunner = c.testRunners[testmock.TestRunnerName]
 	}
@@ -118,18 +121,20 @@ func (c *controller) checkTestConfig(queue *s2hv1beta1.Queue) (skipTest bool, te
 	return
 }
 
-func (c *controller) triggerTest(queue *s2hv1beta1.Queue, testRunner internal.StagingTestRunner) error {
+func (c *controller) triggerTest(queue *s2hv1.Queue, testRunner internal.StagingTestRunner) error {
 	testConfig := c.getTestConfiguration(queue)
-	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueTestTriggered) {
+	if !queue.Status.IsConditionTrue(s2hv1.QueueTestTriggered) {
 		if err := testRunner.Trigger(testConfig, c.getCurrentQueue()); err != nil {
 			logger.Error(err, "testing triggered error")
 			return err
 		}
 		// set teamcity build number to message
-		queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
+		if tr := testRunner.GetName(); tr == teamcity.TestRunnerName {
+			queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
+		}
 
 		queue.Status.SetCondition(
-			s2hv1beta1.QueueTestTriggered,
+			s2hv1.QueueTestTriggered,
 			v1.ConditionTrue,
 			"queue testing triggered")
 
@@ -142,7 +147,7 @@ func (c *controller) triggerTest(queue *s2hv1beta1.Queue, testRunner internal.St
 	return nil
 }
 
-func (c *controller) getTestResult(queue *s2hv1beta1.Queue, testRunner internal.StagingTestRunner) error {
+func (c *controller) getTestResult(queue *s2hv1.Queue, testRunner internal.StagingTestRunner) error {
 	testConfig := c.getTestConfiguration(queue)
 	isResultSuccess, isBuildFinished, err := testRunner.GetResult(testConfig, c.getCurrentQueue())
 	if err != nil {
@@ -174,13 +179,13 @@ func (c *controller) getTestResult(queue *s2hv1beta1.Queue, testRunner internal.
 }
 
 // updateTestQueueCondition updates queue status, condition and save to k8s for Testing state
-func (c *controller) updateTestQueueCondition(queue *s2hv1beta1.Queue, status v1.ConditionStatus, message string) error {
+func (c *controller) updateTestQueueCondition(queue *s2hv1.Queue, status v1.ConditionStatus, message string) error {
 	// testing timeout
 	queue.Status.SetCondition(
-		s2hv1beta1.QueueTested,
+		s2hv1.QueueTested,
 		status,
 		message)
 
 	// update queue back to k8s
-	return c.updateQueueWithState(queue, s2hv1beta1.Collecting)
+	return c.updateQueueWithState(queue, s2hv1.Collecting)
 }

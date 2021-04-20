@@ -11,25 +11,25 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-func (c *controller) createPullRequestQueueHistory(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
-	prQueueLabels := getPullRequestQueueLabels(c.teamName, prQueue.Spec.ComponentName, prQueue.Spec.PRNumber)
+func (c *controller) createPullRequestQueueHistory(ctx context.Context, prQueue *s2hv1.PullRequestQueue) error {
+	prQueueLabels := getPullRequestQueueLabels(c.teamName, prQueue.Spec.BundleName, prQueue.Spec.PRNumber)
 
 	if err := c.deletePullRequestQueueHistoryOutOfRange(ctx); err != nil {
 		return err
 	}
 
-	history := &s2hv1beta1.PullRequestQueueHistory{
+	history := &s2hv1.PullRequestQueueHistory{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateHistoryName(prQueue.Name, prQueue.CreationTimestamp, prQueue.Spec.NoOfRetry),
 			Namespace: c.namespace,
 			Labels:    prQueueLabels,
 		},
-		Spec: s2hv1beta1.PullRequestQueueHistorySpec{
-			PullRequestQueue: &s2hv1beta1.PullRequestQueue{
+		Spec: s2hv1.PullRequestQueueHistorySpec{
+			PullRequestQueue: &s2hv1.PullRequestQueue{
 				Spec:   prQueue.Spec,
 				Status: prQueue.Status,
 			},
@@ -45,7 +45,7 @@ func (c *controller) createPullRequestQueueHistory(ctx context.Context, prQueue 
 }
 
 func (c *controller) deletePullRequestQueueHistoryOutOfRange(ctx context.Context) error {
-	prQueueHists := s2hv1beta1.PullRequestQueueHistoryList{}
+	prQueueHists := s2hv1.PullRequestQueueHistoryList{}
 	if err := c.client.List(ctx, &prQueueHists, &client.ListOptions{Namespace: c.namespace}); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil
@@ -54,7 +54,7 @@ func (c *controller) deletePullRequestQueueHistoryOutOfRange(ctx context.Context
 		return errors.Wrapf(err, "cannot list pull request queue histories of namespace: %s", c.namespace)
 	}
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{TeamName: c.teamName})
 	if err != nil {
 		return err
 	}

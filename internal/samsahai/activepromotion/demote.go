@@ -7,12 +7,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/queue"
 )
 
-func (c *controller) demoteActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) demoteActiveEnvironment(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	if err := c.checkDemotionTimeout(ctx, atpComp); err != nil {
 		return err
 	}
@@ -37,18 +37,18 @@ func (c *controller) demoteActiveEnvironment(ctx context.Context, atpComp *s2hv1
 			prevNs := atpComp.Status.PreviousActiveNamespace
 			logger.Debug("failed to demote active environment, deleted active environment",
 				"team", teamName, "namespace", prevNs)
-			atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondActiveDemoted, corev1.ConditionFalse,
+			atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemoted, corev1.ConditionFalse,
 				"Failed to demote active environment, active environment has been deleted")
-			atpComp.SetState(s2hv1beta1.ActivePromotionActiveEnvironment, "Failed to demote active environment")
+			atpComp.SetState(s2hv1.ActivePromotionActiveEnvironment, "Failed to demote active environment")
 
 			return nil
 		}
 	}
 
-	atpComp.Status.SetDemotionStatus(s2hv1beta1.ActivePromotionDemotionSuccess)
-	atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondActiveDemoted, corev1.ConditionTrue,
+	atpComp.Status.SetDemotionStatus(s2hv1.ActivePromotionDemotionSuccess)
+	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemoted, corev1.ConditionTrue,
 		"Demoted an active environment successfully")
-	atpComp.SetState(s2hv1beta1.ActivePromotionActiveEnvironment, "Promoting an active environment")
+	atpComp.SetState(s2hv1.ActivePromotionActiveEnvironment, "Promoting an active environment")
 
 	return nil
 }
@@ -59,7 +59,7 @@ func (c *controller) ensureQueueActiveDemoted(teamName, ns string) error {
 		return errors.Wrapf(err, "cannot ensure environment demoted from active components, namespace %s", ns)
 	}
 
-	if q.Status.State == s2hv1beta1.Finished {
+	if q.Status.State == s2hv1.Finished {
 		if !q.IsDeploySuccess() {
 			return s2herrors.ErrReleaseFailed
 		}
@@ -70,7 +70,7 @@ func (c *controller) ensureQueueActiveDemoted(teamName, ns string) error {
 	return s2herrors.ErrEnsureActiveDemoted
 }
 
-func (c *controller) checkDemotionTimeout(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) checkDemotionTimeout(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	isTimeout, err := c.isTimeoutFromConfig(atpComp, timeoutActiveDemotion)
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func (c *controller) checkDemotionTimeout(ctx context.Context, atpComp *s2hv1bet
 		// destroy active environment when demotion timeout due to active is not working
 		if atpComp.Status.DestroyedTime == nil {
 			now := metav1.Now()
-			atpComp.Status.SetDemotionStatus(s2hv1beta1.ActivePromotionDemotionFailure)
+			atpComp.Status.SetDemotionStatus(s2hv1.ActivePromotionDemotionFailure)
 			atpComp.Status.SetDestroyedTime(now)
 
 			if err := c.updateActivePromotion(ctx, atpComp); err != nil {
@@ -99,9 +99,9 @@ func (c *controller) checkDemotionTimeout(ctx context.Context, atpComp *s2hv1bet
 		prevNs := atpComp.Status.PreviousActiveNamespace
 		logger.Debug("active demotion has been timeout, deleted active environment",
 			"team", teamName, "namespace", prevNs)
-		atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondActiveDemoted, corev1.ConditionFalse,
+		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemoted, corev1.ConditionFalse,
 			"Demoted an active environment timeout, active environment has been deleted")
-		atpComp.SetState(s2hv1beta1.ActivePromotionActiveEnvironment, "Demoted active environment timeout")
+		atpComp.SetState(s2hv1.ActivePromotionActiveEnvironment, "Demoted active environment timeout")
 
 		if err := c.updateActivePromotion(ctx, atpComp); err != nil {
 			return err

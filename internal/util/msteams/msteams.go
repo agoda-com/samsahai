@@ -28,7 +28,7 @@ const (
 	channelsAPI    = "%s/teams/%s/channels"             // base graph url, groupID
 )
 
-// MSTeams is the interface of Microsoft Teams using Microsoft Graph api
+// MSTeams is the interface of Microsoft Teams using Microsoft Graph API
 type MSTeams interface {
 	// GetAccessToken returns an access token on behalf of a user
 	GetAccessToken() (string, error)
@@ -45,7 +45,7 @@ type MSTeams interface {
 
 var _ MSTeams = &Client{}
 
-// Client manages client side of Microsoft Graph api
+// Client manages client side of Microsoft Graph API
 type Client struct {
 	tenantID     string
 	clientID     string
@@ -95,17 +95,16 @@ func NewClient(tenantID, clientID, clientSecret, username, password string, opts
 func (c *Client) GetAccessToken() (string, error) {
 	logger.Debug("getting Microsoft Teams access token")
 
-	timeout := 5 * time.Second
 	tokenAPI := fmt.Sprintf(tokenAPI, c.baseLoginURL, c.tenantID)
 
 	resCh := make(chan []byte, 1)
 	errCh := make(chan error, 1)
-	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancelFunc()
 
 	go func() {
 		opts := []http.Option{
-			http.WithTimeout(timeout),
+			http.WithTimeout(requestTimeout),
 			http.WithContext(ctx),
 			http.WithHeader("Content-Type", "application/x-www-form-urlencoded"),
 		}
@@ -176,7 +175,7 @@ func WithContentType(contentType MessageContentType) PostMsgOption {
 
 // PostMessage implements the Microsoft Teams PostMessage function
 func (c *Client) PostMessage(groupID, channelID, message, accessToken string, opts ...PostMsgOption) error {
-	logger.Debug("Posting message", "groupID", groupID, "channelID", channelID)
+	logger.Debug("posting message", "groupID", groupID, "channelID", channelID)
 
 	// apply the new options
 	for _, opt := range opts {
@@ -242,7 +241,7 @@ func (c *Client) PostMessage(groupID, channelID, message, accessToken string, op
 	case <-ctx.Done():
 		logger.Error(s2herrors.ErrRequestTimeout,
 			fmt.Sprintf("posting message to groupID: %s, channelID: %s took longer than %v",
-				groupID, channelID, requestTimeout))
+				groupID, channelID, timeout))
 		return s2herrors.ErrRequestTimeout
 	case err := <-errCh:
 		logger.Error(err, "cannot post message", "groupID", groupID, "channelID", channelID)
@@ -353,7 +352,7 @@ func (c *Client) getMatchedGroupID(groupName, accessToken string) (string, error
 	select {
 	case <-ctx.Done():
 		logger.Error(s2herrors.ErrRequestTimeout,
-			fmt.Sprintf("getting joined team lists took longer than %v", requestTimeout))
+			fmt.Sprintf("getting joined team lists took longer than %v", timeout))
 		return "", s2herrors.ErrRequestTimeout
 	case err := <-errCh:
 		logger.Error(err, "cannot get joined team lists")
@@ -438,7 +437,7 @@ func (c *Client) getMatchedChannelID(groupID, channelName, accessToken string) (
 	select {
 	case <-ctx.Done():
 		logger.Error(s2herrors.ErrRequestTimeout,
-			fmt.Sprintf("getting channels of groupID %s took longer than %v", groupID, requestTimeout))
+			fmt.Sprintf("getting channels of groupID %s took longer than %v", groupID, timeout))
 		return "", s2herrors.ErrRequestTimeout
 	case err := <-errCh:
 		logger.Error(err, "cannot get channels")

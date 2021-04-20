@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
@@ -36,7 +36,7 @@ type updateTeamDesiredComponent struct {
 	TeamName        string
 	ComponentName   string
 	ComponentSource string
-	ComponentImage  s2hv1beta1.ComponentImage
+	ComponentImage  s2hv1.ComponentImage
 	ComponentBundle string
 }
 
@@ -136,7 +136,7 @@ func (c *controller) checkComponentChanged(component changedComponent) error {
 
 func (c *controller) checkTeamComponentChanged(compName, repository, teamName string) error {
 	configCtrl := c.GetConfigController()
-	team := &s2hv1beta1.Team{}
+	team := &s2hv1.Team{}
 	if err := c.getTeam(teamName, team); err != nil {
 		logger.Error(err, "cannot get team", "team", teamName)
 		return err
@@ -192,7 +192,7 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	}
 	checkPattern := updateInfo.ComponentImage.Pattern
 
-	team := &s2hv1beta1.Team{}
+	team := &s2hv1.Team{}
 	if err := c.getTeam(updateInfo.TeamName, team); err != nil {
 		logger.Error(err, "cannot get team", "team", updateInfo.TeamName)
 		return err
@@ -205,7 +205,13 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 
 	// TODO: do caching for better performance
 	version, vErr := checker.GetVersion(compRepository, compName, checkPattern)
-	if vErr != nil && !errors.IsImageNotFound(vErr) && !errors.IsErrRequestTimeout(vErr) {
+	switch {
+	case vErr == nil:
+	case errors.IsImageNotFound(vErr) || errors.IsErrRequestTimeout(vErr):
+	case errors.IsInternalCheckerError(vErr):
+		c.sendImageMissingReport(updateInfo.TeamName, updateInfo.ComponentName, compRepository, version, vErr.Error())
+		return nil
+	default:
 		logger.Error(vErr, "error while run checker.getversion",
 			"team", updateInfo.TeamName, "name", compName, "repository", compRepository,
 			"version pattern", checkPattern)
@@ -215,15 +221,19 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	ctx := context.Background()
 	now := metav1.Now()
 	desiredImage := stringutils.ConcatImageString(compRepository, version)
-	desiredImageTime := s2hv1beta1.DesiredImageTime{
-		Image: &s2hv1beta1.Image{
+	desiredImageTime := s2hv1.DesiredImageTime{
+		Image: &s2hv1.Image{
 			Repository: compRepository,
 			Tag:        version,
 		},
-		CreatedTime: now,
+		CreatedTime:    now,
+		IsImageMissing: true,
 	}
 
-	// update desired component version created time mapping
+	if vErr == nil {
+		desiredImageTime.IsImageMissing = false
+	}
+	//update desired component version created time mapping
 	team.Status.UpdateDesiredComponentImageCreatedTime(updateInfo.ComponentName, desiredImage, desiredImageTime)
 	deleteDesiredMappingOutOfRange(team, maxDesiredMappingPerComp)
 	if err := c.updateTeam(team); err != nil {
@@ -231,30 +241,30 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	}
 
 	if vErr != nil && (errors.IsImageNotFound(vErr) || errors.IsErrRequestTimeout(vErr)) {
-		c.sendImageMissingReport(updateInfo.TeamName, updateInfo.ComponentName, compRepository, version)
+		c.sendImageMissingReport(updateInfo.TeamName, updateInfo.ComponentName, compRepository, version, "")
 		return nil
 	}
 
-	desiredComp := &s2hv1beta1.DesiredComponent{}
+	desiredComp := &s2hv1.DesiredComponent{}
 	err = c.client.Get(ctx, types.NamespacedName{Name: compName, Namespace: compNs}, desiredComp)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			// Create new DesiredComponent
 			desiredLabels := internal.GetDefaultLabels(team.Name)
 			desiredLabels["app"] = compName
-			desiredComp = &s2hv1beta1.DesiredComponent{
+			desiredComp = &s2hv1.DesiredComponent{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      compName,
 					Namespace: compNs,
 					Labels:    desiredLabels,
 				},
-				Spec: s2hv1beta1.DesiredComponentSpec{
+				Spec: s2hv1.DesiredComponentSpec{
 					Version:    version,
 					Name:       compName,
 					Repository: compRepository,
 					Bundle:     compBundle,
 				},
-				Status: s2hv1beta1.DesiredComponentStatus{
+				Status: s2hv1.DesiredComponentStatus{
 					CreatedAt: &now,
 					UpdatedAt: &now,
 				},
@@ -273,8 +283,8 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	}
 
 	// DesiredComponent found, check the version
-	sameComp := desiredComp.IsSame(&s2hv1beta1.DesiredComponent{
-		Spec: s2hv1beta1.DesiredComponentSpec{
+	sameComp := desiredComp.IsSame(&s2hv1.DesiredComponent{
+		Spec: s2hv1.DesiredComponentSpec{
 			Name:       compName,
 			Version:    version,
 			Repository: compRepository,
@@ -299,11 +309,11 @@ func (c *controller) updateTeamDesiredComponent(updateInfo updateTeamDesiredComp
 	return nil
 }
 
-func (c *controller) sendImageMissingReport(teamName, compName, repo, version string) {
+func (c *controller) sendImageMissingReport(teamName, compName, repo, version, reason string) {
 	configCtrl := c.GetConfigController()
 	for _, reporter := range c.reporters {
-		img := s2hv1beta1.Image{Repository: repo, Tag: version}
-		imageMissingRpt := internal.NewImageMissingReporter(img, c.configs, teamName, compName)
+		img := s2hv1.Image{Repository: repo, Tag: version}
+		imageMissingRpt := internal.NewImageMissingReporter(img, c.configs, teamName, compName, reason)
 		if err := reporter.SendImageMissing(configCtrl, imageMissingRpt); err != nil {
 			logger.Error(err, "cannot send image missing list report", "team", teamName)
 		}
@@ -316,10 +326,10 @@ func (c *controller) QueueLen() int {
 
 type desiredTime struct {
 	image            string
-	desiredImageTime s2hv1beta1.DesiredImageTime
+	desiredImageTime s2hv1.DesiredImageTime
 }
 
-func deleteDesiredMappingOutOfRange(team *s2hv1beta1.Team, maxDesiredMapping int) {
+func deleteDesiredMappingOutOfRange(team *s2hv1.Team, maxDesiredMapping int) {
 	desiredMap := team.Status.DesiredComponentImageCreatedTime
 	for compName, m := range desiredMap {
 		desiredList := convertDesiredMapToDesiredTimeList(m)
@@ -337,7 +347,7 @@ func deleteDesiredMappingOutOfRange(team *s2hv1beta1.Team, maxDesiredMapping int
 	}
 }
 
-func isImageInActive(team *s2hv1beta1.Team, compName, desiredImage string) bool {
+func isImageInActive(team *s2hv1.Team, compName, desiredImage string) bool {
 	activeComponents := team.Status.ActiveComponents
 	if activeComp, ok := activeComponents[compName]; ok {
 		if activeComp.Spec.Name != "" {
@@ -358,7 +368,7 @@ func sortDesiredList(desiredList []desiredTime) {
 	})
 }
 
-func convertDesiredMapToDesiredTimeList(desiredMap map[string]s2hv1beta1.DesiredImageTime) []desiredTime {
+func convertDesiredMapToDesiredTimeList(desiredMap map[string]s2hv1.DesiredImageTime) []desiredTime {
 	out := make([]desiredTime, 0)
 	for k, v := range desiredMap {
 		out = append(out, desiredTime{image: k, desiredImageTime: v})

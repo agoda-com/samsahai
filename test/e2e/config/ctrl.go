@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	configctrl "github.com/agoda-com/samsahai/internal/config"
 	"github.com/agoda-com/samsahai/internal/samsahai"
@@ -30,20 +30,19 @@ import (
 )
 
 const (
-	verifyTime1s           = 1 * time.Second
-	//	verifyTime5s           = 5 * time.Second
-	verifyTime10s          = 10 * time.Second
-	//	verifyTime15s          = 15 * time.Second
-	verifyTime30s          = 30 * time.Second
+	verifyTime1s  = 1 * time.Second
+	verifyTime10s = 10 * time.Second
+	verifyTime15s = 15 * time.Second
 )
+
 var (
-	samsahaiCtrl   internal.SamsahaiController
-	configCtrl     internal.ConfigController
-	wgStop         *sync.WaitGroup
-	chStop         chan struct{}
-	mgr            manager.Manager
-	client         rclient.Client
-	namespace      string
+	samsahaiCtrl internal.SamsahaiController
+	configCtrl   internal.ConfigController
+	wgStop       *sync.WaitGroup
+	chStop       chan struct{}
+	mgr          manager.Manager
+	client       rclient.Client
+	namespace    string
 )
 
 func setupSamsahai() {
@@ -89,17 +88,12 @@ var _ = Describe("[e2e] Config controller", func() {
 
 	AfterEach(func(done Done) {
 		defer close(done)
-		ctx := context.TODO()
-
-		By("Deleting Config")
-		Expect(configCtrl.Delete(teamTest)).NotTo(HaveOccurred())
-		Expect(configCtrl.Delete(teamTest2)).NotTo(HaveOccurred())
 
 		By("Deleting all Teams")
-		err := client.DeleteAllOf(ctx, &s2hv1beta1.Team{}, rclient.MatchingLabels(testLabels))
+		err := client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
-		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
-			teamList := s2hv1beta1.TeamList{}
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+			teamList := s2hv1.TeamList{}
 			listOpt := &rclient.ListOptions{LabelSelector: labels.SelectorFromSet(testLabels)}
 			err = client.List(ctx, &teamList, listOpt)
 			if err != nil && errors.IsNotFound(err) {
@@ -113,22 +107,52 @@ var _ = Describe("[e2e] Config controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Delete all Teams error")
 
-	}, 5)
+		By("Deleting all Configs")
+		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
+			config1 := &s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamTest}, config1)
+			if err != nil && !errors.IsNotFound(err) {
+				return false, nil
+			}
+
+			_ = client.Delete(ctx, config1)
+
+			config2 := &s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamTest2}, config2)
+			if err != nil && errors.IsNotFound(err) {
+				return true, nil
+			}
+
+			_ = client.Delete(ctx, config2)
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Delete all Configs error")
+	}, 30)
 
 	It("should successfully get/delete Config", func(done Done) {
 		defer close(done)
 		setupSamsahai()
-		ctx := context.TODO()
 
 		By("Creating Config")
 		yamlTeam, err := ioutil.ReadFile(path.Join("..", "data", "wordpress-redis", "config.yaml"))
 		Expect(err).NotTo(HaveOccurred())
 
 		obj, _ := util.MustParseYAMLtoRuntimeObject(yamlTeam)
-		config, _ := obj.(*s2hv1beta1.Config)
+		config, _ := obj.(*s2hv1.Config)
 		Expect(client.Create(ctx, config)).To(BeNil())
 
 		By("Get Config")
+		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
+			config = &s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamTest}, config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Get config error")
+
 		cfg, err := configCtrl.Get(teamTest)
 		Expect(err).To(BeNil())
 		Expect(cfg.Status.Used).NotTo(BeNil())
@@ -138,11 +162,19 @@ var _ = Describe("[e2e] Config controller", func() {
 		Expect(cfg.Spec.ActivePromotion).NotTo(BeNil())
 
 		By("Get components")
-		Expect(configCtrl.EnsureConfigTemplateChanged(config)).To(BeNil())
-		Expect(configCtrl.Update(config)).To(BeNil())
-		comps, err := configCtrl.GetComponents(teamTest)
-		Expect(err).To(BeNil())
-		Expect(len(comps)).To(Equal(3))
+		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
+			if err = configCtrl.EnsureConfigTemplateChanged(config); err != nil {
+				return false, nil
+			}
+			if err = configCtrl.Update(config); err != nil {
+				return false, nil
+			}
+			if comps, err := configCtrl.GetComponents(teamTest); err != nil || len(comps) != 3 {
+				return false, nil
+			}
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Get components error")
 
 		By("Get parent components")
 		parentComps, err := configCtrl.GetParentComponents(teamTest)
@@ -161,8 +193,8 @@ var _ = Describe("[e2e] Config controller", func() {
 
 		By("Config should be deleted")
 		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
-			config = &s2hv1beta1.Config{}
-			err = client.Get(context.TODO(), types.NamespacedName{Name: teamTest}, config)
+			config = &s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamTest}, config)
 			if err != nil && errors.IsNotFound(err) {
 				return true, nil
 			}
@@ -175,14 +207,13 @@ var _ = Describe("[e2e] Config controller", func() {
 	It("Should successfully apply/update config template", func(done Done) {
 		defer close(done)
 		setupSamsahai()
-		ctx := context.TODO()
 
 		By("Creating Config")
 		yamlTeam, err := ioutil.ReadFile(path.Join("..", "data", "wordpress-redis", "config.yaml"))
 		Expect(err).NotTo(HaveOccurred())
 
 		obj, _ := util.MustParseYAMLtoRuntimeObject(yamlTeam)
-		config, _ := obj.(*s2hv1beta1.Config)
+		config, _ := obj.(*s2hv1.Config)
 		Expect(client.Create(ctx, config)).To(BeNil())
 
 		By("Creating Team")
@@ -194,16 +225,32 @@ var _ = Describe("[e2e] Config controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		obj, _ = util.MustParseYAMLtoRuntimeObject(yamlTeam2)
-		configUsingTemplate, _ := obj.(*s2hv1beta1.Config)
+		configUsingTemplate, _ := obj.(*s2hv1.Config)
 		Expect(client.Create(ctx, configUsingTemplate)).To(BeNil())
 
 		By("Creating Team2")
 		team2 := mockTeam2
 		Expect(client.Create(ctx, &team2)).To(BeNil())
 
-		By("Apply config template")
-		Expect(configCtrl.EnsureConfigTemplateChanged(configUsingTemplate)).To(BeNil())
-		Expect(configUsingTemplate.Status.Used).NotTo(BeNil())
+		By("Verifying config template updated")
+		err = wait.PollImmediate(1*time.Second, 5*time.Second, func() (ok bool, err error) {
+			configUsingTemplate = &s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: teamTest2}, configUsingTemplate)
+			if err != nil {
+				return false, nil
+			}
+
+			if len(configUsingTemplate.Status.Used.Components) > 0 {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verifying config template updated errors")
+
+		configUsingTemplate = &s2hv1.Config{}
+		err = client.Get(ctx, types.NamespacedName{Name: teamTest2}, configUsingTemplate)
+		Expect(err).NotTo(HaveOccurred())
 		Expect(len(configUsingTemplate.Status.Used.Components)).To(Equal(2))
 		Expect(len(configUsingTemplate.Status.Used.Envs)).To(Equal(4))
 		Expect(configUsingTemplate.Status.Used.Staging).NotTo(BeNil())
@@ -217,6 +264,7 @@ var _ = Describe("[e2e] Config controller", func() {
 
 		config.Spec.ActivePromotion.Deployment.Engine = &mockEngine
 		Expect(configCtrl.Update(config)).To(BeNil())
+
 		configUsingTemplate, err = configCtrl.Get(teamTest2)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(configCtrl.EnsureConfigTemplateChanged(configUsingTemplate)).To(BeNil())
@@ -226,6 +274,8 @@ var _ = Describe("[e2e] Config controller", func() {
 })
 
 var (
+	ctx = context.TODO()
+
 	samsahaiAuthToken = "1234567890_"
 	samsahaiConfig    = internal.SamsahaiConfig{
 		ActivePromotion: internal.ActivePromotionConfig{
@@ -242,69 +292,43 @@ var (
 			InternalAuthToken: samsahaiAuthToken,
 		},
 	}
-	teamTest  = "teamtest"
-	teamTest2 = "teamtest2"
+	teamTest   = "teamtest"
+	teamTest2  = "teamtest2"
 	testLabels = map[string]string{
 		"created-for": "s2h-testing",
 	}
 
+	mockTeamSpec = s2hv1.TeamSpec{
+		Description: "team for testing",
+		Owners:      []string{"samsahai@samsahai.io"},
+		Credential: s2hv1.Credential{
+			SecretName: s2hobject.GetTeamSecretName(teamTest),
+		},
+		StagingCtrl: &s2hv1.StagingCtrl{
+			IsDeploy: false,
+		},
+	}
 
-	mockTeam = s2hv1beta1.Team{
+	mockTeam = s2hv1.Team{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamTest,
 			Labels: testLabels,
 		},
-		Spec: s2hv1beta1.TeamSpec{
-			Description: "team for testing",
-			Owners:      []string{"samsahai@samsahai.io"},
-			Credential: s2hv1beta1.Credential{
-				SecretName: s2hobject.GetTeamSecretName(teamTest),
-			},
-			StagingCtrl: &s2hv1beta1.StagingCtrl{
-				IsDeploy: false,
-			},
-		},
-		Status: s2hv1beta1.TeamStatus{
-			Namespace: s2hv1beta1.TeamNamespace{},
-			Used: s2hv1beta1.TeamSpec{
-				Description: "team for testing",
-				Owners:      []string{"samsahai@samsahai.io"},
-				Credential: s2hv1beta1.Credential{
-					SecretName: s2hobject.GetTeamSecretName(teamTest),
-				},
-				StagingCtrl: &s2hv1beta1.StagingCtrl{
-					IsDeploy: false,
-				},
-			},
+		Spec: mockTeamSpec,
+		Status: s2hv1.TeamStatus{
+			Namespace: s2hv1.TeamNamespace{},
+			Used:      mockTeamSpec,
 		},
 	}
-	mockTeam2 = s2hv1beta1.Team{
+	mockTeam2 = s2hv1.Team{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   teamTest2,
 			Labels: testLabels,
 		},
-		Spec: s2hv1beta1.TeamSpec{
-			Description: "team for testing",
-			Owners:      []string{"samsahai@samsahai.io"},
-			Credential: s2hv1beta1.Credential{
-				SecretName: s2hobject.GetTeamSecretName(teamTest2),
-			},
-			StagingCtrl: &s2hv1beta1.StagingCtrl{
-				IsDeploy: false,
-			},
-		},
-		Status: s2hv1beta1.TeamStatus{
-			Namespace: s2hv1beta1.TeamNamespace{},
-			Used: s2hv1beta1.TeamSpec{
-				Description: "team for testing",
-				Owners:      []string{"samsahai@samsahai.io"},
-				Credential: s2hv1beta1.Credential{
-					SecretName: s2hobject.GetTeamSecretName(teamTest2),
-				},
-				StagingCtrl: &s2hv1beta1.StagingCtrl{
-					IsDeploy: false,
-				},
-			},
+		Spec: mockTeamSpec,
+		Status: s2hv1.TeamStatus{
+			Namespace: s2hv1.TeamNamespace{},
+			Used:      mockTeamSpec,
 		},
 	}
 )

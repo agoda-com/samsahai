@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
 	"sort"
@@ -25,15 +25,27 @@ import (
 
 // PullRequestQueueSpec defines the desired state of PullRequestQueue
 type PullRequestQueueSpec struct {
-	// ComponentName represents a pull request Component name
-	ComponentName string `json:"componentName"`
+	// BundleName represents a pull request bundle name
+	BundleName string `json:"bundleName"`
 
 	// PRNumber represents a pull request number
 	PRNumber string `json:"prNumber"`
 
+	// CommitSHA represents a commit SHA
+	// +optional
+	CommitSHA string `json:"commitSHA,omitempty"`
+
 	// Components represents a list of components which are deployed
 	// +optional
 	Components QueueComponents `json:"components,omitempty"`
+
+	// UpcomingCommitSHA represents an upcoming commit SHA in case queue is running
+	// +optional
+	UpcomingCommitSHA string `json:"upcomingCommitSHA,omitempty"`
+
+	// UpcomingComponents represents an upcoming components which are deployed in case queue is running
+	// +optional
+	UpcomingComponents QueueComponents `json:"upcomingComponents,omitempty"`
 
 	// NoOfRetry defines how many times this pull request component has been tested
 	// +optional
@@ -45,6 +57,25 @@ type PullRequestQueueSpec struct {
 
 	// TeamName represents team owner of the pull request queue
 	TeamName string `json:"teamName"`
+
+	// GitRepository represents a github repository of the pull request
+	GitRepository string `json:"gitRepository,omitempty"`
+
+	// ImageMissingList represents image missing lists
+	// +optional
+	ImageMissingList []Image `json:"imageMissingList,omitempty"`
+
+	// IsPRTriggerFailed represents the result of pull request trigger
+	// +optional
+	IsPRTriggerFailed *bool `json:"isPrTriggerFailed,omitempty"`
+
+	// PRTriggerCreatedAt represents time when pull request trigger has been start
+	// +optional
+	PRTriggerCreatedAt *metav1.Time `json:"prTriggerCreatedAt,omitempty"`
+
+	// PRTriggerFinishedAt represents time when pull request trigger has been finish
+	// +optional
+	PRTriggerFinishedAt *metav1.Time `json:"prTriggerFinishedAt,omitempty"`
 }
 
 // PullRequestQueueConditionType represents a condition type of pull request queue
@@ -230,6 +261,10 @@ func (prql *PullRequestQueueList) LastQueueOrder() int {
 	}
 	sort.Sort(PullRequestQueueByNoOfOrder(prql.Items))
 	return prql.Items[len(prql.Items)-1].Spec.NoOfOrder + 1
+}
+
+func (prq *PullRequestQueue) IsFailure() bool {
+	return prq.Status.Result == PullRequestQueueFailure
 }
 
 func (prq *PullRequestQueue) IsCanceled() bool {

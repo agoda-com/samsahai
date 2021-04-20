@@ -1,9 +1,10 @@
 package msteams
 
 import (
+	"fmt"
 	"strings"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -44,7 +45,7 @@ func WithMSTeamsClient(msTeams msteams.MSTeams) NewOption {
 // New creates a new Microsoft Teams reporter
 func New(tenantID, clientID, clientSecret, username, password string, opts ...NewOption) internal.Reporter {
 	r := &reporter{
-		msTeams: newMSTeams(tenantID, clientID, clientSecret, username, password),
+		msTeams: newMSTeamsClient(tenantID, clientID, clientSecret, username, password),
 	}
 
 	// apply the new options
@@ -55,12 +56,12 @@ func New(tenantID, clientID, clientSecret, username, password string, opts ...Ne
 	return r
 }
 
-// newMSTeams returns reporter for sending report via Microsoft Teams into specific groups and channels
-func newMSTeams(tenantID, clientID, clientSecret, username, password string) msteams.MSTeams {
+// newMSTeamsClient returns a msteams client for sending report via Microsoft Teams into specific groups and channels
+func newMSTeamsClient(tenantID, clientID, clientSecret, username, password string) msteams.MSTeams {
 	return msteams.NewClient(tenantID, clientID, clientSecret, username, password)
 }
 
-// GetName returns msteams type
+// GetName returns a reporter type
 func (r *reporter) GetName() string {
 	return ReporterName
 }
@@ -85,7 +86,7 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 	message := r.makeComponentUpgradeReport(comp)
 	if len(comp.ImageMissingList) > 0 {
 		message += "<hr/>"
-		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList))
+		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList), "")
 	}
 
 	return r.post(msTeamsConfig, message, internal.ComponentUpgradeType)
@@ -111,7 +112,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 	message := r.makePullRequestQueueReport(comp)
 	if len(comp.ImageMissingList) > 0 {
 		message += "\n"
-		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList))
+		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList), "")
 	}
 
 	return r.post(msTeamsConfig, message, internal.PullRequestQueueType)
@@ -129,7 +130,7 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 	imageMissingList := atpRpt.ActivePromotionStatus.PreActiveQueue.ImageMissingList
 	if len(imageMissingList) > 0 {
 		message += "<hr/>"
-		message += r.makeImageMissingListReport(imageMissingList)
+		message += r.makeImageMissingListReport(imageMissingList, "")
 	}
 
 	if atpRpt.HasOutdatedComponent {
@@ -142,19 +143,19 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 
 	message += "<br/>"
 
-	isDemotionFailed := atpRpt.DemotionStatus == s2hv1beta1.ActivePromotionDemotionFailure
+	isDemotionFailed := atpRpt.DemotionStatus == s2hv1.ActivePromotionDemotionFailure
 	if isDemotionFailed {
 		message += "<br/>"
 		message += r.makeActiveDemotingFailureReport()
 	}
 
-	if atpRpt.RollbackStatus == s2hv1beta1.ActivePromotionRollbackFailure {
+	if atpRpt.RollbackStatus == s2hv1.ActivePromotionRollbackFailure {
 		message += "<br/>"
 		message += r.makeActivePromotionRollbackFailureReport()
 	}
 
 	hasPreviousActiveNamespace := atpRpt.PreviousActiveNamespace != ""
-	if atpRpt.Result == s2hv1beta1.ActivePromotionSuccess && hasPreviousActiveNamespace && !isDemotionFailed {
+	if atpRpt.Result == s2hv1.ActivePromotionSuccess && hasPreviousActiveNamespace && !isDemotionFailed {
 		message += "<br/>"
 		message += r.makeDestroyedPreviousActiveTimeReport(&atpRpt.ActivePromotionStatus)
 	}
@@ -162,10 +163,10 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 	return r.post(msTeamsConfig, message, internal.ActivePromotionType)
 }
 
-func convertRPCImageListToK8SImageList(images []*rpc.Image) []s2hv1beta1.Image {
-	k8sImages := make([]s2hv1beta1.Image, 0)
+func convertRPCImageListToK8SImageList(images []*rpc.Image) []s2hv1.Image {
+	k8sImages := make([]s2hv1.Image, 0)
 	for _, img := range images {
-		k8sImages = append(k8sImages, s2hv1beta1.Image{
+		k8sImages = append(k8sImages, s2hv1.Image{
 			Repository: img.Repository,
 			Tag:        img.Tag,
 		})
@@ -181,7 +182,7 @@ func (r *reporter) SendImageMissing(configCtrl internal.ConfigController, imageM
 		return nil
 	}
 
-	message := r.makeImageMissingListReport([]s2hv1beta1.Image{imageMissingRpt.Image})
+	message := r.makeImageMissingListReport([]s2hv1.Image{imageMissingRpt.Image}, imageMissingRpt.Reason)
 
 	return r.post(msTeamsConfig, message, internal.ImageMissingType)
 }
@@ -194,15 +195,27 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	}
 
 	if msTeamsConfig.PullRequestTrigger != nil {
-		err := util.CheckMatchingCriteria(msTeamsConfig.PullRequestTrigger.Criteria, string(prTriggerRpt.Result))
+		err := util.CheckMatchingCriteria(msTeamsConfig.PullRequestTrigger.Criteria, prTriggerRpt.Result)
 		if err != nil {
 			return nil
 		}
 	}
 
 	message := r.makePullRequestTriggerResultReport(prTriggerRpt)
+	if len(prTriggerRpt.ImageMissingList) > 0 {
+		message += "\n"
+		message += r.makeImageMissingListReport(prTriggerRpt.ImageMissingList, "")
+	}
 
 	return r.post(msTeamsConfig, message, internal.PullRequestTriggerType)
+}
+
+// SendActiveEnvironmentDeleted implements the reporter SendActiveEnvironmentDeleted function
+func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController,
+	activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
+
+	// does not support
+	return nil
 }
 
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter) string {
@@ -222,7 +235,7 @@ func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeRep
 	message := `
 <b>Pull Request Queue:</b><span {{ if eq .Status 1 }}` + styleInfo + `> Success {{ else }}` + styleDanger + `> Failure{{ end }}</span>
 {{- if .PullRequestComponent }}
-<br/><b>Component:</b> {{ .PullRequestComponent.ComponentName }}
+<br/><b>Component:</b> {{ .PullRequestComponent.BundleName }}
 <br/><b>PR Number:</b> {{ .PullRequestComponent.PRNumber }}
 {{- end }}
 ` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL)
@@ -239,8 +252,8 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
 <br/><b>Components</b>
 {{- range .Components }}
 <li><b>- Name:</b> {{ .Name }}</li>
-<li><b>&nbsp;&nbsp;Version:</b> {{ .Image.Tag }}</li>
-<li><b>&nbsp;&nbsp;Repository:</b> {{ .Image.Repository }}</li>
+<li><b>&nbsp;&nbsp;Version:</b> {{ if .Image.Tag }}{{ .Image.Tag }}{{ else }}<code>no stable/active image tag found, using from values file</code>{{ end }}</li>
+<li><b>&nbsp;&nbsp;Repository:</b> {{ if .Image.Repository }}{{ .Image.Repository }}{{ else }}<code>no stable/active image repository found, using from values file</code>{{ end }}</li>
 {{- end }}
 <br/><b>Owner:</b> {{ .TeamName }}
 <br/><b>Namespace:</b> {{ .Namespace }}
@@ -254,10 +267,13 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
 <li><b>&nbsp;&nbsp;Wait for:</b> {{ range .FailureComponents }}{{ .FirstFailureContainerName }},{{ end }}
     {{- end }}
 {{- end }} 
-{{- end }} 
- {{- if .TestRunner.Teamcity.BuildURL }}
+{{- end }}
+{{- if .TestRunner.Teamcity.BuildURL }}
 <br/><b>Teamcity URL:</b> <a href="{{ .TestRunner.Teamcity.BuildURL }}">#{{ .TestRunner.Teamcity.BuildNumber }}</a>
  {{- end }}
+{{- if .TestRunner.Gitlab.PipelineURL }}
+<br/><b>GitLab URL:</b> <a href="{{ .TestRunner.Gitlab.PipelineURL }}">#{{ .TestRunner.Gitlab.PipelineNumber }}</a>
+{{- end }}
 <br/><b>Deployment Logs:</b> <a href="` + queueLogURL + `">Download here</a>
 <br/><b>Deployment History:</b> <a href="` + queueHistURL + `">Click here</a>
 {{- end}}
@@ -270,7 +286,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 <b>Active Promotion:</b> <span {{ if eq .Result "Success" }}` + styleInfo + `{{ else if eq .Result "Failure" }}` + styleDanger + `{{ end }}>{{ .Result }}</span>
 {{- if ne .Result "Success" }}
 {{- range .Conditions }}
- {{- if eq .Type "` + string(s2hv1beta1.ActivePromotionCondActivePromoted) + `" }}
+ {{- if eq .Type "` + string(s2hv1.ActivePromotionCondActivePromoted) + `" }}
 <br/><b>Reason:</b> {{ .Message }}
  {{- end }}
 {{- end }}
@@ -290,8 +306,13 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
   {{- end }} 
   {{- end }} 
 {{- end }}
-{{- if and .PreActiveQueue.TestRunner (and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL) }}
+{{- if .PreActiveQueue.TestRunner }}
+{{- if and .PreActiveQueue.TestRunner.Teamcity .PreActiveQueue.TestRunner.Teamcity.BuildURL }}
 <br/><b>Teamcity URL:</b> <a href="{{ .PreActiveQueue.TestRunner.Teamcity.BuildURL }}">#{{ .PreActiveQueue.TestRunner.Teamcity.BuildNumber }}</a>
+{{- end }}
+{{- if and .PreActiveQueue.TestRunner.Gitlab .PreActiveQueue.TestRunner.Gitlab.PipelineURL }}
+<br/><b>GitLab URL:</b> <a href="{{ .PreActiveQueue.TestRunner.Gitlab.PipelineURL }}">#{{ .PreActiveQueue.TestRunner.Gitlab.PipelineNumber }}</a>
+{{- end }}
 {{- end }}
 {{- if eq .Result "Failure" }}
 <br/><b>Deployment Logs:</b> <a href="{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log">Download here</a>
@@ -302,7 +323,7 @@ func (r *reporter) makeActivePromotionStatusReport(comp *internal.ActivePromotio
 	return strings.TrimSpace(template.TextRender("MSTeamsActivePromotionStatus", message, comp))
 }
 
-func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1beta1.OutdatedComponent) string {
+func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1.OutdatedComponent) string {
 	var message = `
 <b>Outdated Components:</b>
 {{- range $name, $component := .Components }}
@@ -317,7 +338,7 @@ func (r *reporter) makeOutdatedComponentsReport(comps map[string]s2hv1beta1.Outd
 `
 
 	ocObj := struct {
-		Components map[string]s2hv1beta1.OutdatedComponent
+		Components map[string]s2hv1.OutdatedComponent
 	}{Components: comps}
 	return strings.TrimSpace(template.TextRender("MSTeamsOutdatedComponents", message, ocObj))
 }
@@ -342,39 +363,53 @@ func (r *reporter) makeActiveDemotingFailureReport() string {
 	return strings.TrimSpace(template.TextRender("DemotionFailure", message, ""))
 }
 
-func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1beta1.ActivePromotionStatus) string {
+func (r *reporter) makeDestroyedPreviousActiveTimeReport(status *s2hv1.ActivePromotionStatus) string {
 	var message = "<b " + styleWarning + ">NOTES:</b> previous active namespace <code>{{ .PreviousActiveNamespace }}</code> will be destroyed at <code>{{ .DestroyedTime | TimeFormat }}</code>"
 
 	return strings.TrimSpace(template.TextRender("DestroyedTime", message, status))
 }
 
-func (r *reporter) makeImageMissingListReport(images []s2hv1beta1.Image) string {
+func (r *reporter) makeImageMissingListReport(images []s2hv1.Image, reason string) string {
+	var reasonMsg string
+	if reason != "" {
+		reasonMsg = fmt.Sprintf("   <code>%s</code>", reason)
+	}
+
 	var message = `
 <b>Image Missing List</b>
 {{- range .Images }}
 <li>{{ .Repository }}:{{ .Tag }}</li>
+` + reasonMsg + `
 {{- end }}
 `
 
-	imagesObj := struct{ Images []s2hv1beta1.Image }{Images: images}
+	imagesObj := struct{ Images []s2hv1.Image }{Images: images}
 	return strings.TrimSpace(template.TextRender("MSTeamsImageMissingList", message, imagesObj))
 }
 
 func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.PullRequestTriggerReporter) string {
 	var message = `
 <b>Pull Request Trigger:</b>  <span {{ if eq .Result "Success" }}` + styleInfo + `{{ else if eq .Result "Failure" }}` + styleDanger + `{{ end }}>{{ .Result }}</span>
-<br/><b>Component:</b> {{ .ComponentName }}
+<br/><b>Bundle:</b> {{ .BundleName }}
 <br/><b>PR Number:</b> {{ .PRNumber }}
-<br/><b>Image:</b> {{ if .Image }}{{ .Image.Repository }}:{{ .Image.Tag }}{{ else }}no image defined{{ end }}
-<br/><b>NO of Retry:</b> {{ if .NoOfRetry }}{{ .NoOfRetry }}{{ else }}0{{ end }}
+<br/><b>Components:</b>
+{{- if .Components }}
+{{- range .Components }}
+<li><b>- Name:</b> {{ .ComponentName }}</li>
+<li><b>&nbsp;&nbsp;Image:</b> {{ if .Image }}{{ .Image.Repository }}:{{ .Image.Tag }}{{ else }}no image defined{{ end }}
+{{- end }}
+{{- else }}
+<br/><code>no components defined</code>
+{{- end }}
+<br/><b>NO of Retry:</b> {{ .NoOfRetry }}
 <br/><b>Owner:</b> {{ .TeamName }}
 <br/><b>Start at:</b> {{ .CreatedAt | TimeFormat }}
 `
 
-	return strings.TrimSpace(template.TextRender("SlackPullRequestTriggerResult", message, prTriggerRpt))
+	return strings.TrimSpace(template.TextRender("MSTeamsPullRequestTriggerResult", message, prTriggerRpt))
 }
 
-func (r *reporter) post(msTeamsConfig *s2hv1beta1.MSTeams, message string, event internal.EventType) error {
+func (r *reporter) post(msTeamsConfig *s2hv1.ReporterMSTeams, message string, event internal.EventType) error {
 	logger.Debug("start sending message to Microsoft Teams groups and channels",
 		"event", event, "groups", msTeamsConfig.Groups)
 
@@ -415,7 +450,7 @@ func (r *reporter) post(msTeamsConfig *s2hv1beta1.MSTeams, message string, event
 	return globalErr
 }
 
-func (r *reporter) getMSTeamsConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1beta1.MSTeams, error) {
+func (r *reporter) getMSTeamsConfig(teamName string, configCtrl internal.ConfigController) (*s2hv1.ReporterMSTeams, error) {
 	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return nil, err

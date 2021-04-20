@@ -436,6 +436,56 @@
                 }
             }
         },
+        "/teams/{team}/environment/active/delete": {
+            "delete": {
+                "description": "Delete the current active namespace.",
+                "tags": [
+                    "GET"
+                ],
+                "summary": "Delete the current active namespace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Team name",
+                        "name": "team",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Delete by",
+                        "name": "deleted_by",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "There is no active namespace to destroy",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.errResp"
+                        }
+                    },
+                    "404": {
+                        "description": "Team not found",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.errResp"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/webhook.errResp"
+                        }
+                    }
+                }
+            }
+        },
         "/teams/{team}/pullrequest/queue": {
             "get": {
                 "description": "Returns queue information of pull request deployment flow.",
@@ -501,7 +551,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/v1beta1.PullRequestQueueHistory"
+                            "$ref": "#/definitions/v1.PullRequestQueueHistory"
                         }
                     },
                     "404": {
@@ -546,7 +596,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/v1beta1.PullRequestQueueHistory"
+                            "$ref": "#/definitions/v1.PullRequestQueueHistory"
                         }
                     },
                     "404": {
@@ -683,7 +733,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/v1beta1.QueueHistory"
+                            "$ref": "#/definitions/v1.QueueHistory"
                         }
                     },
                     "404": {
@@ -728,7 +778,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/v1beta1.QueueHistory"
+                            "$ref": "#/definitions/v1.QueueHistory"
                         }
                     },
                     "404": {
@@ -809,20 +859,20 @@
         }
     },
     "definitions": {
-        "v1beta1.ActivePromotion": {
+        "v1.ActivePromotion": {
             "type": "object",
             "properties": {
                 "spec": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotionSpec"
+                    "$ref": "#/definitions/v1.ActivePromotionSpec"
                 },
                 "status": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotionStatus"
+                    "$ref": "#/definitions/v1.ActivePromotionStatus"
                 }
             }
         },
-        "v1beta1.ActivePromotionCondition": {
+        "v1.ActivePromotionCondition": {
             "type": "object",
             "properties": {
                 "lastTransitionTime": {
@@ -845,25 +895,25 @@
                 }
             }
         },
-        "v1beta1.ActivePromotionHistory": {
+        "v1.ActivePromotionHistory": {
             "type": "object",
             "properties": {
                 "spec": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotionHistorySpec"
+                    "$ref": "#/definitions/v1.ActivePromotionHistorySpec"
                 },
                 "status": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotionHistoryStatus"
+                    "$ref": "#/definitions/v1.ActivePromotionHistoryStatus"
                 }
             }
         },
-        "v1beta1.ActivePromotionHistorySpec": {
+        "v1.ActivePromotionHistorySpec": {
             "type": "object",
             "properties": {
                 "activePromotion": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotion"
+                    "$ref": "#/definitions/v1.ActivePromotion"
                 },
                 "createdAt": {
                     "description": "TODO: store values file of all components",
@@ -877,10 +927,10 @@
                 }
             }
         },
-        "v1beta1.ActivePromotionHistoryStatus": {
+        "v1.ActivePromotionHistoryStatus": {
             "type": "object"
         },
-        "v1beta1.ActivePromotionSpec": {
+        "v1.ActivePromotionSpec": {
             "type": "object",
             "properties": {
                 "noOfRetry": {
@@ -901,7 +951,7 @@
                 }
             }
         },
-        "v1beta1.ActivePromotionStatus": {
+        "v1.ActivePromotionStatus": {
             "type": "object",
             "properties": {
                 "activeComponents": {
@@ -916,7 +966,7 @@
                     "description": "Conditions contains observations of the resource's state e.g.,\nQueue deployed, being tested\n+optional\n+patchMergeKey=type\n+patchStrategy=merge",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.ActivePromotionCondition"
+                        "$ref": "#/definitions/v1.ActivePromotionCondition"
                     }
                 },
                 "demotionStatus": {
@@ -946,7 +996,7 @@
                 "preActiveQueue": {
                     "description": "PreActiveQueue represents a pre-active queue status\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueStatus"
+                    "$ref": "#/definitions/v1.QueueStatus"
                 },
                 "previousActiveNamespace": {
                     "description": "PreviousActiveNamespace represents an active namespace before promoting\n+optional",
@@ -978,7 +1028,7 @@
                 }
             }
         },
-        "v1beta1.CommandAndArgs": {
+        "v1.CommandAndArgs": {
             "type": "object",
             "properties": {
                 "args": {
@@ -996,23 +1046,23 @@
                 }
             }
         },
-        "v1beta1.Component": {
+        "v1.Component": {
             "type": "object",
             "properties": {
                 "chart": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ComponentChart"
+                    "$ref": "#/definitions/v1.ComponentChart"
                 },
                 "dependencies": {
                     "description": "+optional",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.Component"
+                        "$ref": "#/definitions/v1.Dependency"
                     }
                 },
                 "image": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ComponentImage"
+                    "$ref": "#/definitions/v1.ComponentImage"
                 },
                 "name": {
                     "type": "string"
@@ -1033,13 +1083,13 @@
                     "type": "string"
                 },
                 "values": {
-                    "description": "+optional",
+                    "description": "+optional\n+kubebuilder:pruning:PreserveUnknownFields",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ComponentValues"
+                    "$ref": "#/definitions/v1.ComponentValues"
                 }
             }
         },
-        "v1beta1.ComponentChart": {
+        "v1.ComponentChart": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1054,7 +1104,7 @@
                 }
             }
         },
-        "v1beta1.ComponentImage": {
+        "v1.ComponentImage": {
             "type": "object",
             "properties": {
                 "pattern": {
@@ -1070,13 +1120,13 @@
                 }
             }
         },
-        "v1beta1.ComponentValues": {
+        "v1.ComponentValues": {
             "type": "object",
             "additionalProperties": {
                 "type": "object"
             }
         },
-        "v1beta1.ConfigActivePromotion": {
+        "v1.ConfigActivePromotion": {
             "type": "object",
             "properties": {
                 "demotionTimeout": {
@@ -1084,9 +1134,9 @@
                     "type": "string"
                 },
                 "deployment": {
-                    "description": "Deployment represents configuration about deploy",
+                    "description": "Deployment represents configuration about deploy\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigDeploy"
+                    "$ref": "#/definitions/v1.ConfigDeploy"
                 },
                 "maxHistories": {
                     "description": "MaxHistories defines maximum length of ActivePromotionHistory stored per team\n+optional",
@@ -1099,7 +1149,7 @@
                 "outdatedNotification": {
                     "description": "OutdatedNotification defines a configuration of outdated notification\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.OutdatedNotification"
+                    "$ref": "#/definitions/v1.OutdatedNotification"
                 },
                 "rollbackTimeout": {
                     "description": "RollbackTimeout defines maximum duration for rolling back active promotion\n+optional",
@@ -1115,14 +1165,14 @@
                 }
             }
         },
-        "v1beta1.ConfigBundles": {
+        "v1.ConfigBundles": {
             "type": "object",
             "additionalProperties": {
                 "type": "array",
                 "items": {}
             }
         },
-        "v1beta1.ConfigComponentUpgradeReport": {
+        "v1.ConfigComponentUpgradeReport": {
             "type": "object",
             "properties": {
                 "criteria": {
@@ -1135,7 +1185,7 @@
                 }
             }
         },
-        "v1beta1.ConfigDeploy": {
+        "v1.ConfigDeploy": {
             "type": "object",
             "properties": {
                 "componentCleanupTimeout": {
@@ -1149,7 +1199,7 @@
                 "testRunner": {
                     "description": "TestRunner represents configuration about test\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigTestRunner"
+                    "$ref": "#/definitions/v1.ConfigTestRunner"
                 },
                 "timeout": {
                     "description": "Timeout defines maximum duration for deploying environment\n+optional",
@@ -1157,23 +1207,33 @@
                 }
             }
         },
-        "v1beta1.ConfigPullRequest": {
+        "v1.ConfigGitlab": {
             "type": "object",
             "properties": {
-                "components": {
+                "branch": {
+                    "type": "string"
+                },
+                "pipelineTriggerToken": {
+                    "type": "string"
+                },
+                "projectID": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ConfigPullRequest": {
+            "type": "object",
+            "properties": {
+                "bundles": {
+                    "description": "Bundles represents a bundle of pull request components configuration",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.PullRequestComponent"
+                        "$ref": "#/definitions/v1.PullRequestBundle"
                     }
                 },
                 "concurrences": {
                     "description": "Concurrences defines a parallel number of pull request queue\n+optional",
                     "type": "integer"
-                },
-                "deployment": {
-                    "description": "Deployment represents configuration about deploy",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigDeploy"
                 },
                 "maxHistoryDays": {
                     "description": "MaxHistoryDays defines maximum days of PullRequestQueueHistory stored\n+optional",
@@ -1190,11 +1250,11 @@
                 "trigger": {
                     "description": "Trigger represents a pull request trigger configuration\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.PullRequestTriggerConfig"
+                    "$ref": "#/definitions/v1.PullRequestTriggerConfig"
                 }
             }
         },
-        "v1beta1.ConfigPullRequestQueueReport": {
+        "v1.ConfigPullRequestQueueReport": {
             "type": "object",
             "properties": {
                 "criteria": {
@@ -1207,7 +1267,7 @@
                 }
             }
         },
-        "v1beta1.ConfigPullRequestTriggerReport": {
+        "v1.ConfigPullRequestTriggerReport": {
             "type": "object",
             "properties": {
                 "criteria": {
@@ -1216,24 +1276,29 @@
                 }
             }
         },
-        "v1beta1.ConfigReporter": {
+        "v1.ConfigReporter": {
             "type": "object",
             "properties": {
                 "cmd": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Shell"
+                    "$ref": "#/definitions/v1.ReporterShell"
+                },
+                "github": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ReporterGithub"
                 },
                 "msTeams": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.MSTeams"
+                    "$ref": "#/definitions/v1.ReporterMSTeams"
                 },
                 "optionals": {
                     "description": "+optional",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.ReportOption"
+                        "$ref": "#/definitions/v1.ReportOption"
                     }
                 },
                 "reportMock": {
@@ -1243,33 +1308,33 @@
                 "rest": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Rest"
+                    "$ref": "#/definitions/v1.ReporterRest"
                 },
                 "slack": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Slack"
+                    "$ref": "#/definitions/v1.ReporterSlack"
                 }
             }
         },
-        "v1beta1.ConfigSpec": {
+        "v1.ConfigSpec": {
             "type": "object",
             "properties": {
                 "activePromotion": {
                     "description": "ActivePromotion represents configuration about active promotion\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigActivePromotion"
+                    "$ref": "#/definitions/v1.ConfigActivePromotion"
                 },
                 "bundles": {
                     "description": "Bundles represents a group of component for each bundle\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigBundles"
+                    "$ref": "#/definitions/v1.ConfigBundles"
                 },
                 "components": {
                     "description": "Components represents all components that are managed\n+optional",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.Component"
+                        "$ref": "#/definitions/v1.Component"
                     }
                 },
                 "envs": {
@@ -1286,17 +1351,17 @@
                 "pullRequest": {
                     "description": "PullRequest represents configuration about pull request\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigPullRequest"
+                    "$ref": "#/definitions/v1.ConfigPullRequest"
                 },
                 "report": {
                     "description": "Reporter represents configuration about reporter\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigReporter"
+                    "$ref": "#/definitions/v1.ConfigReporter"
                 },
                 "staging": {
                     "description": "Staging represents configuration about staging\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigStaging"
+                    "$ref": "#/definitions/v1.ConfigStaging"
                 },
                 "template": {
                     "description": "Template represents configuration's template\n+optional",
@@ -1304,13 +1369,13 @@
                 }
             }
         },
-        "v1beta1.ConfigStaging": {
+        "v1.ConfigStaging": {
             "type": "object",
             "properties": {
                 "deployment": {
-                    "description": "Deployment represents configuration about deploy",
+                    "description": "Deployment represents configuration about deploy\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigDeploy"
+                    "$ref": "#/definitions/v1.ConfigDeploy"
                 },
                 "maxHistoryDays": {
                     "description": "MaxHistoryDays defines maximum days of QueueHistory stored\n+optional",
@@ -1322,7 +1387,7 @@
                 }
             }
         },
-        "v1beta1.ConfigTeamcity": {
+        "v1.ConfigTeamcity": {
             "type": "object",
             "properties": {
                 "branch": {
@@ -1333,7 +1398,7 @@
                 }
             }
         },
-        "v1beta1.ConfigTestMock": {
+        "v1.ConfigTestMock": {
             "type": "object",
             "properties": {
                 "result": {
@@ -1341,9 +1406,14 @@
                 }
             }
         },
-        "v1beta1.ConfigTestRunner": {
+        "v1.ConfigTestRunner": {
             "type": "object",
             "properties": {
+                "gitlab": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigGitlab"
+                },
                 "pollingTime": {
                     "description": "+optional",
                     "type": "string"
@@ -1351,12 +1421,12 @@
                 "teamcity": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigTeamcity"
+                    "$ref": "#/definitions/v1.ConfigTeamcity"
                 },
                 "testMock": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigTestMock"
+                    "$ref": "#/definitions/v1.ConfigTestMock"
                 },
                 "timeout": {
                     "description": "+optional",
@@ -1364,9 +1434,14 @@
                 }
             }
         },
-        "v1beta1.Credential": {
+        "v1.Credential": {
             "type": "object",
             "properties": {
+                "github": {
+                    "description": "Github\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.TokenCredential"
+                },
                 "secretName": {
                     "description": "SecretName",
                     "type": "string"
@@ -1374,18 +1449,55 @@
                 "teamcity": {
                     "description": "Teamcity\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.UsernamePasswordCredential"
+                    "$ref": "#/definitions/v1.UsernamePasswordCredential"
                 }
             }
         },
-        "v1beta1.DeploymentIssue": {
+        "v1.Dependency": {
+            "type": "object",
+            "properties": {
+                "chart": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ComponentChart"
+                },
+                "image": {
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ComponentImage"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parent": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "schedules": {
+                    "description": "+optional",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "source": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "values": {
+                    "description": "+optional\n+kubebuilder:pruning:PreserveUnknownFields",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ComponentValues"
+                }
+            }
+        },
+        "v1.DeploymentIssue": {
             "type": "object",
             "properties": {
                 "failureComponents": {
                     "description": "FailureComponents defines a list of failure components",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.FailureComponent"
+                        "$ref": "#/definitions/v1.FailureComponent"
                     }
                 },
                 "issueType": {
@@ -1394,7 +1506,7 @@
                 }
             }
         },
-        "v1beta1.Endpoint": {
+        "v1.Endpoint": {
             "type": "object",
             "properties": {
                 "url": {
@@ -1402,7 +1514,7 @@
                 }
             }
         },
-        "v1beta1.FailureComponent": {
+        "v1.FailureComponent": {
             "type": "object",
             "properties": {
                 "componentName": {
@@ -1423,7 +1535,24 @@
                 }
             }
         },
-        "v1beta1.Image": {
+        "v1.Gitlab": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "type": "string"
+                },
+                "pipelineID": {
+                    "type": "string"
+                },
+                "pipelineNumber": {
+                    "type": "string"
+                },
+                "pipelineURL": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.Image": {
             "type": "object",
             "properties": {
                 "repository": {
@@ -1434,33 +1563,7 @@
                 }
             }
         },
-        "v1beta1.MSTeams": {
-            "type": "object",
-            "properties": {
-                "componentUpgrade": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigComponentUpgradeReport"
-                },
-                "groups": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/v1beta1.MSTeamsGroup"
-                    }
-                },
-                "pullRequestQueue": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigPullRequestQueueReport"
-                },
-                "pullRequestTrigger": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigPullRequestTriggerReport"
-                }
-            }
-        },
-        "v1beta1.MSTeamsGroup": {
+        "v1.MSTeamsGroup": {
             "type": "object",
             "properties": {
                 "channelNameOrIDs": {
@@ -1474,7 +1577,7 @@
                 }
             }
         },
-        "v1beta1.OutdatedNotification": {
+        "v1.OutdatedNotification": {
             "type": "object",
             "properties": {
                 "exceedDuration": {
@@ -1487,9 +1590,16 @@
                 }
             }
         },
-        "v1beta1.PullRequestComponent": {
+        "v1.PullRequestBundle": {
             "type": "object",
             "properties": {
+                "components": {
+                    "description": "Components represents a list of pull request components which are deployed together as a bundle",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.PullRequestComponent"
+                    }
+                },
                 "dependencies": {
                     "description": "Dependencies defines a list of components which are required to be deployed together with the main component\n+optional",
                     "type": "array",
@@ -1497,10 +1607,40 @@
                         "type": "string"
                     }
                 },
+                "deployment": {
+                    "description": "Deployment represents configuration about deploy\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigDeploy"
+                },
+                "gitRepository": {
+                    "description": "GitRepository represents a string of git \"\u003cowner\u003e/\u003crepository\u003e\" e.g., agoda-com/samsahai\nused for publishing commit status\n+optional",
+                    "type": "string"
+                },
+                "maxRetry": {
+                    "description": "MaxRetry defines max retry counts of pull request component upgrade\n+optional",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "Name defines a bundle component name, can be any name",
+                    "type": "string"
+                },
+                "resources": {
+                    "description": "Resources represents how many resources of pull request namespace\n+optional",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.PullRequestComponent": {
+            "type": "object",
+            "properties": {
                 "image": {
                     "description": "Image defines an image repository, tag and pattern of pull request component which is a regex of tag\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ComponentImage"
+                    "$ref": "#/definitions/v1.ComponentImage"
+                },
+                "maxRetry": {
+                    "description": "MaxRetry defines max retry counts of pull request component upgrade\n+optional",
+                    "type": "integer"
                 },
                 "name": {
                     "description": "Name defines a main component name which is deployed per pull request",
@@ -1516,20 +1656,20 @@
                 }
             }
         },
-        "v1beta1.PullRequestQueue": {
+        "v1.PullRequestQueue": {
             "type": "object",
             "properties": {
                 "spec": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.PullRequestQueueSpec"
+                    "$ref": "#/definitions/v1.PullRequestQueueSpec"
                 },
                 "status": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.PullRequestQueueStatus"
+                    "$ref": "#/definitions/v1.PullRequestQueueStatus"
                 }
             }
         },
-        "v1beta1.PullRequestQueueCondition": {
+        "v1.PullRequestQueueCondition": {
             "type": "object",
             "properties": {
                 "lastTransitionTime": {
@@ -1552,42 +1692,61 @@
                 }
             }
         },
-        "v1beta1.PullRequestQueueHistory": {
+        "v1.PullRequestQueueHistory": {
             "type": "object",
             "properties": {
                 "spec": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.PullRequestQueueHistorySpec"
+                    "$ref": "#/definitions/v1.PullRequestQueueHistorySpec"
                 },
                 "status": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.PullRequestQueueHistoryStatus"
+                    "$ref": "#/definitions/v1.PullRequestQueueHistoryStatus"
                 }
             }
         },
-        "v1beta1.PullRequestQueueHistorySpec": {
+        "v1.PullRequestQueueHistorySpec": {
             "type": "object",
             "properties": {
                 "pullRequestQueue": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.PullRequestQueue"
+                    "$ref": "#/definitions/v1.PullRequestQueue"
                 }
             }
         },
-        "v1beta1.PullRequestQueueHistoryStatus": {
+        "v1.PullRequestQueueHistoryStatus": {
             "type": "object"
         },
-        "v1beta1.PullRequestQueueSpec": {
+        "v1.PullRequestQueueSpec": {
             "type": "object",
             "properties": {
-                "componentName": {
-                    "description": "ComponentName represents a pull request Component name",
+                "bundleName": {
+                    "description": "BundleName represents a pull request bundle name",
+                    "type": "string"
+                },
+                "commitSHA": {
+                    "description": "CommitSHA represents a commit SHA\n+optional",
                     "type": "string"
                 },
                 "components": {
                     "description": "Components represents a list of components which are deployed\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueComponents"
+                    "$ref": "#/definitions/v1.QueueComponents"
+                },
+                "gitRepository": {
+                    "description": "GitRepository represents a github repository of the pull request",
+                    "type": "string"
+                },
+                "imageMissingList": {
+                    "description": "ImageMissingList represents image missing lists\n+optional",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.Image"
+                    }
+                },
+                "isPrTriggerFailed": {
+                    "description": "IsPRTriggerFailed represents the result of pull request trigger\n+optional",
+                    "type": "boolean"
                 },
                 "noOfOrder": {
                     "description": "NoOfOrder defines the position in queue\nlower is will be picked first",
@@ -1601,20 +1760,37 @@
                     "description": "PRNumber represents a pull request number",
                     "type": "string"
                 },
+                "prTriggerCreatedAt": {
+                    "description": "PRTriggerCreatedAt represents time when pull request trigger has been start\n+optional",
+                    "type": "string"
+                },
+                "prTriggerFinishedAt": {
+                    "description": "PRTriggerFinishedAt represents time when pull request trigger has been finish\n+optional",
+                    "type": "string"
+                },
                 "teamName": {
                     "description": "TeamName represents team owner of the pull request queue",
                     "type": "string"
+                },
+                "upcomingCommitSHA": {
+                    "description": "UpcomingCommitSHA represents an upcoming commit SHA in case queue is running\n+optional",
+                    "type": "string"
+                },
+                "upcomingComponents": {
+                    "description": "UpcomingComponents represents an upcoming components which are deployed in case queue is running\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.QueueComponents"
                 }
             }
         },
-        "v1beta1.PullRequestQueueStatus": {
+        "v1.PullRequestQueueStatus": {
             "type": "object",
             "properties": {
                 "conditions": {
                     "description": "Conditions contains observations of the resource's state e.g.,\nQueue deployed, being tested\n+optional\n+patchMergeKey=type\n+patchStrategy=merge",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.PullRequestQueueCondition"
+                        "$ref": "#/definitions/v1.PullRequestQueueCondition"
                     }
                 },
                 "createdAt": {
@@ -1624,7 +1800,7 @@
                 "deploymentQueue": {
                     "description": "ComponentUpgrade defines a deployed pull request queue\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Queue"
+                    "$ref": "#/definitions/v1.Queue"
                 },
                 "pullRequestNamespace": {
                     "description": "PullRequestNamespace represents a current pull request namespace",
@@ -1648,7 +1824,7 @@
                 }
             }
         },
-        "v1beta1.PullRequestTriggerConfig": {
+        "v1.PullRequestTriggerConfig": {
             "type": "object",
             "properties": {
                 "maxRetry": {
@@ -1661,20 +1837,20 @@
                 }
             }
         },
-        "v1beta1.Queue": {
+        "v1.Queue": {
             "type": "object",
             "properties": {
                 "spec": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueSpec"
+                    "$ref": "#/definitions/v1.QueueSpec"
                 },
                 "status": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueStatus"
+                    "$ref": "#/definitions/v1.QueueStatus"
                 }
             }
         },
-        "v1beta1.QueueComponent": {
+        "v1.QueueComponent": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1691,7 +1867,7 @@
                 }
             }
         },
-        "v1beta1.QueueComponents": {
+        "v1.QueueComponents": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -1711,7 +1887,7 @@
                 }
             }
         },
-        "v1beta1.QueueCondition": {
+        "v1.QueueCondition": {
             "type": "object",
             "properties": {
                 "lastTransitionTime": {
@@ -1734,25 +1910,25 @@
                 }
             }
         },
-        "v1beta1.QueueHistory": {
+        "v1.QueueHistory": {
             "type": "object",
             "properties": {
                 "spec": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueHistorySpec"
+                    "$ref": "#/definitions/v1.QueueHistorySpec"
                 },
                 "status": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueHistoryStatus"
+                    "$ref": "#/definitions/v1.QueueHistoryStatus"
                 }
             }
         },
-        "v1beta1.QueueHistorySpec": {
+        "v1.QueueHistorySpec": {
             "type": "object",
             "properties": {
                 "appliedValues": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Values"
+                    "$ref": "#/definitions/v1.Values"
                 },
                 "createdAt": {
                     "type": "string"
@@ -1768,20 +1944,20 @@
                 },
                 "queue": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Queue"
+                    "$ref": "#/definitions/v1.Queue"
                 },
                 "stableComponents": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.StableComponent"
+                        "$ref": "#/definitions/v1.StableComponent"
                     }
                 }
             }
         },
-        "v1beta1.QueueHistoryStatus": {
+        "v1.QueueHistoryStatus": {
             "type": "object"
         },
-        "v1beta1.QueueSpec": {
+        "v1.QueueSpec": {
             "type": "object",
             "properties": {
                 "bundle": {
@@ -1791,7 +1967,7 @@
                 "components": {
                     "description": "Components represents a list of components which are deployed\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.QueueComponents"
+                    "$ref": "#/definitions/v1.QueueComponents"
                 },
                 "name": {
                     "description": "Name represents a Component name or bundle name if exist",
@@ -1827,14 +2003,14 @@
                 }
             }
         },
-        "v1beta1.QueueStatus": {
+        "v1.QueueStatus": {
             "type": "object",
             "properties": {
                 "conditions": {
                     "description": "Conditions contains observations of the resource's state e.g.,\nQueue deployed, being tested\n+optional\n+patchMergeKey=type\n+patchStrategy=merge",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.QueueCondition"
+                        "$ref": "#/definitions/v1.QueueCondition"
                     }
                 },
                 "createdAt": {
@@ -1849,14 +2025,14 @@
                     "description": "DeploymentIssues defines a list of deployment issue types\n+optional",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.DeploymentIssue"
+                        "$ref": "#/definitions/v1.DeploymentIssue"
                     }
                 },
                 "imageMissingList": {
                     "description": "ImageMissingList defines image missing lists",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.Image"
+                        "$ref": "#/definitions/v1.Image"
                     }
                 },
                 "kubeZipLog": {
@@ -1890,7 +2066,7 @@
                 "testRunners": {
                     "description": "TestRunner defines the test runner",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.TestRunner"
+                    "$ref": "#/definitions/v1.TestRunner"
                 },
                 "updatedAt": {
                     "description": "UpdatedAt represents time when the component was processed",
@@ -1898,7 +2074,7 @@
                 }
             }
         },
-        "v1beta1.ReportOption": {
+        "v1.ReportOption": {
             "type": "object",
             "properties": {
                 "key": {
@@ -1909,78 +2085,111 @@
                 }
             }
         },
-        "v1beta1.Rest": {
+        "v1.ReporterGithub": {
             "type": "object",
             "properties": {
-                "activePromotion": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
+                "baseURL": {
+                    "description": "BaseURL represents a github base url e.g., https://github.com\n+optional",
+                    "type": "string"
                 },
-                "componentUpgrade": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
-                },
-                "imageMissing": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
-                },
-                "pullRequestQueue": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
-                },
-                "pullRequestTrigger": {
-                    "description": "+optional",
-                    "type": "object",
-                    "$ref": "#/definitions/v1beta1.RestObject"
+                "enabled": {
+                    "description": "Enabled represents an enabled flag\n+optional",
+                    "type": "boolean"
                 }
             }
         },
-        "v1beta1.RestObject": {
+        "v1.ReporterMSTeams": {
             "type": "object",
             "properties": {
-                "endpoints": {
+                "componentUpgrade": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigComponentUpgradeReport"
+                },
+                "groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.Endpoint"
+                        "$ref": "#/definitions/v1.MSTeamsGroup"
                     }
+                },
+                "pullRequestQueue": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigPullRequestQueueReport"
+                },
+                "pullRequestTrigger": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigPullRequestTriggerReport"
                 }
             }
         },
-        "v1beta1.Shell": {
+        "v1.ReporterRest": {
             "type": "object",
             "properties": {
                 "activePromotion": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.CommandAndArgs"
+                    "$ref": "#/definitions/v1.RestObject"
                 },
                 "componentUpgrade": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.CommandAndArgs"
+                    "$ref": "#/definitions/v1.RestObject"
                 },
                 "imageMissing": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.CommandAndArgs"
+                    "$ref": "#/definitions/v1.RestObject"
                 },
                 "pullRequestQueue": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.CommandAndArgs"
+                    "$ref": "#/definitions/v1.RestObject"
                 },
                 "pullRequestTrigger": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.CommandAndArgs"
+                    "$ref": "#/definitions/v1.RestObject"
                 }
             }
         },
-        "v1beta1.Slack": {
+        "v1.ReporterShell": {
+            "type": "object",
+            "properties": {
+                "activeEnvironmentDeleted": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.CommandAndArgs"
+                },
+                "activePromotion": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.CommandAndArgs"
+                },
+                "componentUpgrade": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.CommandAndArgs"
+                },
+                "imageMissing": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.CommandAndArgs"
+                },
+                "pullRequestQueue": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.CommandAndArgs"
+                },
+                "pullRequestTrigger": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.CommandAndArgs"
+                }
+            }
+        },
+        "v1.ReporterSlack": {
             "type": "object",
             "properties": {
                 "channels": {
@@ -1992,34 +2201,45 @@
                 "componentUpgrade": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigComponentUpgradeReport"
+                    "$ref": "#/definitions/v1.ConfigComponentUpgradeReport"
                 },
                 "pullRequestQueue": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigPullRequestQueueReport"
+                    "$ref": "#/definitions/v1.ConfigPullRequestQueueReport"
                 },
                 "pullRequestTrigger": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ConfigPullRequestTriggerReport"
+                    "$ref": "#/definitions/v1.ConfigPullRequestTriggerReport"
                 }
             }
         },
-        "v1beta1.StableComponent": {
+        "v1.RestObject": {
+            "type": "object",
+            "properties": {
+                "endpoints": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.Endpoint"
+                    }
+                }
+            }
+        },
+        "v1.StableComponent": {
             "type": "object",
             "properties": {
                 "spec": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.StableComponentSpec"
+                    "$ref": "#/definitions/v1.StableComponentSpec"
                 },
                 "status": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.StableComponentStatus"
+                    "$ref": "#/definitions/v1.StableComponentStatus"
                 }
             }
         },
-        "v1beta1.StableComponentSpec": {
+        "v1.StableComponentSpec": {
             "type": "object",
             "properties": {
                 "name": {
@@ -2040,7 +2260,7 @@
                 }
             }
         },
-        "v1beta1.StableComponentStatus": {
+        "v1.StableComponentStatus": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -2051,7 +2271,7 @@
                 }
             }
         },
-        "v1beta1.StagingCtrl": {
+        "v1.StagingCtrl": {
             "type": "object",
             "properties": {
                 "endpoint": {
@@ -2071,7 +2291,7 @@
                 }
             }
         },
-        "v1beta1.TeamCondition": {
+        "v1.TeamCondition": {
             "type": "object",
             "properties": {
                 "lastTransitionTime": {
@@ -2094,7 +2314,7 @@
                 }
             }
         },
-        "v1beta1.TeamNamespace": {
+        "v1.TeamNamespace": {
             "type": "object",
             "properties": {
                 "active": {
@@ -2122,13 +2342,13 @@
                 }
             }
         },
-        "v1beta1.TeamSpec": {
+        "v1.TeamSpec": {
             "type": "object",
             "properties": {
                 "credential": {
                     "description": "Credential\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Credential"
+                    "$ref": "#/definitions/v1.Credential"
                 },
                 "desc": {
                     "description": "Description represents description for this team\n+optional",
@@ -2148,16 +2368,20 @@
                 "stagingCtrl": {
                     "description": "StagingCtrl represents configuration about the staging controller.\nFor easier for developing, debugging and testing purposes\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.StagingCtrl"
+                    "$ref": "#/definitions/v1.StagingCtrl"
                 }
             }
         },
-        "v1beta1.TeamStatus": {
+        "v1.TeamStatus": {
             "type": "object",
             "properties": {
                 "activeComponents": {
                     "description": "ActiveComponents represents a list of stable components in active namespace\n+optional",
                     "type": "object"
+                },
+                "activeDeletedBy": {
+                    "description": "ActiveDeletedBy represents a person who deleted the Active environment\n+optional",
+                    "type": "string"
                 },
                 "activePromotedBy": {
                     "description": "ActivePromotedBy represents a person who promoted the ActivePromotion\n+optional",
@@ -2167,17 +2391,17 @@
                     "description": "Conditions contains observations of the resource's state e.g.,\nTeam namespace is created, destroyed\n+optional\n+patchMergeKey=type\n+patchStrategy=merge",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.TeamCondition"
+                        "$ref": "#/definitions/v1.TeamCondition"
                     }
                 },
                 "desiredComponentImageCreatedTime": {
-                    "description": "DesiredComponentImageCreatedTime represents mapping of desired component image and created time\nmap[componentName][repository:tag] = image and createdTime\n+optional",
+                    "description": "DesiredComponentImageCreatedTime represents mapping of desired component image and created time\nmap[componentName][repository:tag] = image and createdTime\n+optional\n+kubebuilder:pruning:PreserveUnknownFields",
                     "type": "object"
                 },
                 "namespace": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.TeamNamespace"
+                    "$ref": "#/definitions/v1.TeamNamespace"
                 },
                 "stableComponents": {
                     "description": "StableComponentList represents a list of stable components\n+optional",
@@ -2194,11 +2418,11 @@
                 "used": {
                     "description": "Used represents overridden team specification\n+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.TeamSpec"
+                    "$ref": "#/definitions/v1.TeamSpec"
                 }
             }
         },
-        "v1beta1.Teamcity": {
+        "v1.Teamcity": {
             "type": "object",
             "properties": {
                 "branch": {
@@ -2218,16 +2442,28 @@
                 }
             }
         },
-        "v1beta1.TestRunner": {
+        "v1.TestRunner": {
             "type": "object",
             "properties": {
+                "gitlab": {
+                    "type": "object",
+                    "$ref": "#/definitions/v1.Gitlab"
+                },
                 "teamcity": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Teamcity"
+                    "$ref": "#/definitions/v1.Teamcity"
                 }
             }
         },
-        "v1beta1.UsernamePasswordCredential": {
+        "v1.TokenCredential": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.UsernamePasswordCredential": {
             "type": "object",
             "properties": {
                 "password": {
@@ -2238,10 +2474,21 @@
                 }
             }
         },
-        "v1beta1.Values": {
+        "v1.Values": {
             "type": "object",
             "additionalProperties": {
                 "type": "object"
+            }
+        },
+        "webhook.Components": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "tag": {
+                    "type": "string"
+                }
             }
         },
         "webhook.activePromotion": {
@@ -2262,7 +2509,7 @@
                     "description": "+Optional",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.ActivePromotion"
+                        "$ref": "#/definitions/v1.ActivePromotion"
                     }
                 }
             }
@@ -2274,11 +2521,11 @@
                 "properties": {
                     "spec": {
                         "type": "object",
-                        "$ref": "#/definitions/v1beta1.ActivePromotionHistorySpec"
+                        "$ref": "#/definitions/v1.ActivePromotionHistorySpec"
                     },
                     "status": {
                         "type": "object",
-                        "$ref": "#/definitions/v1beta1.ActivePromotionHistoryStatus"
+                        "$ref": "#/definitions/v1.ActivePromotionHistoryStatus"
                     }
                 }
             }
@@ -2317,13 +2564,19 @@
         "webhook.pullRequestWebhookEventJSON": {
             "type": "object",
             "properties": {
-                "component": {
+                "bundleName": {
                     "type": "string"
+                },
+                "commitSHA": {
+                    "type": "string"
+                },
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/webhook.Components"
+                    }
                 },
                 "prNumber": {
-                    "type": "string"
-                },
-                "tag": {
                     "type": "string"
                 }
             }
@@ -2334,7 +2587,7 @@
                 "current": {
                     "description": "+Optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.ActivePromotion"
+                    "$ref": "#/definitions/v1.ActivePromotion"
                 },
                 "historyNames": {
                     "description": "+Optional",
@@ -2356,18 +2609,18 @@
                 "properties": {
                     "chart": {
                         "type": "object",
-                        "$ref": "#/definitions/v1beta1.ComponentChart"
+                        "$ref": "#/definitions/v1.ComponentChart"
                     },
                     "dependencies": {
                         "description": "+optional",
                         "type": "array",
                         "items": {
-                            "$ref": "#/definitions/v1beta1.Component"
+                            "$ref": "#/definitions/v1.Dependency"
                         }
                     },
                     "image": {
                         "type": "object",
-                        "$ref": "#/definitions/v1beta1.ComponentImage"
+                        "$ref": "#/definitions/v1.ComponentImage"
                     },
                     "name": {
                         "type": "string"
@@ -2388,9 +2641,9 @@
                         "type": "string"
                     },
                     "values": {
-                        "description": "+optional",
+                        "description": "+optional\n+kubebuilder:pruning:PreserveUnknownFields",
                         "type": "object",
-                        "$ref": "#/definitions/v1beta1.ComponentValues"
+                        "$ref": "#/definitions/v1.ComponentValues"
                     }
                 }
             }
@@ -2404,6 +2657,10 @@
                 },
                 "preActive": {
                     "description": "+optional",
+                    "type": "object"
+                },
+                "pullRequest": {
+                    "description": "PullRequest represents connection strings of all pull request environments\n+optional",
                     "type": "object"
                 },
                 "staging": {
@@ -2440,7 +2697,7 @@
                 },
                 "spec": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.TeamSpec"
+                    "$ref": "#/definitions/v1.TeamSpec"
                 },
                 "staging": {
                     "description": "+optional",
@@ -2448,7 +2705,7 @@
                 },
                 "status": {
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.TeamStatus"
+                    "$ref": "#/definitions/v1.TeamStatus"
                 },
                 "teamName": {
                     "type": "string"
@@ -2461,7 +2718,7 @@
                 "current": {
                     "description": "+Optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.PullRequestQueue"
+                    "$ref": "#/definitions/v1.PullRequestQueue"
                 },
                 "historyNames": {
                     "type": "array",
@@ -2477,7 +2734,7 @@
                     "description": "+Optional",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.PullRequestQueue"
+                        "$ref": "#/definitions/v1.PullRequestQueue"
                     }
                 }
             }
@@ -2488,7 +2745,7 @@
                 "current": {
                     "description": "+Optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1beta1.Queue"
+                    "$ref": "#/definitions/v1.Queue"
                 },
                 "historyNames": {
                     "type": "array",
@@ -2504,7 +2761,7 @@
                     "description": "+Optional",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/v1beta1.Queue"
+                        "$ref": "#/definitions/v1.Queue"
                     }
                 }
             }

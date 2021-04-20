@@ -1,4 +1,4 @@
-apiVersion: env.samsahai.io/v1beta1
+apiVersion: env.samsahai.io/v1
 kind: Config
 metadata:
   name: example
@@ -17,8 +17,8 @@ spec:
       redis:
         - https://raw.githubusercontent.com/agoda-com/samsahai/master/examples/envs/active/redis.yaml
     pull-request:
-      redis:
-        - https://raw.githubusercontent.com/agoda-com/samsahai/master/envs/pull-request/redis.yaml
+      redis-bundle:
+        - https://raw.githubusercontent.com/agoda-com/samsahai/master/envs/pull-request/redis-bundle.yaml
 
   staging:
     maxRetry: 3
@@ -37,25 +37,30 @@ spec:
     trigger:
       pollingTime: 1m
       maxRetry: 5
-    deployment:
-      timeout: 1h
-      engine: helm3
-      testRunner:
-        timeout: 240s
-        pollingTime: 5s
-        testMock:
-          result: true
-    components:
-      - name: redis
-        image:
-          repository: bitnami/redis
-          pattern: '5.0.7-debian-9-r{{ .PRNumber }}'
+    bundles:
+      - name: redis-bundle
+        components:
+          - name: redis
+            image:
+              repository: bitnami/redis
+              pattern: '5.0.7-debian-9-r{{ .PRNumber }}'
+            source: public-registry
+        deployment:
+          timeout: 1h
+          engine: helm3
+          testRunner:
+            timeout: 240s
+            pollingTime: 5s
+            testMock:
+              result: true
 
   activePromotion:
     maxRetry: 1
     timeout: 10m
     maxHistories: 5
     tearDownDuration: 10s
+    demotionTimeout: 3m
+    rollbackTimeout: 5m
     deployment:
       timeout: 5m
       engine: helm3
@@ -80,7 +85,7 @@ spec:
   components:
     - name: redis
       chart:
-        repository: https://kubernetes-charts.storage.googleapis.com
+        repository: https://charts.helm.sh/stable
         name: redis
       image:
         repository: bitnami/redis
@@ -98,7 +103,7 @@ spec:
             enabled: false
     - name: wordpress
       chart:
-        repository: https://kubernetes-charts.storage.googleapis.com
+        repository: https://charts.helm.sh/stable
         name: wordpress
       image:
         repository: bitnami/wordpress

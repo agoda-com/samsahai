@@ -20,12 +20,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/helm3"
 	"github.com/agoda-com/samsahai/internal/staging/deploy/mock"
+	"github.com/agoda-com/samsahai/internal/staging/testrunner/gitlab"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/testmock"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
@@ -52,16 +53,18 @@ type controller struct {
 	internalStopper chan<- struct{}
 	rpcHandler      stagingrpc.TwirpServer
 
-	currentQueue *s2hv1beta1.Queue
+	currentQueue *s2hv1.Queue
 	mtQueue      sync.Mutex
 	s2hClient    samsahairpc.RPC
 
 	lastAppliedValues       map[string]interface{}
-	lastStableComponentList s2hv1beta1.StableComponentList
+	lastStableComponentList s2hv1.StableComponentList
 
 	teamcityBaseURL  string
 	teamcityUsername string
 	teamcityPassword string
+
+	gitlabBaseURL string
 
 	configs internal.StagingConfig
 }
@@ -77,6 +80,7 @@ func NewController(
 	teamcityBaseURL string,
 	teamcityUsername string,
 	teamcityPassword string,
+	gitlabBaseURL string,
 	configs internal.StagingConfig,
 ) internal.StagingController {
 	if queueCtrl == nil {
@@ -99,10 +103,11 @@ func NewController(
 		internalStop:            stopper,
 		internalStopper:         stopper,
 		lastAppliedValues:       nil,
-		lastStableComponentList: s2hv1beta1.StableComponentList{},
+		lastStableComponentList: s2hv1.StableComponentList{},
 		teamcityBaseURL:         teamcityBaseURL,
 		teamcityUsername:        teamcityUsername,
 		teamcityPassword:        teamcityPassword,
+		gitlabBaseURL:           gitlabBaseURL,
 		configs:                 configs,
 	}
 
@@ -147,7 +152,7 @@ func (c *controller) process() bool {
 
 		if obj != nil {
 			var ok bool
-			c.currentQueue, ok = obj.(*s2hv1beta1.Queue)
+			c.currentQueue, ok = obj.(*s2hv1.Queue)
 			if !ok {
 				logger.Error(err, "cannot parse runtime object into queue object")
 				c.mtQueue.Unlock()
@@ -175,44 +180,44 @@ func (c *controller) process() bool {
 	queue := c.getCurrentQueue()
 
 	switch queue.Spec.Type {
-	case s2hv1beta1.QueueTypePromoteToActive, s2hv1beta1.QueueTypeDemoteFromActive:
+	case s2hv1.QueueTypePromoteToActive, s2hv1.QueueTypeDemoteFromActive:
 		switch queue.Status.State {
-		case "", s2hv1beta1.Waiting:
+		case "", s2hv1.Waiting:
 			queue.Status.NoOfProcessed++
-			err = c.updateQueueWithState(queue, s2hv1beta1.DetectingImageMissing)
-		case s2hv1beta1.DetectingImageMissing:
+			err = c.updateQueueWithState(queue, s2hv1.DetectingImageMissing)
+		case s2hv1.DetectingImageMissing:
 			err = c.detectImageMissing(queue)
-		case s2hv1beta1.Creating:
+		case s2hv1.Creating:
 			err = c.deployEnvironment(queue)
-		case s2hv1beta1.Testing:
-			err = c.updateQueueWithState(queue, s2hv1beta1.Collecting)
-		case s2hv1beta1.Collecting:
+		case s2hv1.Testing:
+			err = c.updateQueueWithState(queue, s2hv1.Collecting)
+		case s2hv1.Collecting:
 			err = c.collectResult(queue)
-		case s2hv1beta1.Cancelling:
+		case s2hv1.Cancelling:
 			err = c.cancelQueue(queue)
-		case s2hv1beta1.Finished:
+		case s2hv1.Finished:
 		}
 	default:
 		switch queue.Status.State {
-		case "", s2hv1beta1.Waiting:
+		case "", s2hv1.Waiting:
 			err = c.initQueue(queue)
-		case s2hv1beta1.CleaningBefore:
+		case s2hv1.CleaningBefore:
 			err = c.cleanBefore(queue)
-		case s2hv1beta1.DetectingImageMissing:
+		case s2hv1.DetectingImageMissing:
 			err = c.detectImageMissing(queue)
-		case s2hv1beta1.Creating:
+		case s2hv1.Creating:
 			err = c.deployEnvironment(queue)
-		case s2hv1beta1.Testing:
+		case s2hv1.Testing:
 			err = c.startTesting(queue)
-		case s2hv1beta1.Collecting:
+		case s2hv1.Collecting:
 			err = c.collectResult(queue)
-		case s2hv1beta1.CleaningAfter:
+		case s2hv1.CleaningAfter:
 			err = c.cleanAfter(queue)
-		case s2hv1beta1.Deleting:
+		case s2hv1.Deleting:
 			err = c.deleteQueue(queue)
-		case s2hv1beta1.Cancelling:
+		case s2hv1.Cancelling:
 			err = c.cancelQueue(queue)
-		case s2hv1beta1.Finished:
+		case s2hv1.Finished:
 		default:
 		}
 	}
@@ -247,6 +252,10 @@ func (c *controller) loadTestRunners() {
 		testRunners = append(testRunners, teamcity.New(c.client, c.teamcityBaseURL, c.teamcityUsername, c.teamcityPassword))
 	}
 
+	if c.gitlabBaseURL != "" {
+		testRunners = append(testRunners, gitlab.New(c.client, c.gitlabBaseURL))
+	}
+
 	for _, r := range testRunners {
 		if r == nil {
 			continue
@@ -277,7 +286,7 @@ func (c *controller) LoadDeployEngine(engine internal.DeployEngine) {
 // isQueueValid returns true if Queue not in Deleting and Cancelling state
 func (c *controller) isQueueStateValid() bool {
 	q := c.getCurrentQueue()
-	return q.Status.State != s2hv1beta1.Deleting && q.Status.State != s2hv1beta1.Cancelling
+	return q.Status.State != s2hv1.Deleting && q.Status.State != s2hv1.Cancelling
 }
 
 // syncQueueWithK8s fetches Queue from k8s and set it to currentQueue if mismatch
@@ -285,7 +294,7 @@ func (c *controller) syncQueueWithK8s() error {
 	var err error
 
 	q := c.getCurrentQueue()
-	fetched := &s2hv1beta1.Queue{}
+	fetched := &s2hv1.Queue{}
 	err = c.client.Get(context.TODO(), types.NamespacedName{
 		Namespace: q.GetNamespace(),
 		Name:      q.GetName()}, fetched)
@@ -294,7 +303,7 @@ func (c *controller) syncQueueWithK8s() error {
 		// delete by user
 		logger.Debug(fmt.Sprintf("queue: %s/%s got cancel", q.GetNamespace(), q.GetName()))
 		c.mtQueue.Lock()
-		c.currentQueue.SetState(s2hv1beta1.Cancelling)
+		c.currentQueue.SetState(s2hv1.Cancelling)
 		c.mtQueue.Unlock()
 	} else if err != nil {
 		logger.Error(err, fmt.Sprintf("cannot get queue: %s/%s", q.GetNamespace(), q.GetName()))
@@ -309,8 +318,14 @@ func (c *controller) syncQueueWithK8s() error {
 	return nil
 }
 
-func (c *controller) initQueue(q *s2hv1beta1.Queue) error {
+func (c *controller) initQueue(q *s2hv1.Queue) error {
 	deployConfig := c.getDeployConfiguration(q)
+	if deployConfig == nil {
+		err := fmt.Errorf("cannot get deployment configuration, namespace: %s, queue: %s", c.namespace, q.Name)
+		logger.Error(err, "cannot init queue", "queue", q.Name, "namespace", c.namespace)
+		return err
+	}
+
 	q.Status.NoOfProcessed++
 	q.Status.QueueHistoryName = generateQueueHistoryName(q.Name)
 	if deployConfig.Engine != nil {
@@ -318,20 +333,20 @@ func (c *controller) initQueue(q *s2hv1beta1.Queue) error {
 			q.Status.DeployEngine = *deployConfig.Engine
 		}
 	}
-	q.Status.SetCondition(s2hv1beta1.QueueCleaningBeforeStarted, corev1.ConditionTrue,
+	q.Status.SetCondition(s2hv1.QueueCleaningBeforeStarted, corev1.ConditionTrue,
 		"starts cleaning the namespace before running task")
 
-	return c.updateQueueWithState(q, s2hv1beta1.CleaningBefore)
+	return c.updateQueueWithState(q, s2hv1.CleaningBefore)
 }
 
-func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
+func (c *controller) cleanBefore(queue *s2hv1.Queue) error {
 	deployEngine := c.getDeployEngine(queue)
 	parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
 	if err != nil {
 		return err
 	}
 
-	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedBefore) {
+	if !queue.Status.IsConditionTrue(s2hv1.QueueCleanedBefore) {
 		for compName := range parentComps {
 			refName := internal.GenReleaseName(c.namespace, compName)
 			if err := deployEngine.Delete(refName); err != nil {
@@ -354,26 +369,26 @@ func (c *controller) cleanBefore(queue *s2hv1beta1.Queue) error {
 		deployEngine,
 		parentComps,
 		c.namespace,
-		queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningBeforeStarted),
+		queue.Status.GetConditionLatestTime(s2hv1.QueueCleaningBeforeStarted),
 		cleanupTimeout)
 	if err != nil {
 		return err
 	} else if !isCleaned {
 		logger.Warn("waiting for component cleaned",
-			"queue", queue.Name, "state", s2hv1beta1.CleaningBefore)
+			"queue", queue.Name, "state", s2hv1.CleaningBefore)
 		time.Sleep(2 * time.Second)
 		return nil
 	}
 
 	queue.Status.SetCondition(
-		s2hv1beta1.QueueCleanedBefore,
+		s2hv1.QueueCleanedBefore,
 		corev1.ConditionTrue,
 		"namespace cleaned")
 
-	return c.updateQueueWithState(queue, s2hv1beta1.DetectingImageMissing)
+	return c.updateQueueWithState(queue, s2hv1.DetectingImageMissing)
 }
 
-func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
+func (c *controller) cleanAfter(queue *s2hv1.Queue) error {
 	deployEngine := c.getDeployEngine(queue)
 
 	parentComps, err := c.configCtrl.GetParentComponents(c.teamName)
@@ -381,7 +396,7 @@ func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
 		return err
 	}
 
-	if !queue.Status.IsConditionTrue(s2hv1beta1.QueueCleanedAfter) {
+	if !queue.Status.IsConditionTrue(s2hv1.QueueCleanedAfter) {
 		for compName := range parentComps {
 			refName := internal.GenReleaseName(c.namespace, compName)
 			if err := deployEngine.Delete(refName); err != nil {
@@ -404,31 +419,31 @@ func (c *controller) cleanAfter(queue *s2hv1beta1.Queue) error {
 		deployEngine,
 		parentComps,
 		c.namespace,
-		queue.Status.GetConditionLatestTime(s2hv1beta1.QueueCleaningAfterStarted),
+		queue.Status.GetConditionLatestTime(s2hv1.QueueCleaningAfterStarted),
 		cleanupTimeout)
 	if err != nil {
 		return err
 	} else if !isCleaned {
 		logger.Warn("waiting for component cleaned",
-			"queue", queue.Name, "state", s2hv1beta1.CleaningAfter)
+			"queue", queue.Name, "state", s2hv1.CleaningAfter)
 		time.Sleep(2 * time.Second)
 		return nil
 	}
 
-	queue.Status.SetCondition(s2hv1beta1.QueueCleanedAfter, corev1.ConditionTrue, "namespace cleaned")
+	queue.Status.SetCondition(s2hv1.QueueCleanedAfter, corev1.ConditionTrue, "namespace cleaned")
 
-	return c.updateQueueWithState(queue, s2hv1beta1.Deleting)
+	return c.updateQueueWithState(queue, s2hv1.Deleting)
 }
 
-func (c *controller) cancelQueue(q *s2hv1beta1.Queue) error {
+func (c *controller) cancelQueue(q *s2hv1.Queue) error {
 	c.clearCurrentQueue()
 	return nil
 }
 
-func (c *controller) getConfiguration() (*s2hv1beta1.ConfigSpec, error) {
+func (c *controller) getConfiguration() (*s2hv1.ConfigSpec, error) {
 	config, err := c.getConfigController().Get(c.teamName)
 	if err != nil {
-		return &s2hv1beta1.ConfigSpec{}, err
+		return &s2hv1.ConfigSpec{}, err
 	}
 
 	return &config.Status.Used, nil
@@ -441,7 +456,7 @@ func (c *controller) getConfigController() internal.ConfigController {
 func WaitForComponentsCleaned(
 	c client.Client,
 	deployEngine internal.DeployEngine,
-	parentComps map[string]*s2hv1beta1.Component,
+	parentComps map[string]*s2hv1.Component,
 	namespace string,
 	startCleaningTime *metav1.Time,
 	cleanupTimeout time.Duration,

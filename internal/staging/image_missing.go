@@ -8,13 +8,13 @@ import (
 	"github.com/twitchtv/twirp"
 	corev1 "k8s.io/api/core/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-func (c *controller) detectImageMissing(queue *s2hv1beta1.Queue) error {
-	if queue.Spec.Type != s2hv1beta1.QueueTypeDemoteFromActive {
+func (c *controller) detectImageMissing(queue *s2hv1.Queue) error {
+	if queue.Spec.Type != s2hv1.QueueTypeDemoteFromActive {
 
 		var err error
 		headers := make(http.Header)
@@ -57,21 +57,21 @@ func (c *controller) detectImageMissing(queue *s2hv1beta1.Queue) error {
 		}
 	}
 
-	return c.updateQueueWithState(queue, s2hv1beta1.Creating)
+	return c.updateQueueWithState(queue, s2hv1.Creating)
 }
 
-func (c *controller) updateImageMissingWithQueueState(queue *s2hv1beta1.Queue, imgList *rpc.ImageList) error {
-	outImgList := make([]s2hv1beta1.Image, 0)
+func (c *controller) updateImageMissingWithQueueState(queue *s2hv1.Queue, imgList *rpc.ImageList) error {
+	outImgList := make([]s2hv1.Image, 0)
 	for _, img := range imgList.Images {
-		outImgList = append(outImgList, s2hv1beta1.Image{Repository: img.Repository, Tag: img.Tag})
+		outImgList = append(outImgList, s2hv1.Image{Repository: img.Repository, Tag: img.Tag})
 	}
 
 	queue.Status.SetImageMissingList(outImgList)
 	queue.Status.SetCondition(
-		s2hv1beta1.QueueDeployed,
+		s2hv1.QueueDeployed,
 		corev1.ConditionFalse,
 		"queue image missing")
 
 	// update queue back to k8s
-	return c.updateQueueWithState(queue, s2hv1beta1.Collecting)
+	return c.updateQueueWithState(queue, s2hv1.Collecting)
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/tidwall/gjson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/reporter/rest"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
@@ -45,18 +45,18 @@ var _ = Describe("send rest message", func() {
 			var comp1, repoComp1, comp2, repoComp2 = "comp1", "repo/comp1", "comp2", "repo/comp2"
 			var v110, v112, v201811 = "1.1.0", "1.1.2", "2018.1.1"
 
-			status := s2hv1beta1.ActivePromotionStatus{
-				Result:               s2hv1beta1.ActivePromotionSuccess,
+			status := s2hv1.ActivePromotionStatus{
+				Result:               s2hv1.ActivePromotionSuccess,
 				HasOutdatedComponent: true,
-				OutdatedComponents: map[string]s2hv1beta1.OutdatedComponent{
+				OutdatedComponents: map[string]s2hv1.OutdatedComponent{
 					comp1: {
-						CurrentImage:     &s2hv1beta1.Image{Repository: repoComp1, Tag: v110},
-						DesiredImage:     &s2hv1beta1.Image{Repository: repoComp1, Tag: v112},
+						CurrentImage:     &s2hv1.Image{Repository: repoComp1, Tag: v110},
+						DesiredImage:     &s2hv1.Image{Repository: repoComp1, Tag: v112},
 						OutdatedDuration: time.Duration(86400000000000), // 1d0h0m
 					},
 					comp2: {
-						CurrentImage:     &s2hv1beta1.Image{Repository: repoComp2, Tag: v201811},
-						DesiredImage:     &s2hv1beta1.Image{Repository: repoComp2, Tag: v201811},
+						CurrentImage:     &s2hv1.Image{Repository: repoComp2, Tag: v201811},
+						DesiredImage:     &s2hv1.Image{Repository: repoComp2, Tag: v201811},
 						OutdatedDuration: time.Duration(0),
 					},
 				},
@@ -120,7 +120,7 @@ var _ = Describe("send rest message", func() {
 			}
 
 			buildTypeID := "Teamcity_BuildTypeID"
-			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildTypeID: buildTypeID}}
+			testRunner := s2hv1.TestRunner{Teamcity: s2hv1.Teamcity{BuildTypeID: buildTypeID}}
 			comp := internal.NewComponentUpgradeReporter(
 				rpcComp,
 				internal.SamsahaiConfig{},
@@ -174,11 +174,11 @@ var _ = Describe("send rest message", func() {
 				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
 				Components: []*rpc.Component{
 					{
-						Name:  "comp1",
+						Name:  "bundle1-comp1",
 						Image: img1,
 					},
 					{
-						Name:  "comp2",
+						Name:  "bundle1-comp2",
 						Image: img2,
 					},
 				},
@@ -187,13 +187,13 @@ var _ = Describe("send rest message", func() {
 				Namespace:  "owner-staging",
 				IsReverify: true,
 				PullRequestComponent: &rpc.TeamWithPullRequest{
-					ComponentName: "pr-comp1",
-					PRNumber:      "pr1234",
+					BundleName: "bundle-1",
+					PRNumber:   "pr1234",
 				},
 			}
 
 			buildTypeID := "Teamcity_BuildTypeID"
-			testRunner := s2hv1beta1.TestRunner{Teamcity: s2hv1beta1.Teamcity{BuildTypeID: buildTypeID}}
+			testRunner := s2hv1.TestRunner{Teamcity: s2hv1.Teamcity{BuildTypeID: buildTypeID}}
 			comp := internal.NewComponentUpgradeReporter(
 				rpcComp,
 				internal.SamsahaiConfig{},
@@ -206,10 +206,22 @@ var _ = Describe("send rest message", func() {
 					"unixTimestamp keys should exist")
 				g.Expect(gjson.GetBytes(body, "teamName").String()).To(Equal(rpcComp.TeamName),
 					"teamName should be matched")
-				g.Expect(gjson.GetBytes(body, "pullRequestComponent.componentName").String()).To(Equal(rpcComp.PullRequestComponent.ComponentName),
+				g.Expect(gjson.GetBytes(body, "pullRequestComponent.bundleName").String()).To(Equal(rpcComp.PullRequestComponent.BundleName),
 					"pullRequestComponent.componentName should be matched")
 				g.Expect(gjson.GetBytes(body, "pullRequestComponent.PRNumber").String()).To(Equal(rpcComp.PullRequestComponent.PRNumber),
 					"pullRequestComponent.pullRequestNumber should be matched")
+
+				components := gjson.GetBytes(body, "components").Array()
+				g.Expect(len(components)).To(Equal(2))
+				g.Expect(gjson.GetBytes([]byte(components[0].String()), "image.repository").String()).To(Equal(img1.Repository),
+					"imageRepository should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[0].String()), "image.tag").String()).To(Equal(img1.Tag),
+					"imageTag should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[1].String()), "image.repository").String()).To(Equal(img2.Repository),
+					"imageRepository should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[1].String()), "image.tag").String()).To(Equal(img2.Tag),
+					"imageTag should be matched")
+
 			})
 
 			defer server.Close()
@@ -222,7 +234,7 @@ var _ = Describe("send rest message", func() {
 		})
 
 		It("should correctly send image missing", func() {
-			img := s2hv1beta1.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
+			img := s2hv1.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
 			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
 				g.Expect(gjson.ValidBytes(body)).To(BeTrue(), "request body should be json")
 				g.Expect(gjson.GetBytes(body, "unixTimestamp").Exists()).To(BeTrue(),
@@ -239,23 +251,30 @@ var _ = Describe("send rest message", func() {
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			client := rest.New(rest.WithRestClient(rest.NewRest(server.URL)))
-			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{}, "owner", "comp1")
+			imageMissingRpt := internal.NewImageMissingReporter(img, internal.SamsahaiConfig{},
+				"owner", "comp1", "")
 			err := client.SendImageMissing(configCtrl, imageMissingRpt)
 			g.Expect(err).To(BeNil(), "request should not thrown any error")
 		})
 
 		It("should correctly send pull request trigger result", func() {
-			img := &s2hv1beta1.Image{Repository: "docker.io/hello-a", Tag: "2018.01.01"}
 			timeNow := metav1.Now()
-			noOfRetry := 2
-			status := s2hv1beta1.PullRequestTriggerStatus{
+			status := s2hv1.PullRequestTriggerStatus{
 				CreatedAt: &timeNow,
-				NoOfRetry: &noOfRetry,
 				Result:    "Failure",
 			}
-
+			prComps := []*s2hv1.PullRequestTriggerComponent{
+				{
+					ComponentName: "bundle1-comp1",
+					Image:         &s2hv1.Image{Repository: "registry/comp-1", Tag: "1.0.0"},
+				},
+				{
+					ComponentName: "bundle1-comp2",
+					Image:         &s2hv1.Image{Repository: "registry/comp-2", Tag: "2.0.0"},
+				},
+			}
 			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
-				"owner", "comp1", "1234", "Failure", img)
+				"owner", "bundle-1", "1234", "Failure", 2, prComps)
 
 			server := newServer(g, func(res http.ResponseWriter, req *http.Request, body []byte) {
 				g.Expect(gjson.ValidBytes(body)).To(BeTrue(), "request body should be json")
@@ -265,14 +284,21 @@ var _ = Describe("send rest message", func() {
 					"result should be matched")
 				g.Expect(gjson.GetBytes(body, "teamName").String()).To(Equal(prTriggerRpt.TeamName),
 					"teamName should be matched")
-				g.Expect(gjson.GetBytes(body, "componentName").String()).To(Equal(prTriggerRpt.ComponentName),
+				g.Expect(gjson.GetBytes(body, "bundleName").String()).To(Equal(prTriggerRpt.BundleName),
 					"componentName should be matched")
 				g.Expect(gjson.GetBytes(body, "prNumber").String()).To(Equal(prTriggerRpt.PRNumber),
 					"prNumber should be matched")
-				g.Expect(gjson.GetBytes(body, "image.repository").String()).To(Equal(prTriggerRpt.Image.Repository),
-					"image.repository should be matched")
-				g.Expect(gjson.GetBytes(body, "image.tag").String()).To(Equal(prTriggerRpt.Image.Tag),
-					"image.tag should be matched")
+
+				components := gjson.GetBytes(body, "components").Array()
+				g.Expect(len(components)).To(Equal(2))
+				g.Expect(gjson.GetBytes([]byte(components[0].String()), "image.repository").String()).
+					To(Equal(prComps[0].Image.Repository), "imageRepository should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[0].String()), "image.tag").String()).
+					To(Equal(prComps[0].Image.Tag), "imageTag should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[1].String()), "image.repository").String()).
+					To(Equal(prComps[1].Image.Repository), "imageRepository should be matched")
+				g.Expect(gjson.GetBytes([]byte(components[1].String()), "image.tag").String()).
+					To(Equal(prComps[1].Image.Tag), "imageTag should be matched")
 			})
 
 			defer server.Close()
@@ -359,32 +385,21 @@ func newMockConfigCtrl(configType string) internal.ConfigController {
 	return &mockConfigCtrl{configType: configType}
 }
 
-func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
+func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 	switch c.configType {
 	case "empty":
-		return &s2hv1beta1.Config{}, nil
+		return &s2hv1.Config{}, nil
 	default:
-		return &s2hv1beta1.Config{
-			Spec: s2hv1beta1.ConfigSpec{
-				Reporter: &s2hv1beta1.ConfigReporter{
-					Rest: &s2hv1beta1.Rest{
-						ComponentUpgrade:   &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-						ActivePromotion:    &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-						ImageMissing:       &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-						PullRequestTrigger: &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-						PullRequestQueue:   &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-					},
-				},
-			},
-			Status: s2hv1beta1.ConfigStatus{
-				Used: s2hv1beta1.ConfigSpec{
-					Reporter: &s2hv1beta1.ConfigReporter{
-						Rest: &s2hv1beta1.Rest{
-							ComponentUpgrade:   &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-							ActivePromotion:    &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-							ImageMissing:       &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-							PullRequestTrigger: &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
-							PullRequestQueue:   &s2hv1beta1.RestObject{Endpoints: []*s2hv1beta1.Endpoint{{URL: "http://resturl"}}},
+		return &s2hv1.Config{
+			Status: s2hv1.ConfigStatus{
+				Used: s2hv1.ConfigSpec{
+					Reporter: &s2hv1.ConfigReporter{
+						Rest: &s2hv1.ReporterRest{
+							ComponentUpgrade:   &s2hv1.RestObject{Endpoints: []*s2hv1.Endpoint{{URL: "http://resturl"}}},
+							ActivePromotion:    &s2hv1.RestObject{Endpoints: []*s2hv1.Endpoint{{URL: "http://resturl"}}},
+							ImageMissing:       &s2hv1.RestObject{Endpoints: []*s2hv1.Endpoint{{URL: "http://resturl"}}},
+							PullRequestTrigger: &s2hv1.RestObject{Endpoints: []*s2hv1.Endpoint{{URL: "http://resturl"}}},
+							PullRequestQueue:   &s2hv1.RestObject{Endpoints: []*s2hv1.Endpoint{{URL: "http://resturl"}}},
 						},
 					},
 				},
@@ -393,35 +408,35 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1beta1.Config, error) {
 	}
 }
 
-func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
-	return map[string]*s2hv1beta1.Component{}, nil
+func (c *mockConfigCtrl) GetComponents(configName string) (map[string]*s2hv1.Component, error) {
+	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
-	return map[string]*s2hv1beta1.Component{}, nil
+func (c *mockConfigCtrl) GetParentComponents(configName string) (map[string]*s2hv1.Component, error) {
+	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
-	return map[string]*s2hv1beta1.Component{}, nil
+func (c *mockConfigCtrl) GetPullRequestComponents(configName, prBundleName string, depIncluded bool) (map[string]*s2hv1.Component, error) {
+	return map[string]*s2hv1.Component{}, nil
 }
 
-func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
-	return s2hv1beta1.ConfigBundles{}, nil
+func (c *mockConfigCtrl) GetBundles(configName string) (s2hv1.ConfigBundles, error) {
+	return s2hv1.ConfigBundles{}, nil
 }
 
 func (c *mockConfigCtrl) GetPriorityQueues(configName string) ([]string, error) {
 	return nil, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1beta1.ConfigPullRequest, error) {
+func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1.ConfigPullRequest, error) {
 	return nil, nil
 }
 
-func (c *mockConfigCtrl) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
+func (c *mockConfigCtrl) GetPullRequestBundleDependencies(configName, prBundleName string) ([]string, error) {
 	return nil, nil
 }
 
-func (c *mockConfigCtrl) Update(config *s2hv1beta1.Config) error {
+func (c *mockConfigCtrl) Update(config *s2hv1.Config) error {
 	return nil
 }
 
@@ -429,6 +444,6 @@ func (c *mockConfigCtrl) Delete(configName string) error {
 	return nil
 }
 
-func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) error {
+func (c *mockConfigCtrl) EnsureConfigTemplateChanged(config *s2hv1.Config) error {
 	return nil
 }

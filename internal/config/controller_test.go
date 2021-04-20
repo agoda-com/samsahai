@@ -10,13 +10,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
 
 const (
-	AppName                = "samsahai"
 	ContainerName          = "component-checker"
 	ContainerImage         = "quay.io/samsahai/curl:latest"
 	ContainerRestartPolicy = "OnFailure"
@@ -30,20 +29,20 @@ var _ = Describe("Config Controller", func() {
 	successfulJobsHistoryLimit := successfulJobsHistoryLimit
 
 	teamTest := "teamtest"
-	compSource := s2hv1beta1.UpdatingSource("public-registry")
+	compSource := s2hv1.UpdatingSource("public-registry")
 	redisCompName := "redis"
-	redisConfigComp := s2hv1beta1.Component{
+	redisConfigComp := s2hv1.Component{
 		Name: redisCompName,
-		Chart: s2hv1beta1.ComponentChart{
-			Repository: "https://kubernetes-charts.storage.googleapis.com",
+		Chart: s2hv1.ComponentChart{
+			Repository: "https://charts.helm.sh/stable",
 			Name:       redisCompName,
 		},
-		Image: s2hv1beta1.ComponentImage{
+		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/redis",
 			Pattern:    "5.*debian-9.*",
 		},
 		Source: &compSource,
-		Values: s2hv1beta1.ComponentValues{
+		Values: s2hv1.ComponentValues{
 			"image": map[string]interface{}{
 				"repository": "bitnami/redis",
 				"pullPolicy": "IfNotPresent",
@@ -60,20 +59,20 @@ var _ = Describe("Config Controller", func() {
 		},
 	}
 
-	mockConfig := s2hv1beta1.ConfigSpec{
-		Envs: map[s2hv1beta1.EnvType]s2hv1beta1.ChartValuesURLs{
+	mockConfig := s2hv1.ConfigSpec{
+		Envs: map[s2hv1.EnvType]s2hv1.ChartValuesURLs{
 			"staging": map[string][]string{
 				redisCompName: {
 					"https://raw.githubusercontent.com/agoda-com/samsahai/master/test/data/wordpress-redis/envs/staging/redis.yaml"},
 			},
 		},
-		Components: []*s2hv1beta1.Component{
+		Components: []*s2hv1.Component{
 			&redisConfigComp,
 		},
 	}
 
-	mockConfigUsingTemplate := s2hv1beta1.Config{
-		Spec: s2hv1beta1.ConfigSpec{
+	mockConfigUsingTemplate := s2hv1.Config{
+		Spec: s2hv1.ConfigSpec{
 			Template: teamTest,
 		}}
 
@@ -81,9 +80,9 @@ var _ = Describe("Config Controller", func() {
 		g := NewWithT(GinkgoT())
 
 		config := mockConfig
-		compValues, err := GetEnvValues(&config, s2hv1beta1.EnvStaging, teamTest)
+		compValues, err := GetEnvValues(&config, s2hv1.EnvStaging, teamTest)
 		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(compValues).To(Equal(map[string]s2hv1beta1.ComponentValues{
+		g.Expect(compValues).To(Equal(map[string]s2hv1.ComponentValues{
 			redisCompName: {
 				"master": map[string]interface{}{
 					"service": map[string]interface{}{
@@ -99,9 +98,9 @@ var _ = Describe("Config Controller", func() {
 		g := NewWithT(GinkgoT())
 
 		config := mockConfig
-		compValues, err := GetEnvComponentValues(&config, redisCompName, teamTest, s2hv1beta1.EnvStaging)
+		compValues, err := GetEnvComponentValues(&config, redisCompName, teamTest, s2hv1.EnvStaging)
 		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(compValues).To(Equal(s2hv1beta1.ComponentValues{
+		g.Expect(compValues).To(Equal(s2hv1.ComponentValues{
 			"master": map[string]interface{}{
 				"service": map[string]interface{}{
 					"nodePort": float64(31001),
@@ -113,26 +112,29 @@ var _ = Describe("Config Controller", func() {
 
 	It("should render teamName values correctly", func() {
 		g := NewWithT(GinkgoT())
-
 		valueTemplate := `
-			wordpress:
-			  ingress:
-				hosts:
-				- wordpress.{{ .TeamName }}-1`
+wordpress:	
+  ingress:	
+    hosts:	
+    - wordpress.{{ .TeamName }}-1
+    - wordpress.{{ .Team.Missing.Data }}-2
+`
 
 		Values := teamNameRendering(teamTest, valueTemplate)
 		g.Expect(string(Values)).To(Equal(`
-			wordpress:
-			  ingress:
-				hosts:
-				- wordpress.teamtest-1`,
+wordpress:	
+  ingress:	
+    hosts:	
+    - wordpress.teamtest-1
+    - wordpress.{{.Team.Missing.Data}}-2
+`,
 		))
 	})
 
 	It("should apply template to config correctly", func() {
 		g := NewWithT(GinkgoT())
 
-		configTemplate := s2hv1beta1.Config{
+		configTemplate := s2hv1.Config{
 			Spec: mockConfig,
 		}
 		err := applyConfigTemplate(&mockConfigUsingTemplate, &configTemplate)
@@ -147,25 +149,25 @@ var _ = Describe("Config Controller", func() {
 		}
 		teamTest := "teamtest"
 		namespaceTest := "namespace"
-		compSource := s2hv1beta1.UpdatingSource("public-registry")
+		compSource := s2hv1.UpdatingSource("public-registry")
 		redisCompName := "redis"
 		redisSchedules := []string{"0 4 * * *", "0 5 * * *"}
 
 		cronJobCmd := mockController.getCronJobCmd("redis", teamTest, "bitnami/redis")
 		cronJobResources := mockController.getCronJobResources()
-		redisConfigComp := s2hv1beta1.Component{
+		redisConfigComp := s2hv1.Component{
 			Name: redisCompName,
-			Chart: s2hv1beta1.ComponentChart{
-				Repository: "https://kubernetes-charts.storage.googleapis.com",
+			Chart: s2hv1.ComponentChart{
+				Repository: "https://charts.helm.sh/stable",
 				Name:       redisCompName,
 			},
-			Image: s2hv1beta1.ComponentImage{
+			Image: s2hv1.ComponentImage{
 				Repository: "bitnami/redis",
 				Pattern:    "5.*debian-9.*",
 			},
 			Schedules: redisSchedules,
 			Source:    &compSource,
-			Values: s2hv1beta1.ComponentValues{
+			Values: s2hv1.ComponentValues{
 				"image": map[string]interface{}{
 					"repository": "bitnami/redis",
 					"pullPolicy": "IfNotPresent",
@@ -333,6 +335,5 @@ var _ = Describe("Config Controller", func() {
 			g.Expect(deletingResult).To(ConsistOf(mockCronJobs.Items))
 
 		})
-
 	})
 })

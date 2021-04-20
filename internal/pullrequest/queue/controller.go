@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -56,23 +56,33 @@ func WithClient(client client.Client) Option {
 	}
 }
 
-func NewPullRequestQueue(teamName, namespace, componentName, prNumber string, comps []*s2hv1beta1.QueueComponent) *s2hv1beta1.PullRequestQueue {
-	qLabels := getPullRequestQueueLabels(teamName, componentName, prNumber)
-	prQueueName := internal.GenPullRequestComponentName(componentName, prNumber)
+func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA, gitRepo string, comps []*s2hv1.QueueComponent,
+	imageMissingList []s2hv1.Image, isFailed bool, createAt, finishedAt *metav1.Time) *s2hv1.PullRequestQueue {
 
-	return &s2hv1beta1.PullRequestQueue{
+	qLabels := getPullRequestQueueLabels(teamName, bundleName, prNumber)
+	prQueueName := internal.GenPullRequestBundleName(bundleName, prNumber)
+
+	return &s2hv1.PullRequestQueue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      prQueueName,
 			Namespace: namespace,
 			Labels:    qLabels,
 		},
-		Spec: s2hv1beta1.PullRequestQueueSpec{
-			TeamName:      teamName,
-			ComponentName: componentName,
-			PRNumber:      prNumber,
-			Components:    comps,
+		Spec: s2hv1.PullRequestQueueSpec{
+			TeamName:            teamName,
+			BundleName:          bundleName,
+			PRNumber:            prNumber,
+			CommitSHA:           commitSHA,
+			Components:          comps,
+			UpcomingCommitSHA:   commitSHA,
+			UpcomingComponents:  comps,
+			GitRepository:       gitRepo,
+			ImageMissingList:    imageMissingList,
+			IsPRTriggerFailed:   &isFailed,
+			PRTriggerCreatedAt:  createAt,
+			PRTriggerFinishedAt: finishedAt,
 		},
-		Status: s2hv1beta1.PullRequestQueueStatus{},
+		Status: s2hv1.PullRequestQueueStatus{},
 	}
 }
 
@@ -132,7 +142,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to PullRequestQueue
-	err = c.Watch(&source.Kind{Type: &s2hv1beta1.PullRequestQueue{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &s2hv1.PullRequestQueue{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -140,7 +150,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-func (c *controller) addFinalizer(prQueue *s2hv1beta1.PullRequestQueue) {
+func (c *controller) addFinalizer(prQueue *s2hv1.PullRequestQueue) {
 	if prQueue.ObjectMeta.DeletionTimestamp.IsZero() {
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object.
@@ -150,11 +160,11 @@ func (c *controller) addFinalizer(prQueue *s2hv1beta1.PullRequestQueue) {
 	}
 }
 
-func (c *controller) removeFinalizerObject(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) error {
+func (c *controller) removeFinalizerObject(ctx context.Context, prQueue *s2hv1.PullRequestQueue) error {
 	err := c.client.Get(ctx, types.NamespacedName{
 		Name:      prQueue.Name,
 		Namespace: c.namespace,
-	}, &s2hv1beta1.PullRequestQueue{})
+	}, &s2hv1.PullRequestQueue{})
 	if err != nil && k8serrors.IsNotFound(err) {
 		return nil
 	}
@@ -169,13 +179,13 @@ func (c *controller) removeFinalizerObject(ctx context.Context, prQueue *s2hv1be
 	return nil
 }
 
-func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, prQueue *s2hv1beta1.PullRequestQueue) (
+func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, prQueue *s2hv1.PullRequestQueue) (
 	skipReconcile bool, err error) {
 
-	if prQueue.Status.State == s2hv1beta1.PullRequestQueueFinished {
+	if prQueue.Status.State == s2hv1.PullRequestQueueFinished {
 		if prQueue.ObjectMeta.DeletionTimestamp.IsZero() {
 			logger.Debug("process has been finished and pull request queue has been deleted",
-				"team", c.teamName, "component", prQueue.Spec.ComponentName,
+				"team", c.teamName, "bundle", prQueue.Spec.BundleName,
 				"prNumber", prQueue.Spec.PRNumber)
 
 			if err = c.deletePullRequestQueue(ctx, prQueue); err != nil {
@@ -200,8 +210,8 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, prQueue *s
 			}
 
 			if prQueue.Status.State == "" ||
-				prQueue.Status.State == s2hv1beta1.PullRequestQueueWaiting ||
-				prQueue.Status.State == s2hv1beta1.PullRequestQueueFinished {
+				prQueue.Status.State == s2hv1.PullRequestQueueWaiting ||
+				prQueue.Status.State == s2hv1.PullRequestQueueFinished {
 
 				if err = c.removeFinalizerObject(ctx, prQueue); err != nil {
 					return
@@ -216,8 +226,8 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, prQueue *s
 				return
 			}
 
-			prQueue.Status.SetResult(s2hv1beta1.PullRequestQueueCanceled)
-			prQueue.SetState(s2hv1beta1.PullRequestQueueCollecting)
+			prQueue.Status.SetResult(s2hv1.PullRequestQueueCanceled)
+			prQueue.SetState(s2hv1.PullRequestQueueCollecting)
 			if err = c.updatePullRequestQueue(ctx, prQueue); err != nil {
 				return
 			}
@@ -230,15 +240,15 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, prQueue *s
 	return
 }
 
-func (c *controller) setup(prQueue *s2hv1beta1.PullRequestQueue) {
+func (c *controller) setup(prQueue *s2hv1.PullRequestQueue) {
 	logger.Info("pull request queue has been created", "team", c.teamName,
-		"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PRNumber)
+		"bundle", prQueue.Spec.BundleName, "prNumber", prQueue.Spec.PRNumber)
 
-	prQueue.Labels = c.getStateLabel(stateWaiting)
-	prQueue.SetState(s2hv1beta1.PullRequestQueueWaiting)
+	c.appendStateLabel(prQueue, stateWaiting)
+	prQueue.SetState(s2hv1.PullRequestQueueWaiting)
 
 	logger.Info("pull request is waiting in queue", "team", c.teamName,
-		"component", prQueue.Spec.ComponentName, "prNumber", prQueue.Spec.PRNumber)
+		"bundle", prQueue.Spec.BundleName, "prNumber", prQueue.Spec.PRNumber)
 }
 
 const (
@@ -246,11 +256,19 @@ const (
 	stateRunning = "running"
 )
 
+func (c *controller) appendStateLabel(prQueue *s2hv1.PullRequestQueue, state string) {
+	if prQueue.Labels == nil {
+		prQueue.Labels = make(map[string]string)
+	}
+
+	prQueue.Labels["state"] = state
+}
+
 func (c *controller) getStateLabel(state string) map[string]string {
 	return map[string]string{"state": state}
 }
 
-func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue *s2hv1beta1.PullRequestQueue) (
+func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue *s2hv1.PullRequestQueue) (
 	skipReconcile bool, err error) {
 
 	listOpts := client.ListOptions{
@@ -264,7 +282,10 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 		return
 	}
 
-	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamName{Name: c.teamName})
+	prConfig, err := c.s2hClient.GetPullRequestConfig(ctx, &samsahairpc.TeamWithBundleName{
+		TeamName:   c.teamName,
+		BundleName: currentPRQueue.Spec.BundleName,
+	})
 	if err != nil {
 		return
 	}
@@ -294,13 +315,17 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 
 	if prQueueConcurrences-len(runningPRQueues.Items) > 0 {
 		logger.Info("start running pull request queue", "team", c.teamName,
-			"component", waitingPRQueues.Items[0].Name, "prNumber", waitingPRQueues.Items[0].Spec.PRNumber)
+			"bundle", waitingPRQueues.Items[0].Name, "prNumber", waitingPRQueues.Items[0].Spec.PRNumber)
 
 		c.addFinalizer(&waitingPRQueues.Items[0])
-		waitingPRQueues.Items[0].SetState(s2hv1beta1.PullRequestQueueEnvCreating)
-		waitingPRQueues.Items[0].Status.SetCondition(s2hv1beta1.PullRequestQueueCondStarted, corev1.ConditionTrue,
+		c.appendStateLabel(&waitingPRQueues.Items[0], stateRunning)
+
+		waitingPRQueues.Items[0].SetState(s2hv1.PullRequestQueueEnvCreating)
+		waitingPRQueues.Items[0].Status.SetCondition(s2hv1.PullRequestQueueCondStarted, corev1.ConditionTrue,
 			"Pull request queue has been started")
-		waitingPRQueues.Items[0].Labels = c.getStateLabel(stateRunning)
+		waitingPRQueues.Items[0].Spec.Components = waitingPRQueues.Items[0].Spec.UpcomingComponents
+		waitingPRQueues.Items[0].Spec.CommitSHA = waitingPRQueues.Items[0].Spec.UpcomingCommitSHA
+
 		if err = c.updatePullRequestQueue(ctx, &waitingPRQueues.Items[0]); err != nil {
 			return
 		}
@@ -315,6 +340,45 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 	return
 }
 
+func ensurePullRequestQueueStatus(prQueue *s2hv1.PullRequestQueue) bool {
+	if len(prQueue.Status.Conditions) != 0 {
+		return false
+	}
+
+	if prQueue.Spec.IsPRTriggerFailed == nil {
+		triggerResult := false
+		prQueue.Spec.IsPRTriggerFailed = &triggerResult
+	} else if *prQueue.Spec.IsPRTriggerFailed {
+		prQueue.Status.SetCondition(
+			s2hv1.PullRequestQueueCondStarted,
+			corev1.ConditionFalse,
+			"Pull request queue has not been started due to pull request trigger failed")
+		prQueue.Status.SetCondition(
+			s2hv1.PullRequestQueueCondEnvCreated,
+			corev1.ConditionFalse,
+			"Skipped creating environment due to pull request trigger failed")
+		prQueue.Status.SetCondition(
+			s2hv1.PullRequestQueueCondDependenciesUpdated,
+			corev1.ConditionFalse,
+			"Skipped updating dependencies due to pull request trigger failed")
+		prQueue.Status.SetCondition(
+			s2hv1.PullRequestQueueCondDeployed,
+			corev1.ConditionFalse,
+			"Skipped deploying due to pull request trigger failed")
+		prQueue.Status.SetCondition(
+			s2hv1.PullRequestQueueCondTested,
+			corev1.ConditionFalse,
+			"Skipped running test due to pull request trigger failed")
+
+		prQueue.Status.State = s2hv1.PullRequestQueueCollecting
+		prQueue.Status.Result = s2hv1.PullRequestQueueFailure
+
+		return true
+	}
+
+	return false
+}
+
 // Reconcile reads that state of the cluster for a PullRequestQueue object and makes changes based on the state read
 // and what is in the PullRequestQueue.Spec
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=pullrequestqueues,verbs=get;list;watch;create;update;patch;delete
@@ -323,7 +387,8 @@ func (c *controller) managePullRequestQueue(ctx context.Context, currentPRQueue 
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=queuehistories/status,verbs=get;update;patch
 func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.TODO()
-	prQueue := &s2hv1beta1.PullRequestQueue{}
+
+	prQueue := &s2hv1.PullRequestQueue{}
 	err := c.client.Get(ctx, req.NamespacedName, prQueue)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -341,6 +406,13 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	ctx, err = twirp.WithHTTPRequestHeaders(ctx, headers)
 	if err != nil {
 		logger.Error(err, "cannot set request header")
+	}
+
+	if isUpdate := ensurePullRequestQueueStatus(prQueue); isUpdate {
+		if err := c.updatePullRequestQueue(ctx, prQueue); err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
 	}
 
 	if skipReconcile, err := c.deleteFinalizerWhenFinished(ctx, prQueue); err != nil || skipReconcile {
@@ -362,13 +434,13 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	case "":
 		c.setup(prQueue)
 
-	case s2hv1beta1.PullRequestQueueWaiting:
+	case s2hv1.PullRequestQueueWaiting:
 		return reconcile.Result{
 			Requeue:      true,
 			RequeueAfter: 2 * time.Second,
 		}, nil
 
-	case s2hv1beta1.PullRequestQueueEnvCreating:
+	case s2hv1.PullRequestQueueEnvCreating:
 		if err := c.createPullRequestEnvironment(ctx, prQueue); err != nil && !k8serrors.IsAlreadyExists(err) {
 			if s2herrors.IsNamespaceStillCreating(err) {
 				return reconcile.Result{
@@ -380,7 +452,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, errors.Wrapf(err, "cannot create pull request environment")
 		}
 
-	case s2hv1beta1.PullRequestQueueDeploying:
+	case s2hv1.PullRequestQueueDeploying:
 		if err := c.ensurePullRequestComponentsDeploying(ctx, prQueue); err != nil {
 			if s2herrors.IsEnsuringComponentDeployed(err) {
 				return reconcile.Result{
@@ -392,7 +464,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	case s2hv1beta1.PullRequestQueueTesting:
+	case s2hv1.PullRequestQueueTesting:
 		if err := c.ensurePullRequestComponentsTesting(ctx, prQueue); err != nil {
 			if s2herrors.IsEnsuringComponentTested(err) {
 				return reconcile.Result{
@@ -404,12 +476,12 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	case s2hv1beta1.PullRequestQueueCollecting:
+	case s2hv1.PullRequestQueueCollecting:
 		if err := c.collectPullRequestQueueResult(ctx, prQueue); err != nil {
 			return reconcile.Result{}, errors.Wrapf(err, "cannot collect pull request queue result")
 		}
 
-	case s2hv1beta1.PullRequestQueueEnvDestroying:
+	case s2hv1.PullRequestQueueEnvDestroying:
 		if skipReconcile, err := c.destroyPullRequestEnvironment(ctx, prQueue); err != nil || skipReconcile {
 			if err != nil {
 				if s2herrors.IsNamespaceStillExists(err) {

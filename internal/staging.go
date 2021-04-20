@@ -3,7 +3,7 @@ package internal
 import (
 	"net/http"
 
-	"github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	stagingrpc "github.com/agoda-com/samsahai/pkg/staging/rpc"
 )
 
@@ -18,11 +18,11 @@ type StagingTestRunner interface {
 	GetName() string
 
 	// Trigger makes http request to run the test build
-	Trigger(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) error
+	Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s2hv1.Queue) error
 
 	// GetResult makes http request to get result of test build [FAILURE/SUCCESS/UNKNOWN]
 	// It returns bool results of is build success and is build finished
-	GetResult(testConfig *v1beta1.ConfigTestRunner, currentQueue *v1beta1.Queue) (
+	GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue *s2hv1.Queue) (
 		isResultSuccess bool, isBuildFinished bool, err error)
 }
 

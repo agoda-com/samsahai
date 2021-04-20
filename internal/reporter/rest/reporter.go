@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/util/http"
@@ -42,7 +42,7 @@ type activePromotionRest struct {
 
 type imageMissingRest struct {
 	ReporterJSON
-	s2hv1beta1.Image
+	s2hv1.Image
 }
 
 type pullRequestTriggerRest struct {
@@ -236,6 +236,14 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 		}
 	}
 
+	return nil
+}
+
+// SendActiveEnvironmentDeleted implements the reporter SendActiveEnvironmentDeleted function
+func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController,
+	activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {
+
+	// does not support
 	return nil
 }
 

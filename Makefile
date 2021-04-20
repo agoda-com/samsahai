@@ -1,68 +1,70 @@
-DOCKER_REPO				?= "quay.io/samsahai/samsahai"
-DOCKER_REGISTRY			?= "quay.io"
-DOCKER_USER				?=
-DOCKER_PASSWORD			?=
+DOCKER_REPO             ?= "quay.io/samsahai/samsahai"
+DOCKER_REGISTRY         ?= "quay.io"
+DOCKER_USER             ?=
+DOCKER_PASSWORD         ?=
 
-GITHUB_API_URL			?= https://api.github.com
-GITHUB_TOKEN			?=
-GITHUB_REPO				?= agoda-com/samsahai
-GO_VERSION          	?= 1.13.6
-GOLANGCI_LINT_VERSION 	?= 1.22.2
+GITHUB_API_URL          ?= https://api.github.com
+GITHUB_TOKEN            ?=
+GITHUB_REPO             ?= agoda-com/samsahai
+GO_VERSION              ?= 1.15.4
+GOLANGCI_LINT_VERSION   ?= 1.32.2
+
+GO                      ?= go
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
+ifeq (,$(shell $(GO) env GOBIN))
+GOBIN=$(shell $(GO) env GOPATH)/bin
 else
-GOBIN=$(shell go env GOBIN)
+GOBIN=$(shell $(GO) env GOBIN)
 endif
-KUBEBUILDER_VERSION 	?= 2.2.0
-KUBEBULIDER_FILENAME	= kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
-KUBEBUILDER_PATH		?= /usr/local/kubebuilder/
-GORELEASER_VERSION		?= 0.124.1
-K3S_DOCKER_IMAGE 		?= rancher/k3s:v0.9.1
-KUBECONFIG 				= /tmp/s2h/k3s-kubeconfig
-K3S_DOCKER_NAME			?= s2h-k3s-server
-K3S_PORT				?= 7443
-K8S_VERSION				?= 1.15.7
-KUSTOMIZE_VERSION		?= 3.5.3
-HELM_VERSION			?= 3.0.2
-POD_NAMESPACE			?= default
+KUBEBUILDER_VERSION     ?= 2.2.0
+KUBEBULIDER_FILENAME    = kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
+KUBEBUILDER_PATH        ?= /usr/local/kubebuilder/
+GORELEASER_VERSION      ?= 0.124.1
+K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.18.10-k3s2
+KUBECONFIG              = /tmp/s2h/k3s-kubeconfig
+K3S_DOCKER_NAME         ?= s2h-k3s-server
+K3S_PORT                ?= 7443
+K8S_VERSION             ?= 1.18.10
+KUSTOMIZE_VERSION       ?= 3.8.6
+HELM_VERSION            ?= 3.3.4
+POD_NAMESPACE           ?= default
 
-GO111MODULE 			:= on
-SUDO 					?=
-INSTALL_DIR 			?= $(PWD)/bin/
-OS 						= $$(echo `uname`|tr '[:upper:]' '[:lower:]')
-OS2 					= $$(if [ "$$(uname|tr '[:upper:]' '[:lower:]')" = "linux" ]; then echo linux; elif [ "$$(uname|tr '[:upper:]' '[:lower:]')" = "darwin" ]; then echo osx; fi)
-ARCH					= $$(if [ "$$(uname -m)" = "x86" ]; then echo 386; elif [ "$$(uname -m)" = "x86_64" ]; then echo amd64; fi)
-ARCHx86					= $$(if [ "$$(uname -m)" = "x86" ]; then echo x86_32; elif [ "$$(uname -m)" = "x86_64" ]; then echo x86_64; fi)
-DEBUG					?=
-ARCHIVE_EXT				?= .tar.gz
-TMP_DIR					?= /tmp/samsahai
+GO111MODULE             := on
+SUDO                    ?=
+INSTALL_DIR             ?= $(PWD)/bin/
+OS                      = $$(echo `uname`|tr '[:upper:]' '[:lower:]')
+OS2                     = $$(if [ "$$(uname|tr '[:upper:]' '[:lower:]')" = "linux" ]; then echo linux; elif [ "$$(uname|tr '[:upper:]' '[:lower:]')" = "darwin" ]; then echo osx; fi)
+ARCH                    = $$(if [ "$$(uname -m)" = "x86" ]; then echo 386; elif [ "$$(uname -m)" = "x86_64" ]; then echo amd64; fi)
+ARCHx86                 = $$(if [ "$$(uname -m)" = "x86" ]; then echo x86_32; elif [ "$$(uname -m)" = "x86_64" ]; then echo x86_64; fi)
+DEBUG                   ?=
+ARCHIVE_EXT             ?= .tar.gz
+TMP_DIR                 ?= /tmp/samsahai
 
-MV 						= $(SUDO)mv
-RM 						= $(SUDO)rm
-MKDIR					= $(SUDO)mkdir
-CHMOD					= $(SUDO)chmod
-CHOWN 					= $(SUDO)chown
-CURL					= $(SUDO)curl
-TAR						= $(SUDO)tar
-DOCKER					?= docker
-K3S_EXEC				= $(DOCKER) exec -i $(K3S_DOCKER_NAME)
-KUBECTL					= $(INSTALL_DIR)kubectl
-KUSTOMIZE				= $(INSTALL_DIR)kustomize
-HELM					= $(INSTALL_DIR)helm
-PROTOC					= $(INSTALL_DIR)protoc
-GORELEASER				= $(INSTALL_DIR)goreleaser
-KUBEBUILDER				= $(KUBEBUILDER_PATH)bin/kubebuilder
-GOLANGCI_LINT			= $(INSTALL_DIR)golangci-lint
-PROTOC					= $(INSTALL_DIR)protoc
-SWAG					= $(INSTALL_DIR)swag
+MV                      = $(SUDO)mv
+RM                      = $(SUDO)rm
+MKDIR                   = $(SUDO)mkdir
+CHMOD                   = $(SUDO)chmod
+CHOWN                   = $(SUDO)chown
+CURL                    = $(SUDO)curl
+TAR                     = $(SUDO)tar
+DOCKER                  ?= docker
+K3S_EXEC                = $(DOCKER) exec -i $(K3S_DOCKER_NAME)
+KUBECTL                 = $(INSTALL_DIR)kubectl
+KUSTOMIZE               = $(INSTALL_DIR)kustomize
+HELM                    = $(INSTALL_DIR)helm
+PROTOC                  = $(INSTALL_DIR)protoc
+GORELEASER              = $(INSTALL_DIR)goreleaser
+KUBEBUILDER             = $(KUBEBUILDER_PATH)bin/kubebuilder
+GOLANGCI_LINT           = $(INSTALL_DIR)golangci-lint
+PROTOC                  = $(INSTALL_DIR)protoc
+SWAG                    = $(INSTALL_DIR)swag
 
-PASS_PROXY 	?=
+PASS_PROXY              ?=
 ifdef PASS_PROXY
-K3S_DOCKER_ARGS			?= -e http_proxy=$(http_proxy) -e https_proxy=$(https_proxy) -e no_proxy=$(no_proxy)
+K3S_DOCKER_ARGS         ?= -e http_proxy=$(http_proxy) -e https_proxy=$(https_proxy) -e no_proxy=$(no_proxy)
 else
-K3S_DOCKER_ARGS			?=
+K3S_DOCKER_ARGS         ?=
 endif
 
 .PHONY: init
@@ -83,7 +85,7 @@ lint: format tidy
 
 .PHONY: tidy
 tidy:
-	GO111MODULE=on go mod tidy
+	GO111MODULE=on $(GO) mod tidy
 
 .PHONY: golangci-lint-check-version
 golangci-lint-check-version:
@@ -164,8 +166,9 @@ prepare-env-e2e:
 	\
 	echo install helm and helm-operator; \
 	\
-	$(HELM) repo add stable https://kubernetes-charts.storage.googleapis.com; \
-	$(HELM) repo add incubator https://kubernetes-charts-incubator.storage.googleapis.com; \
+	$(HELM) repo add stable https://charts.helm.sh/stable; \
+	$(HELM) repo add bitnami https://charts.bitnami.com/bitnami; \
+	$(HELM) repo add incubator https://charts.helm.sh/incubator; \
 	\
 	echo create sa,clusterrole,clusterrolebinding for samsahai; \
 	$(HELM) template -n "samsahai-system" --set "fullnameOverride=samsahai" $(PWD)/config/chart/samsahai -s templates/sa.yaml | $(KUBECTL) apply -n samsahai-system -f - ; \
@@ -177,10 +180,10 @@ prepare-env-e2e:
 	echo done!
 
 coverage-html:
-	go tool cover -html=coverage.txt -o coverage.html
+	$(GO) tool cover -html=coverage.txt -o coverage.html
 
 overall-coverage:
-	 @echo "Overall Coverage: $$(go tool cover -func=coverage.txt|tail -1|awk '{print $$3}')"
+	 @echo "Overall Coverage: $$($(GO) tool cover -func=coverage.txt|tail -1|awk '{print $$3}')"
 
 
 #
@@ -217,8 +220,8 @@ ifndef DRYRUN
 	if [ "$(GIT_TREE_STATE)" != "clean" ]; then \
 		echo 'git tree state is $(GIT_TREE_STATE)'; \
 		git status; \
-		echo 'warning: automatic checkout to remove changes'; \
-		git checkout .; \
+		echo 'warning: automatic stash changes'; \
+		git stash save; \
 	fi;
 endif
 
@@ -246,7 +249,7 @@ endif
 		export GORELEASER_FLAGS="--skip-publish"; \
 	fi; \
 	export GITHUB_TOKEN=$(GITHUB_TOKEN); \
-	export GO_PACKAGE="$(shell go list ./internal)"; \
+	export GO_PACKAGE="$(shell $(GO) list ./internal)"; \
 	export DOCKER_REPO=$(DOCKER_REPO); \
 	export http_proxy="$(http_proxy)"; \
 	export https_proxy="$(https_proxy)"; \
@@ -283,9 +286,9 @@ endif
 #
 
 generate-rpc:
-	echo $$(go list)
+	echo $$($(GO) list)
 	export PROTO_SRC_PATH=.; \
-	export IMPORT_PREFIX="$$(go list)"; \
+	export IMPORT_PREFIX="$$($(GO) list)"; \
 	$(PROTOC) \
     		--proto_path=$$PROTO_SRC_PATH/:./bin/include/ \
     		--twirp_out=$$PROTO_SRC_PATH \
@@ -469,20 +472,21 @@ endif
 
 .install-gotools:
 	@echo installing gotools
-	@GO111MODULE=off go get -u \
+	@GO111MODULE=off $(GO) get -u \
 		golang.org/x/tools/cmd/goimports \
 		github.com/golang/protobuf/protoc-gen-go \
 		github.com/twitchtv/twirp/protoc-gen-twirp
 
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
+# Produce CRDs that work back to Kubernetes 1.18 (no version conversion)
 CRD_OPTIONS ?= "crd"
 
-CONTROLLER_GEN=go run $$GOPATH/pkg/mod/github.com/phantomnat/controller-tools@v0.2.4-1/cmd/controller-gen/main.go
+CONTROLLER_GEN=$(GO) run $$GOPATH/pkg/mod/github.com/phantomnat/controller-tools@v0.2.4-1/cmd/controller-gen/main.go
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	go get sigs.k8s.io/controller-tools
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." output:crd:artifacts:config=config/crds output:none
+	$(GO) get sigs.k8s.io/controller-tools
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." crd:crdVersions=v1 output:crd:artifacts:config=config/crds output:none
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." crd:crdVersions=v1beta1 output:crd:artifacts:config=test/data/crds output:none
 
 # Generate code
 generate: controller-gen
@@ -491,5 +495,5 @@ generate: controller-gen
 # find or download controller-gen
 # download controller-gen if necessary
 controller-gen:
-	@go get sigs.k8s.io/controller-tools
+	@$(GO) get sigs.k8s.io/controller-tools
 

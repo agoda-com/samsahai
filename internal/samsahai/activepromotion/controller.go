@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
@@ -82,7 +82,7 @@ func New(
 	return c
 }
 
-func (c *controller) setup(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) setup(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	// set teardown duration from configuration if it's unset
 	if atpComp.Spec.TearDownDuration == nil {
 		duration := c.configs.ActivePromotion.TearDownDuration
@@ -99,13 +99,13 @@ func (c *controller) setup(ctx context.Context, atpComp *s2hv1beta1.ActivePromot
 		atpComp.Spec.SetTearDownDuration(duration)
 	}
 
-	atpComp.Labels = c.getStateLabel(stateWaiting)
-	atpComp.SetState(s2hv1beta1.ActivePromotionWaiting, "Waiting in queue")
+	c.appendStateLabel(atpComp, stateWaiting)
+	atpComp.SetState(s2hv1.ActivePromotionWaiting, "Waiting in queue")
 	logger.Info("activepromotion is waiting in queue", "team", atpComp.Name)
 	return nil
 }
 
-func (c *controller) teardown(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) teardown(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	targetNs := c.getTargetNamespace(atpComp)
 	_ = queue.DeletePreActiveQueue(c.client, targetNs)
 	_ = queue.DeletePromoteToActiveQueue(c.client, targetNs)
@@ -125,7 +125,7 @@ func (c *controller) teardown(ctx context.Context, atpComp *s2hv1beta1.ActivePro
 }
 
 // checkActivePromotionTimeout checks if promote active environment duration was longer than timeout.
-func (c *controller) checkActivePromotionTimeout(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) checkActivePromotionTimeout(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	if atpComp.Status.IsTimeout {
 		return nil
 	}
@@ -143,18 +143,18 @@ func (c *controller) checkActivePromotionTimeout(ctx context.Context, atpComp *s
 	if isTimeout {
 		logger.Debug("active promotion has been timeout", "team", atpComp.Name)
 		atpComp.Status.SetIsTimeout()
-		atpComp.Status.SetResult(s2hv1beta1.ActivePromotionFailure)
+		atpComp.Status.SetResult(s2hv1.ActivePromotionFailure)
 
 		if c.isToRollbackState(atpComp) {
-			atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondActivePromoted, corev1.ConditionFalse,
+			atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActivePromoted, corev1.ConditionFalse,
 				"Active promotion has been timeout")
-			atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondRollbackStarted, corev1.ConditionTrue,
+			atpComp.Status.SetCondition(s2hv1.ActivePromotionCondRollbackStarted, corev1.ConditionTrue,
 				"Rollback process has been started due to promoting timeout")
-			atpComp.SetState(s2hv1beta1.ActivePromotionRollback, "Active promotion has been timeout")
+			atpComp.SetState(s2hv1.ActivePromotionRollback, "Active promotion has been timeout")
 		} else {
-			atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondVerified, corev1.ConditionFalse,
+			atpComp.Status.SetCondition(s2hv1.ActivePromotionCondVerified, corev1.ConditionFalse,
 				"Active promotion has been timeout")
-			atpComp.SetState(s2hv1beta1.ActivePromotionCollectingPreActiveResult,
+			atpComp.SetState(s2hv1.ActivePromotionCollectingPreActiveResult,
 				"Active promotion has been timeout")
 		}
 
@@ -167,10 +167,10 @@ func (c *controller) checkActivePromotionTimeout(ctx context.Context, atpComp *s
 	return nil
 }
 
-func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) (
+func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, atpComp *s2hv1.ActivePromotion) (
 	skipReconcile bool, err error) {
 
-	if atpComp.Status.State == s2hv1beta1.ActivePromotionFinished {
+	if atpComp.Status.State == s2hv1.ActivePromotionFinished {
 		if err = c.teardown(ctx, atpComp); err != nil {
 			return
 		}
@@ -194,7 +194,7 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, atpComp *s
 	if !atpComp.ObjectMeta.DeletionTimestamp.IsZero() {
 		// The object is being deleted
 		if stringutils.ContainsString(atpComp.ObjectMeta.Finalizers, activePromotionFinalizer) {
-			if atpComp.Status.State == s2hv1beta1.ActivePromotionFinished {
+			if atpComp.Status.State == s2hv1.ActivePromotionFinished {
 				if err = c.removeFinalizerObject(ctx, atpComp); err != nil {
 					return
 				}
@@ -209,7 +209,7 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, atpComp *s
 				return
 			}
 
-			if atpComp.Status.State == s2hv1beta1.ActivePromotionDestroyingPreviousActive {
+			if atpComp.Status.State == s2hv1.ActivePromotionDestroyingPreviousActive {
 				if atpComp.Status.DestroyedTime.IsZero() {
 					destroyedTime := metav1.Now()
 					atpComp.Status.SetDestroyedTime(destroyedTime)
@@ -221,18 +221,18 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, atpComp *s
 				return
 			}
 
-			atpComp.Status.SetResult(s2hv1beta1.ActivePromotionCanceled)
-			atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondActivePromoted, corev1.ConditionFalse,
+			atpComp.Status.SetResult(s2hv1.ActivePromotionCanceled)
+			atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActivePromoted, corev1.ConditionFalse,
 				"Active promotion has been canceled")
 
 			if c.isToRollbackState(atpComp) {
-				atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondRollbackStarted, corev1.ConditionTrue,
+				atpComp.Status.SetCondition(s2hv1.ActivePromotionCondRollbackStarted, corev1.ConditionTrue,
 					"Rollback process has been started due to canceling")
-				atpComp.SetState(s2hv1beta1.ActivePromotionRollback, "Active promotion has been canceled")
+				atpComp.SetState(s2hv1.ActivePromotionRollback, "Active promotion has been canceled")
 			} else {
-				atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondVerified, corev1.ConditionFalse,
+				atpComp.Status.SetCondition(s2hv1.ActivePromotionCondVerified, corev1.ConditionFalse,
 					"Active promotion has been canceled")
-				atpComp.SetState(s2hv1beta1.ActivePromotionCollectingPreActiveResult,
+				atpComp.SetState(s2hv1.ActivePromotionCollectingPreActiveResult,
 					"Active promotion has been canceled")
 			}
 
@@ -247,7 +247,7 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, atpComp *s
 	return
 }
 
-func (c *controller) addFinalizer(atpComp *s2hv1beta1.ActivePromotion) {
+func (c *controller) addFinalizer(atpComp *s2hv1.ActivePromotion) {
 	if atpComp.ObjectMeta.DeletionTimestamp.IsZero() {
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object.
@@ -257,17 +257,17 @@ func (c *controller) addFinalizer(atpComp *s2hv1beta1.ActivePromotion) {
 	}
 }
 
-func (c *controller) stateCannotBeTimeoutOrCancel(state s2hv1beta1.ActivePromotionState) bool {
+func (c *controller) stateCannotBeTimeoutOrCancel(state s2hv1.ActivePromotionState) bool {
 	// waiting state doesn't have finalizer
-	return state == s2hv1beta1.ActivePromotionWaiting ||
-		state == s2hv1beta1.ActivePromotionDestroyingPreviousActive ||
-		state == s2hv1beta1.ActivePromotionDestroyingPreActive ||
-		state == s2hv1beta1.ActivePromotionFinished ||
-		state == s2hv1beta1.ActivePromotionRollback
+	return state == s2hv1.ActivePromotionWaiting ||
+		state == s2hv1.ActivePromotionDestroyingPreviousActive ||
+		state == s2hv1.ActivePromotionDestroyingPreActive ||
+		state == s2hv1.ActivePromotionFinished ||
+		state == s2hv1.ActivePromotionRollback
 }
 
-func (c *controller) isToRollbackState(atpComp *s2hv1beta1.ActivePromotion) bool {
-	return atpComp.Status.IsConditionTrue(s2hv1beta1.ActivePromotionCondVerified)
+func (c *controller) isToRollbackState(atpComp *s2hv1.ActivePromotion) bool {
+	return atpComp.Status.IsConditionTrue(s2hv1.ActivePromotionCondVerified)
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -279,7 +279,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to ActivePromotion
-	err = c.Watch(&source.Kind{Type: &s2hv1beta1.ActivePromotion{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &s2hv1.ActivePromotion{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -294,7 +294,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	ctx := context.TODO()
 
-	atpComp := &s2hv1beta1.ActivePromotion{}
+	atpComp := &s2hv1.ActivePromotion{}
 	if err := c.client.Get(ctx, req.NamespacedName, atpComp); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return reconcile.Result{}, nil
@@ -343,13 +343,13 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	case s2hv1beta1.ActivePromotionWaiting:
+	case s2hv1.ActivePromotionWaiting:
 		return reconcile.Result{
 			Requeue:      true,
 			RequeueAfter: 2 * time.Second,
 		}, nil
 
-	case s2hv1beta1.ActivePromotionCreatingPreActive:
+	case s2hv1.ActivePromotionCreatingPreActive:
 		if err := c.createPreActiveEnvAndDeployStableCompObjects(ctx, atpComp); err != nil {
 			if s2herrors.IsEnsuringPreActiveEnvironmentCreated(err) {
 				return reconcile.Result{
@@ -360,7 +360,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	case s2hv1beta1.ActivePromotionDeployingComponents:
+	case s2hv1.ActivePromotionDeployingComponents:
 		if err := c.deployComponentsToTargetNamespace(atpComp); err != nil {
 			if s2herrors.IsEnsuringComponentDeployed(err) {
 				return reconcile.Result{
@@ -371,7 +371,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	case s2hv1beta1.ActivePromotionTestingPreActive:
+	case s2hv1.ActivePromotionTestingPreActive:
 		if err := c.testPreActiveEnvironment(atpComp); err != nil {
 			if s2herrors.IsEnsuringComponentTested(err) {
 				return reconcile.Result{
@@ -382,7 +382,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	case s2hv1beta1.ActivePromotionCollectingPreActiveResult:
+	case s2hv1.ActivePromotionCollectingPreActiveResult:
 		if err := c.collectResult(ctx, atpComp); err != nil {
 			if s2herrors.IsEnsuringComponentTested(err) {
 				return reconcile.Result{
@@ -393,7 +393,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	case s2hv1beta1.ActivePromotionDemoting:
+	case s2hv1.ActivePromotionDemoting:
 		if err := c.demoteActiveEnvironment(ctx, atpComp); err != nil {
 			if s2herrors.IsEnsuringActiveDemoted(err) || s2herrors.IsErrActiveDemotionTimeout(err) {
 				return reconcile.Result{
@@ -404,7 +404,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	case s2hv1beta1.ActivePromotionActiveEnvironment:
+	case s2hv1.ActivePromotionActiveEnvironment:
 		if err := c.promoteActiveEnvironment(ctx, atpComp); err != nil {
 			if s2herrors.IsEnsuringActivePromoted(err) {
 				return reconcile.Result{
@@ -415,7 +415,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	case s2hv1beta1.ActivePromotionDestroyingPreviousActive:
+	case s2hv1.ActivePromotionDestroyingPreviousActive:
 		if err := c.destroyPreviousActiveEnvironment(ctx, atpComp); err != nil {
 			if s2herrors.IsEnsuringNamespaceDestroyed(err) {
 				return reconcile.Result{
@@ -426,7 +426,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	case s2hv1beta1.ActivePromotionDestroyingPreActive:
+	case s2hv1.ActivePromotionDestroyingPreActive:
 		if err := c.destroyPreActiveEnvironment(ctx, atpComp); err != nil {
 			if s2herrors.IsEnsuringNamespaceDestroyed(err) {
 				return reconcile.Result{
@@ -437,7 +437,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 			return reconcile.Result{}, err
 		}
 
-	case s2hv1beta1.ActivePromotionRollback:
+	case s2hv1.ActivePromotionRollback:
 		if err := c.rollbackActiveEnvironment(ctx, atpComp); err != nil {
 			if s2herrors.IsRollingBackActivePromotion(err) || s2herrors.IsErrRollbackActivePromotionTimeout(err) {
 				return reconcile.Result{

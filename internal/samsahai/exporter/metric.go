@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 )
 
@@ -56,7 +56,7 @@ func RegisterMetrics() {
 	metrics.Registry.MustRegister(HealthStatusMetric)
 }
 
-func SetTeamNameMetric(teamList *s2hv1beta1.TeamList) {
+func SetTeamNameMetric(teamList *s2hv1.TeamList) {
 	for _, teamComp := range teamList.Items {
 		TeamMetric.WithLabelValues(teamComp.Name).Set(1)
 	}
@@ -68,7 +68,7 @@ func SetHealthStatusMetric(version, gitCommit string, ts float64) {
 		gitCommit).Set(ts)
 }
 
-func SetQueueMetric(queue *s2hv1beta1.Queue) {
+func SetQueueMetric(queue *s2hv1.Queue) {
 	// ignore pull request queue
 	if queue.IsPullRequestQueue() {
 		return
@@ -76,15 +76,15 @@ func SetQueueMetric(queue *s2hv1beta1.Queue) {
 
 	var queueState QueueMetricState
 	switch queue.Status.State {
-	case s2hv1beta1.Waiting:
+	case s2hv1.Waiting:
 		queueState = queueStateWaiting
-	case s2hv1beta1.Testing, s2hv1beta1.Collecting:
+	case s2hv1.Testing, s2hv1.Collecting:
 		queueState = queueStateTesting
-	case s2hv1beta1.DetectingImageMissing, s2hv1beta1.Creating:
+	case s2hv1.DetectingImageMissing, s2hv1.Creating:
 		queueState = queueStateDeploying
-	case s2hv1beta1.CleaningBefore:
+	case s2hv1.CleaningBefore:
 		queueState = queueStateCleaning
-	case s2hv1beta1.CleaningAfter:
+	case s2hv1.CleaningAfter:
 		queueState = queueStateFinished
 	}
 
@@ -100,47 +100,47 @@ func SetQueueMetric(queue *s2hv1beta1.Queue) {
 	}
 }
 
-func SetActivePromotionMetric(atpComp *s2hv1beta1.ActivePromotion) {
+func SetActivePromotionMetric(atpComp *s2hv1.ActivePromotion) {
 	atpStateList := map[ActivePromotionMetricState]float64{stateWaiting: 0, stateDeploying: 0, stateTesting: 0, statePromoting: 0, stateDestroying: 0}
 	atpState := atpComp.Status.State
 	if atpState != "" {
 		switch atpState {
-		case s2hv1beta1.ActivePromotionWaiting:
+		case s2hv1.ActivePromotionWaiting:
 			atpStateList[stateWaiting] = float64(time.Now().Unix())
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,
 					string(state)).Set(val)
 			}
-		case s2hv1beta1.ActivePromotionDeployingComponents, s2hv1beta1.ActivePromotionCreatingPreActive:
+		case s2hv1.ActivePromotionDeployingComponents, s2hv1.ActivePromotionCreatingPreActive:
 			atpStateList[stateDeploying] = float64(time.Now().Unix())
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,
 					string(state)).Set(val)
 			}
-		case s2hv1beta1.ActivePromotionTestingPreActive, s2hv1beta1.ActivePromotionCollectingPreActiveResult:
+		case s2hv1.ActivePromotionTestingPreActive, s2hv1.ActivePromotionCollectingPreActiveResult:
 			atpStateList[stateTesting] = float64(time.Now().Unix())
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,
 					string(state)).Set(val)
 			}
-		case s2hv1beta1.ActivePromotionActiveEnvironment, s2hv1beta1.ActivePromotionDemoting:
+		case s2hv1.ActivePromotionActiveEnvironment, s2hv1.ActivePromotionDemoting:
 			atpStateList[statePromoting] = float64(time.Now().Unix())
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,
 					string(state)).Set(val)
 			}
-		case s2hv1beta1.ActivePromotionDestroyingPreActive, s2hv1beta1.ActivePromotionDestroyingPreviousActive:
+		case s2hv1.ActivePromotionDestroyingPreActive, s2hv1.ActivePromotionDestroyingPreviousActive:
 			atpStateList[stateDestroying] = float64(time.Now().Unix())
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,
 					string(state)).Set(val)
 			}
-		case s2hv1beta1.ActivePromotionFinished:
+		case s2hv1.ActivePromotionFinished:
 			for state, val := range atpStateList {
 				ActivePromotionMetric.WithLabelValues(
 					atpComp.Name,

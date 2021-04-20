@@ -60,10 +60,13 @@ func (l *DelegatingLogger) Fulfill(actual logr.Logger) {
 
 // Logger represents the ability to log messages, both errors and not.
 type Logger interface {
-	// All Loggers implement InfoLogger.  Calling InfoLogger methods directly on
-	// a Logger value is equivalent to calling them on a V(0) InfoLogger.  For
-	// example, logger.Info() produces the same result as logger.V(0).Info.
-	logr.InfoLogger
+	// Info logs a non-error message with the given key/value pairs as context.
+	//
+	// The msg argument should be used to add some constant description to
+	// the log line.  The key/value pairs can then be used to add additional
+	// variable information.  The key/value pairs should alternate string
+	// keys and arbitrary values.
+	Info(msg string, keysAndValues ...interface{})
 
 	// Error logs an error, with the given message and key/value pairs as context.
 	// It functions similarly to calling Info with the "error" named value, but may

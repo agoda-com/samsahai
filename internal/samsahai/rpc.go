@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2h "github.com/agoda-com/samsahai/internal"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/samsahai/exporter"
@@ -39,7 +40,7 @@ func (c *controller) GetTeamActiveNamespace(ctx context.Context, teamName *rpc.T
 		return nil, err
 	}
 
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamName.Name, teamComp); err != nil {
 		return nil, errors.Wrapf(err, "cannot get of team %s", teamComp.Name)
 	}
@@ -55,12 +56,12 @@ func (c *controller) GetMissingVersions(ctx context.Context, teamInfo *rpc.TeamW
 		return nil, err
 	}
 
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamInfo.TeamName, teamComp); err != nil {
 		return nil, errors.Wrapf(err, "cannot get of team %s", teamComp.Name)
 	}
 
-	stableList := &s2hv1beta1.StableComponentList{}
+	stableList := &s2hv1.StableComponentList{}
 
 	if teamComp.Status.Namespace.Staging == "" {
 		return nil, errors.Wrap(fmt.Errorf("staging namespace of %s is empty", teamInfo.TeamName),
@@ -73,39 +74,117 @@ func (c *controller) GetMissingVersions(ctx context.Context, teamInfo *rpc.TeamW
 			"cannot get list of stable components, namespace %s", teamComp.Status.Namespace.Staging)
 	}
 
-	imgList := &rpc.ImageList{}
 	comps, err := c.GetConfigController().GetComponents(teamComp.Name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot get components of team %s", teamComp.Name)
 	}
 
+	return c.getMissingVersions(teamInfo, stableList, comps)
+}
+
+func (c *controller) getMissingVersions(teamInfo *rpc.TeamWithCurrentComponent, stableList *s2hv1.StableComponentList,
+	comps map[string]*s2hv1.Component) (*rpc.ImageList, error) {
+
+	// detect image missing of all stable components and current components concurrently
+	timeout := 300 * time.Second
+	missingImagesCh := make(chan []*rpc.Image, 2)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	defer cancelFunc()
+
 	// get image missing of stable components
-	for _, stable := range stableList.Items {
-		source, ok := c.getImageSource(comps, stable.Name)
-		if !ok {
-			continue
+	go func() {
+		missingImageCh := make(chan *rpc.Image)
+		errCh := make(chan error)
+		for _, stable := range stableList.Items {
+			go func(stable s2hv1.StableComponent) {
+				source, ok := c.getImageSource(comps, stable.Name)
+				if !ok {
+					errCh <- fmt.Errorf("source of image not found")
+					return
+				}
+
+				// ignore current component
+				for _, qComp := range teamInfo.Components {
+					if qComp.Name == stable.Name {
+						missingImageCh <- &rpc.Image{}
+						return
+					}
+				}
+
+				missingImage, err := c.detectMissingImage(*source, stable.Spec.Repository, stable.Name, stable.Spec.Version)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				missingImageCh <- missingImage
+			}(stable)
 		}
 
-		// ignore current component
-		isFound := false
-		for _, qComp := range teamInfo.Components {
-			if qComp.Name == stable.Name {
-				isFound = true
-				break
+		missingImages := make([]*rpc.Image, 0)
+		for i := 0; i < len(stableList.Items); i++ {
+			select {
+
+			case missingImage := <-missingImageCh:
+				if missingImage.Repository != "" {
+					missingImages = append(missingImages, missingImage)
+				}
+			case err := <-errCh:
+				if err != nil {
+					logger.Error(err, "cannot detect image missing")
+				}
 			}
 		}
-		if isFound {
-			continue
-		}
-
-		c.detectAndAddImageMissing(*source, stable.Spec.Repository, stable.Name, stable.Spec.Version, imgList)
-	}
+		missingImagesCh <- missingImages
+	}()
 
 	// get image missing of current components
-	for _, qComp := range teamInfo.Components {
-		source, ok := c.getImageSource(comps, qComp.Name)
-		if ok {
-			c.detectAndAddImageMissing(*source, qComp.Image.Repository, qComp.Name, qComp.Image.Tag, imgList)
+	go func() {
+		missingImageCh := make(chan *rpc.Image)
+		errCh := make(chan error)
+		for _, qComp := range teamInfo.Components {
+			go func(qComp *rpc.Component) {
+				source, ok := c.getImageSource(comps, qComp.Name)
+				if !ok {
+					errCh <- fmt.Errorf("source of image not found")
+					return
+				}
+
+				missingImage, err := c.detectMissingImage(*source, qComp.Image.Repository, qComp.Name, qComp.Image.Tag)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				missingImageCh <- missingImage
+			}(qComp)
+		}
+
+		missingImages := make([]*rpc.Image, 0)
+		for i := 0; i < len(teamInfo.Components); i++ {
+			select {
+			case missingImage := <-missingImageCh:
+				if missingImage.Repository != "" {
+					missingImages = append(missingImages, missingImage)
+				}
+			case err := <-errCh:
+				if err != nil {
+					logger.Error(err, "cannot detect image missing")
+				}
+			}
+		}
+		missingImagesCh <- missingImages
+	}()
+
+	imgList := &rpc.ImageList{}
+	for i := 0; i < 2; i++ {
+		select {
+		case <-ctx.Done():
+			return nil, errors.Wrapf(s2herrors.ErrRequestTimeout, "detect missing images took longer than %v",
+				timeout)
+		case missingImages := <-missingImagesCh:
+			if len(missingImages) > 0 {
+				imgList.Images = append(imgList.Images, missingImages...)
+			}
 		}
 	}
 
@@ -117,7 +196,7 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 		return nil, err
 	}
 
-	queueHist := &s2hv1beta1.QueueHistory{}
+	queueHist := &s2hv1.QueueHistory{}
 	queueHistName := comp.QueueHistoryName
 	namespace := comp.Namespace
 	err := c.client.Get(context.TODO(), types.NamespacedName{Name: queueHistName, Namespace: namespace}, queueHist)
@@ -136,12 +215,17 @@ func (c *controller) RunPostComponentUpgrade(ctx context.Context, comp *rpc.Comp
 		}
 	}
 
+	emptyTestRunner := s2hv1.TestRunner{}
+	if qHist.Spec.Queue.Status.TestRunner == emptyTestRunner {
+		qHist.Spec.Queue.Status.TestRunner = queueHist.Spec.Queue.Status.TestRunner
+	}
+
 	if err := c.sendDeploymentQueueReport(qHist.Name, qHist.Spec.Queue, comp); err != nil {
 		return nil, err
 	}
 
 	// Add metric updateQueueMetric & histories
-	queue := &s2hv1beta1.Queue{}
+	queue := &s2hv1.Queue{}
 	err = c.client.Get(context.TODO(), types.NamespacedName{Name: queueHistName, Namespace: namespace}, queue)
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
@@ -161,7 +245,7 @@ func (c *controller) RunPostPullRequestQueue(ctx context.Context, comp *rpc.Comp
 
 	prQueueHistName := comp.QueueHistoryName
 	prQueueHistNamespace := comp.Namespace
-	prQueueHist := &s2hv1beta1.PullRequestQueueHistory{}
+	prQueueHist := &s2hv1.PullRequestQueueHistory{}
 	err := c.client.Get(context.TODO(), types.NamespacedName{
 		Name:      prQueueHistName,
 		Namespace: prQueueHistNamespace,
@@ -180,14 +264,16 @@ func (c *controller) RunPostPullRequestQueue(ctx context.Context, comp *rpc.Comp
 	return &rpc.Empty{}, nil
 }
 
-func (c *controller) RunPostPullRequestTrigger(ctx context.Context, prTriggerRPC *rpc.PullRequestTrigger) (*rpc.Empty, error) {
+func (c *controller) RunPostPullRequestTrigger(ctx context.Context, prTriggerRPC *rpc.PullRequestTrigger) (
+	*rpc.Empty, error) {
+
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 
 	prTriggerName := prTriggerRPC.Name
 	prTriggerNamespace := prTriggerRPC.Namespace
-	prTrigger := &s2hv1beta1.PullRequestTrigger{}
+	prTrigger := &s2hv1.PullRequestTrigger{}
 	err := c.client.Get(context.TODO(), types.NamespacedName{
 		Name:      prTriggerName,
 		Namespace: prTriggerNamespace,
@@ -208,7 +294,7 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 
 	queueName := comp.GetName()
 	if queueName != "" {
-		queue := &s2hv1beta1.Queue{}
+		queue := &s2hv1.Queue{}
 		err := c.client.Get(context.TODO(), types.NamespacedName{
 			Namespace: comp.GetNamespace(),
 			Name:      queueName}, queue)
@@ -224,34 +310,35 @@ func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.C
 	return &rpc.Empty{}, nil
 }
 
-func (c *controller) GetBundleName(ctx context.Context, teamWithCompName *rpc.TeamWithComponentName) (
+func (c *controller) GetBundleName(ctx context.Context,
+	teamWithCompName *rpc.TeamWithBundleName) (
 	*rpc.BundleName, error) {
 
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 
-	bundleName := c.getBundleName(teamWithCompName.ComponentName, teamWithCompName.TeamName)
+	bundleName := c.getBundleName(teamWithCompName.BundleName, teamWithCompName.TeamName)
 
 	return &rpc.BundleName{Name: bundleName}, nil
 }
 
-// GetPullRequestComponentDependencies returns pull request dependencies from configuration
+// GetPullRequestBundleDependencies returns pull request dependencies from configuration
 // repository and version are retrieved from active components
-func (c *controller) GetPullRequestComponentDependencies(
+func (c *controller) GetPullRequestBundleDependencies(
 	ctx context.Context,
-	teamWithCompName *rpc.TeamWithComponentName,
+	teamWithBundleName *rpc.TeamWithBundleName,
 ) (*rpc.PullRequestDependencies, error) {
 
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 
-	teamName := teamWithCompName.TeamName
-	compName := teamWithCompName.ComponentName
-	deps, _ := c.GetConfigController().GetPullRequestComponentDependencies(teamName, compName)
+	teamName := teamWithBundleName.TeamName
+	bundleName := teamWithBundleName.BundleName
+	deps, _ := c.GetConfigController().GetPullRequestBundleDependencies(teamName, bundleName)
 
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamName, teamComp); err != nil {
 		return nil, err
 	}
@@ -315,6 +402,11 @@ func (c *controller) GetComponentVersion(ctx context.Context, compSource *rpc.Co
 		imgTag = compSource.Pattern
 	}
 
+	if imgRepository == "" || imgTag == "" {
+		return nil, fmt.Errorf("image repository and tag should not be empty, repository: %s, tag: %s",
+			imgRepository, imgTag)
+	}
+
 	version, err := checker.GetVersion(imgRepository, compSource.ComponentName, imgTag)
 	if err != nil {
 		switch err.Error() {
@@ -328,13 +420,15 @@ func (c *controller) GetComponentVersion(ctx context.Context, compSource *rpc.Co
 	return &rpc.ComponentVersion{Version: version}, nil
 }
 
-func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.TeamName) (*rpc.PullRequestConfig, error) {
+func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc.TeamWithBundleName) (
+	*rpc.PullRequestConfig, error) {
+
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
 
 	configCtrl := c.GetConfigController()
-	prConfig, err := configCtrl.GetPullRequestConfig(teamName.Name)
+	prConfig, err := configCtrl.GetPullRequestConfig(teamWithComp.TeamName)
 	if err != nil {
 		return &rpc.PullRequestConfig{}, err
 	}
@@ -359,6 +453,17 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.Tea
 		maxRetryVerification = prConfig.MaxRetry
 	}
 
+	var gitRepository string
+	for _, bundle := range prConfig.Bundles {
+		if bundle.Name == teamWithComp.BundleName {
+			gitRepository = bundle.GitRepository
+			if bundle.MaxRetry != nil {
+				maxRetryVerification = bundle.MaxRetry
+			}
+			break
+		}
+	}
+
 	maxHistoryDays := c.configs.PullRequest.MaxHistoryDays
 	if prConfig.MaxHistoryDays != 0 {
 		maxHistoryDays = prConfig.MaxHistoryDays
@@ -372,12 +477,15 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamName *rpc.Tea
 			MaxRetry:    int32(*maxRetryTrigger),
 			PollingTime: pollingTimeTrigger.Duration.String(),
 		},
+		GitRepository: gitRepository,
 	}
 
 	return rpcPRConfig, nil
 }
 
-func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWithPR *rpc.TeamWithPullRequest) (*rpc.ComponentSource, error) {
+func (c *controller) GetPullRequestComponentSources(ctx context.Context, teamWithPR *rpc.TeamWithPullRequest) (
+	*rpc.ComponentSourceList, error) {
+
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
 	}
@@ -385,55 +493,71 @@ func (c *controller) GetPullRequestComponentSource(ctx context.Context, teamWith
 	configCtrl := c.GetConfigController()
 
 	teamName := teamWithPR.TeamName
-	prConfig, err := configCtrl.GetPullRequestConfig(teamWithPR.TeamName)
+	prComps, err := configCtrl.GetPullRequestComponents(teamName, teamWithPR.BundleName, false)
 	if err != nil {
 		return nil, err
 	}
 
-	compSource := &rpc.ComponentSource{Image: &rpc.Image{}}
+	compSources := make([]*rpc.ComponentSource, 0)
+	for _, prComp := range prComps {
+		compSource := &rpc.ComponentSource{Image: &rpc.Image{}}
+		if prComp.Source != nil && *prComp.Source != "" {
+			compSource.Source = string(*prComp.Source)
+		}
+
+		// resolve pull request number for image tag pattern
+		if prComp.Image.Pattern != "" {
+			compSource.Pattern = prComp.Image.Pattern
+		}
+
+		if prComp.Image.Repository != "" {
+			compSource.Image.Repository = prComp.Image.Repository
+		}
+
+		if prComp.Image.Tag != "" {
+			compSource.Image.Tag = prComp.Image.Tag
+		}
+
+		// render image tag
+		prData := s2h.PullRequestData{PRNumber: teamWithPR.PRNumber}
+		compSource.Pattern = template.TextRender("PullRequestTagPattern", compSource.Pattern, prData)
+		if compSource.Image.Tag == "" {
+			compSource.Image.Tag = compSource.Pattern
+		}
+
+		compSource.ComponentName = prComp.Name
+		compSources = append(compSources, compSource)
+	}
 
 	comps, err := configCtrl.GetComponents(teamName)
 	if err != nil {
 		return nil, err
 	}
 
+	// fill empty data
 	for compName, comp := range comps {
-		if compName == teamWithPR.ComponentName {
-			if comp.Source != nil {
-				compSource.Source = string(*comp.Source)
-			}
-			compSource.Pattern = comp.Image.Pattern
-			compSource.Image.Repository = comp.Image.Repository
-			compSource.Image.Tag = comp.Image.Tag
-		}
-	}
-
-	for _, prComp := range prConfig.Components {
-		if prComp.Name == teamWithPR.ComponentName {
-			if prComp.Source != nil && *prComp.Source != "" {
-				compSource.Source = string(*prComp.Source)
-			}
-
-			// resolve pull request number for image tag pattern
-			if prComp.Image.Pattern != "" {
-				compSource.Pattern = prComp.Image.Pattern
-			}
-
-			if prComp.Image.Repository != "" {
-				compSource.Image.Repository = prComp.Image.Repository
-			}
-
-			if prComp.Image.Tag != "" {
-				compSource.Image.Tag = prComp.Image.Tag
+		for _, compSource := range compSources {
+			if compName == compSource.ComponentName {
+				if compSource.Source == "" && comp.Source != nil {
+					compSource.Source = string(*comp.Source)
+				}
+				if compSource.Pattern == "" {
+					compSource.Pattern = comp.Image.Pattern
+				}
+				if compSource.Image == nil {
+					compSource.Image = &rpc.Image{}
+				}
+				if compSource.Image.Repository == "" {
+					compSource.Image.Repository = comp.Image.Repository
+				}
+				if compSource.Image.Tag == "" {
+					compSource.Image.Tag = comp.Image.Tag
+				}
 			}
 		}
 	}
 
-	prData := s2h.PullRequestData{PRNumber: teamWithPR.PRNumber}
-	compSource.Pattern = template.TextRender("PullRequestTagPattern", compSource.Pattern, prData)
-	compSource.ComponentName = teamWithPR.ComponentName
-
-	return compSource, nil
+	return &rpc.ComponentSourceList{ComponentSources: compSources}, nil
 }
 
 func (c *controller) DeployActiveServicesIntoPullRequestEnvironment(ctx context.Context, teamWithNS *rpc.TeamWithNamespace) (*rpc.Empty, error) {
@@ -443,21 +567,25 @@ func (c *controller) DeployActiveServicesIntoPullRequestEnvironment(ctx context.
 
 	teamName := teamWithNS.TeamName
 	prNamespace := teamWithNS.Namespace
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamName, teamComp); err != nil {
 		return nil, err
 	}
 
-	prSvcList := &corev1.ServiceList{}
-	listOpts := &client.ListOptions{Namespace: prNamespace}
-	if err := c.client.List(ctx, prSvcList, listOpts); err != nil {
+	activeNs := teamComp.Status.Namespace.Active
+	if activeNs == "" {
+		return &rpc.Empty{}, nil
+	}
+
+	activeSvcList := &corev1.ServiceList{}
+	listOpts := &client.ListOptions{Namespace: activeNs}
+	if err := c.client.List(ctx, activeSvcList, listOpts); err != nil {
 		return nil, err
 	}
 
-	activeNs := teamComp.Status.Namespace.Active
-	activeSvcList := &corev1.ServiceList{}
-	listOpts = &client.ListOptions{Namespace: activeNs}
-	if err := c.client.List(ctx, activeSvcList, listOpts); err != nil {
+	prSvcList := &corev1.ServiceList{}
+	listOpts = &client.ListOptions{Namespace: prNamespace}
+	if err := c.client.List(ctx, prSvcList, listOpts); err != nil {
 		return nil, err
 	}
 
@@ -498,10 +626,10 @@ func (c *controller) CreatePullRequestEnvironment(ctx context.Context, teamWithP
 	}
 
 	resources := prConfig.Resources
-	for _, comp := range prConfig.Components {
-		if comp.Name == teamWithPR.ComponentName {
-			if comp.Resources != nil {
-				resources = comp.Resources
+	for _, bundle := range prConfig.Bundles {
+		if bundle.Name == teamWithPR.BundleName {
+			if bundle.Resources != nil {
+				resources = bundle.Resources
 			}
 		}
 	}
@@ -530,29 +658,29 @@ func (c *controller) DestroyPullRequestEnvironment(ctx context.Context, teamWith
 
 }
 
-func (c *controller) detectAndAddImageMissing(source s2hv1beta1.UpdatingSource, repo, name, version string, imgList *rpc.ImageList) {
+func (c *controller) detectMissingImage(source s2hv1.UpdatingSource, repo, name, version string) (*rpc.Image, error) {
 	checker, err := c.getComponentChecker(string(source))
 	if err != nil {
-		logger.Error(err, "cannot get component checker", "source", string(source))
-		return
+		return &rpc.Image{}, errors.Wrapf(err, "cannot get component checker, source: %s", string(source))
 	}
 
 	if repo != "" {
 		if err := checker.EnsureVersion(repo, name, version); err != nil {
-			if s2herrors.IsImageNotFound(err) || s2herrors.IsErrRequestTimeout(err) {
-				imgList.Images = append(imgList.Images, &rpc.Image{
-					Repository: repo,
-					Tag:        version,
-				})
-				return
+			if !s2herrors.IsImageNotFound(err) && !s2herrors.IsErrRequestTimeout(err) {
+				return &rpc.Image{},
+					errors.Wrapf(err, "cannot ensure version, name: %s, source: %s, repository: %s, version: %s",
+						name, source, repo, version)
+
 			}
-			logger.Error(err, "cannot ensure version",
-				"name", name, "source", source, "repository", repo, "version", version)
+
+			return &rpc.Image{Repository: repo, Tag: version}, nil
 		}
 	}
+
+	return &rpc.Image{}, nil
 }
 
-func (c *controller) getImageSource(comps map[string]*s2hv1beta1.Component, name string) (*s2hv1beta1.UpdatingSource, bool) {
+func (c *controller) getImageSource(comps map[string]*s2hv1.Component, name string) (*s2hv1.UpdatingSource, bool) {
 	if _, ok := comps[name]; !ok {
 		return nil, false
 	}
@@ -569,11 +697,22 @@ func (c *controller) getImageSource(comps map[string]*s2hv1beta1.Component, name
 	return source, true
 }
 
-func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv1beta1.Queue, comp *rpc.ComponentUpgrade) error {
+func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv1.Queue, comp *rpc.ComponentUpgrade) error {
 	configCtrl := c.GetConfigController()
 
+	teamComp := &s2hv1.Team{}
+	err := c.getTeam(comp.TeamName, teamComp)
+	if err != nil {
+		return err
+	}
+
+	if err := c.LoadTeamSecret(teamComp); err != nil {
+		logger.Error(err, "cannot load team secret", "team", teamComp.Name)
+		return err
+	}
+
 	for _, reporter := range c.reporters {
-		testRunner := s2hv1beta1.TestRunner{}
+		testRunner := s2hv1.TestRunner{}
 		if queue != nil {
 			testRunner = queue.Status.TestRunner
 		}
@@ -584,12 +723,13 @@ func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv
 			s2h.WithTestRunner(testRunner),
 			s2h.WithQueueHistoryName(queueHistName),
 			s2h.WithNamespace(comp.PullRequestNamespace),
+			s2h.WithComponentUpgradeOptCredential(teamComp.Status.Used.Credential),
 		)
 
 		if comp.PullRequestComponent != nil && comp.PullRequestComponent.PRNumber != "" {
 			if err := reporter.SendPullRequestQueue(configCtrl, upgradeComp); err != nil {
 				logger.Error(err, "cannot send component upgrade failure report",
-					"team", comp.TeamName, "component", comp.Name)
+					"team", comp.TeamName, "bundle", comp.Name)
 			}
 		} else {
 			if err := reporter.SendComponentUpgrade(configCtrl, upgradeComp); err != nil {
@@ -602,24 +742,24 @@ func (c *controller) sendDeploymentQueueReport(queueHistName string, queue *s2hv
 	return nil
 }
 
-func (c *controller) listQueueHistory(selectors map[string]string) (*s2hv1beta1.QueueHistoryList, error) {
-	queueHists := &s2hv1beta1.QueueHistoryList{}
+func (c *controller) listQueueHistory(selectors map[string]string) (*s2hv1.QueueHistoryList, error) {
+	queueHists := &s2hv1.QueueHistoryList{}
 	listOpt := &client.ListOptions{LabelSelector: labels.SelectorFromSet(selectors)}
 	err := c.client.List(context.TODO(), queueHists, listOpt)
 	queueHists.SortDESC()
 	return queueHists, err
 }
 
-func (c *controller) getLatestFailureQueueHistory(comp *rpc.ComponentUpgrade) (*s2hv1beta1.QueueHistory, error) {
+func (c *controller) getLatestFailureQueueHistory(comp *rpc.ComponentUpgrade) (*s2hv1.QueueHistory, error) {
 	qLabels := s2h.GetDefaultLabels(comp.TeamName)
 	qLabels["app"] = comp.Name
 	qHists, err := c.listQueueHistory(qLabels)
 	if err != nil {
-		return &s2hv1beta1.QueueHistory{}, errors.Wrapf(err,
+		return &s2hv1.QueueHistory{}, errors.Wrapf(err,
 			"cannot list queue history, labels: %+v, namespace: %s", qLabels, comp.Namespace)
 	}
 
-	qHist := &s2hv1beta1.QueueHistory{}
+	qHist := &s2hv1.QueueHistory{}
 	if len(qHists.Items) > 1 {
 		qHist = &qHists.Items[1]
 	}
@@ -676,7 +816,7 @@ func (c *controller) replaceServiceFromReleaseName(svcName, prNamespace, activeN
 }
 
 func (c *controller) ensureTeamPullRequestNamespaceUpdated(teamName, targetNs string) error {
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.getTeam(teamName, teamComp); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return nil
@@ -695,18 +835,24 @@ func (c *controller) ensureTeamPullRequestNamespaceUpdated(teamName, targetNs st
 	return nil
 }
 
-func (c *controller) sendPullRequestTriggerReport(prTrigger *s2hv1beta1.PullRequestTrigger, prTriggerRPC *rpc.PullRequestTrigger) {
+func (c *controller) sendPullRequestTriggerReport(prTrigger *s2hv1.PullRequestTrigger, prTriggerRPC *rpc.PullRequestTrigger) {
 	configCtrl := c.GetConfigController()
 
-	compName := prTrigger.Spec.Component
+	bundleName := prTrigger.Spec.BundleName
 	prNumber := prTrigger.Spec.PRNumber
+	comps := prTrigger.Spec.Components
 	for _, reporter := range c.reporters {
+		noOfRetry := 0
+		if prTrigger.Spec.NoOfRetry != nil {
+			noOfRetry = *prTrigger.Spec.NoOfRetry
+		}
+
 		prTriggerRpt := s2h.NewPullRequestTriggerResultReporter(prTrigger.Status, c.configs, prTriggerRPC.TeamName,
-			compName, prTrigger.Spec.PRNumber, prTriggerRPC.Result, prTrigger.Spec.Image)
+			bundleName, prTrigger.Spec.PRNumber, prTriggerRPC.Result, noOfRetry, comps)
 
 		if err := reporter.SendPullRequestTriggerResult(configCtrl, prTriggerRpt); err != nil {
 			logger.Error(err, "cannot send pull request trigger result report",
-				"team", prTriggerRPC.TeamName, "component", compName, "prNumber", prNumber)
+				"team", prTriggerRPC.TeamName, "bundle", bundleName, "prNumber", prNumber)
 		}
 	}
 }

@@ -7,12 +7,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 	"github.com/agoda-com/samsahai/internal/queue"
 )
 
-func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv1beta1.ActivePromotion) error {
+func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
 	teamName := atpComp.Name
 	targetNs := c.getTargetNamespace(atpComp)
 	prevNs := atpComp.Status.PreviousActiveNamespace
@@ -23,10 +23,10 @@ func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv
 
 	if err := c.ensureQueuePromotedToActive(teamName, targetNs); err != nil {
 		if s2herrors.IsErrReleaseFailed(err) {
-			atpComp.Status.SetResult(s2hv1beta1.ActivePromotionFailure)
-			atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondRollbackStarted, corev1.ConditionTrue,
+			atpComp.Status.SetResult(s2hv1.ActivePromotionFailure)
+			atpComp.Status.SetCondition(s2hv1.ActivePromotionCondRollbackStarted, corev1.ConditionTrue,
 				"Rollback process has been started due to cannot apply active values file")
-			atpComp.SetState(s2hv1beta1.ActivePromotionRollback,
+			atpComp.SetState(s2hv1.ActivePromotionRollback,
 				"Active promotion failed due to cannot apply active values file")
 			return nil
 		}
@@ -46,13 +46,13 @@ func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv
 	}
 
 	logger.Info("active environment has been promoted successfully",
-		"team", teamName, "status", s2hv1beta1.ActivePromotionSuccess, "namespace", targetNs)
-	atpComp.Status.SetResult(s2hv1beta1.ActivePromotionSuccess)
-	atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondResultCollected, corev1.ConditionTrue,
+		"team", teamName, "status", s2hv1.ActivePromotionSuccess, "namespace", targetNs)
+	atpComp.Status.SetResult(s2hv1.ActivePromotionSuccess)
+	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondResultCollected, corev1.ConditionTrue,
 		"Result has been collected, promoted successfully")
-	atpComp.Status.SetCondition(s2hv1beta1.ActivePromotionCondActivePromoted, corev1.ConditionTrue,
+	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActivePromoted, corev1.ConditionTrue,
 		"Active environment has been promoted")
-	atpComp.SetState(s2hv1beta1.ActivePromotionDestroyingPreviousActive,
+	atpComp.SetState(s2hv1.ActivePromotionDestroyingPreviousActive,
 		"Destroying the previous active environment")
 
 	if err := c.runPostActive(ctx, atpComp); err != nil {
@@ -68,7 +68,7 @@ func (c *controller) ensureQueuePromotedToActive(teamName, ns string) error {
 		return errors.Wrapf(err, "cannot ensure environment promoted to active components, namespace %s", ns)
 	}
 
-	if q.Status.State == s2hv1beta1.Finished {
+	if q.Status.State == s2hv1.Finished {
 		if !q.IsDeploySuccess() {
 			return s2herrors.ErrReleaseFailed
 		}

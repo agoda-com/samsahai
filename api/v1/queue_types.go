@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
 	"sort"
@@ -76,7 +76,7 @@ const (
 	// Deleting queue is being removed
 	Deleting QueueState = "deleting"
 
-	// Cancelling queue is being cancelled (deleted by user)
+	// Cancelling queue is being canceled (deleted by user)
 	Cancelling QueueState = "cancelling"
 
 	// Finished queue is in finished state, waiting for next process (for preActive, promoteToActive)
@@ -153,6 +153,7 @@ type QueueCondition struct {
 
 type TestRunner struct {
 	Teamcity Teamcity `json:"teamcity,omitempty"`
+	Gitlab   Gitlab   `json:"gitlab,omitempty"`
 }
 
 type Teamcity struct {
@@ -168,6 +169,20 @@ func (t *Teamcity) SetTeamcity(branch, buildID, buildTypeID, buildURL string) {
 	t.BuildID = buildID
 	t.BuildTypeID = buildTypeID
 	t.BuildURL = buildURL
+}
+
+type Gitlab struct {
+	Branch         string `json:"branch,omitempty"`
+	PipelineID     string `json:"pipelineID,omitempty"`
+	PipelineURL    string `json:"pipelineURL,omitempty"`
+	PipelineNumber string `json:"pipelineNumber,omitempty"`
+}
+
+func (t *Gitlab) SetGitlab(branch, pipelineID, pipelineURL, pipelineNumber string) {
+	t.Branch = branch
+	t.PipelineID = pipelineID
+	t.PipelineURL = pipelineURL
+	t.PipelineNumber = pipelineNumber
 }
 
 type FailureComponent struct {
@@ -383,6 +398,10 @@ func (q *Queue) IsActivePromotionQueue() bool {
 		q.Spec.Type == QueueTypeDemoteFromActive
 }
 
+func (q *Queue) IsComponentUpgradeQueue() bool {
+	return q.Spec.Type == QueueTypeUpgrade
+}
+
 func (q *Queue) IsPullRequestQueue() bool {
 	return q.Spec.Type == QueueTypePullRequest
 }
@@ -408,6 +427,8 @@ func (q *Queue) GetQueueType() string {
 		return "component-upgrade"
 	case QueueTypeReverify:
 		return "reverification"
+	case QueueTypePullRequest:
+		return "pull-request"
 	default:
 		return "active-promotion"
 	}

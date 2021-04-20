@@ -2,8 +2,6 @@ package config
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -23,10 +21,11 @@ import (
 	k8scontroller "sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	s2hv1beta1 "github.com/agoda-com/samsahai/api/v1beta1"
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
+	conf "github.com/agoda-com/samsahai/internal/util/config"
 	"github.com/agoda-com/samsahai/internal/util/http"
 	"github.com/agoda-com/samsahai/internal/util/template"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
@@ -89,29 +88,29 @@ func New(mgr cr.Manager, options ...Option) internal.ConfigController {
 func (c *controller) SetupWithManager(mgr cr.Manager) error {
 	return cr.NewControllerManagedBy(mgr).
 		WithOptions(k8scontroller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}).
-		For(&s2hv1beta1.Config{}).
+		For(&s2hv1.Config{}).
 		Complete(c)
 }
 
 // Get returns configuration from Config CRD
-func (c *controller) Get(configName string) (*s2hv1beta1.Config, error) {
+func (c *controller) Get(configName string) (*s2hv1.Config, error) {
 	return c.getConfig(configName)
 }
 
 // GetComponents returns all components from `Configuration` that has valid `Source`
-func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+func (c *controller) GetComponents(configName string) (map[string]*s2hv1.Component, error) {
 	config, err := c.Get(configName)
 	if err != nil {
 		logger.Error(err, "cannot get Config", "name", configName)
-		return map[string]*s2hv1beta1.Component{}, err
+		return map[string]*s2hv1.Component{}, err
 	}
 
 	c.assignParent(&config.Status.Used)
 
-	filteredComps := map[string]*s2hv1beta1.Component{}
+	filteredComps := map[string]*s2hv1.Component{}
 
-	var comps []*s2hv1beta1.Component
-	var comp *s2hv1beta1.Component
+	var comps []*s2hv1.Component
+	var comp *s2hv1.Component
 
 	comps = append(comps, config.Status.Used.Components...)
 
@@ -120,13 +119,8 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Co
 		if len(comp.Dependencies) > 0 {
 			// add to comps
 			for _, dep := range comp.Dependencies {
-				comps = append(comps, &s2hv1beta1.Component{
-					Parent:    comp.Name,
-					Name:      dep.Name,
-					Image:     dep.Image,
-					Source:    dep.Source,
-					Schedules: dep.Schedules,
-				})
+				c := conf.Convert(dep, comp)
+				comps = append(comps, c)
 			}
 		}
 
@@ -143,10 +137,10 @@ func (c *controller) GetComponents(configName string) (map[string]*s2hv1beta1.Co
 }
 
 // GetParentComponents returns components that doesn't have parent (nil Parent)
-func (c *controller) GetParentComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+func (c *controller) GetParentComponents(configName string) (map[string]*s2hv1.Component, error) {
 	filteredComps, err := c.GetComponents(configName)
 	if err != nil {
-		return map[string]*s2hv1beta1.Component{}, err
+		return map[string]*s2hv1.Component{}, err
 	}
 
 	for name, v := range filteredComps {
@@ -158,41 +152,52 @@ func (c *controller) GetParentComponents(configName string) (map[string]*s2hv1be
 	return filteredComps, nil
 }
 
-// GetPullRequestComponents returns all pull request components from `Configuration` that has valid `Source`
-func (c *controller) GetPullRequestComponents(configName string) (map[string]*s2hv1beta1.Component, error) {
+// GetPullRequestComponents returns all pull request components of a given bundle name
+// with or without dependencies from `Configuration` that has valid `Source`
+func (c *controller) GetPullRequestComponents(configName, prBundleName string, depIncluded bool) (
+	map[string]*s2hv1.Component, error) {
+
 	config, err := c.Get(configName)
 	if err != nil {
 		logger.Error(err, "cannot get Config", "name", configName)
-		return map[string]*s2hv1beta1.Component{}, err
+		return map[string]*s2hv1.Component{}, err
 	}
 
-	if config.Status.Used.PullRequest == nil || config.Status.Used.PullRequest.Components == nil {
-		return map[string]*s2hv1beta1.Component{}, nil
+	if config.Status.Used.PullRequest == nil || config.Status.Used.PullRequest.Bundles == nil {
+		return map[string]*s2hv1.Component{}, nil
 	}
 
 	filteredComps, err := c.GetComponents(configName)
 	if err != nil {
-		return map[string]*s2hv1beta1.Component{}, err
+		return map[string]*s2hv1.Component{}, err
 	}
 
-	filteredPRComps := map[string]*s2hv1beta1.Component{}
-	prComps := config.Status.Used.PullRequest.Components
+	filteredPRComps := map[string]*s2hv1.Component{}
+	prBundles := config.Status.Used.PullRequest.Bundles
 	for compName, comp := range filteredComps {
-		for _, prComp := range prComps {
-			if prComp.Name == compName {
-				filteredPRComps[compName] = &s2hv1beta1.Component{
-					Parent: comp.Parent,
-					Name:   prComp.Name,
-					Chart:  comp.Chart,
-					Image:  prComp.Image,
-					Source: prComp.Source,
+		for _, prBundle := range prBundles {
+			if prBundle.Name == prBundleName {
+				for _, prComp := range prBundle.Components {
+					if prComp.Name == compName {
+						filteredPRComps[compName] = &s2hv1.Component{
+							Parent: comp.Parent,
+							Name:   prComp.Name,
+							Chart:  comp.Chart,
+							Image:  prComp.Image,
+							Source: prComp.Source,
+						}
+					}
 				}
-			}
 
-			for _, prDepCompName := range prComp.Dependencies {
-				if prDepCompName == compName {
-					filteredPRComps[compName] = comp
+				if depIncluded {
+					for _, prDepCompName := range prBundle.Dependencies {
+						if prDepCompName == compName {
+							filteredPRComps[compName] = comp
+						}
+					}
 				}
+
+				break
 			}
 		}
 	}
@@ -201,11 +206,11 @@ func (c *controller) GetPullRequestComponents(configName string) (map[string]*s2
 }
 
 // GetBundles returns all component bundles
-func (c *controller) GetBundles(configName string) (s2hv1beta1.ConfigBundles, error) {
+func (c *controller) GetBundles(configName string) (s2hv1.ConfigBundles, error) {
 	config, err := c.Get(configName)
 	if err != nil {
 		logger.Error(err, "cannot get Config", "name", configName)
-		return s2hv1beta1.ConfigBundles{}, err
+		return s2hv1.ConfigBundles{}, err
 	}
 
 	return config.Status.Used.Bundles, nil
@@ -222,8 +227,8 @@ func (c *controller) GetPriorityQueues(configName string) ([]string, error) {
 	return config.Status.Used.PriorityQueues, nil
 }
 
-// GetPullRequestComponentDependencies returns a pull request component dependencies from configuration
-func (c *controller) GetPullRequestComponentDependencies(configName, prCompName string) ([]string, error) {
+// GetPullRequestBundleDependencies returns dependencies list of a pull request bundle from configuration
+func (c *controller) GetPullRequestBundleDependencies(configName, prBundleName string) ([]string, error) {
 	config, err := c.Get(configName)
 	if err != nil {
 		logger.Error(err, "cannot get Config", "name", configName)
@@ -232,9 +237,9 @@ func (c *controller) GetPullRequestComponentDependencies(configName, prCompName 
 
 	prDeps := make([]string, 0)
 	if config.Status.Used.PullRequest != nil {
-		for _, prComp := range config.Status.Used.PullRequest.Components {
-			if prComp.Name == prCompName {
-				prDeps = prComp.Dependencies
+		for _, prBundle := range config.Status.Used.PullRequest.Bundles {
+			if prBundle.Name == prBundleName {
+				prDeps = prBundle.Dependencies
 				break
 			}
 		}
@@ -244,23 +249,23 @@ func (c *controller) GetPullRequestComponentDependencies(configName, prCompName 
 }
 
 // GetPullRequestConfig returns a configuration of pull request
-func (c *controller) GetPullRequestConfig(configName string) (*s2hv1beta1.ConfigPullRequest, error) {
+func (c *controller) GetPullRequestConfig(configName string) (*s2hv1.ConfigPullRequest, error) {
 	config, err := c.Get(configName)
 	if err != nil {
 		logger.Error(err, "cannot get Config", "name", configName)
-		return &s2hv1beta1.ConfigPullRequest{}, err
+		return &s2hv1.ConfigPullRequest{}, err
 	}
 
 	prConfig := config.Status.Used.PullRequest
 	if prConfig == nil {
-		prConfig = &s2hv1beta1.ConfigPullRequest{}
+		prConfig = &s2hv1.ConfigPullRequest{}
 	}
 
 	return prConfig, nil
 }
 
 // Update updates Config CRD
-func (c *controller) Update(config *s2hv1beta1.Config) error {
+func (c *controller) Update(config *s2hv1.Config) error {
 	if err := c.client.Update(context.TODO(), config); err != nil {
 		return err
 	}
@@ -288,21 +293,21 @@ func (c *controller) Delete(configName string) error {
 }
 
 // GetEnvValues returns component values per component name by the given env type
-func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType, teamName string) (
-	map[string]s2hv1beta1.ComponentValues, error) {
+func GetEnvValues(config *s2hv1.ConfigSpec, envType s2hv1.EnvType, teamName string) (
+	map[string]s2hv1.ComponentValues, error) {
 
 	chartValuesURLs, ok := config.Envs[envType]
 	if !ok {
-		return map[string]s2hv1beta1.ComponentValues{}, nil
+		return map[string]s2hv1.ComponentValues{}, nil
 	}
 
 	var err error
-	out := make(map[string]s2hv1beta1.ComponentValues)
+	out := make(map[string]s2hv1.ComponentValues)
 
 	for chart := range chartValuesURLs {
 		out[chart], err = GetEnvComponentValues(config, chart, teamName, envType)
 		if err != nil {
-			return map[string]s2hv1beta1.ComponentValues{}, err
+			return map[string]s2hv1.ComponentValues{}, err
 		}
 	}
 
@@ -310,8 +315,8 @@ func GetEnvValues(config *s2hv1beta1.ConfigSpec, envType s2hv1beta1.EnvType, tea
 }
 
 // GetEnvComponentValues returns component values by the given env type and component name
-func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName, teamName string, envType s2hv1beta1.EnvType) (
-	s2hv1beta1.ComponentValues, error) {
+func GetEnvComponentValues(config *s2hv1.ConfigSpec, compName, teamName string, envType s2hv1.EnvType) (
+	s2hv1.ComponentValues, error) {
 
 	opts := []http.Option{
 		http.WithTimeout(10 * time.Second),
@@ -319,12 +324,12 @@ func GetEnvComponentValues(config *s2hv1beta1.ConfigSpec, compName, teamName str
 
 	chartValuesURLs, ok := config.Envs[envType]
 	if !ok {
-		return s2hv1beta1.ComponentValues{}, nil
+		return s2hv1.ComponentValues{}, nil
 	}
 
 	urls, ok := chartValuesURLs[compName]
 	if !ok {
-		return s2hv1beta1.ComponentValues{}, nil
+		return s2hv1.ComponentValues{}, nil
 	}
 
 	baseValues := map[string]interface{}{}
@@ -390,7 +395,7 @@ func (c *controller) deleteCronJobAndMatchingJobs(cronJob batchv1beta1.CronJob) 
 	return nil
 }
 
-func (c *controller) getCreatingCronJobs(namespace, teamName string, comp s2hv1beta1.Component,
+func (c *controller) getCreatingCronJobs(namespace, teamName string, comp s2hv1.Component,
 	cronJobList *batchv1beta1.CronJobList) []batchv1beta1.CronJob {
 
 	creatingCronJobs := make([]batchv1beta1.CronJob, 0)
@@ -468,7 +473,7 @@ func (c *controller) generateCronJob(cronJobName, cronJobCmd, schedule, compName
 	return cronJob
 }
 
-func (c *controller) getDeletingCronJobs(teamName string, comp s2hv1beta1.Component,
+func (c *controller) getDeletingCronJobs(teamName string, comp s2hv1.Component,
 	cronJobList *batchv1beta1.CronJobList) []batchv1beta1.CronJob {
 
 	deletingCronJobObjs := make([]batchv1beta1.CronJob, 0)
@@ -495,7 +500,7 @@ func (c *controller) getDeletingCronJobs(teamName string, comp s2hv1beta1.Compon
 	return deletingCronJobObjs
 }
 
-func (c *controller) getUpdatedCronJobs(namespace, teamName string, comp *s2hv1beta1.Component,
+func (c *controller) getUpdatedCronJobs(namespace, teamName string, comp *s2hv1.Component,
 	cronJobList *batchv1beta1.CronJobList) ([]batchv1beta1.CronJob, []batchv1beta1.CronJob) {
 
 	creatingCronJobObjs := c.getCreatingCronJobs(namespace, teamName, *comp, cronJobList)
@@ -533,7 +538,7 @@ func (c *controller) getCronJobLabels(cronJobName, teamName, compName string) ma
 
 // assignParent assigns Parent to SubComponent
 // only support 1 level of dependencies
-func (c *controller) assignParent(config *s2hv1beta1.ConfigSpec) {
+func (c *controller) assignParent(config *s2hv1.ConfigSpec) {
 	comps := config.Components
 	for i := range config.Components {
 		for j := range comps[i].Dependencies {
@@ -542,8 +547,8 @@ func (c *controller) assignParent(config *s2hv1beta1.ConfigSpec) {
 	}
 }
 
-func (c *controller) getConfig(configName string) (*s2hv1beta1.Config, error) {
-	config := &s2hv1beta1.Config{}
+func (c *controller) getConfig(configName string) (*s2hv1.Config, error) {
+	config := &s2hv1.Config{}
 	if err := c.client.Get(context.TODO(), types.NamespacedName{Name: configName}, config); err != nil {
 		return config, err
 	}
@@ -583,12 +588,12 @@ func (c *controller) ensureConfigChanged(teamName, namespace string) error {
 	return nil
 }
 
-func (c *controller) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) error {
-	template := config.Spec.Template
-	if template != "" && template != config.Name {
-		templateObj, err := c.getConfig(template)
+func (c *controller) EnsureConfigTemplateChanged(config *s2hv1.Config) error {
+	configTemplate := config.Spec.Template
+	if configTemplate != "" && configTemplate != config.Name {
+		templateObj, err := c.getConfig(configTemplate)
 		if err != nil {
-			logger.Error(err, "config template not found", "template", template)
+			logger.Error(err, "config template not found", "template", configTemplate)
 			return err
 		}
 
@@ -598,11 +603,9 @@ func (c *controller) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) erro
 
 	} else {
 		config.Status.Used = config.Spec
-
 	}
-	bytesConfigComp, _ := json.Marshal(&config.Status.Used)
-	bytesHashID := md5.Sum(bytesConfigComp)
-	hashID := fmt.Sprintf("%x", bytesHashID)
+
+	hashID := internal.GenConfigHashID(config.Status)
 
 	if !config.Status.SyncTemplate {
 		config.Status.SyncTemplate = true
@@ -613,7 +616,7 @@ func (c *controller) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) erro
 		config.Status.SyncTemplate = true
 
 		config.Status.SetCondition(
-			s2hv1beta1.ConfigUsedUpdated,
+			s2hv1.ConfigUsedUpdated,
 			corev1.ConditionFalse,
 			"need update config")
 	}
@@ -621,7 +624,7 @@ func (c *controller) EnsureConfigTemplateChanged(config *s2hv1beta1.Config) erro
 	return nil
 }
 
-func (c *controller) detectSchedulerChanged(comps map[string]*s2hv1beta1.Component, teamName, namespace string) error {
+func (c *controller) detectSchedulerChanged(comps map[string]*s2hv1.Component, teamName, namespace string) error {
 	ctx := context.TODO()
 	for _, comp := range comps {
 		cronJobList := &batchv1beta1.CronJobList{}
@@ -657,9 +660,9 @@ func (c *controller) detectSchedulerChanged(comps map[string]*s2hv1beta1.Compone
 	return nil
 }
 
-func (c *controller) detectRemovedDesiredComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
+func (c *controller) detectRemovedDesiredComponents(comps map[string]*s2hv1.Component, namespace string) error {
 	ctx := context.Background()
-	desiredComps := &s2hv1beta1.DesiredComponentList{}
+	desiredComps := &s2hv1.DesiredComponentList{}
 	if err := c.client.List(ctx, desiredComps, &client.ListOptions{Namespace: namespace}); err != nil {
 		logger.Error(err, "cannot list desired components", "namespace", namespace)
 		return err
@@ -682,14 +685,14 @@ func (c *controller) detectRemovedDesiredComponents(comps map[string]*s2hv1beta1
 	return nil
 }
 
-func (c *controller) detectRemovedTeamDesiredComponents(comps map[string]*s2hv1beta1.Component, teamName string) error {
+func (c *controller) detectRemovedTeamDesiredComponents(comps map[string]*s2hv1.Component, teamName string) error {
 	if c.s2hCtrl == nil {
 		logger.Debug("no s2h ctrl, skip detect team desired", "team", teamName)
 		return nil
 	}
 
 	ctx := context.Background()
-	teamComp := &s2hv1beta1.Team{}
+	teamComp := &s2hv1.Team{}
 	if err := c.s2hCtrl.GetTeam(teamName, teamComp); err != nil {
 		logger.Error(err, "cannot get team", "team", teamName)
 		return err
@@ -713,9 +716,9 @@ func (c *controller) detectRemovedTeamDesiredComponents(comps map[string]*s2hv1b
 }
 
 // TODO: should remove queue from desiredcomponent controller
-func (c *controller) detectRemovedQueues(comps map[string]*s2hv1beta1.Component, teamName, namespace string) error {
+func (c *controller) detectRemovedQueues(comps map[string]*s2hv1.Component, teamName, namespace string) error {
 	ctx := context.Background()
-	queueList := &s2hv1beta1.QueueList{}
+	queueList := &s2hv1.QueueList{}
 	if err := c.client.List(ctx, queueList, &client.ListOptions{Namespace: namespace}); err != nil {
 		logger.Error(err, "cannot list queues", "namespace", namespace)
 		return err
@@ -723,7 +726,7 @@ func (c *controller) detectRemovedQueues(comps map[string]*s2hv1beta1.Component,
 
 	for i := len(queueList.Items) - 1; i >= 0; i-- {
 		q := queueList.Items[i]
-		newComps := make([]*s2hv1beta1.QueueComponent, 0)
+		newComps := make([]*s2hv1.QueueComponent, 0)
 		for _, qComp := range q.Spec.Components {
 			if _, ok := comps[qComp.Name]; ok {
 				newComps = append(newComps, qComp)
@@ -751,9 +754,9 @@ func (c *controller) detectRemovedQueues(comps map[string]*s2hv1beta1.Component,
 	return nil
 }
 
-func (c *controller) detectRemovedStableComponents(comps map[string]*s2hv1beta1.Component, namespace string) error {
+func (c *controller) detectRemovedStableComponents(comps map[string]*s2hv1.Component, namespace string) error {
 	ctx := context.Background()
-	stableComps := &s2hv1beta1.StableComponentList{}
+	stableComps := &s2hv1.StableComponentList{}
 	if err := c.client.List(ctx, stableComps, &client.ListOptions{Namespace: namespace}); err != nil {
 		logger.Error(err, "cannot list stable components", "namespace", namespace)
 		return err
@@ -783,7 +786,7 @@ func (c *controller) getCronJobSuffix(schedule string) string {
 	return suffix
 }
 
-func (c *controller) updateChildrenConfig(config s2hv1beta1.Config) error {
+func (c *controller) updateChildrenConfig(config s2hv1.Config) error {
 	if err := c.Update(&config); err != nil {
 		return err
 	}
@@ -792,7 +795,7 @@ func (c *controller) updateChildrenConfig(config s2hv1beta1.Config) error {
 
 func (c *controller) ensureTriggerChildrenConfig(name string) error {
 	ctx := context.TODO()
-	configs := &s2hv1beta1.ConfigList{}
+	configs := &s2hv1.ConfigList{}
 	if err := c.client.List(ctx, configs, &client.ListOptions{}); err != nil {
 		logger.Error(err, "cannot list Configs ")
 		return err
@@ -808,14 +811,14 @@ func (c *controller) ensureTriggerChildrenConfig(name string) error {
 	return nil
 }
 
-func ValidateConfigRequiredField(config *s2hv1beta1.Config) error {
+func ValidateConfigRequiredField(config *s2hv1.Config) error {
 	if len(config.Status.Used.Components) == 0 || config.Status.Used.Staging == nil {
 		return errors.ErrConfigurationRequiredField
 	}
 	return nil
 }
 
-func applyConfigTemplate(config, configTemplate *s2hv1beta1.Config) error {
+func applyConfigTemplate(config, configTemplate *s2hv1.Config) error {
 	config.Status.Used = config.Spec
 	if err := mergo.Merge(&config.Status.Used, configTemplate.Spec); err != nil {
 		return err
@@ -825,8 +828,9 @@ func applyConfigTemplate(config, configTemplate *s2hv1beta1.Config) error {
 }
 
 func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
-	ctx := context.Background()
-	configComp := &s2hv1beta1.Config{}
+	ctx := context.TODO()
+
+	configComp := &s2hv1.Config{}
 	if err := c.client.Get(ctx, req.NamespacedName, configComp); err != nil {
 		if k8serrors.IsNotFound(err) {
 			// Object not found, return. Created objects are automatically garbage collected.
@@ -842,19 +846,21 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 		logger.Debug("no s2h ctrl, skip detect changed component", "team", req.Name)
 		return cr.Result{}, nil
 	}
+
 	if err := c.EnsureConfigTemplateChanged(configComp); err != nil {
 		return cr.Result{}, err
 	}
 
-	if !configComp.Status.IsConditionTrue(s2hv1beta1.ConfigUsedUpdated) {
+	if !configComp.Status.IsConditionTrue(s2hv1.ConfigUsedUpdated) {
 		configComp.Status.SetCondition(
-			s2hv1beta1.ConfigUsedUpdated,
+			s2hv1.ConfigUsedUpdated,
 			corev1.ConditionTrue,
 			"updated config template successfully")
 
 		if err := c.Update(configComp); err != nil {
 			return reconcile.Result{}, err
 		}
+		return cr.Result{}, nil
 	}
 
 	if err := c.ensureTriggerChildrenConfig(configComp.Name); err != nil {
@@ -862,29 +868,31 @@ func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
 	}
 
 	if err := ValidateConfigRequiredField(configComp); err != nil {
+		logger.Error(err, "cannot validate required fields of config", "team", req.Name)
 		configComp.Status.SetCondition(
-			s2hv1beta1.ConfigRequiredFieldsValidated,
+			s2hv1.ConfigRequiredFieldsValidated,
 			corev1.ConditionFalse,
 			"invalid required fields")
 
 		if err := c.Update(configComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update config conditions when require fields is invalid")
 		}
-		return cr.Result{}, err
+		return cr.Result{}, nil
 	}
 
-	if !configComp.Status.IsConditionTrue(s2hv1beta1.ConfigRequiredFieldsValidated) {
+	if !configComp.Status.IsConditionTrue(s2hv1.ConfigRequiredFieldsValidated) {
 		configComp.Status.SetCondition(
-			s2hv1beta1.ConfigRequiredFieldsValidated,
+			s2hv1.ConfigRequiredFieldsValidated,
 			corev1.ConditionTrue,
 			"validate required fields successfully")
 
 		if err := c.Update(configComp); err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "cannot update config conditions when require fields is valid")
 		}
+		return cr.Result{}, nil
 	}
 
-	teamComp := s2hv1beta1.Team{}
+	teamComp := s2hv1.Team{}
 	if err := c.s2hCtrl.GetTeam(req.Name, &teamComp); err != nil {
 		logger.Error(err, "cannot get team", "team", req.Name)
 		return cr.Result{}, err
