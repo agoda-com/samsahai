@@ -17,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -1828,6 +1829,61 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Update team template error")
 
 	}, 15)
+
+	It("should successfully create staging resources quota from deploy engine", func(done Done) {
+		defer close(done)
+		setupSamsahai(true)
+
+		By("Creating Config")
+		config := mockConfig
+		Expect(client.Create(ctx, &config)).To(BeNil())
+
+		By("Creating Team")
+		team := mockTeam
+		team.Spec.Resources = corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("1"),
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
+		}
+		Expect(client.Create(ctx, &team)).To(BeNil())
+
+		By("Verifying namespace and config have been created")
+		err = wait.PollImmediate(verifyTime1s, verifyNSCreatedTimeout, func() (ok bool, err error) {
+			namespace := corev1.Namespace{}
+			if err := client.Get(ctx, types.NamespacedName{Name: stgNamespace}, &namespace); err != nil {
+				return false, nil
+			}
+
+			config := s2hv1.Config{}
+			err = client.Get(ctx, types.NamespacedName{Name: team.Name}, &config)
+			if err != nil {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify namespace and config error")
+
+		By("Verifying resources quota have been created correctly")
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+			quota := corev1.ResourceQuota{}
+			if err := client.Get(ctx, types.NamespacedName{
+				Name:      stgNamespace + internal.ResourcesQuotaSuffix,
+				Namespace: stgNamespace,
+			}, &quota); err != nil {
+				return false, nil
+			}
+
+			if quota.Status.Hard.Cpu() != nil && quota.Status.Hard.Memory() != nil &&
+				quota.Status.Hard.Cpu().Equal(*samsahaiConfig.InitialResourcesQuota.Cpu()) &&
+				quota.Status.Hard.Memory().Equal(*samsahaiConfig.InitialResourcesQuota.Memory()) {
+				return true, nil
+			}
+
+			return false, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify resources quota error")
+
+	}, 30)
 })
 
 var (
@@ -1847,6 +1903,12 @@ var (
 		},
 		SamsahaiCredential: internal.SamsahaiCredential{
 			InternalAuthToken: samsahaiAuthToken,
+		},
+		InitialResourcesQuota: corev1.ResourceList{
+			corev1.ResourceRequestsCPU: resource.MustParse("2"),
+			corev1.ResourceLimitsCPU: resource.MustParse("2"),
+			corev1.ResourceRequestsMemory: resource.MustParse("2Gi"),
+			corev1.ResourceLimitsMemory: resource.MustParse("2Gi"),
 		},
 	}
 

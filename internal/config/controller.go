@@ -227,6 +227,38 @@ func (c *controller) GetPriorityQueues(configName string) ([]string, error) {
 	return config.Status.Used.PriorityQueues, nil
 }
 
+// GetPullRequestConfig returns a configuration of staging
+func (c *controller) GetStagingConfig(configName string) (*s2hv1.ConfigStaging, error) {
+	config, err := c.Get(configName)
+	if err != nil {
+		logger.Error(err, "cannot get Config", "name", configName)
+		return &s2hv1.ConfigStaging{}, err
+	}
+
+	stgConfig := config.Status.Used.Staging
+	if stgConfig == nil {
+		stgConfig = &s2hv1.ConfigStaging{}
+	}
+
+	return stgConfig, nil
+}
+
+// GetPullRequestConfig returns a configuration of pull request
+func (c *controller) GetPullRequestConfig(configName string) (*s2hv1.ConfigPullRequest, error) {
+	config, err := c.Get(configName)
+	if err != nil {
+		logger.Error(err, "cannot get Config", "name", configName)
+		return &s2hv1.ConfigPullRequest{}, err
+	}
+
+	prConfig := config.Status.Used.PullRequest
+	if prConfig == nil {
+		prConfig = &s2hv1.ConfigPullRequest{}
+	}
+
+	return prConfig, nil
+}
+
 // GetPullRequestBundleDependencies returns dependencies list of a pull request bundle from configuration
 func (c *controller) GetPullRequestBundleDependencies(configName, prBundleName string) ([]string, error) {
 	config, err := c.Get(configName)
@@ -246,22 +278,6 @@ func (c *controller) GetPullRequestBundleDependencies(configName, prBundleName s
 	}
 
 	return prDeps, nil
-}
-
-// GetPullRequestConfig returns a configuration of pull request
-func (c *controller) GetPullRequestConfig(configName string) (*s2hv1.ConfigPullRequest, error) {
-	config, err := c.Get(configName)
-	if err != nil {
-		logger.Error(err, "cannot get Config", "name", configName)
-		return &s2hv1.ConfigPullRequest{}, err
-	}
-
-	prConfig := config.Status.Used.PullRequest
-	if prConfig == nil {
-		prConfig = &s2hv1.ConfigPullRequest{}
-	}
-
-	return prConfig, nil
 }
 
 // Update updates Config CRD
@@ -585,6 +601,10 @@ func (c *controller) ensureConfigChanged(teamName, namespace string) error {
 		return err
 	}
 
+	if err := c.ensureStagingQuotaFromDeployEngine(teamName, namespace); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -793,21 +813,31 @@ func (c *controller) updateChildrenConfig(config s2hv1.Config) error {
 	return nil
 }
 
-func (c *controller) ensureTriggerChildrenConfig(name string) error {
+func (c *controller) ensureTriggerChildrenConfig(templateName string) error {
 	ctx := context.TODO()
 	configs := &s2hv1.ConfigList{}
 	if err := c.client.List(ctx, configs, &client.ListOptions{}); err != nil {
-		logger.Error(err, "cannot list Configs ")
+		logger.Error(err, "cannot list Configs")
 		return err
 	}
-	for _, conf := range configs.Items {
-		if conf.Spec.Template == name {
-			conf.Status.SyncTemplate = false
-			if err := c.updateChildrenConfig(conf); err != nil {
+	for _, config := range configs.Items {
+		if config.Spec.Template == templateName {
+			config.Status.SyncTemplate = false
+			if err := c.updateChildrenConfig(config); err != nil {
 				return err
 			}
 		}
 	}
+	return nil
+}
+
+func (c *controller) ensureStagingQuotaFromDeployEngine(configName, namespace string) error {
+	if err := c.s2hCtrl.CreateStagingEnvironment(configName, namespace); err != nil {
+		logger.Error(err, "cannot create staging environment",
+			"team", configName, "namespace", namespace)
+		return err
+	}
+
 	return nil
 }
 

@@ -61,6 +61,8 @@ const (
 	VKPRTriggerMaxRetry               = "pr-trigger-max-retry"
 	VKPRTriggerPollingTime            = "pr-trigger-polling-time"
 	VKPullRequestQueueMaxHistoryDays  = "pr-queue-max-history-days"
+	VKInitialResourcesQuotaCPU        = "initial-resources-quota-cpu"
+	VKInitialResourcesQuotaMemory     = "initial-resources-quota-memory"
 )
 
 type ConfigurationJSON struct {

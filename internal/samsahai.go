@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
@@ -80,6 +81,9 @@ type SamsahaiConfig struct {
 	PostNamespaceCreation *struct {
 		s2hv1.CommandAndArgs
 	} `json:"postNamespaceCreation,omitempty" yaml:"postNamespaceCreation,omitempty"`
+
+	// InitialResourcesQuota defines required minimum cpu/memory of resources quota which will be used for mock deployment engine
+	InitialResourcesQuota corev1.ResourceList `json:"initialResourcesQuota,omitempty" yaml:"initialResourcesQuota,omitempty"`
 
 	// StagingEnvs defines environment variables of staging controller
 	StagingEnvs map[string]string `json:"stagingEnvs,omitempty" yaml:"stagingEnvs,omitempty"`

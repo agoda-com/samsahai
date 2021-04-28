@@ -32,6 +32,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	httpSwagger "github.com/swaggo/http-swagger"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -178,6 +180,10 @@ func startCtrlCmd() *cobra.Command {
 						Password:     viper.GetString(s2h.VKMSTeamsPassword),
 					},
 				},
+				InitialResourcesQuota: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse(viper.GetString(s2h.VKInitialResourcesQuotaCPU)),
+					corev1.ResourceMemory: resource.MustParse(viper.GetString(s2h.VKInitialResourcesQuotaMemory)),
+				},
 			}
 
 			configPath := viper.GetString(s2h.VKS2HConfigPath)
@@ -286,6 +292,10 @@ func startCtrlCmd() *cobra.Command {
 		"Waiting duration time to re-check pull request image in the registry.")
 	cmd.Flags().Int(s2h.VKPullRequestQueueMaxHistoryDays, 7,
 		"Max stored pull request queue histories in day.")
+	cmd.Flags().String(s2h.VKInitialResourcesQuotaCPU, "3",
+		"Required minimum cpu of resources quota which will be used for mock deployment engine.")
+	cmd.Flags().String(s2h.VKInitialResourcesQuotaMemory, "3Gi",
+		"Required minimum memory of resources quota which will be used for mock deployment engine.")
 	return cmd
 }
 

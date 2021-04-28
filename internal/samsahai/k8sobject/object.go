@@ -39,6 +39,17 @@ func getDefaultLabelsWithVersion(teamName string) map[string]string {
 	return defaultLabelsWithVersion
 }
 
+func GetEmptyResourceQuota(namespaceName string) runtime.Object {
+	resourceQuota := corev1.ResourceQuota{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      namespaceName + "-resources",
+			Namespace: namespaceName,
+		},
+	}
+
+	return &resourceQuota
+}
+
 func GetResourceQuota(teamComp *s2hv1.Team, namespaceName string, resources corev1.ResourceList) runtime.Object {
 	cpuResource := teamComp.Status.Used.Resources.Cpu()
 	memoryResource := teamComp.Status.Used.Resources.Memory()

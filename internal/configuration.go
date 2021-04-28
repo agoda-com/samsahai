@@ -24,6 +24,9 @@ type ConfigController interface {
 	// GetPriorityQueues returns a list of priority queues which defined in Config
 	GetPriorityQueues(configName string) ([]string, error)
 
+	// GetStagingConfig returns a configuration of staging
+	GetStagingConfig(configName string) (*s2hv1.ConfigStaging, error)
+
 	// GetPullRequestConfig returns a configuration of pull request
 	GetPullRequestConfig(configName string) (*s2hv1.ConfigPullRequest, error)
 

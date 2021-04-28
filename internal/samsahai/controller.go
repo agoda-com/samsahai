@@ -289,14 +289,14 @@ func (c *controller) GetPlugins() map[string]internal.Plugin {
 
 type TeamNamespaceStatusOption func(teamComp *s2hv1.Team) (string, corev1.ResourceList, s2hv1.TeamConditionType)
 
-func withTeamStagingNamespaceStatus(namespace string, isDelete ...bool) TeamNamespaceStatusOption {
+func withTeamStagingNamespaceStatus(namespace string, resources corev1.ResourceList, isDelete ...bool) TeamNamespaceStatusOption {
 	return func(teamComp *s2hv1.Team) (string, corev1.ResourceList, s2hv1.TeamConditionType) {
 		teamComp.Status.Namespace.Staging = namespace
 		if len(isDelete) > 0 && isDelete[0] {
 			teamComp.Status.Namespace.Staging = ""
 		}
 
-		return namespace, nil, s2hv1.TeamNamespaceStagingCreated
+		return namespace, resources, s2hv1.TeamNamespaceStagingCreated
 	}
 }
 
@@ -380,7 +380,26 @@ func getPostPullRequestNamespaceRunConditionType(namespace string) s2hv1.TeamCon
 }
 
 func (c *controller) CreateStagingEnvironment(teamName, namespace string) error {
-	return c.createNamespace(teamName, withTeamStagingNamespaceStatus(namespace))
+	stgConfig, err := c.configCtrl.GetStagingConfig(teamName)
+	if err != nil {
+		logger.Error(err, "cannot get staging config", "team", teamName)
+		return err
+	}
+
+	teamComp := &s2hv1.Team{}
+	if err := c.getTeam(teamName, teamComp); err != nil {
+		logger.Error(err, "cannot get Team", "team", teamName)
+		return err
+	}
+
+	var resources corev1.ResourceList
+	if len(teamComp.Status.Used.Resources) > 0 {
+		if stgConfig.Deployment.Engine != nil && *stgConfig.Deployment.Engine == mock.EngineName {
+			resources = c.configs.InitialResourcesQuota
+		}
+	}
+
+	return c.createNamespace(teamName, withTeamStagingNamespaceStatus(namespace, resources))
 }
 
 func (c *controller) CreatePreActiveEnvironment(teamName, namespace string) error {
@@ -651,11 +670,18 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1.Team, namespace st
 	}
 
 	if len(resources) > 0 {
+		// custom resources were set
 		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, resources)
 		k8sObjects = append(k8sObjects, quotaObj)
 	} else if len(teamComp.Status.Used.Resources) > 0 {
 		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, nil)
 		k8sObjects = append(k8sObjects, quotaObj)
+	} else {
+		// no resources quota defined
+		quotaObj := k8sobject.GetEmptyResourceQuota(namespace)
+		if err := c.client.Delete(context.TODO(), quotaObj); err != nil && !k8serrors.IsNotFound(err) {
+			return errors.Wrapf(err, "cannot delete resources quota of %s namespace", namespace)
+		}
 	}
 
 	for _, k8sObject := range k8sObjects {
@@ -733,7 +759,7 @@ func getAllTeamNamespaces(teamComp *s2hv1.Team, isDelete bool) []TeamNamespaceSt
 	var teamNsOpts []TeamNamespaceStatusOption
 	stagingNs := teamComp.Status.Namespace.Staging
 	if !strings.EqualFold("", stagingNs) {
-		teamNsOpts = append(teamNsOpts, withTeamStagingNamespaceStatus(stagingNs, isDelete))
+		teamNsOpts = append(teamNsOpts, withTeamStagingNamespaceStatus(stagingNs, nil, isDelete))
 	}
 
 	previousActiveNs := teamComp.Status.Namespace.PreviousActive
