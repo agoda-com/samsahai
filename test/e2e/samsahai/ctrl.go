@@ -1905,10 +1905,10 @@ var (
 			InternalAuthToken: samsahaiAuthToken,
 		},
 		InitialResourcesQuota: corev1.ResourceList{
-			corev1.ResourceRequestsCPU: resource.MustParse("2"),
-			corev1.ResourceLimitsCPU: resource.MustParse("2"),
+			corev1.ResourceRequestsCPU:    resource.MustParse("2"),
+			corev1.ResourceLimitsCPU:      resource.MustParse("2"),
 			corev1.ResourceRequestsMemory: resource.MustParse("2Gi"),
-			corev1.ResourceLimitsMemory: resource.MustParse("2Gi"),
+			corev1.ResourceLimitsMemory:   resource.MustParse("2Gi"),
 		},
 	}
 

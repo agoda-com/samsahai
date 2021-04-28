@@ -85,7 +85,9 @@ type SamsahaiConfig struct {
 	// CheckerResources defines cpu/memory of cronjobs for sending new component webhook
 	CheckerResources corev1.ResourceList `json:"checkerResources,omitempty" yaml:"checkerResources,omitempty"`
 
-	// InitialResourcesQuota defines required minimum cpu/memory of resources quota which will be used for mock deployment engine
+	// InitialResourcesQuota defines required minimum cpu/memory of resources quota
+	// which will be used for mock deployment engine.
+	// It will be activated for only the Team that have resources quota defined.
 	InitialResourcesQuota corev1.ResourceList `json:"initialResourcesQuota,omitempty" yaml:"initialResourcesQuota,omitempty"`
 
 	// StagingEnvs defines environment variables of staging controller
