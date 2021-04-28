@@ -380,23 +380,9 @@ func getPostPullRequestNamespaceRunConditionType(namespace string) s2hv1.TeamCon
 }
 
 func (c *controller) CreateStagingEnvironment(teamName, namespace string) error {
-	stgConfig, err := c.configCtrl.GetStagingConfig(teamName)
+	resources, err := c.EnsureStagingResourcesQuota(teamName, namespace, true)
 	if err != nil {
-		logger.Error(err, "cannot get staging config", "team", teamName)
-		return err
-	}
-
-	teamComp := &s2hv1.Team{}
-	if err := c.getTeam(teamName, teamComp); err != nil {
-		logger.Error(err, "cannot get Team", "team", teamName)
-		return err
-	}
-
-	var resources corev1.ResourceList
-	if len(teamComp.Status.Used.Resources) > 0 {
-		if stgConfig.Deployment.Engine != nil && *stgConfig.Deployment.Engine == mock.EngineName {
-			resources = c.configs.InitialResourcesQuota
-		}
+		return errors.Wrapf(err, "cannot ensure staging resources quota")
 	}
 
 	return c.createNamespace(teamName, withTeamStagingNamespaceStatus(namespace, resources))
@@ -1378,6 +1364,54 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 	}
 
 	return nil
+}
+
+func (c *controller) EnsureStagingResourcesQuota(teamName, namespace string, dryRun bool) (corev1.ResourceList, error) {
+	stgConfig, err := c.configCtrl.GetStagingConfig(teamName)
+	if err != nil {
+		logger.Error(err, "cannot get staging config", "team", teamName)
+		return corev1.ResourceList{}, err
+	}
+
+	teamComp := &s2hv1.Team{}
+	if err := c.getTeam(teamName, teamComp); err != nil {
+		logger.Error(err, "cannot get Team", "team", teamName)
+		return corev1.ResourceList{}, err
+	}
+
+	var resources corev1.ResourceList
+	if len(teamComp.Status.Used.Resources) > 0 {
+		if stgConfig.Deployment.Engine != nil && *stgConfig.Deployment.Engine == mock.EngineName {
+			resources = c.configs.InitialResourcesQuota
+		}
+	}
+
+	if !dryRun {
+		ctx := context.TODO()
+		if err := c.client.Get(ctx, types.NamespacedName{
+			Namespace: namespace,
+			Name:      namespace + internal.ResourcesQuotaSuffix,
+		}, &corev1.ResourceQuota{}); err != nil {
+			if !k8serrors.IsNotFound(err) {
+				logger.Error(err, "cannot get resources quota",
+					"team", teamName, "namespace", namespace)
+				return corev1.ResourceList{}, err
+			}
+
+			// if resources quota not found
+			return resources, nil
+		}
+
+		// if resources quota existed
+		quotaObj := k8sobject.GetResourceQuota(teamComp, namespace, resources)
+		if err := c.client.Update(context.TODO(), quotaObj); err != nil {
+			logger.Error(err, "cannot update resources quota",
+				"team", teamName, "namespace", namespace, "resources", resources)
+			return corev1.ResourceList{}, err
+		}
+	}
+
+	return resources, nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler

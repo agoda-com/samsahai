@@ -1873,9 +1873,15 @@ var _ = Describe("[e2e] Main controller", func() {
 				return false, nil
 			}
 
+			expectedQuota := corev1.ResourceList{
+				corev1.ResourceRequestsCPU:    *samsahaiConfig.InitialResourcesQuota.Cpu(),
+				corev1.ResourceRequestsMemory: *samsahaiConfig.InitialResourcesQuota.Memory(),
+				corev1.ResourceLimitsCPU:      *samsahaiConfig.InitialResourcesQuota.Cpu(),
+				corev1.ResourceLimitsMemory:   *samsahaiConfig.InitialResourcesQuota.Memory(),
+			}
 			if quota.Status.Hard.Cpu() != nil && quota.Status.Hard.Memory() != nil &&
-				quota.Status.Hard.Cpu().Equal(*samsahaiConfig.InitialResourcesQuota.Cpu()) &&
-				quota.Status.Hard.Memory().Equal(*samsahaiConfig.InitialResourcesQuota.Memory()) {
+				quota.Status.Hard.Cpu().Equal(*expectedQuota.Cpu()) &&
+				quota.Status.Hard.Memory().Equal(*expectedQuota.Memory()) {
 				return true, nil
 			}
 
@@ -1905,10 +1911,8 @@ var (
 			InternalAuthToken: samsahaiAuthToken,
 		},
 		InitialResourcesQuota: corev1.ResourceList{
-			corev1.ResourceRequestsCPU:    resource.MustParse("2"),
-			corev1.ResourceLimitsCPU:      resource.MustParse("2"),
-			corev1.ResourceRequestsMemory: resource.MustParse("2Gi"),
-			corev1.ResourceLimitsMemory:   resource.MustParse("2Gi"),
+			corev1.ResourceCPU:    resource.MustParse("2"),
+			corev1.ResourceMemory: resource.MustParse("2Gi"),
 		},
 	}
 

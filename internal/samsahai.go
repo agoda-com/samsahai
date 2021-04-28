@@ -168,8 +168,11 @@ type SamsahaiController interface {
 	// GetActivePromotionDeployEngine returns samsahai deploy engine
 	GetActivePromotionDeployEngine(teamName, ns string) DeployEngine
 
-	// EnsureTeamTemplateChanged  updates team if template changed
+	// EnsureTeamTemplateChanged updates team if template changed
 	EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error
+
+	// EnsureStagingResourcesQuota ensures staging resources quota applied correctly
+	EnsureStagingResourcesQuota(teamName, namespace string, dryRun bool) (corev1.ResourceList, error)
 
 	// LoadTeamSecret loads team secret from main namespace
 	LoadTeamSecret(teamComp *s2hv1.Team) error

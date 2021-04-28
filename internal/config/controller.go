@@ -826,8 +826,9 @@ func (c *controller) ensureTriggerChildrenConfig(templateName string) error {
 }
 
 func (c *controller) ensureStagingQuotaFromDeployEngine(configName, namespace string) error {
-	if err := c.s2hCtrl.CreateStagingEnvironment(configName, namespace); err != nil {
-		logger.Error(err, "cannot create staging environment",
+	_, err := c.s2hCtrl.EnsureStagingResourcesQuota(configName, namespace, false)
+	if err != nil {
+		logger.Error(err, "cannot ensure staging resources quota",
 			"team", configName, "namespace", namespace)
 		return err
 	}
