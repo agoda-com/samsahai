@@ -82,6 +82,9 @@ type SamsahaiConfig struct {
 		s2hv1.CommandAndArgs
 	} `json:"postNamespaceCreation,omitempty" yaml:"postNamespaceCreation,omitempty"`
 
+	// CheckerResources defines cpu/memory of cronjobs for sending new component webhook
+	CheckerResources corev1.ResourceList `json:"checkerResources,omitempty" yaml:"checkerResources,omitempty"`
+
 	// InitialResourcesQuota defines required minimum cpu/memory of resources quota which will be used for mock deployment engine
 	InitialResourcesQuota corev1.ResourceList `json:"initialResourcesQuota,omitempty" yaml:"initialResourcesQuota,omitempty"`
 

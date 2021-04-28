@@ -180,6 +180,10 @@ func startCtrlCmd() *cobra.Command {
 						Password:     viper.GetString(s2h.VKMSTeamsPassword),
 					},
 				},
+				CheckerResources: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse(viper.GetString(s2h.VKCheckerCPU)),
+					corev1.ResourceMemory: resource.MustParse(viper.GetString(s2h.VKCheckerMemory)),
+				},
 				InitialResourcesQuota: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse(viper.GetString(s2h.VKInitialResourcesQuotaCPU)),
 					corev1.ResourceMemory: resource.MustParse(viper.GetString(s2h.VKInitialResourcesQuotaMemory)),
@@ -292,6 +296,10 @@ func startCtrlCmd() *cobra.Command {
 		"Waiting duration time to re-check pull request image in the registry.")
 	cmd.Flags().Int(s2h.VKPullRequestQueueMaxHistoryDays, 7,
 		"Max stored pull request queue histories in day.")
+	cmd.Flags().String(s2h.VKCheckerCPU, "100m",
+		"CPU of cronjobs for sending new component webhook.")
+	cmd.Flags().String(s2h.VKCheckerMemory, "125Mi",
+		"Memory of cronjobs for sending new component webhook.")
 	cmd.Flags().String(s2h.VKInitialResourcesQuotaCPU, "3",
 		"Required minimum cpu of resources quota which will be used for mock deployment engine.")
 	cmd.Flags().String(s2h.VKInitialResourcesQuotaMemory, "3Gi",

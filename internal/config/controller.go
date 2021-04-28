@@ -12,7 +12,6 @@ import (
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -532,15 +531,10 @@ curl -X POST -k %s/%s -d '{"component": "%s", "team": "%s", "repository": "%s"}'
 }
 
 func (c *controller) getCronJobResources() corev1.ResourceRequirements {
+	resources := c.s2hConfig.CheckerResources
 	return corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("500m"),
-			corev1.ResourceMemory: resource.MustParse("500Mi"),
-		},
-		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("500m"),
-			corev1.ResourceMemory: resource.MustParse("500Mi"),
-		},
+		Limits:   resources,
+		Requests: resources,
 	}
 }
 
