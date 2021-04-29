@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
@@ -80,6 +81,14 @@ type SamsahaiConfig struct {
 	PostNamespaceCreation *struct {
 		s2hv1.CommandAndArgs
 	} `json:"postNamespaceCreation,omitempty" yaml:"postNamespaceCreation,omitempty"`
+
+	// CheckerResources defines cpu/memory of cronjobs for sending new component webhook
+	CheckerResources corev1.ResourceList `json:"checkerResources,omitempty" yaml:"checkerResources,omitempty"`
+
+	// InitialResourcesQuota defines required minimum cpu/memory of resources quota
+	// which will be used for mock deployment engine.
+	// It will be activated for only the Team that have resources quota defined.
+	InitialResourcesQuota corev1.ResourceList `json:"initialResourcesQuota,omitempty" yaml:"initialResourcesQuota,omitempty"`
 
 	// StagingEnvs defines environment variables of staging controller
 	StagingEnvs map[string]string `json:"stagingEnvs,omitempty" yaml:"stagingEnvs,omitempty"`
@@ -159,8 +168,11 @@ type SamsahaiController interface {
 	// GetActivePromotionDeployEngine returns samsahai deploy engine
 	GetActivePromotionDeployEngine(teamName, ns string) DeployEngine
 
-	// EnsureTeamTemplateChanged  updates team if template changed
+	// EnsureTeamTemplateChanged updates team if template changed
 	EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error
+
+	// EnsureStagingResourcesQuota ensures staging resources quota applied correctly
+	EnsureStagingResourcesQuota(teamName, namespace string, dryRun bool) (corev1.ResourceList, error)
 
 	// LoadTeamSecret loads team secret from main namespace
 	LoadTeamSecret(teamComp *s2hv1.Team) error

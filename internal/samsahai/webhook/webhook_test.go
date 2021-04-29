@@ -479,6 +479,10 @@ func (c *mockConfigCtrl) GetPriorityQueues(configName string) ([]string, error) 
 	return nil, nil
 }
 
+func (c *mockConfigCtrl) GetStagingConfig(configName string) (*s2hv1.ConfigStaging, error) {
+	return nil, nil
+}
+
 func (c *mockConfigCtrl) GetPullRequestConfig(configName string) (*s2hv1.ConfigPullRequest, error) {
 	return nil, nil
 }

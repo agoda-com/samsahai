@@ -28,6 +28,18 @@ fileConfigs:
   clusterDomain: "cluster.local"
   githubURL: "https://github.com"
 
+  # cpu/memory of cronjobs for sending new component webhook
+  checkerResources:
+    cpu: 100m
+    memory: 125Mi
+
+  # required minimum cpu/memory of resources quota
+  # which will be used for mock deployment engine.
+  # It will be activated for only the Team that have resources quota defined.
+  initialResourcesQuota:
+    cpu: '3'
+    memory: 3Gi
+
   # pullRequest global config
   pullRequest:
     # how many concurrences of pull request queue running?

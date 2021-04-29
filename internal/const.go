@@ -21,6 +21,8 @@ const (
 	StagingCtrlName    = "s2h-staging-ctrl"
 	StagingDefaultPort = 8090
 
+	ResourcesQuotaSuffix = "-resources"
+
 	// Viper keys
 	VKDebug                           = "debug"
 	VKServerHTTPPort                  = "port"
@@ -61,6 +63,10 @@ const (
 	VKPRTriggerMaxRetry               = "pr-trigger-max-retry"
 	VKPRTriggerPollingTime            = "pr-trigger-polling-time"
 	VKPullRequestQueueMaxHistoryDays  = "pr-queue-max-history-days"
+	VKCheckerCPU                      = "checker-cpu"
+	VKCheckerMemory                   = "checker-memory"
+	VKInitialResourcesQuotaCPU        = "initial-resources-quota-cpu"
+	VKInitialResourcesQuotaMemory     = "initial-resources-quota-memory"
 )
 
 type ConfigurationJSON struct {
