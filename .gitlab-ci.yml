@@ -1,0 +1,12 @@
+image: quay.io/samsahai/curl
+
+stages:
+  - release
+
+release-webhook:
+  stage: release
+  only:
+    - tags
+  script:
+    - |
+      curl -L -g -X POST ${WEBHOOK_URL}
