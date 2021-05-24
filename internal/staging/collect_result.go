@@ -282,6 +282,9 @@ func (c *controller) createDeploymentZipLogs(q *s2hv1.Queue) (string, error) {
 	kubeGetAll := execCommand("kubectl", strings.Split("get po,svc,deploy,sts,rs,job,ing -o wide"+extraArg, " ")...)
 	appendFileToZip(zipw, "kube.get.all.txt", kubeGetAll)
 
+	kubeGetEvents := execCommand("kubectl", strings.Split("get ev"+extraArg, " ")...)
+	appendFileToZip(zipw, "kube.get.events.txt", kubeGetEvents)
+
 	deployEngine := c.getDeployEngine(q)
 	yamlValues, _ := deployEngine.GetValues()
 	for release, yaml := range yamlValues {
