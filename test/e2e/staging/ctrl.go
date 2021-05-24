@@ -168,6 +168,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Chart: s2hv1.ComponentChart{
 			Repository: "https://charts.bitnami.com/bitnami",
 			Name:       redisCompName,
+			Version:    "12.10.1",
 		},
 		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/redis",
@@ -733,15 +734,14 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(queue.DeletePullRequestQueue(client, namespace, redisBundleName))
 	}, 300)
 
-	XIt("should create error log in case of deploy failed", func(done Done) {
+	It("should create error log in case of deploy failed", func(done Done) {
 		defer close(done)
 
 		By("Creating Config")
 		config := mockConfig
 		config.Status.Used.Staging.MaxRetry = 0
 		config.Status.Used.Staging.Deployment.Timeout = metav1.Duration{Duration: 10 * time.Second}
-		// TODO: this values is invalid, please verify with image
-		//config.Status.Used.Components[0].Values["master"].(map[string]interface{})["command"] = "exit 1"
+		config.Status.Used.Components[0].Values["master"].(map[string]interface{})["command"] = "exit 1"
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
 		By("Creating Team")
@@ -788,13 +788,14 @@ var _ = Describe("[e2e] Staging controller", func() {
 		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
 			q := &s2hv1.Queue{}
 			err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "redis"}, q)
-			if err != nil || q.Status.State != s2hv1.Waiting || q.Spec.Type != s2hv1.QueueTypeUpgrade {
+			if err != nil || q.Spec.Type != s2hv1.QueueTypeUpgrade ||
+				(q.Status.State != s2hv1.Waiting && q.Status.State != s2hv1.Creating) {
 				return false, nil
 			}
 			return true, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Should have waiting queue")
-	}, 180)
+	}, 200)
 
 	It("should successfully get health check", func(done Done) {
 		defer close(done)
