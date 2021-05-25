@@ -7,6 +7,8 @@ release-webhook:
   stage: release
   only:
     - tags
+  when: delayed
+  start_in: 3 minutes
   script:
     - |
       curl -L -g -X POST ${WEBHOOK_URL}
