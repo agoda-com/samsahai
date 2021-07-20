@@ -369,6 +369,7 @@ func GetRole(teamComp *s2hv1.Team, namespaceName string) runtime.Object {
 				},
 				Resources: []string{
 					"virtualservices",
+					"destinationrules",
 				},
 				Verbs: []string{"*"},
 			},
