@@ -36,6 +36,7 @@ type SamsahaiCredential struct {
 	MSTeams           MSTeamsCredential
 	TeamcityUsername  string
 	TeamcityPassword  string
+	GitlabToken       string
 }
 
 type MSTeamsCredential struct {

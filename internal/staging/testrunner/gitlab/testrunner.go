@@ -53,8 +53,9 @@ type ResultResponse struct {
 }
 
 type testRunner struct {
-	baseURL string
-	client  client.Client
+	baseURL      string
+	privateToken string
+	client       client.Client
 }
 
 type triggerBuildReq struct {
@@ -62,11 +63,27 @@ type triggerBuildReq struct {
 	Token     string            `json:"token"`
 }
 
+// NewOption allows specifying various configuration
+type NewOption func(*testRunner)
+
+// WithGitlabToken specifies a gitlab private token to override when creating Gitlab test runner
+// This will be used to get test result from the pipeline
+func WithGitlabToken(token string) NewOption {
+	return func(r *testRunner) {
+		r.privateToken = token
+	}
+}
+
 // New creates a new gitlab test runner
-func New(client client.Client, baseURL string) internal.StagingTestRunner {
+func New(client client.Client, baseURL string, opts ...NewOption) internal.StagingTestRunner {
 	t := &testRunner{
 		client:  client,
 		baseURL: baseURL,
+	}
+
+	// apply the new options
+	for _, opt := range opts {
+		opt(t)
 	}
 
 	return t
@@ -181,6 +198,10 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	apiURL := fmt.Sprintf("%s/%s/%s/pipelines/%s", t.baseURL, baseAPIPath, projectID, pipelineID)
 	opts := []http.Option{
 		http.WithSkipTLSVerify(),
+	}
+
+	if t.privateToken != "" {
+		opts = append(opts, http.WithHeader("PRIVATE-TOKEN", t.privateToken))
 	}
 
 	_, resp, err := http.Get(apiURL, opts...)

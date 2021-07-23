@@ -65,10 +65,12 @@ type controller struct {
 	teamcityPassword string
 
 	gitlabBaseURL string
+	gitlabToken   string
 
 	configs internal.StagingConfig
 }
 
+// TODO: move test runner config to be optional
 func NewController(
 	teamName string,
 	namespace string,
@@ -81,6 +83,7 @@ func NewController(
 	teamcityUsername string,
 	teamcityPassword string,
 	gitlabBaseURL string,
+	gitlabToken string,
 	configs internal.StagingConfig,
 ) internal.StagingController {
 	if queueCtrl == nil {
@@ -108,6 +111,7 @@ func NewController(
 		teamcityUsername:        teamcityUsername,
 		teamcityPassword:        teamcityPassword,
 		gitlabBaseURL:           gitlabBaseURL,
+		gitlabToken:             gitlabToken,
 		configs:                 configs,
 	}
 
@@ -253,7 +257,7 @@ func (c *controller) loadTestRunners() {
 	}
 
 	if c.gitlabBaseURL != "" {
-		testRunners = append(testRunners, gitlab.New(c.client, c.gitlabBaseURL))
+		testRunners = append(testRunners, gitlab.New(c.client, c.gitlabBaseURL, gitlab.WithGitlabToken(c.gitlabToken)))
 	}
 
 	for _, r := range testRunners {

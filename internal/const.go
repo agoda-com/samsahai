@@ -41,6 +41,7 @@ const (
 	VKTeamcityUsername                = "teamcity-username"
 	VKTeamcityPassword                = "teamcity-password"
 	VKGitlabURL                       = "gitlab-url"
+	VKGitlabToken                     = "gitlab-token"
 	VKSlackToken                      = "slack-token"
 	VKGithubURL                       = "github-url"
 	VKGithubToken                     = "github-token"

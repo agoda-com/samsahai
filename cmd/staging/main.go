@@ -148,9 +148,10 @@ func startCtrlCmd() *cobra.Command {
 			tcUsername := viper.GetString(s2h.VKTeamcityUsername)
 			tcPassword := viper.GetString(s2h.VKTeamcityPassword)
 			glBaseURL := viper.GetString(s2h.VKGitlabURL)
+			glToken := viper.GetString(s2h.VKGitlabToken)
 			maxQueueHistDays := viper.GetInt(s2h.VKQueueMaxHistoryDays)
 			stagingCtrl := stagingctrl.NewController(teamName, namespace, authToken, samsahaiClient, mgr,
-				queueCtrl, configCtrl, tcBaseURL, tcUsername, tcPassword, glBaseURL,
+				queueCtrl, configCtrl, tcBaseURL, tcUsername, tcPassword, glBaseURL, glToken,
 				s2h.StagingConfig{MaxHistoryDays: maxQueueHistDays})
 
 			prQueueCtrl := prqueuectrl.New(teamName, namespace, mgr, authToken, samsahaiClient,
@@ -194,10 +195,11 @@ func startCtrlCmd() *cobra.Command {
 	cmd.Flags().String(s2h.VKS2HTeamName, "", "Samsahai Team Name.")
 	cmd.Flags().String(s2h.VKS2HServerURL, "", "Samsahai server endpoint.")
 	cmd.Flags().String(s2h.VKS2HAuthToken, "", "Samsahai server authentication token.")
-	cmd.Flags().String(s2h.VKTeamcityURL, "", "Teamcity api base url.")
+	cmd.Flags().String(s2h.VKTeamcityURL, "", "Teamcity API base url.")
 	cmd.Flags().String(s2h.VKTeamcityUsername, "", "Teamcity username.")
 	cmd.Flags().String(s2h.VKTeamcityPassword, "", "Teamcity password.")
-	cmd.Flags().String(s2h.VKGitlabURL, "", "Gitlab api base url.")
+	cmd.Flags().String(s2h.VKGitlabURL, "", "Gitlab API base url.")
+	cmd.Flags().String(s2h.VKGitlabToken, "", "Gitlab private token for API.")
 	cmd.Flags().String(s2h.VKServerHTTPPort, "8090", "The port for http server to listens to.")
 	cmd.Flags().String(s2h.VKMetricHTTPPort, "8091", "The port for prometheus metric to binds to.")
 	cmd.Flags().Int(s2h.VKQueueMaxHistoryDays, 7, "Max stored queue histories in day.")

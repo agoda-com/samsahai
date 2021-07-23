@@ -95,7 +95,7 @@ func setupStaging(namespace string) (internal.StagingController, internal.QueueC
 	qctrl := queue.New(namespace, client)
 	stagingCtrl := staging.NewController(teamName, namespace, samsahaiAuthToken, samsahaiClient,
 		stagingMgr, qctrl, stagingCfgCtrl, "", "", "", "",
-		internal.StagingConfig{})
+		"", internal.StagingConfig{})
 
 	prQueueCtrl := prqueuectrl.New(teamName, namespace, stagingMgr, samsahaiAuthToken, samsahaiClient,
 		prqueuectrl.WithClient(client))
