@@ -633,6 +633,10 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1.Team, namespace st
 			Value: intstr.FromString(c.configs.SamsahaiCredential.TeamcityPassword),
 		},
 		{
+			Key:   internal.VKGitlabToken,
+			Value: intstr.FromString(c.configs.SamsahaiCredential.GitlabToken),
+		},
+		{
 			Key:   internal.VKTeamcityURL,
 			Value: intstr.FromString(c.configs.TeamcityURL),
 		},

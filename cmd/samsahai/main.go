@@ -172,6 +172,7 @@ func startCtrlCmd() *cobra.Command {
 					GithubToken:       viper.GetString(s2h.VKGithubToken),
 					TeamcityUsername:  viper.GetString(s2h.VKTeamcityUsername),
 					TeamcityPassword:  viper.GetString(s2h.VKTeamcityPassword),
+					GitlabToken:       viper.GetString(s2h.VKGitlabToken),
 					MSTeams: s2h.MSTeamsCredential{
 						TenantID:     viper.GetString(s2h.VKMSTeamsTenantID),
 						ClientID:     viper.GetString(s2h.VKMSTeamsClientID),
