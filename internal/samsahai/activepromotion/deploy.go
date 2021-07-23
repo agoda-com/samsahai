@@ -69,9 +69,18 @@ func (c *controller) testPreActiveEnvironment(atpComp *s2hv1.ActivePromotion) er
 			"Pre-active environment has been verified successfully")
 	} else {
 		// in case failure test
+		message := "Test failed"
+		if q.IsTeamcityTestSuccess() || q.IsGitlabTestSuccess() {
+			if !q.IsTeamcityTestSuccess() {
+				message = "Test in Teamcity failed"
+			} else if !q.IsGitlabTestSuccess() {
+				message = "Test in Gitlab failed"
+			}
+		}
+
 		atpComp.Status.SetResult(s2hv1.ActivePromotionFailure)
 		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondVerified, corev1.ConditionTrue,
-			"Test failed")
+			message)
 	}
 
 	atpComp.SetState(s2hv1.ActivePromotionCollectingPreActiveResult, "Collecting result")
