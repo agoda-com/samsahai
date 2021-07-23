@@ -185,7 +185,7 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 
 	_, resp, err := http.Get(apiURL, opts...)
 	if err != nil {
-		logger.Error(err, "The HTTP request failed")
+		logger.Error(err, "The HTTP request failed", "URL", apiURL)
 		return false, false, err
 	}
 

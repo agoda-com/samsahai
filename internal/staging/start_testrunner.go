@@ -14,9 +14,15 @@ import (
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/testmock"
 )
 
+type testResult string
+
 const (
 	testTimeout = 1800 * time.Second
 	testPolling = 5 * time.Second
+
+	testResultSuccess testResult = "PASSED"
+	testResultFailure testResult = "FAILED"
+	testResultUnknown testResult = "UNKNOWN"
 )
 
 func (c *controller) startTesting(queue *s2hv1.Queue) error {
@@ -30,21 +36,62 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 		return err
 	}
 
-	skipTest, testRunner, err := c.checkTestConfig(queue)
+	skipTest, testRunners, err := c.checkTestConfig(queue)
 	if err != nil {
 		return err
 	} else if skipTest {
 		return nil
 	}
 
-	// trigger the test
-	if err := c.triggerTest(queue, testRunner); err != nil {
-		return err
+	// trigger the tests
+	for _, testRunner := range testRunners {
+		if err := c.triggerTest(queue, testRunner); err != nil {
+			return err
+		}
 	}
 
-	// get result from test (polling check)
-	if err := c.getTestResult(queue, testRunner); err != nil {
-		return err
+	if !queue.Status.IsConditionTrue(s2hv1.QueueTestTriggered) {
+		queue.Status.SetCondition(
+			s2hv1.QueueTestTriggered,
+			v1.ConditionTrue,
+			"queue testing triggered")
+
+		// update queue back to k8s
+		if err := c.updateQueue(queue); err != nil {
+			return err
+		}
+	}
+
+	// get result from tests (polling check)
+	finished := true
+	testCondition := v1.ConditionTrue
+	message := "queue testing succeeded"
+	for _, testRunner := range testRunners {
+		testRunnerName := testRunner.GetName()
+		testResult, err := c.getTestResult(queue, testRunner)
+		if err != nil {
+			return err
+		}
+
+		switch testResult {
+		case testResultUnknown:
+			finished = false
+		case testResultFailure, testResultSuccess:
+			if testResult == testResultFailure {
+				testCondition = v1.ConditionFalse
+				message = "queue testing failed"
+			}
+
+			if err := c.setTestResultCondition(queue, testRunnerName, testResult); err != nil {
+				return err
+			}
+		}
+	}
+
+	if finished {
+		if err := c.updateTestQueueCondition(queue, testCondition, message); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -69,8 +116,12 @@ func (c *controller) checkTestTimeout(queue *s2hv1.Queue, testingTimeout metav1.
 	return nil
 }
 
-// checkTestConfig checks test configuration and return testRunner
-func (c *controller) checkTestConfig(queue *s2hv1.Queue) (skipTest bool, testRunner internal.StagingTestRunner, err error) {
+// checkTestConfig checks test configuration and return list of testRunners
+func (c *controller) checkTestConfig(queue *s2hv1.Queue) (
+	skipTest bool, testRunners []internal.StagingTestRunner, err error) {
+
+	testRunners = make([]internal.StagingTestRunner, 0)
+
 	if queue.Spec.SkipTestRunner {
 		if err = c.updateTestQueueCondition(
 			queue,
@@ -97,14 +148,16 @@ func (c *controller) checkTestConfig(queue *s2hv1.Queue) (skipTest bool, testRun
 	skipTest = false
 
 	if testConfig.Teamcity != nil {
-		testRunner = c.testRunners[teamcity.TestRunnerName]
-	} else if testConfig.Gitlab != nil {
-		testRunner = c.testRunners[gitlab.TestRunnerName]
-	} else if testConfig.TestMock != nil {
-		testRunner = c.testRunners[testmock.TestRunnerName]
+		testRunners = append(testRunners, c.testRunners[teamcity.TestRunnerName])
+	}
+	if testConfig.Gitlab != nil {
+		testRunners = append(testRunners, c.testRunners[gitlab.TestRunnerName])
+	}
+	if testConfig.TestMock != nil {
+		testRunners = append(testRunners, c.testRunners[testmock.TestRunnerName])
 	}
 
-	if testRunner == nil {
+	if len(testRunners) == 0 {
 		if err = c.updateTestQueueCondition(queue, v1.ConditionFalse, "test runner not found"); err != nil {
 			return
 		}
@@ -122,37 +175,31 @@ func (c *controller) checkTestConfig(queue *s2hv1.Queue) (skipTest bool, testRun
 }
 
 func (c *controller) triggerTest(queue *s2hv1.Queue, testRunner internal.StagingTestRunner) error {
-	testConfig := c.getTestConfiguration(queue)
 	if !queue.Status.IsConditionTrue(s2hv1.QueueTestTriggered) {
+		testRunnerName := testRunner.GetName()
+		testConfig := c.getTestConfiguration(queue)
+
 		if err := testRunner.Trigger(testConfig, c.getCurrentQueue()); err != nil {
-			logger.Error(err, "testing triggered error")
+			logger.Error(err, "testing triggered error", "name", testRunnerName)
 			return err
 		}
+
 		// set teamcity build number to message
 		if tr := testRunner.GetName(); tr == teamcity.TestRunnerName {
 			queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
-		}
-
-		queue.Status.SetCondition(
-			s2hv1.QueueTestTriggered,
-			v1.ConditionTrue,
-			"queue testing triggered")
-
-		// update queue back to k8s
-		if err := c.updateQueue(queue); err != nil {
-			return err
 		}
 	}
 
 	return nil
 }
 
-func (c *controller) getTestResult(queue *s2hv1.Queue, testRunner internal.StagingTestRunner) error {
+func (c *controller) getTestResult(queue *s2hv1.Queue, testRunner internal.StagingTestRunner) (testResult, error) {
+	testRunnerName := testRunner.GetName()
 	testConfig := c.getTestConfiguration(queue)
 	isResultSuccess, isBuildFinished, err := testRunner.GetResult(testConfig, c.getCurrentQueue())
 	if err != nil {
-		logger.Error(err, "testing get result error")
-		return err
+		logger.Error(err, "testing get result error", "name", testRunnerName)
+		return testResultUnknown, err
 	}
 
 	if !isBuildFinished {
@@ -161,21 +208,15 @@ func (c *controller) getTestResult(queue *s2hv1.Queue, testRunner internal.Stagi
 			pollingTime = c.getTestConfiguration(queue).PollingTime
 		}
 		time.Sleep(pollingTime.Duration)
-		return nil
+		return testResultUnknown, nil
 	}
 
-	testCondition := v1.ConditionTrue
-	message := "queue testing succeeded"
+	testResult := testResultSuccess
 	if !isResultSuccess {
-		testCondition = v1.ConditionFalse
-		message = "queue testing failed"
+		testResult = testResultFailure
 	}
 
-	if err := c.updateTestQueueCondition(queue, testCondition, message); err != nil {
-		return err
-	}
-
-	return nil
+	return testResult, nil
 }
 
 // updateTestQueueCondition updates queue status, condition and save to k8s for Testing state
@@ -188,4 +229,35 @@ func (c *controller) updateTestQueueCondition(queue *s2hv1.Queue, status v1.Cond
 
 	// update queue back to k8s
 	return c.updateQueueWithState(queue, s2hv1.Collecting)
+}
+
+func (c *controller) setTestResultCondition(queue *s2hv1.Queue, testRunnerName string, testResult testResult) error {
+	var condType s2hv1.QueueConditionType
+	switch testRunnerName {
+	case gitlab.TestRunnerName:
+		condType = s2hv1.QueueGitlabTestResult
+	case teamcity.TestRunnerName:
+		condType = s2hv1.QueueTeamcityTestResult
+	default:
+		return nil
+	}
+
+	message := "unknown result"
+	cond := v1.ConditionTrue
+	switch testResult {
+	case testResultFailure:
+		message = "queue testing of failed"
+		cond = v1.ConditionFalse
+	case testResultSuccess:
+		message = "queue testing succeeded"
+	}
+
+	// testing timeout
+	queue.Status.SetCondition(
+		condType,
+		cond,
+		message)
+
+	// update queue back to k8s
+	return c.updateQueue(queue)
 }

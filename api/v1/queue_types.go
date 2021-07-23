@@ -236,6 +236,10 @@ const (
 	QueueTestTriggered QueueConditionType = "QueueTestTriggered"
 	// QueueTested means the queue has been finished testing
 	QueueTested QueueConditionType = "QueueTested"
+	// QueueTeamcityTestResult means the test result of Teamcity
+	QueueTeamcityTestResult QueueConditionType = "QueueTeamcityTestResult"
+	// QueueGitlabTestResult means the test result of Gitlab
+	QueueGitlabTestResult QueueConditionType = "QueueGitlabTestResult"
 	// QueueCleaningBeforeStarted means cleaning namespace before running task has been started
 	QueueCleaningBeforeStarted QueueConditionType = "QueueCleaningBeforeStarted"
 	// QueueCleanedBefore means the namespace has been cleaned before running task
@@ -386,6 +390,14 @@ func (q *Queue) IsDeploySuccess() bool {
 
 func (q *Queue) IsTestSuccess() bool {
 	return q.Status.IsConditionTrue(QueueTested)
+}
+
+func (q *Queue) IsTeamcityTestSuccess() bool {
+	return q.Status.IsConditionTrue(QueueTeamcityTestResult)
+}
+
+func (q *Queue) IsGitlabTestSuccess() bool {
+	return q.Status.IsConditionTrue(QueueGitlabTestResult)
 }
 
 func (q *Queue) IsReverify() bool {
