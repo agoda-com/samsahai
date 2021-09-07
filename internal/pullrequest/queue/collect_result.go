@@ -16,14 +16,11 @@ func (c *controller) collectPullRequestQueueResult(ctx context.Context, prQueue 
 	prComps := prQueue.Spec.Components
 	prNamespace := prQueue.Status.PullRequestNamespace
 
-	if prQueue.Spec.IsPRTriggerFailed != nil && !*prQueue.Spec.IsPRTriggerFailed {
-		deployedQueue, err := c.ensurePullRequestComponents(prQueue, prComps)
-		if err != nil {
-			return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
-		}
-		prQueue.Status.SetDeploymentQueue(deployedQueue)
+	deployedQueue, err := c.ensurePullRequestComponents(prQueue, prComps)
+	if err != nil {
+		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
 	}
-
+	prQueue.Status.SetDeploymentQueue(deployedQueue)
 	prQueue.SetState(s2hv1.PullRequestQueueEnvDestroying)
 	prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondResultCollected, corev1.ConditionTrue,
 		"Pull request queue result has been collected")
@@ -36,11 +33,9 @@ func (c *controller) collectPullRequestQueueResult(ctx context.Context, prQueue 
 
 		prQueue.Status.SetPullRequestQueueHistoryName(prQueueHistName)
 
-		// sent report only when pull request trigger success
-		if prQueue.Spec.IsPRTriggerFailed != nil && !*prQueue.Spec.IsPRTriggerFailed {
-			if err := c.sendPullRequestQueueReport(ctx, prQueue); err != nil {
-				return err
-			}
+		// sent report even if pull request trigger fails
+		if err := c.sendPullRequestQueueReport(ctx, prQueue); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -70,13 +65,19 @@ func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2
 			return err
 		}
 
+		missingImgListRPC := make([]*samsahairpc.Image, 0)
+		for _, img := range prQueue.Spec.ImageMissingList {
+			missingImgListRPC = append(missingImgListRPC, &samsahairpc.Image{Repository: img.Repository, Tag: img.Tag})
+		}
+
 		prQueueRPC := &samsahairpc.TeamWithPullRequest{
-			TeamName:      c.teamName,
-			BundleName:    prQueue.Spec.BundleName,
-			PRNumber:      prQueue.Spec.PRNumber,
-			CommitSHA:     prQueue.Spec.CommitSHA,
-			Namespace:     prQueue.Status.PullRequestNamespace,
-			MaxRetryQueue: prConfig.MaxRetry,
+			TeamName:         c.teamName,
+			BundleName:       prQueue.Spec.BundleName,
+			PRNumber:         prQueue.Spec.PRNumber,
+			CommitSHA:        prQueue.Spec.CommitSHA,
+			Namespace:        prQueue.Status.PullRequestNamespace,
+			MaxRetryQueue:    prConfig.MaxRetry,
+			ImageMissingList: missingImgListRPC,
 		}
 
 		prQueueHistName, prQueueHistNamespace := prQueue.Status.PullRequestQueueHistoryName, c.namespace
