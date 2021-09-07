@@ -249,11 +249,13 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
 {{- end }}
 <br/><b>Run:</b>{{ if .PullRequestComponent }} #{{ .Runs }}{{ else if .IsReverify }} Reverify {{ else }} #{{ .Runs }}{{ end }}
 <br/><b>Queue:</b> {{ .Name }}
-<br/><b>Components</b>
+{{- if .Components }}
+<br/><b>Components:</b>
 {{- range .Components }}
 <li><b>- Name:</b> {{ .Name }}</li>
 <li><b>&nbsp;&nbsp;Version:</b> {{ if .Image.Tag }}{{ .Image.Tag }}{{ else }}<code>no stable/active image tag found, using from values file</code>{{ end }}</li>
 <li><b>&nbsp;&nbsp;Repository:</b> {{ if .Image.Repository }}{{ .Image.Repository }}{{ else }}<code>no stable/active image repository found, using from values file</code>{{ end }}</li>
+{{- end }}
 {{- end }}
 <br/><b>Owner:</b> {{ .TeamName }}
 <br/><b>Namespace:</b> {{ .Namespace }}
@@ -376,7 +378,7 @@ func (r *reporter) makeImageMissingListReport(images []s2hv1.Image, reason strin
 	}
 
 	var message = `
-<b>Image Missing List</b>
+<b>Image Missing List:</b>
 {{- range .Images }}
 <li>{{ .Repository }}:{{ .Tag }}</li>
 ` + reasonMsg + `
