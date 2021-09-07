@@ -428,9 +428,9 @@ func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA
 
 func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context,
 	prTrigger *s2hv1.PullRequestTrigger) error {
-	outImgList := make([]*samsahairpc.Image, 0)
+	missingImgListRPC := make([]*samsahairpc.Image, 0)
 	for _, img := range prTrigger.Status.ImageMissingList {
-		outImgList = append(outImgList, &samsahairpc.Image{Repository: img.Repository, Tag: img.Tag})
+		missingImgListRPC = append(missingImgListRPC, &samsahairpc.Image{Repository: img.Repository, Tag: img.Tag})
 	}
 
 	prTriggerRPC := &samsahairpc.PullRequestTrigger{
@@ -438,7 +438,7 @@ func (c *controller) deleteAndSendPullRequestTriggerResult(ctx context.Context,
 		Namespace:        prTrigger.Namespace,
 		TeamName:         c.teamName,
 		Result:           string(prTrigger.Status.Result),
-		ImageMissingList: outImgList,
+		ImageMissingList: missingImgListRPC,
 	}
 	if _, err := c.s2hClient.RunPostPullRequestTrigger(ctx, prTriggerRPC); err != nil {
 		return errors.Wrapf(err,

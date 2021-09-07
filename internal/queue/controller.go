@@ -569,11 +569,11 @@ func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace strin
 	return
 }
 
-// EnsurePullRequestComponents ensures that pull request components were deployed with `pull-request` config and tested
-func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName, prBundleName, prNumber string,
-	comps s2hv1.QueueComponents, noOfRetry int) (q *s2hv1.Queue, err error) {
+// NewInitialPullRequestQueue returns initial value of PullRequestQueue
+func NewInitialPullRequestQueue(teamName, namespace, queueName, prBundleName, prNumber string,
+	comps s2hv1.QueueComponents, noOfRetry int) *s2hv1.Queue {
 
-	q = &s2hv1.Queue{
+	return &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      queueName,
 			Namespace: namespace,
@@ -587,6 +587,13 @@ func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName
 			NoOfRetry:  noOfRetry,
 		},
 	}
+}
+
+// EnsurePullRequestComponents ensures that pull request components were deployed with `pull-request` config and tested
+func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName, prBundleName, prNumber string,
+	comps s2hv1.QueueComponents, noOfRetry int) (q *s2hv1.Queue, err error) {
+
+	q = NewInitialPullRequestQueue(teamName, namespace, queueName, prBundleName, prNumber, comps, noOfRetry)
 
 	err = ensureQueue(context.TODO(), c, q)
 	return
@@ -655,9 +662,9 @@ func GetComponentUpgradeRPCFromQueue(
 	prQueueRPC *samsahairpc.TeamWithPullRequest,
 ) *samsahairpc.ComponentUpgrade {
 
-	outImgList := make([]*samsahairpc.Image, 0)
+	outMissingImgList := make([]*samsahairpc.Image, 0)
 	for _, img := range queue.Status.ImageMissingList {
-		outImgList = append(outImgList, &samsahairpc.Image{Repository: img.Repository, Tag: img.Tag})
+		outMissingImgList = append(outMissingImgList, &samsahairpc.Image{Repository: img.Repository, Tag: img.Tag})
 	}
 
 	rpcComps := make([]*samsahairpc.Component, 0)
@@ -672,13 +679,19 @@ func GetComponentUpgradeRPCFromQueue(
 	}
 
 	isReverify := queue.IsReverify()
-	if prQueueRPC != nil && prQueueRPC.PRNumber != "" {
-		isReverify = int(prQueueRPC.MaxRetryQueue) >= queue.Spec.NoOfRetry
-	}
-
 	prNamespace := ""
 	if prQueueRPC != nil {
 		prNamespace = prQueueRPC.Namespace
+
+		if prQueueRPC.PRNumber != "" {
+			isReverify = int(prQueueRPC.MaxRetryQueue) >= queue.Spec.NoOfRetry
+		}
+
+		// if there are missing images on PullRequestQueue
+		// implies that this queue failed already
+		if len(prQueueRPC.ImageMissingList) != 0 {
+			outMissingImgList = prQueueRPC.ImageMissingList
+		}
 	}
 
 	comp := &samsahairpc.ComponentUpgrade{
@@ -686,10 +699,10 @@ func GetComponentUpgradeRPCFromQueue(
 		Name:                 queue.Spec.Name,
 		TeamName:             queue.Spec.TeamName,
 		Components:           rpcComps,
-		IssueType:            getIssueTypeRPC(outImgList, queue),
+		IssueType:            getIssueTypeRPC(outMissingImgList, queue),
 		QueueHistoryName:     queueHistName,
 		Namespace:            queueHistNamespace,
-		ImageMissingList:     outImgList,
+		ImageMissingList:     outMissingImgList,
 		Runs:                 int32(queue.Spec.NoOfRetry + 1),
 		IsReverify:           isReverify,
 		ReverificationStatus: getReverificationStatusRPC(queue),
