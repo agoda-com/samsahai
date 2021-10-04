@@ -245,6 +245,21 @@ spec:
       # default value is 30
       maxRetry: 10
 
+      # [optional] specify when and how to destroy the pull request environment after collecting the results
+      # can be overridden by bundle tearDownDuration configs
+      # default is to destroy the environment immediately after collecting the results
+      tearDownDuration:
+
+        # how long the pull request environment will be retained after collecting the results
+        # support units are either <number>s, <number>m or <number>h
+        duration: 0s
+
+        # [optional] specify the criteria by which tearDownDuration will be applied
+        # use 'success' for applying tearDownDuration only when the pull request queue result is Success
+        # use 'failure' for applying tearDownDuration only when the pull request queue result is Failure <default>
+        # use 'both' for always applying tearDownDuration regardless of the pull request queue result
+        criteria: failure
+
       # what bundle of components do you want to verify per pull request?
       bundles:
         # bundle name must consist of lower case alphanumeric characters, '-' or '.',
@@ -334,6 +349,21 @@ spec:
 
           # a string of git "<owner>/<repository>" which is used for publishing commit status
           gitRepository: agoda-com/samsahai
+
+          # [optional] specify when and how to destroy the pull request environment after collecting the results
+          # will override the normal pull request tearDownDuration config
+          # default is to destroy the environment immediately after collecting the results
+          tearDownDuration:
+
+            # how long the pull request environment will be retained after collecting the results
+            # support units are either <number>s, <number>m or <number>h
+            duration: 0s
+
+            # [optional] specify the criteria by which tearDownDuration will be applied
+            # use 'success' for applying tearDownDuration only when the pull request queue result is Success
+            # use 'failure' for applying tearDownDuration only when the pull request queue result is Failure <default>
+            # use 'both' for always applying tearDownDuration regardless of the pull request queue result
+            criteria: failure
 
   # reporting flow configuration
   report:

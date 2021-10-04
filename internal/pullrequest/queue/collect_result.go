@@ -3,13 +3,14 @@ package queue
 import (
 	"context"
 
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/queue"
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func (c *controller) collectPullRequestQueueResult(ctx context.Context, prQueue *s2hv1.PullRequestQueue) error {
@@ -20,10 +21,22 @@ func (c *controller) collectPullRequestQueueResult(ctx context.Context, prQueue 
 	if err != nil {
 		return errors.Wrapf(err, "cannot ensure pull request components, namespace %s", prNamespace)
 	}
+
 	prQueue.Status.SetDeploymentQueue(deployedQueue)
 	prQueue.SetState(s2hv1.PullRequestQueueEnvDestroying)
 	prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondResultCollected, corev1.ConditionTrue,
 		"Pull request queue result has been collected")
+
+	tearDownDuration := prQueue.Spec.TearDownDuration
+	willUseTearDownDuration := c.isTearDownDurationCriteriaMet(tearDownDuration.Criteria, prQueue.Status.Result)
+
+	// set destroyed time only when tearDownDuration is applicable
+	if prQueue.Status.DestroyedTime == nil && willUseTearDownDuration {
+		logger.Debug("pull request destroyed time has been set",
+			"namespace", prNamespace)
+		destroyedTime := metav1.Now().Add(tearDownDuration.Duration.Duration)
+		prQueue.Status.SetDestroyedTime(metav1.Time{Time: destroyedTime})
+	}
 
 	prQueueHistName := generateHistoryName(prQueue.Name, prQueue.CreationTimestamp, prQueue.Spec.NoOfRetry)
 	if prQueue.Status.PullRequestQueueHistoryName == "" {
@@ -89,4 +102,17 @@ func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2
 	}
 
 	return nil
+}
+
+func (c *controller) isTearDownDurationCriteriaMet(criteria s2hv1.PullRequestTearDownDurationCriteria,
+	result s2hv1.PullRequestQueueResult) bool {
+	switch criteria {
+	case s2hv1.PullRequestTearDownDurationCriteriaBoth:
+		return true
+	case s2hv1.PullRequestTearDownDurationCriteriaFailure:
+		return result == s2hv1.PullRequestQueueFailure
+	case s2hv1.PullRequestTearDownDurationCriteriaSuccess:
+		return result == s2hv1.PullRequestQueueSuccess
+	}
+	return false
 }

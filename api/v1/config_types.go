@@ -17,6 +17,9 @@ limitations under the License.
 package v1
 
 import (
+	"encoding/json"
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -397,6 +400,58 @@ type PullRequestComponent struct {
 	PullRequestExtraConfig `json:",inline"`
 }
 
+type PullRequestTearDownDurationCriteria string
+
+const (
+	// PullRequestTearDownDurationCriteriaBoth means the duration will apply when the tests either succeeded or failed.
+	PullRequestTearDownDurationCriteriaBoth PullRequestTearDownDurationCriteria = "both"
+	// PullRequestTearDownDurationCriteriaFailure means the duration will apply at only when the tests failed.
+	PullRequestTearDownDurationCriteriaFailure PullRequestTearDownDurationCriteria = "failure"
+	// PullRequestTearDownDurationCriteriaSuccess means the duration will apply at only when the tests succeeded.
+	PullRequestTearDownDurationCriteriaSuccess PullRequestTearDownDurationCriteria = "success"
+)
+
+func (c *PullRequestTearDownDurationCriteria) UnmarshalJSON(b []byte) (err error) {
+	var str string
+	err = json.Unmarshal(b, &str)
+	if err != nil {
+		return
+	}
+
+	switch str {
+	case "":
+		// Default is failure
+		*c = PullRequestTearDownDurationCriteriaFailure
+	case string(PullRequestTearDownDurationCriteriaBoth):
+		*c = PullRequestTearDownDurationCriteriaBoth
+	case string(PullRequestTearDownDurationCriteriaFailure):
+		*c = PullRequestTearDownDurationCriteriaFailure
+	case string(PullRequestTearDownDurationCriteriaSuccess):
+		*c = PullRequestTearDownDurationCriteriaSuccess
+	default:
+		err = fmt.Errorf("%s is not a valid tearDownDuration criteria", str)
+	}
+	return
+}
+
+func (c *PullRequestTearDownDurationCriteria) MarshalJSON() (b []byte, err error) {
+	criteria := *c
+	if string(criteria) == "" {
+		// Default is failure
+		criteria = PullRequestTearDownDurationCriteriaFailure
+	}
+	return json.Marshal(string(criteria))
+}
+
+// PullRequestTearDownDuration contains information about tearDownDuration of the pull request
+type PullRequestTearDownDuration struct {
+	// Duration tells how much the staging controller will wait before destroying the pull request namespace
+	Duration metav1.Duration `json:"duration"`
+	// Criteria tells how does the duration apply, default is `failure`.
+	// +optional
+	Criteria PullRequestTearDownDurationCriteria `json:"criteria"`
+}
+
 // PullRequestTriggerConfig represents a pull request trigger configuration
 type PullRequestTriggerConfig struct {
 	// PollingTime defines a waiting duration time to re-check the pull request image in the registry
@@ -415,6 +470,9 @@ type PullRequestExtraConfig struct {
 	// Resources represents how many resources of pull request namespace
 	// +optional
 	Resources corev1.ResourceList `json:"resources,omitempty"`
+	// TearDownDuration defines duration before teardown the pull request components
+	// +optional
+	TearDownDuration *PullRequestTearDownDuration `json:"tearDownDuration,omitempty"`
 }
 
 // ConfigPullRequest defines a configuration of pull request
@@ -429,7 +487,8 @@ type ConfigPullRequest struct {
 	Bundles []*PullRequestBundle `json:"bundles,omitempty"`
 	// Concurrences defines a parallel number of pull request queue
 	// +optional
-	Concurrences           int `json:"concurrences,omitempty"`
+	Concurrences int `json:"concurrences,omitempty"`
+
 	PullRequestExtraConfig `json:",inline"`
 }
 

@@ -453,12 +453,17 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 		maxRetryVerification = prConfig.MaxRetry
 	}
 
+	tearDownDuration := prConfig.TearDownDuration
+
 	var gitRepository string
 	for _, bundle := range prConfig.Bundles {
 		if bundle.Name == teamWithComp.BundleName {
 			gitRepository = bundle.GitRepository
 			if bundle.MaxRetry != nil {
 				maxRetryVerification = bundle.MaxRetry
+			}
+			if bundle.TearDownDuration != nil {
+				tearDownDuration = bundle.TearDownDuration
 			}
 			break
 		}
@@ -469,6 +474,23 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 		maxHistoryDays = prConfig.MaxHistoryDays
 	}
 
+	var rpcTearDownDuration *rpc.PullRequestTearDownDuration
+	if tearDownDuration == nil {
+		rpcTearDownDuration = &rpc.PullRequestTearDownDuration{
+			Criteria: rpc.PullRequestTearDownDuration_Criteria_UNKNOWN,
+		}
+	} else {
+		duration := int64(tearDownDuration.Duration.Duration)
+		var criteria rpc.PullRequestTearDownDuration_Criteria
+		if err := criteria.FromCrdCriteria(tearDownDuration.Criteria); err != nil {
+			return nil, err
+		}
+		rpcTearDownDuration = &rpc.PullRequestTearDownDuration{
+			Duration: duration,
+			Criteria: criteria,
+		}
+	}
+
 	rpcPRConfig := &rpc.PullRequestConfig{
 		Concurrences:   int32(queueConcurrences),
 		MaxRetry:       int32(*maxRetryVerification),
@@ -477,7 +499,8 @@ func (c *controller) GetPullRequestConfig(ctx context.Context, teamWithComp *rpc
 			MaxRetry:    int32(*maxRetryTrigger),
 			PollingTime: pollingTimeTrigger.Duration.String(),
 		},
-		GitRepository: gitRepository,
+		GitRepository:    gitRepository,
+		TearDownDuration: rpcTearDownDuration,
 	}
 
 	return rpcPRConfig, nil
