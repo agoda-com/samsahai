@@ -6,8 +6,8 @@ DOCKER_PASSWORD         ?=
 GITHUB_API_URL          ?= https://api.github.com
 GITHUB_TOKEN            ?=
 GITHUB_REPO             ?= agoda-com/samsahai
-GO_VERSION              ?= 1.15.4
-GOLANGCI_LINT_VERSION   ?= 1.32.2
+GO_VERSION              ?= 1.17.2
+GOLANGCI_LINT_VERSION   ?= 1.41.1
 
 GO                      ?= go
 
@@ -21,7 +21,7 @@ KUBEBUILDER_VERSION     ?= 2.2.0
 KUBEBULIDER_FILENAME    = kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
 KUBEBUILDER_PATH        ?= /usr/local/kubebuilder/
 GORELEASER_VERSION      ?= 0.124.1
-K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.18.10-k3s2
+K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.18.20-k3s1
 KUBECONFIG              = /tmp/s2h/k3s-kubeconfig
 K3S_DOCKER_NAME         ?= s2h-k3s-server
 K3S_PORT                ?= 7443

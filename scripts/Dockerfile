@@ -1,7 +1,7 @@
 ARG WORKDIR="/go/src/github.com/agoda-com/samsahai"
 ARG USERNAME="samsahai"
 
-FROM golang:1.15-alpine as builder
+FROM golang:1.17-alpine as builder
 
 ARG WORKDIR
 ARG GO_LDFLAGS
