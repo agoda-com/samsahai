@@ -40,7 +40,8 @@ const (
 	ErrRollingBackActivePromotion        = Error("rolling back active promotion process")
 	ErrEnsureStableComponentsDestroyed   = Error("all stable components has not been destroyed")
 
-	ErrPullRequestBundleNotFound = Error("pull request bundle name not found in configuration")
+	ErrPullRequestBundleNotFound                     = Error("pull request bundle name not found in configuration")
+	ErrPullRequestRPCTearDownDurationCriteriaUnknown = Error("pull request tearDownDuration criteria unknown")
 
 	ErrUnauthorized      = Error("unauthorized")
 	ErrAuthTokenNotFound = Error("auth token not found")
@@ -185,4 +186,9 @@ func IsEnsuringStableComponentsDestroyed(err error) bool {
 // IsErrPullRequestBundleNotFound checks pull request bundle not found error
 func IsErrPullRequestBundleNotFound(err error) bool {
 	return ErrPullRequestBundleNotFound.Error() == err.Error()
+}
+
+// IsErrPullRequestRPCTearDownDurationCriteriaUnknown checks pull request rpc tearDownDuration unknown error
+func IsErrPullRequestRPCTearDownDurationCriteriaUnknown(err error) bool {
+	return ErrPullRequestRPCTearDownDurationCriteriaUnknown.Error() == err.Error()
 }

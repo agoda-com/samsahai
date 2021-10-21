@@ -76,6 +76,10 @@ type PullRequestQueueSpec struct {
 	// PRTriggerFinishedAt represents time when pull request trigger has been finish
 	// +optional
 	PRTriggerFinishedAt *metav1.Time `json:"prTriggerFinishedAt,omitempty"`
+
+	// TearDownDuration defines duration before teardown the pull request components
+	// +optional
+	TearDownDuration PullRequestTearDownDuration `json:"tearDownDuration,omitempty"`
 }
 
 // PullRequestQueueConditionType represents a condition type of pull request queue
@@ -176,6 +180,10 @@ type PullRequestQueueStatus struct {
 	// ComponentUpgrade defines a deployed pull request queue
 	// +optional
 	DeploymentQueue *Queue `json:"deploymentQueue,omitempty"`
+
+	// DestroyedTime represents time at which the PR namespace will be destroyed
+	// +optional
+	DestroyedTime *metav1.Time `json:"destroyedTime,omitempty"`
 }
 
 func (prqs *PullRequestQueueStatus) SetPullRequestNamespace(namespace string) {
@@ -195,6 +203,10 @@ func (prqs *PullRequestQueueStatus) SetDeploymentQueue(q *Queue) {
 		Spec:   q.Spec,
 		Status: q.Status,
 	}
+}
+
+func (prqs *PullRequestQueueStatus) SetDestroyedTime(t metav1.Time) {
+	prqs.DestroyedTime = &t
 }
 
 func (prqs *PullRequestQueueStatus) IsConditionTrue(cond PullRequestQueueConditionType) bool {

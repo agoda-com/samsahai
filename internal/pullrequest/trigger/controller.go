@@ -138,13 +138,40 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	noOfRetry := prTrigger.Spec.NoOfRetry
 	maxRetry := prConfig.Trigger.MaxRetry
 	gitRepo := prConfig.GitRepository
+
+	var tearDownDuration s2hv1.PullRequestTearDownDuration
+	// overwrite tearDownDuration
+	if prTrigger.Spec.TearDownDuration != nil {
+		tearDownDuration = *prTrigger.Spec.TearDownDuration
+	} else {
+		configTearDownDuration := prConfig.GetTearDownDuration()
+
+		duration := metav1.Duration{
+			Duration: time.Duration(configTearDownDuration.Duration),
+		}
+		criteria, err := configTearDownDuration.Criteria.ToCrdCriteria()
+		if err != nil {
+			if !errors.IsErrPullRequestRPCTearDownDurationCriteriaUnknown(err) {
+				return reconcile.Result{}, errors.Wrapf(err, "cannot parse tearDownDuration criteria from rpc")
+			}
+			// if criteria unknown (tearDownDuration not being set), always destroys the environment
+			duration.Duration = time.Duration(0)
+			criteria = s2hv1.PullRequestTearDownDurationCriteriaBoth
+		}
+
+		tearDownDuration = s2hv1.PullRequestTearDownDuration{
+			Duration: duration,
+			Criteria: criteria,
+		}
+	}
+
 	if maxRetry >= 0 && noOfRetry != nil && *noOfRetry >= int(maxRetry) {
 		isPRTriggerFailed := true
 		imageMissingList := prTrigger.Status.ImageMissingList
 		prTriggerCreateAt := prTrigger.Status.CreatedAt
 		prTriggerFinishedAt := prTrigger.Status.UpdatedAt
 		err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, gitRepo,
-			s2hv1.QueueComponents{}, imageMissingList, isPRTriggerFailed, prTriggerCreateAt, prTriggerFinishedAt)
+			s2hv1.QueueComponents{}, imageMissingList, isPRTriggerFailed, prTriggerCreateAt, prTriggerFinishedAt, tearDownDuration)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -215,7 +242,7 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	prTriggerCreateAt := prTrigger.Status.CreatedAt
 	prTriggerFinishedAt := prTrigger.Status.UpdatedAt
 	err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, gitRepo,
-		prQueueComponents, imageMissingList, isPRTriggerFailed, prTriggerCreateAt, prTriggerFinishedAt)
+		prQueueComponents, imageMissingList, isPRTriggerFailed, prTriggerCreateAt, prTriggerFinishedAt, tearDownDuration)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -416,9 +443,9 @@ func (c *controller) getPRQueueComponentsIfImageExisted(ctx context.Context, prT
 }
 
 func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA, gitRepo string, comps s2hv1.QueueComponents,
-	imageMissingList []s2hv1.Image, isPRTriggerFailed bool, createAt, finishedAt *metav1.Time) error {
+	imageMissingList []s2hv1.Image, isPRTriggerFailed bool, createAt, finishedAt *metav1.Time, teardownDuration s2hv1.PullRequestTearDownDuration) error {
 	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, name, prNumber, commitSHA, gitRepo, comps,
-		imageMissingList, isPRTriggerFailed, createAt, finishedAt)
+		imageMissingList, isPRTriggerFailed, createAt, finishedAt, teardownDuration)
 	if err := c.prQueueCtrl.Add(prQueue, nil); err != nil {
 		return err
 	}

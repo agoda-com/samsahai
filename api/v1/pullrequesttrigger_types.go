@@ -48,6 +48,10 @@ type PullRequestTriggerSpec struct {
 	NoOfRetry *int `json:"noOfRetry,omitempty"`
 	// GitRepository represents a github repository of the pull request
 	GitRepository string `json:"gitRepository,omitempty"`
+	// TearDownDuration defines duration before teardown the pull request components. If defined, this will override
+	// tearDownDuration from pull request extra config
+	// +optional
+	TearDownDuration *PullRequestTearDownDuration `json:"tearDownDuration,omitempty"`
 }
 
 // PullRequestTriggerResult represents the result status of a pull request trigger

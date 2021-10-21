@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
@@ -36,6 +38,12 @@ func (c *controller) createPullRequestEnvironment(ctx context.Context, prQueue *
 
 func (c *controller) destroyPullRequestEnvironment(ctx context.Context, prQueue *s2hv1.PullRequestQueue) (
 	skipReconcile bool, err error) {
+	destroyedTime := prQueue.Status.DestroyedTime
+	// if destroyed time is not set, immediately destroy environment
+	if destroyedTime != nil && !metav1.Now().After(destroyedTime.Time) {
+		err = s2herrors.ErrTeamNamespaceStillExists
+		return
+	}
 
 	prNamespace := prQueue.Status.PullRequestNamespace
 	if prNamespace != "" {

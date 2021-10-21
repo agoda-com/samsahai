@@ -298,6 +298,10 @@ var _ = Describe("[e2e] Pull request controller", func() {
 					"tag":  mariaDBImageTag,
 				},
 			},
+			"tearDownDuration": map[string]string{
+				"duration": "15s",
+				"criteria": "both",
+			},
 		})
 		apiURL := fmt.Sprintf("%s/teams/%s/pullrequest/trigger", server.URL, teamName)
 		_, _, err = utilhttp.Post(apiURL, jsonPRData)
@@ -397,8 +401,9 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(client.Update(ctx, &queue)).NotTo(HaveOccurred(),
 			"pull-request Queue type updated error")
 
+		isDestroyedTimeChecked := false
 		By("Verifying PullRequestQueue has been deleted and PullRequestQueueHistory has been created")
-		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime45s, func() (ok bool, err error) {
 			prQueueHistList := s2hv1.PullRequestQueueHistoryList{}
 			err = client.List(ctx, &prQueueHistList, &rclient.ListOptions{Namespace: stgNamespace})
 			if err != nil {
@@ -414,9 +419,21 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			}
 
 			prQueue := s2hv1.PullRequestQueue{}
-			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: bundledPRNamespace}, &prQueue)
+			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prQueue)
 			if err != nil && k8serrors.IsNotFound(err) {
+				if !isDestroyedTimeChecked {
+					return false, fmt.Errorf("DestroyedTime was not being checked yet PullRequestQueue had been destroyed")
+				}
 				return true, nil
+			}
+
+			// check for only 1 time
+			if !isDestroyedTimeChecked {
+				if Expect(prQueue.Status.DestroyedTime).NotTo(BeNil()) {
+					isDelayed := prQueue.Status.DestroyedTime.After(time.Now())
+					Expect(isDelayed).To(BeTrue())
+				}
+				isDestroyedTimeChecked = true
 			}
 
 			return false, nil
@@ -431,7 +448,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(strings.Contains(prQueueHistList.Items[0].Name, bundledPRTriggerName)).To(BeTrue())
 		Expect(prQueueHistList.Items[0].Spec.PullRequestQueue).NotTo(BeNil())
 		Expect(prQueueHistList.Items[0].Spec.PullRequestQueue.Status.Result).To(Equal(s2hv1.PullRequestQueueSuccess))
-	}, 120)
+	}, 140)
 
 	It("should successfully deploy pull request queue with 1 component and dependencies", func(done Done) {
 		defer close(done)

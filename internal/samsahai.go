@@ -212,7 +212,8 @@ type SamsahaiController interface {
 	NotifyActivePromotionReport(atpRpt *ActivePromotionReporter)
 
 	// TriggerPullRequestDeployment creates PullRequestTrigger crd object
-	TriggerPullRequestDeployment(teamName, component, prNumber, commitSHA string, bundleCompTag map[string]string) error
+	TriggerPullRequestDeployment(teamName, component, prNumber, commitSHA string, bundleCompTag map[string]string,
+		tearDownDuration *s2hv1.PullRequestTearDownDuration) error
 
 	// API
 

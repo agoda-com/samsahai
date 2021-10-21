@@ -1247,6 +1247,11 @@
                     "description": "Resources represents how many resources of pull request namespace\n+optional",
                     "type": "string"
                 },
+                "tearDownDuration": {
+                    "description": "TearDownDuration defines duration before teardown the pull request components\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.PullRequestTearDownDuration"
+                },
                 "trigger": {
                     "description": "Trigger represents a pull request trigger configuration\n+optional",
                     "type": "object",
@@ -1627,6 +1632,11 @@
                 "resources": {
                     "description": "Resources represents how many resources of pull request namespace\n+optional",
                     "type": "string"
+                },
+                "tearDownDuration": {
+                    "description": "TearDownDuration defines duration before teardown the pull request components\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.PullRequestTearDownDuration"
                 }
             }
         },
@@ -1653,6 +1663,11 @@
                 "source": {
                     "description": "Source defines a source for image repository\n+optional",
                     "type": "string"
+                },
+                "tearDownDuration": {
+                    "description": "TearDownDuration defines duration before teardown the pull request components\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.PullRequestTearDownDuration"
                 }
             }
         },
@@ -1772,6 +1787,11 @@
                     "description": "TeamName represents team owner of the pull request queue",
                     "type": "string"
                 },
+                "tearDownDuration": {
+                    "description": "TearDownDuration defines duration before teardown the pull request components\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.PullRequestTearDownDuration"
+                },
                 "upcomingCommitSHA": {
                     "description": "UpcomingCommitSHA represents an upcoming commit SHA in case queue is running\n+optional",
                     "type": "string"
@@ -1802,6 +1822,10 @@
                     "type": "object",
                     "$ref": "#/definitions/v1.Queue"
                 },
+                "destroyedTime": {
+                    "description": "DestroyedTime represents time at which the PR namespace will be destroyed\n+optional",
+                    "type": "string"
+                },
                 "pullRequestNamespace": {
                     "description": "PullRequestNamespace represents a current pull request namespace",
                     "type": "string"
@@ -1820,6 +1844,19 @@
                 },
                 "updatedAt": {
                     "description": "UpdatedAt represents time when the component was processed",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.PullRequestTearDownDuration": {
+            "type": "object",
+            "properties": {
+                "criteria": {
+                    "description": "Criteria tells how does the duration apply, default is `both`.\n+optional",
+                    "type": "string"
+                },
+                "duration": {
+                    "description": "Duration tells how much the staging controller will wait before destroying the pull request namespace",
                     "type": "string"
                 }
             }
@@ -2578,6 +2615,10 @@
                 },
                 "prNumber": {
                     "type": "string"
+                },
+                "tearDownDuration": {
+                    "type": "object",
+                    "$ref": "#/definitions/v1.PullRequestTearDownDuration"
                 }
             }
         },
