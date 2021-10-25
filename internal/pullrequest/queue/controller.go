@@ -394,9 +394,7 @@ func ensurePullRequestQueueStatus(prQueue *s2hv1.PullRequestQueue) bool {
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=pullrequestqueues/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=queuehistories,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=queuehistories/status,verbs=get;update;patch
-func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
-	ctx := context.TODO()
-
+func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	prQueue := &s2hv1.PullRequestQueue{}
 	err := c.client.Get(ctx, req.NamespacedName, prQueue)
 	if err != nil {

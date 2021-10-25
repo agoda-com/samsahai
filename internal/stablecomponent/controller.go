@@ -148,9 +148,7 @@ func (c *controller) deleteFinalizer(stableComp *s2hv1.StableComponent, team *s2
 	return nil
 }
 
-func (c *controller) Reconcile(req cr.Request) (cr.Result, error) {
-	ctx := context.TODO()
-
+func (c *controller) Reconcile(ctx context.Context, req cr.Request) (cr.Result, error) {
 	stableComp := &s2hv1.StableComponent{}
 	if err := c.client.Get(ctx, req.NamespacedName, stableComp); err != nil {
 		if k8serrors.IsNotFound(err) {

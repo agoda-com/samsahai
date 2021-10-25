@@ -1666,9 +1666,7 @@ func applyTeamTemplate(teamComp, teamTemplate *s2hv1.Team) error {
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=queuehistories/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=stablecomponents,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=stablecomponents/status,verbs=get;update;patch
-func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
-	ctx := context.TODO()
-
+func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	teamComp := &s2hv1.Team{}
 	err := c.client.Get(ctx, types.NamespacedName{Name: req.NamespacedName.Name}, teamComp)
 	if err != nil {
