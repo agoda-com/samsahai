@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -55,15 +54,15 @@ func NewQueue(teamName, namespace, name, bundle string, comps []*s2hv1.QueueComp
 }
 
 // New returns QueueController
-func New(ns string, runtimeClient client.Client) internal.QueueController {
+func New(ns string, cli client.Client) internal.QueueController {
 	c := &controller{
 		namespace: ns,
-		client:    runtimeClient,
+		client:    cli,
 	}
 	return c
 }
 
-func (c *controller) Add(obj runtime.Object, priorityQueues []string) error {
+func (c *controller) Add(obj client.Object, priorityQueues []string) error {
 	q, ok := obj.(*s2hv1.Queue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
@@ -72,7 +71,7 @@ func (c *controller) Add(obj runtime.Object, priorityQueues []string) error {
 	return c.add(context.TODO(), q, false, priorityQueues)
 }
 
-func (c *controller) AddTop(obj runtime.Object) error {
+func (c *controller) AddTop(obj client.Object) error {
 	q, ok := obj.(*s2hv1.Queue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
@@ -91,7 +90,7 @@ func (c *controller) Size(namespace string) int {
 	return len(list.Items)
 }
 
-func (c *controller) First(namespace string) (runtime.Object, error) {
+func (c *controller) First(namespace string) (client.Object, error) {
 	listOpts := &client.ListOptions{Namespace: namespace}
 	list, err := c.list(listOpts)
 	if err != nil {
@@ -116,7 +115,7 @@ func (c *controller) First(namespace string) (runtime.Object, error) {
 	return nil, nil
 }
 
-func (c *controller) Remove(obj runtime.Object) error {
+func (c *controller) Remove(obj client.Object) error {
 	return c.client.Delete(context.TODO(), obj)
 }
 
@@ -425,7 +424,7 @@ func (c *controller) list(opts *client.ListOptions) (list *s2hv1.QueueList, err 
 	return list, nil
 }
 
-func (c *controller) SetLastOrder(obj runtime.Object) error {
+func (c *controller) SetLastOrder(obj client.Object) error {
 	q, ok := obj.(*s2hv1.Queue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
@@ -443,7 +442,7 @@ func (c *controller) SetLastOrder(obj runtime.Object) error {
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
+func (c *controller) SetReverifyQueueAtFirst(obj client.Object) error {
 	q, ok := obj.(*s2hv1.Queue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
@@ -467,7 +466,7 @@ func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
 	return c.client.Update(context.TODO(), q)
 }
 
-func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time,
+func (c *controller) SetRetryQueue(obj client.Object, noOfRetry int, nextAt time.Time,
 	isTriggerFailed *bool, createdAt, finishedAt *metav1.Time) error {
 	q, ok := obj.(*s2hv1.Queue)
 	if !ok {

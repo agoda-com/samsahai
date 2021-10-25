@@ -141,8 +141,10 @@ var _ = Describe("Samsahai Webhook", func() {
 		yamlTeam, err := ioutil.ReadFile(path.Join("..", "..", "..", "test", "data", "team", "team.yaml"))
 		g.Expect(err).NotTo(HaveOccurred())
 		obj, _ := util.MustParseYAMLtoRuntimeObject(yamlTeam)
+		teamObj, ok := obj.(*s2hv1.Team)
+		Expect(ok).To(BeTrue(), "Should parse Team object successfully")
 
-		_ = c.Create(context.TODO(), obj)
+		_ = c.Create(context.TODO(), teamObj)
 
 		server = httptest.NewServer(r)
 	}, timeout)

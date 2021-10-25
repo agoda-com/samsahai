@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
@@ -39,7 +40,7 @@ func getDefaultLabelsWithVersion(teamName string) map[string]string {
 	return defaultLabelsWithVersion
 }
 
-func GetEmptyResourceQuota(namespaceName string) runtime.Object {
+func GetEmptyResourceQuota(namespaceName string) client.Object {
 	resourceQuota := corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namespaceName + internal.ResourcesQuotaSuffix,
@@ -50,7 +51,7 @@ func GetEmptyResourceQuota(namespaceName string) runtime.Object {
 	return &resourceQuota
 }
 
-func GetResourceQuota(teamComp *s2hv1.Team, namespaceName string, resources corev1.ResourceList) runtime.Object {
+func GetResourceQuota(teamComp *s2hv1.Team, namespaceName string, resources corev1.ResourceList) client.Object {
 	cpuResource := teamComp.Status.Used.Resources.Cpu()
 	memoryResource := teamComp.Status.Used.Resources.Memory()
 
@@ -82,7 +83,7 @@ func GetResourceQuota(teamComp *s2hv1.Team, namespaceName string, resources core
 }
 
 func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName string,
-	configs *internal.SamsahaiConfig) runtime.Object {
+	configs *internal.SamsahaiConfig) client.Object {
 
 	teamName := teamComp.GetName()
 
@@ -217,7 +218,7 @@ func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName s
 	return &deployment
 }
 
-func GetService(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName string) runtime.Object {
+func GetService(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName string) client.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	service := corev1.Service{
@@ -247,7 +248,7 @@ func GetService(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName stri
 	return &service
 }
 
-func GetRole(teamComp *s2hv1.Team, namespaceName string) runtime.Object {
+func GetRole(teamComp *s2hv1.Team, namespaceName string) client.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	role := rbacv1.Role{
@@ -400,7 +401,7 @@ func GetRole(teamComp *s2hv1.Team, namespaceName string) runtime.Object {
 	return &role
 }
 
-func GetRoleBinding(teamComp *s2hv1.Team, namespaceName string) runtime.Object {
+func GetRoleBinding(teamComp *s2hv1.Team, namespaceName string) client.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	roleBinding := rbacv1.RoleBinding{
@@ -426,7 +427,7 @@ func GetRoleBinding(teamComp *s2hv1.Team, namespaceName string) runtime.Object {
 	return &roleBinding
 }
 
-func GetClusterRole(teamComp *s2hv1.Team, namespace string) runtime.Object {
+func GetClusterRole(teamComp *s2hv1.Team, namespace string) client.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	role := rbacv1.ClusterRole{
@@ -470,7 +471,7 @@ func GetClusterRole(teamComp *s2hv1.Team, namespace string) runtime.Object {
 	return &role
 }
 
-func GetClusterRoleBinding(teamComp *s2hv1.Team, namespace string) runtime.Object {
+func GetClusterRoleBinding(teamComp *s2hv1.Team, namespace string) client.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	roleBinding := rbacv1.ClusterRoleBinding{
@@ -495,7 +496,7 @@ func GetClusterRoleBinding(teamComp *s2hv1.Team, namespace string) runtime.Objec
 	return &roleBinding
 }
 
-func GetServiceAccount(teamComp *s2hv1.Team, namespaceName string) runtime.Object {
+func GetServiceAccount(teamComp *s2hv1.Team, namespaceName string) client.Object {
 	teamName := teamComp.GetName()
 	defaultLabelsWithVersion := getDefaultLabelsWithVersion(teamName)
 	serviceAccount := corev1.ServiceAccount{
@@ -514,7 +515,7 @@ type KeyValue struct {
 	Value intstr.IntOrString
 }
 
-func GetSecret(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName string, kvs ...KeyValue) runtime.Object {
+func GetSecret(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName string, kvs ...KeyValue) client.Object {
 	teamName := teamComp.GetName()
 	data := map[string][]byte{}
 	for i := range kvs {

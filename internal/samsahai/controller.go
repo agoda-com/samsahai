@@ -642,7 +642,7 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1.Team, namespace st
 		},
 	}
 
-	k8sObjects := []runtime.Object{
+	k8sObjects := []client.Object{
 		k8sobject.GetService(c.scheme, teamComp, namespace),
 		k8sobject.GetServiceAccount(teamComp, namespace),
 		k8sobject.GetRole(teamComp, namespace),
@@ -718,13 +718,10 @@ func setPostNamespaceCreationCondition(teamComp *s2hv1.Team, nsConditionType s2h
 	}
 }
 
-func deployStagingCtrl(c client.Client, obj runtime.Object) error {
+func deployStagingCtrl(c client.Client, obj client.Object) error {
 	ctx := context.TODO()
 	target := obj.DeepCopyObject()
-	objKey, err := client.ObjectKeyFromObject(obj)
-	if err != nil {
-		return err
-	}
+	objKey := client.ObjectKeyFromObject(obj)
 
 	if err := c.Get(ctx, objKey, obj); err != nil {
 		if k8serrors.IsNotFound(err) {
