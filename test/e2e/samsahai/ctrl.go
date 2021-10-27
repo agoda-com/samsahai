@@ -69,8 +69,6 @@ var (
 )
 
 func setupSamsahai(isPromoteOnTeamCreationDisabled bool) {
-	ctx, cancel = context.WithCancel(context.TODO())
-
 	s2hConfig := samsahaiConfig
 	if isPromoteOnTeamCreationDisabled {
 		s2hConfig.ActivePromotion.PromoteOnTeamCreation = false
@@ -100,8 +98,8 @@ func setupSamsahai(isPromoteOnTeamCreationDisabled bool) {
 }
 
 var _ = Describe("[e2e] Main controller", func() {
-	BeforeEach(func(done Done) {
-		defer close(done)
+	BeforeEach(func() {
+		ctx, cancel = context.WithCancel(context.TODO())
 		chStop = make(chan struct{})
 
 		adminRestConfig, err := config.GetConfig()
@@ -122,9 +120,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		_ = client.Create(ctx, &secret)
 	}, 60)
 
-	AfterEach(func(done Done) {
-		defer close(done)
-
+	AfterEach(func() {
 		By("Deleting all Teams")
 		err = client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
@@ -241,8 +237,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		wgStop.Wait()
 	}, 90)
 
-	It("should successfully promote an active environment without doing retry", func(done Done) {
-		defer close(done)
+	It("should successfully promote an active environment without doing retry", func() {
 		setupSamsahai(true)
 
 		By("Creating Config")
@@ -528,8 +523,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		}
 	}, 90)
 
-	It("should successfully promote an active environment even demote timeout", func(done Done) {
-		defer close(done)
+	It("should successfully promote an active environment even demote timeout", func() {
 		setupSamsahai(true)
 
 		By("Creating Config")
@@ -586,8 +580,7 @@ var _ = Describe("[e2e] Main controller", func() {
 			"Waiting active promotion state to `PromotingActiveEnvironment` error")
 	}, 40)
 
-	It("should successfully add/remove/run active promotion from queue", func(done Done) {
-		defer close(done)
+	It("should successfully add/remove/run active promotion from queue", func() {
 		setupSamsahai(true)
 
 		By("Creating Team for Q1")
@@ -747,8 +740,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 	}, 60)
 
-	It("should do retry if active promotion fail", func(done Done) {
-		defer close(done)
+	It("should do retry if active promotion fail", func() {
 		setupSamsahai(true)
 
 		By("Creating Config")
@@ -808,8 +800,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(atpComp.Spec.NoOfRetry).To(Equal(2))
 	}, 45)
 
-	It("should successfully rollback and delete active promotion", func(done Done) {
-		defer close(done)
+	It("should successfully rollback and delete active promotion", func() {
 		setupSamsahai(true)
 
 		By("Creating Config")
@@ -921,8 +912,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())
 	}, 90)
 
-	It("should rollback active environment timeout", func(done Done) {
-		defer close(done)
+	It("should rollback active environment timeout", func() {
 		setupSamsahai(true)
 
 		By("Creating Config")
@@ -971,8 +961,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete active promotion error")
 	}, 30)
 
-	It("should successfully delete config when delete team", func(done Done) {
-		defer close(done)
+	It("should successfully delete config when delete team", func() {
 		setupSamsahai(true)
 
 		By("Creating Config")
@@ -1022,8 +1011,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 	}, 30)
 
-	It("should successfully delete active environment", func(done Done) {
-		defer close(done)
+	It("should successfully delete active environment", func() {
 		setupSamsahai(true)
 
 		By("Starting Samsahai internal process")
@@ -1109,8 +1097,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete active environment error")
 	}, 75)
 
-	It("should be error when creating team if config does not exist", func(done Done) {
-		defer close(done)
+	It("should be error when creating team if config does not exist", func() {
 		setupSamsahai(true)
 
 		By("Creating Team")
@@ -1137,8 +1124,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Team should be error if missing Config")
 	}, 15)
 
-	It("should detect image missing and not create desired component", func(done Done) {
-		defer close(done)
+	It("should detect image missing and not create desired component", func() {
 		setupSamsahai(true)
 
 		By("Starting Samsahai internal process")
@@ -1238,8 +1224,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(found).To(BeFalse())
 	}, 60)
 
-	It("should create DesiredComponent on team staging namespace", func(done Done) {
-		defer close(done)
+	It("should create DesiredComponent on team staging namespace", func() {
 		setupSamsahai(true)
 
 		By("Starting Samsahai internal process")
@@ -1302,8 +1287,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify DesiredComponent error")
 	}, 60)
 
-	It("should successfully detect changed components", func(done Done) {
-		defer close(done)
+	It("should successfully detect changed components", func() {
 		setupSamsahai(true)
 
 		By("Starting Samsahai internal process")
@@ -1494,8 +1478,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify StableComponents error")
 	}, 300)
 
-	It("should successfully create outdated component when no any active namespace left but there are active components in team", func(done Done) {
-		defer close(done)
+	It("should successfully create outdated component when no any active namespace left but there are active components in team", func() {
 		setupSamsahai(true)
 
 		By("Creating Config")
@@ -1604,8 +1587,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(atpHists.Items[0].Spec.ActivePromotion.Status.OutdatedComponents).ToNot(BeNil())
 	}, 60)
 
-	It("should successfully notify component changed and promote active after creating team", func(done Done) {
-		defer close(done)
+	It("should successfully notify component changed and promote active after creating team", func() {
 		setupSamsahai(false)
 
 		By("Creating Config")
@@ -1701,8 +1683,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(atpRes.Status.PreviousActiveNamespace).To(BeEmpty())
 	}, 75)
 
-	It("should successfully create cronjob", func(done Done) {
-		defer close(done)
+	It("should successfully create cronjob", func() {
 		setupSamsahai(true)
 
 		By("Creating Config that have Scheduler")
@@ -1770,8 +1751,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "CronJob should be deleted")
 	}, 90)
 
-	It("should successfully apply/update team template", func(done Done) {
-		defer close(done)
+	It("should successfully apply/update team template", func() {
 		setupSamsahai(true)
 
 		By("Creating Config")
@@ -1811,7 +1791,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Update team template")
 		stagingCtrlEndpoint := "http://127.0.0.1"
-		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
 			team := s2hv1.Team{}
 			teamUsingTemplate := s2hv1.Team{}
 			if err = client.Get(ctx, types.NamespacedName{Name: mockTeam.Name}, &team); err != nil {
@@ -1832,10 +1812,9 @@ var _ = Describe("[e2e] Main controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred(), "Update team template error")
 
-	}, 15)
+	}, 25)
 
-	It("should successfully create staging resources quota from deploy engine", func(done Done) {
-		defer close(done)
+	It("should successfully create staging resources quota from deploy engine", func() {
 		setupSamsahai(true)
 
 		By("Creating Config")

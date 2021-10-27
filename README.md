@@ -136,7 +136,7 @@ This flow is for checking pull request image in a registry.
 ### Prerequisites
 1. Install and setup [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/).
     ```
-    curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.18.10/bin/darwin/amd64/kubectl
+    curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
     ```
    > Note: This is our preferred `kubectl` version. If you've already run the command above, do not forget to run step 2 and 3 following the official document.
 2. Install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) with HyperKit driver
@@ -165,7 +165,7 @@ Find more configuration information in [examples](https://www.github.com/agoda-c
       --vm-driver=hyperkit \
       --cpus=4 \
       --memory=8192 \
-      --kubernetes-version=v1.18.10
+      --kubernetes-version=v1.21.0
     ```
 4. Install CRDs
     ```

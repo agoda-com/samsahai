@@ -893,7 +893,7 @@ definitions:
     properties:
       criteria:
         description: |-
-          Criteria tells how does the duration apply, default is `both`.
+          Criteria tells how does the duration apply, default is `failure`.
           +optional
         type: string
       duration:

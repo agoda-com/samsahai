@@ -60,15 +60,10 @@ var (
 	samsahaiClient samsahairpc.RPC
 	restCfg        *rest.Config
 	err            error
-	samsahaiCtx    context.Context
-	samsahaiCancel context.CancelFunc
-	stagingCtx     context.Context
-	stagingCancel  context.CancelFunc
+	cancel         context.CancelFunc
 )
 
 func setupSamsahai() {
-	samsahaiCtx, samsahaiCancel = context.WithCancel(context.TODO())
-
 	s2hConfig := samsahaiConfig
 
 	samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig)
@@ -78,7 +73,7 @@ func setupSamsahai() {
 	wgStop.Add(1)
 	go func() {
 		defer wgStop.Done()
-		Expect(mgr.Start(samsahaiCtx)).To(BeNil())
+		Expect(mgr.Start(ctx)).To(BeNil())
 	}()
 
 	mux := http.NewServeMux()
@@ -89,8 +84,6 @@ func setupSamsahai() {
 }
 
 func setupStaging(namespace string) (internal.StagingController, internal.QueueController) {
-	stagingCtx, stagingCancel = context.WithCancel(context.TODO())
-
 	// create mgr from config
 	stagingCfg := rest.CopyConfig(restCfg)
 	stagingMgr, err := manager.New(stagingCfg, manager.Options{
@@ -111,15 +104,15 @@ func setupStaging(namespace string) (internal.StagingController, internal.QueueC
 
 	go func() {
 		defer GinkgoRecover()
-		Expect(stagingMgr.Start(stagingCtx)).NotTo(HaveOccurred())
+		Expect(stagingMgr.Start(ctx)).NotTo(HaveOccurred())
 	}()
 
 	return stagingCtrl, prQueueCtrl
 }
 
 var _ = Describe("[e2e] Pull request controller", func() {
-	BeforeEach(func(done Done) {
-		defer close(done)
+	BeforeEach(func() {
+		ctx, cancel = context.WithCancel(context.TODO())
 		chStop = make(chan struct{})
 
 		adminRestConfig, err := config.GetConfig()
@@ -140,9 +133,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		_ = client.Create(ctx, &secret)
 	}, 60)
 
-	AfterEach(func(done Done) {
-		defer close(done)
-
+	AfterEach(func() {
 		By("Deleting all Teams")
 		err = client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
@@ -249,15 +240,12 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(samsahaiCtrl.GetConfigController().Delete(teamName)).NotTo(HaveOccurred())
 
 		close(chStop)
-		stagingCancel()
-		samsahaiCancel()
+		cancel()
 		samsahaiServer.Close()
 		wgStop.Wait()
 	}, 60)
 
-	It("should successfully deploy pull request queue with 2 components in a bundle", func(done Done) {
-		defer close(done)
-
+	It("should successfully deploy pull request queue with 2 components in a bundle", func() {
 		By("Starting Samsahai internal process")
 		setupSamsahai()
 		go samsahaiCtrl.Start(chStop)
@@ -460,9 +448,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(prQueueHistList.Items[0].Spec.PullRequestQueue.Status.Result).To(Equal(s2hv1.PullRequestQueueSuccess))
 	}, 140)
 
-	It("should successfully deploy pull request queue with 1 component and dependencies", func(done Done) {
-		defer close(done)
-
+	It("should successfully deploy pull request queue with 1 component and dependencies", func() {
 		By("Starting Samsahai internal process")
 		setupSamsahai()
 		go samsahaiCtrl.Start(chStop)
@@ -617,9 +603,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			"dependency version should equal active version")
 	}, 90)
 
-	It("should successfully add/remove/run pull request from queue", func(done Done) {
-		defer close(done)
-
+	It("should successfully add/remove/run pull request from queue", func() {
 		By("Starting Samsahai internal process")
 		setupSamsahai()
 		go samsahaiCtrl.Start(chStop)
@@ -745,9 +729,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify running PullRequestQueue deleted error")
 	}, 45)
 
-	It("should successfully reset pull request queue if commit SHA changed", func(done Done) {
-		defer close(done)
-
+	It("should successfully reset pull request queue if commit SHA changed", func() {
 		By("Starting Samsahai internal process")
 		setupSamsahai()
 		go samsahaiCtrl.Start(chStop)
@@ -834,9 +816,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(prQueue.Spec.NoOfRetry).To(Equal(0))
 	}, 45)
 
-	It("should update pull request retry queue if deployment fail", func(done Done) {
-		defer close(done)
-
+	It("should update pull request retry queue if deployment fail", func() {
 		By("Starting Samsahai internal process")
 		setupSamsahai()
 		go samsahaiCtrl.Start(chStop)
@@ -917,9 +897,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestQueue updated error")
 	}, 45)
 
-	It("should re-create pull request trigger if re-send webhook and do retry if image not found", func(done Done) {
-		defer close(done)
-
+	It("should re-create pull request trigger if re-send webhook and do retry if image not found", func() {
 		By("Starting Samsahai internal process")
 		setupSamsahai()
 		go samsahaiCtrl.Start(chStop)
@@ -1019,9 +997,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger deleted error")
 	}, 45)
 
-	It("should return error on trigger if there is no pull request bundle name in configuration or invalid input", func(done Done) {
-		defer close(done)
-
+	It("should return error on trigger if there is no pull request bundle name in configuration or invalid input", func() {
 		By("Starting Samsahai internal process")
 		setupSamsahai()
 		go samsahaiCtrl.Start(chStop)
@@ -1083,9 +1059,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 			"Should get status code error due to invalid prNumber")
 	}, 20)
 
-	It("should create pull request queue even pull request trigger failed", func(done Done) {
-		defer close(done)
-
+	It("should create pull request queue even pull request trigger failed", func() {
 		By("Starting Samsahai internal process")
 		setupSamsahai()
 		go samsahaiCtrl.Start(chStop)

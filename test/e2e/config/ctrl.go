@@ -46,8 +46,6 @@ var (
 )
 
 func setupSamsahai() {
-	ctx, cancel = context.WithCancel(context.TODO())
-
 	s2hConfig := samsahaiConfig
 
 	samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig)
@@ -65,8 +63,8 @@ func setupSamsahai() {
 }
 
 var _ = Describe("[e2e] Config controller", func() {
-	BeforeEach(func(done Done) {
-		defer close(done)
+	BeforeEach(func() {
+		ctx, cancel = context.WithCancel(context.TODO())
 
 		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
@@ -87,9 +85,7 @@ var _ = Describe("[e2e] Config controller", func() {
 
 	}, 5)
 
-	AfterEach(func(done Done) {
-		defer close(done)
-
+	AfterEach(func() {
 		By("Deleting all Teams")
 		err := client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
@@ -133,8 +129,7 @@ var _ = Describe("[e2e] Config controller", func() {
 		wgStop.Wait()
 	}, 30)
 
-	It("should successfully get/delete Config", func(done Done) {
-		defer close(done)
+	It("should successfully get/delete Config", func() {
 		setupSamsahai()
 
 		By("Creating Config")
@@ -208,8 +203,7 @@ var _ = Describe("[e2e] Config controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete config error")
 	}, 10)
 
-	It("Should successfully apply/update config template", func(done Done) {
-		defer close(done)
+	It("Should successfully apply/update config template", func() {
 		setupSamsahai()
 
 		By("Creating Config")
