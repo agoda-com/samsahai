@@ -40,8 +40,7 @@ var _ = Describe("Harbor Checker", func() {
 		Expect(checker.GetName()).To(Equal("harbor"))
 	})
 
-	It("should successfully get new version from harbor", func(done Done) {
-		defer close(done)
+	It("should successfully get new version from harbor", func() {
 		server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
 			_, err := ioutil.ReadAll(r.Body)
@@ -193,8 +192,7 @@ var _ = Describe("Harbor Checker", func() {
 		g.Expect(version).To(Equal("1.13.5-3.0.0-beta.2"))
 	})
 
-	It("should correctly ensure version", func(done Done) {
-		defer close(done)
+	It("should correctly ensure version", func() {
 		server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
 			_, err := ioutil.ReadAll(r.Body)
@@ -282,8 +280,7 @@ var _ = Describe("Harbor Checker", func() {
 		g.Expect(s2herrors.IsImageNotFound(err)).To(BeTrue())
 	})
 
-	Specify("Invalid json response", func(done Done) {
-		defer close(done)
+	Specify("Invalid json response", func() {
 		server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer GinkgoRecover()
 			_, err := ioutil.ReadAll(r.Body)

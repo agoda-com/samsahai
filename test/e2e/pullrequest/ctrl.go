@@ -60,9 +60,15 @@ var (
 	samsahaiClient samsahairpc.RPC
 	restCfg        *rest.Config
 	err            error
+	samsahaiCtx    context.Context
+	samsahaiCancel context.CancelFunc
+	stagingCtx     context.Context
+	stagingCancel  context.CancelFunc
 )
 
 func setupSamsahai() {
+	samsahaiCtx, samsahaiCancel = context.WithCancel(context.TODO())
+
 	s2hConfig := samsahaiConfig
 
 	samsahaiCtrl = samsahai.New(mgr, "samsahai-system", s2hConfig)
@@ -72,7 +78,7 @@ func setupSamsahai() {
 	wgStop.Add(1)
 	go func() {
 		defer wgStop.Done()
-		Expect(mgr.Start(chStop)).To(BeNil())
+		Expect(mgr.Start(samsahaiCtx)).To(BeNil())
 	}()
 
 	mux := http.NewServeMux()
@@ -83,6 +89,8 @@ func setupSamsahai() {
 }
 
 func setupStaging(namespace string) (internal.StagingController, internal.QueueController) {
+	stagingCtx, stagingCancel = context.WithCancel(context.TODO())
+
 	// create mgr from config
 	stagingCfg := rest.CopyConfig(restCfg)
 	stagingMgr, err := manager.New(stagingCfg, manager.Options{
@@ -103,7 +111,7 @@ func setupStaging(namespace string) (internal.StagingController, internal.QueueC
 
 	go func() {
 		defer GinkgoRecover()
-		Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())
+		Expect(stagingMgr.Start(stagingCtx)).NotTo(HaveOccurred())
 	}()
 
 	return stagingCtrl, prQueueCtrl
@@ -241,6 +249,8 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(samsahaiCtrl.GetConfigController().Delete(teamName)).NotTo(HaveOccurred())
 
 		close(chStop)
+		stagingCancel()
+		samsahaiCancel()
 		samsahaiServer.Close()
 		wgStop.Wait()
 	}, 60)

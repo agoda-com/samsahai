@@ -55,6 +55,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		chStop      chan struct{}
 		mgr         manager.Manager
 		err         error
+		cancel      context.CancelFunc
 	)
 
 	logger := s2hlog.Log.WithName(fmt.Sprintf("%s-test", internal.StagingCtrlName))
@@ -334,6 +335,8 @@ var _ = Describe("[e2e] Staging controller", func() {
 		defer close(done)
 		var err error
 
+		ctx, cancel = context.WithCancel(context.TODO())
+
 		namespace = os.Getenv("POD_NAMESPACE")
 		Expect(namespace).NotTo(BeEmpty(), "POD_NAMESPACE should be provided")
 		stableWordPress.ObjectMeta.Namespace = namespace
@@ -361,7 +364,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		go func() {
 			defer GinkgoRecover()
 			defer wgStop.Done()
-			Expect(mgr.Start(chStop)).To(BeNil())
+			Expect(mgr.Start(ctx)).To(BeNil())
 		}()
 	}, 10)
 
@@ -451,6 +454,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		close(chStop)
+		cancel()
 		wgStop.Wait()
 	}, 90)
 

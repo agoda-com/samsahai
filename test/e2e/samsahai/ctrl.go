@@ -65,9 +65,12 @@ var (
 	samsahaiClient samsahairpc.RPC
 	restCfg        *rest.Config
 	err            error
+	cancel         context.CancelFunc
 )
 
 func setupSamsahai(isPromoteOnTeamCreationDisabled bool) {
+	ctx, cancel = context.WithCancel(context.TODO())
+
 	s2hConfig := samsahaiConfig
 	if isPromoteOnTeamCreationDisabled {
 		s2hConfig.ActivePromotion.PromoteOnTeamCreation = false
@@ -86,7 +89,7 @@ func setupSamsahai(isPromoteOnTeamCreationDisabled bool) {
 	wgStop.Add(1)
 	go func() {
 		defer wgStop.Done()
-		Expect(mgr.Start(chStop)).To(BeNil())
+		Expect(mgr.Start(ctx)).To(BeNil())
 	}()
 
 	mux := http.NewServeMux()
@@ -233,6 +236,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(samsahaiCtrl.GetConfigController().Delete(teamName)).NotTo(HaveOccurred())
 
 		close(chStop)
+		cancel()
 		samsahaiServer.Close()
 		wgStop.Wait()
 	}, 90)
@@ -403,7 +407,7 @@ var _ = Describe("[e2e] Main controller", func() {
 				"", "", internal.StagingConfig{})
 			go func() {
 				defer GinkgoRecover()
-				Expect(stagingMgr.Start(chStop)).NotTo(HaveOccurred())
+				Expect(stagingMgr.Start(ctx)).NotTo(HaveOccurred())
 			}()
 			go stagingPreActiveCtrl.Start(chStop)
 		}
