@@ -131,6 +131,7 @@ message PullRequestConfig {
     int32 maxHistoryDays = 3;
     PullRequestTriggerConfig trigger = 4;
     string gitRepository = 5;
+    PullRequestTearDownDuration tearDownDuration = 6;
 }
 
 message PullRequestTriggerConfig {
@@ -159,4 +160,16 @@ message PullRequestTrigger {
     string teamName = 3;
     string result = 4;
     repeated Image imageMissingList = 5;
+}
+
+message PullRequestTearDownDuration {
+    enum Criteria {
+        // UNKNOWN represents criterion not being set
+        Criteria_UNKNOWN = 0;
+        Criteria_BOTH = 1;
+        Criteria_FAILURE = 2;
+        Criteria_SUCCESS = 3;
+    }
+    int64 duration = 1;
+    Criteria criteria = 2;
 }

@@ -57,7 +57,7 @@ func WithClient(client client.Client) Option {
 }
 
 func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA, gitRepo string, comps []*s2hv1.QueueComponent,
-	imageMissingList []s2hv1.Image, isFailed bool, createAt, finishedAt *metav1.Time) *s2hv1.PullRequestQueue {
+	imageMissingList []s2hv1.Image, isFailed bool, createAt, finishedAt *metav1.Time, teardownDuration s2hv1.PullRequestTearDownDuration) *s2hv1.PullRequestQueue {
 
 	qLabels := getPullRequestQueueLabels(teamName, bundleName, prNumber)
 	prQueueName := internal.GenPullRequestBundleName(bundleName, prNumber)
@@ -81,6 +81,7 @@ func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA, g
 			IsPRTriggerFailed:   &isFailed,
 			PRTriggerCreatedAt:  createAt,
 			PRTriggerFinishedAt: finishedAt,
+			TearDownDuration:    teardownDuration,
 		},
 		Status: s2hv1.PullRequestQueueStatus{},
 	}
@@ -219,6 +220,14 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, prQueue *s
 
 				// pull request queue has been finished
 				skipReconcile = true
+				return
+			}
+
+			// If PR queue is deleted while currently in destroying step,
+			// ignore tearDownDuration by removing DestroyedTime.
+			if prQueue.Status.State == s2hv1.PullRequestQueueEnvDestroying {
+				prQueue.Status.DestroyedTime = nil
+				skipReconcile = false
 				return
 			}
 

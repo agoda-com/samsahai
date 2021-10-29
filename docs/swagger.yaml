@@ -358,6 +358,12 @@ definitions:
           Resources represents how many resources of pull request namespace
           +optional
         type: string
+      tearDownDuration:
+        $ref: '#/definitions/v1.PullRequestTearDownDuration'
+        description: |-
+          TearDownDuration defines duration before teardown the pull request components
+          +optional
+        type: object
       trigger:
         $ref: '#/definitions/v1.PullRequestTriggerConfig'
         description: |-
@@ -678,6 +684,12 @@ definitions:
           Resources represents how many resources of pull request namespace
           +optional
         type: string
+      tearDownDuration:
+        $ref: '#/definitions/v1.PullRequestTearDownDuration'
+        description: |-
+          TearDownDuration defines duration before teardown the pull request components
+          +optional
+        type: object
     type: object
   v1.PullRequestComponent:
     properties:
@@ -706,6 +718,12 @@ definitions:
           Source defines a source for image repository
           +optional
         type: string
+      tearDownDuration:
+        $ref: '#/definitions/v1.PullRequestTearDownDuration'
+        description: |-
+          TearDownDuration defines duration before teardown the pull request components
+          +optional
+        type: object
     type: object
   v1.PullRequestQueue:
     properties:
@@ -806,6 +824,12 @@ definitions:
       teamName:
         description: TeamName represents team owner of the pull request queue
         type: string
+      tearDownDuration:
+        $ref: '#/definitions/v1.PullRequestTearDownDuration'
+        description: |-
+          TearDownDuration defines duration before teardown the pull request components
+          +optional
+        type: object
       upcomingCommitSHA:
         description: |-
           UpcomingCommitSHA represents an upcoming commit SHA in case queue is running
@@ -840,6 +864,11 @@ definitions:
           ComponentUpgrade defines a deployed pull request queue
           +optional
         type: object
+      destroyedTime:
+        description: |-
+          DestroyedTime represents time at which the PR namespace will be destroyed
+          +optional
+        type: string
       pullRequestNamespace:
         description: PullRequestNamespace represents a current pull request namespace
         type: string
@@ -858,6 +887,18 @@ definitions:
         type: string
       updatedAt:
         description: UpdatedAt represents time when the component was processed
+        type: string
+    type: object
+  v1.PullRequestTearDownDuration:
+    properties:
+      criteria:
+        description: |-
+          Criteria tells how does the duration apply, default is `both`.
+          +optional
+        type: string
+      duration:
+        description: Duration tells how much the staging controller will wait before
+          destroying the pull request namespace
         type: string
     type: object
   v1.PullRequestTriggerConfig:
@@ -1459,6 +1500,9 @@ definitions:
         type: array
       prNumber:
         type: string
+      tearDownDuration:
+        $ref: '#/definitions/v1.PullRequestTearDownDuration'
+        type: object
     type: object
   webhook.teamActivePromotion:
     properties:
