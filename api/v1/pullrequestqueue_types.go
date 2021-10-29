@@ -96,6 +96,8 @@ const (
 	PullRequestQueueCondResultCollected PullRequestQueueConditionType = "PullRequestQueueResultCollected"
 	// PullRequestQueueCondEnvCreated means the pull request queue environment has been destroyed
 	PullRequestQueueCondEnvDestroyed PullRequestQueueConditionType = "PullRequestQueueEnvDestroyed"
+	// PullRequestQueueCondPromptedDeleted means the pull request queue was prompted deleted
+	PullRequestQueueCondPromptedDeleted PullRequestQueueConditionType = "PullRequestQueueCondPromptedDeleted"
 )
 
 // PullRequestQueueState defines state of the queue

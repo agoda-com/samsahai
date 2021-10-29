@@ -227,6 +227,8 @@ func (c *controller) deleteFinalizerWhenFinished(ctx context.Context, prQueue *s
 			}
 
 			prQueue.Status.SetResult(s2hv1.PullRequestQueueCanceled)
+			prQueue.Status.SetCondition(s2hv1.PullRequestQueueCondPromptedDeleted, corev1.ConditionTrue,
+				"Pull request queue was prompted deleted")
 			prQueue.SetState(s2hv1.PullRequestQueueCollecting)
 			if err = c.updatePullRequestQueue(ctx, prQueue); err != nil {
 				return
