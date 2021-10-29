@@ -45,6 +45,7 @@ import (
 
 const (
 	verifyTime1s           = 1 * time.Second
+	verifyTime2s           = 2 * time.Second
 	verifyTime5s           = 5 * time.Second
 	verifyTime10s          = 10 * time.Second
 	verifyTime15s          = 15 * time.Second
@@ -1758,42 +1759,44 @@ var _ = Describe("[e2e] Main controller", func() {
 		config := mockConfig
 		Expect(client.Create(ctx, &config)).To(BeNil())
 
-		By("Creating Team")
-		team := mockTeam
-		Expect(client.Create(ctx, &team)).To(BeNil())
+		By("Creating Team1")
+		team1 := mockTeam
+		Expect(client.Create(ctx, &team1)).To(BeNil())
 
 		By("Creating Config using template")
 		config2 := mockConfigUsingTemplate
 		Expect(client.Create(ctx, &config2)).To(BeNil())
 
-		By("Creating Team using template")
+		By("Creating Team2 using template")
 		team2 := mockTeam2
 		Expect(client.Create(ctx, &team2)).To(BeNil())
 
-		By("Apply team template")
+		By("Verify team template applied")
 		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
 			team := s2hv1.Team{}
-			teamUsingTemplate := s2hv1.Team{}
 			if err = client.Get(ctx, types.NamespacedName{Name: mockTeam.Name}, &team); err != nil {
 				return false, nil
 			}
+
+			teamUsingTemplate := s2hv1.Team{}
 			if err = client.Get(ctx, types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err != nil {
 				return false, nil
 			}
+
 			if teamUsingTemplate.Status.Used.Credential == team.Status.Used.Credential ||
 				teamUsingTemplate.Status.Used.StagingCtrl == team.Status.Used.StagingCtrl ||
 				len(teamUsingTemplate.Status.Used.Owners) == len(team.Status.Used.Owners) {
 				return true, nil
 			}
+
 			return false, nil
 		})
-		Expect(err).NotTo(HaveOccurred(), "Apply team template error")
+		Expect(err).NotTo(HaveOccurred(), "Verify team template applied error")
 
 		By("Update team template")
-		stagingCtrlEndpoint := "http://127.0.0.1"
-		err = wait.PollImmediate(verifyTime1s, verifyTime15s, func() (ok bool, err error) {
+		stagingCtrlEndpoint := "http://test"
+		err = wait.PollImmediate(verifyTime1s, verifyTime5s, func() (ok bool, err error) {
 			team := s2hv1.Team{}
-			teamUsingTemplate := s2hv1.Team{}
 			if err = client.Get(ctx, types.NamespacedName{Name: mockTeam.Name}, &team); err != nil {
 				return false, nil
 			}
@@ -1801,18 +1804,35 @@ var _ = Describe("[e2e] Main controller", func() {
 			if err = client.Update(ctx, &team); err != nil {
 				return false, nil
 			}
-			if err = client.Get(ctx, types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err != nil {
-				return false, nil
-			}
-			if teamUsingTemplate.Status.Used.StagingCtrl.Endpoint == stagingCtrlEndpoint &&
-				teamUsingTemplate.Status.TemplateUID == team.Status.TemplateUID {
-				return true, nil
-			}
-			return false, nil
+
+			return true, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Update team template error")
 
-	}, 25)
+		By("Verify team template updated")
+		err = wait.PollImmediate(verifyTime2s, verifyTime30s, func() (ok bool, err error) {
+			team := s2hv1.Team{}
+			if err = client.Get(ctx, types.NamespacedName{Name: mockTeam.Name}, &team); err != nil {
+				return false, nil
+			}
+
+			teamUsingTemplate := s2hv1.Team{}
+			if err = client.Get(ctx, types.NamespacedName{Name: mockTeam2.Name}, &teamUsingTemplate); err != nil {
+				return false, nil
+			}
+			if teamUsingTemplate.Status.TemplateUID != team.Status.TemplateUID {
+				return false, nil
+			}
+
+			if teamUsingTemplate.Status.Used.StagingCtrl.Endpoint != stagingCtrlEndpoint {
+				return false, nil
+			}
+
+			return true, nil
+		})
+		Expect(err).NotTo(HaveOccurred(), "Verify team template updated error")
+
+	}, 45)
 
 	It("should successfully create staging resources quota from deploy engine", func() {
 		setupSamsahai(true)

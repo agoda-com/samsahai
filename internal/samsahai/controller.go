@@ -1569,10 +1569,10 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error {
 
 	configTemplate := configComp.Spec.Template
 	if configTemplate != "" && configTemplate != teamComp.Name {
+
 		templateObj := &s2hv1.Team{}
 		err := c.getTeam(configTemplate, templateObj)
 		if err != nil {
-			logger.Error(err, "team template not found", "template", configTemplate)
 			return err
 		}
 
@@ -1585,7 +1585,6 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error {
 	}
 
 	hashID := internal.GenTeamHashID(teamComp.Status)
-
 	if !teamComp.Status.SyncTemplate {
 		teamComp.Status.SyncTemplate = true
 	}
@@ -1597,29 +1596,35 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error {
 			corev1.ConditionFalse,
 			"need update team")
 	}
+
 	return nil
 }
 
-func (c *controller) ensureTriggerChildrenTeam(name string) error {
+func (c *controller) ensureTriggerChildrenTeam(name string) (childTemplateUpdated bool, err error) {
 	ctx := context.TODO()
 	configs := &s2hv1.ConfigList{}
-	if err := c.client.List(ctx, configs, &client.ListOptions{}); err != nil {
-		logger.Error(err, "cannot list Configs ")
-		return err
+	if err = c.client.List(ctx, configs, &client.ListOptions{}); err != nil {
+		logger.Error(err, "cannot list Configs")
+		return
 	}
+
 	for _, conf := range configs.Items {
 		if conf.Spec.Template == name {
 			team := &s2hv1.Team{}
-			if err := c.getTeam(conf.Name, team); err != nil {
-				return err
+			if err = c.getTeam(conf.Name, team); err != nil {
+				return
 			}
+
 			team.Status.SyncTemplate = false
-			if err := c.updateTeam(team); err != nil {
-				return err
+			if err = c.updateTeam(team); err != nil {
+				return
 			}
+
+			childTemplateUpdated = true
 		}
 	}
-	return nil
+
+	return
 }
 
 func (c *controller) validateTeamRequiredField(teamComp *s2hv1.Team) error {
@@ -1744,11 +1749,19 @@ func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, err
 		}
+
 		return reconcile.Result{}, nil
 	}
 
-	if err := c.ensureTriggerChildrenTeam(teamComp.Name); err != nil {
+	childTemplateUpdated, err := c.ensureTriggerChildrenTeam(teamComp.Name)
+	if err != nil {
 		return reconcile.Result{}, err
+	}
+	if childTemplateUpdated {
+		return reconcile.Result{
+			Requeue:      true,
+			RequeueAfter: 1 * time.Second,
+		}, nil
 	}
 
 	if err := c.validateTeamRequiredField(teamComp); err != nil {
