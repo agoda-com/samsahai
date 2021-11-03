@@ -106,7 +106,7 @@ func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2
 
 func (c *controller) isTearDownDurationCriteriaMet(criteria s2hv1.PullRequestTearDownDurationCriteria,
 	prq *s2hv1.PullRequestQueue) bool {
-	if (prq.Spec.IsPRTriggerFailed != nil && *prq.Spec.IsPRTriggerFailed == true) ||
+	if (prq.Spec.IsPRTriggerFailed != nil && *prq.Spec.IsPRTriggerFailed) ||
 		!prq.Status.IsConditionTrue(s2hv1.PullRequestQueueCondDeployed) {
 		return false
 	}
