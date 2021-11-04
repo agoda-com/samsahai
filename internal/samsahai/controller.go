@@ -37,6 +37,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/reporter/github"
+	gitlabReporter "github.com/agoda-com/samsahai/internal/reporter/gitlab"
 	"github.com/agoda-com/samsahai/internal/reporter/msteams"
 	"github.com/agoda-com/samsahai/internal/reporter/reportermock"
 	"github.com/agoda-com/samsahai/internal/reporter/rest"
@@ -218,6 +219,15 @@ func (c *controller) loadReporters() {
 		cred.MSTeams.Username != "" && cred.MSTeams.Password != "" {
 		reporters = append(reporters, msteams.New(cred.MSTeams.TenantID, cred.MSTeams.ClientID,
 			cred.MSTeams.ClientSecret, cred.MSTeams.Username, cred.MSTeams.Password))
+	}
+
+	if cred.GitlabToken != "" {
+		reporters = append(
+			reporters,
+			gitlabReporter.New(
+				gitlabReporter.WithGitlabURL(c.configs.GitlabURL),
+				gitlabReporter.WithGitlabToken(cred.GitlabToken)),
+		)
 	}
 
 	for _, reporter := range reporters {

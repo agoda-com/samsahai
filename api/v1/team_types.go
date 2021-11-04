@@ -72,6 +72,10 @@ type Credential struct {
 	// Github
 	// +optional
 	Github *TokenCredential `json:"github,omitempty"`
+
+	// Gitlab
+	// +optional
+	Gitlab *TokenCredential `json:"gitlab,omitempty"`
 }
 
 type UsernamePasswordCredential struct {
