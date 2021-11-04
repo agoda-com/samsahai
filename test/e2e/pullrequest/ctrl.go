@@ -515,7 +515,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger error")
 
 		By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
-		err = wait.PollImmediate(verifyTime1s, verifyTime45s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
 			prQueue := s2hv1.PullRequestQueue{}
 			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
 			if err != nil {
@@ -605,7 +605,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(queue.Spec.Components[1].Repository).To(Equal(prComps[1].Repository))
 		Expect(queue.Spec.Components[1].Version).To(Equal(prComps[1].Version),
 			"dependency version should equal active version")
-	}, 90)
+	}, 110)
 
 	It("should successfully add/remove/run pull request from queue", func(done Done) {
 		defer close(done)
