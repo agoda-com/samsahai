@@ -48,7 +48,7 @@ const (
 	verifyTime45s          = 45 * time.Second
 	verifyTime60s          = 60 * time.Second
 	verifyTime75s          = 75 * time.Second
-	verifyTime90s          = 90 * time.Second
+	verifyTime120s         = 120 * time.Second
 	verifyNSCreatedTimeout = verifyTime30s
 )
 
@@ -517,7 +517,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger error")
 
 		By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
-		err = wait.PollImmediate(verifyTime1s, verifyTime90s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime120s, func() (ok bool, err error) {
 			prQueue := s2hv1.PullRequestQueue{}
 			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
 			if err != nil {
