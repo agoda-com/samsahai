@@ -234,6 +234,21 @@ spec:
     # cpu: '4'
     # memory: 4Gi
 
+    # [optional] specify when and how to destroy the pull request environment after collecting the results
+    # can be overridden by bundle tearDownDuration configs
+    # default is to destroy the environment immediately after collecting the results
+    tearDownDuration:
+
+      # how long the pull request environment will be retained after collecting the results
+      # support units are either <number>s, <number>m or <number>h
+      duration: 0s
+
+      # [optional] specify the criteria by which tearDownDuration will be applied
+      # use 'success' for applying tearDownDuration only when the pull request queue result is Success
+      # use 'failure' for applying tearDownDuration only when the pull request queue result is Failure <default>
+      # use 'both' for always applying tearDownDuration regardless of the pull request queue result
+      criteria: failure
+
     # pull request trigger configuration for checking pull request image version in the registry
     trigger:
       # polling time to verify the image version
@@ -245,125 +260,110 @@ spec:
       # default value is 30
       maxRetry: 10
 
-      # [optional] specify when and how to destroy the pull request environment after collecting the results
-      # can be overridden by bundle tearDownDuration configs
-      # default is to destroy the environment immediately after collecting the results
-      tearDownDuration:
+    # what bundle of components do you want to verify per pull request?
+    bundles:
+      # bundle name must consist of lower case alphanumeric characters, '-' or '.',
+      # and must start and end with an alphanumeric character
+      - name: <pr_bundle_name>
+        # how many resources for pull request namespace?
+        resources: null
+        # cpu: '4'
+        # memory: 4Gi
 
-        # how long the pull request environment will be retained after collecting the results
-        # support units are either <number>s, <number>m or <number>h
-        duration: 0s
+        # what components do you want to verify in the same pull request namespace?
+        components:
+          # the service name must be defined in "spec.components" configuration
+          - name: <service_name>
+            # [optional] image repository and image tag pattern of the pull request component
+            # if not define, will use the image from "spec.components" configuration matching with component name
+            image:
+              repository: <service_image_repository>
+              # [optional] samsahai will retrieve the latest image version matching with a defined pattern
+              # support {{ .PRNumber }} parameter
+              pattern: <service_image_tag_pattern>
 
-        # [optional] specify the criteria by which tearDownDuration will be applied
-        # use 'success' for applying tearDownDuration only when the pull request queue result is Success
-        # use 'failure' for applying tearDownDuration only when the pull request queue result is Failure <default>
-        # use 'both' for always applying tearDownDuration regardless of the pull request queue result
-        criteria: failure
+            # image source for checking desired version of components
+            # use 'public-registry' for retrieving latest version from public registry e.g. hub.docker.com
+            # use 'harbor' for retrieving latest version from harbor
+            # use 'samsahai-stable' for retrieving version from stable component version of other teams in samsahai itself
+            source: public-registry
 
-      # what bundle of components do you want to verify per pull request?
-      bundles:
-        # bundle name must consist of lower case alphanumeric characters, '-' or '.',
-        # and must start and end with an alphanumeric character
-        - name: <pr_bundle_name>
-          # how many resources for pull request namespace?
-          resources: null
-          # cpu: '4'
-          # memory: 4Gi
+        # deployment flow of active environment configuration
+        deployment:
+          # how long the active environment should be ready?
+          # support units are either <number>s, <number>m or <number>h
+          # default value is 30m
+          timeout: 60m
 
-          # what components do you want to verify in the same pull request namespace?
-          components:
-            # the service name must be defined in "spec.components" configuration
-            - name: <service_name>
-              # [optional] image repository and image tag pattern of the pull request component
-              # if not define, will use the image from "spec.components" configuration matching with component name
-              image:
-                repository: <service_image_repository>
-                # [optional] samsahai will retrieve the latest image version matching with a defined pattern
-                # support {{ .PRNumber }} parameter
-                pattern: <service_image_tag_pattern>
+          # how long components cleanup should take?
+          # support units are either <number>s, <number>m or <number>h
+          # default value is 15m
+          componentCleanupTimeout: 20m
 
-              # image source for checking desired version of components
-              # use 'public-registry' for retrieving latest version from public registry e.g. hub.docker.com
-              # use 'harbor' for retrieving latest version from harbor
-              # use 'samsahai-stable' for retrieving version from stable component version of other teams in samsahai itself
-              source: public-registry
+          # deployment engine which is used for deploying releases
+          # use 'helm3' for using helm v3 find more details in https://helm.sh/docs/
+          # use 'mock' for fake deploying release into a namespace, all releases will be stamped as success
+          engine: helm3
 
-          # deployment flow of active environment configuration
-          deployment:
-            # how long the active environment should be ready?
+          # [optional] testing flow configuration for running against active environment
+          testRunner:
+            # your teamcity build configuration
+            teamcity:
+              # build configuration type id which wants to run against desired components
+              buildTypeID: <your_regression_teamcity_build_type_id>
+
+              # build branch which wants to run against desired components
+              # support {{ .PRNumber }} parameter
+              branch: 'pull/{{ .PRNumber }}'
+
+            # your gitlab pipeline configuration
+            gitlab:
+              # gitlab repository id which wants to run against desired components
+              projectID: <gitlab_project_id>
+
+              # pipeline branch which wants to run against desired components
+              branch: <pipeline_branch>
+
+              # pipeline trigger token of your ci/cd pipeline
+              # generate in gitlab repository which wants to run against desired components
+              pipelineTriggerToken: <pipeline_trigger_token>
+
+            # how long all testing flows in teamcity should take?
             # support units are either <number>s, <number>m or <number>h
             # default value is 30m
-            timeout: 60m
+            timeout: 1h
 
-            # how long components cleanup should take?
+            # [optional] polling time to verify finished status in teamcity
             # support units are either <number>s, <number>m or <number>h
-            # default value is 15m
-            componentCleanupTimeout: 20m
+            # default value is 5s
+            pollingTime: 10s
 
-            # deployment engine which is used for deploying releases
-            # use 'helm3' for using helm v3 find more details in https://helm.sh/docs/
-            # use 'mock' for fake deploying release into a namespace, all releases will be stamped as success
-            engine: helm3
+        # dependencies of pull request component
+        # the dependency name must be defined in "spec.components" configuration
+        dependencies:
+          - <pull_request_dependencies_service_name>
 
-            # [optional] testing flow configuration for running against active environment
-            testRunner:
-              # your teamcity build configuration
-              teamcity:
-                # build configuration type id which wants to run against desired components
-                buildTypeID: <your_regression_teamcity_build_type_id>
+        # how many times the pull request component should be tested?
+        # default value is 0
+        maxRetry: 2
 
-                # build branch which wants to run against desired components
-                # support {{ .PRNumber }} parameter
-                branch: 'pull/{{ .PRNumber }}'
+        # a string of git "<owner>/<repository>" which is used for publishing commit status
+        gitRepository: agoda-com/samsahai
 
-              # your gitlab pipeline configuration
-              gitlab:
-                # gitlab repository id which wants to run against desired components
-                projectID: <gitlab_project_id>
+        # [optional] specify when and how to destroy the pull request environment after collecting the results
+        # will override the normal pull request tearDownDuration config
+        # default is to destroy the environment immediately after collecting the results
+        tearDownDuration:
 
-                # pipeline branch which wants to run against desired components
-                branch: <pipeline_branch>
+          # how long the pull request environment will be retained after collecting the results
+          # support units are either <number>s, <number>m or <number>h
+          duration: 0s
 
-                # pipeline trigger token of your ci/cd pipeline
-                # generate in gitlab repository which wants to run against desired components
-                pipelineTriggerToken: <pipeline_trigger_token>
-
-              # how long all testing flows in teamcity should take?
-              # support units are either <number>s, <number>m or <number>h
-              # default value is 30m
-              timeout: 1h
-
-              # [optional] polling time to verify finished status in teamcity
-              # support units are either <number>s, <number>m or <number>h
-              # default value is 5s
-              pollingTime: 10s
-
-          # dependencies of pull request component
-          # the dependency name must be defined in "spec.components" configuration
-          dependencies:
-            - <pull_request_dependencies_service_name>
-
-          # how many times the pull request component should be tested?
-          # default value is 0
-          maxRetry: 2
-
-          # a string of git "<owner>/<repository>" which is used for publishing commit status
-          gitRepository: agoda-com/samsahai
-
-          # [optional] specify when and how to destroy the pull request environment after collecting the results
-          # will override the normal pull request tearDownDuration config
-          # default is to destroy the environment immediately after collecting the results
-          tearDownDuration:
-
-            # how long the pull request environment will be retained after collecting the results
-            # support units are either <number>s, <number>m or <number>h
-            duration: 0s
-
-            # [optional] specify the criteria by which tearDownDuration will be applied
-            # use 'success' for applying tearDownDuration only when the pull request queue result is Success
-            # use 'failure' for applying tearDownDuration only when the pull request queue result is Failure <default>
-            # use 'both' for always applying tearDownDuration regardless of the pull request queue result
-            criteria: failure
+          # [optional] specify the criteria by which tearDownDuration will be applied
+          # use 'success' for applying tearDownDuration only when the pull request queue result is Success
+          # use 'failure' for applying tearDownDuration only when the pull request queue result is Failure <default>
+          # use 'both' for always applying tearDownDuration regardless of the pull request queue result
+          criteria: failure
 
   # reporting flow configuration
   report:

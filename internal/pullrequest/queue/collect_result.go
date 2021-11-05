@@ -28,7 +28,7 @@ func (c *controller) collectPullRequestQueueResult(ctx context.Context, prQueue 
 		"Pull request queue result has been collected")
 
 	tearDownDuration := prQueue.Spec.TearDownDuration
-	willUseTearDownDuration := c.isTearDownDurationCriteriaMet(tearDownDuration.Criteria, prQueue.Status.Result)
+	willUseTearDownDuration := c.isTearDownDurationCriteriaMet(tearDownDuration.Criteria, prQueue)
 
 	// set destroyed time only when tearDownDuration is applicable
 	if prQueue.Status.DestroyedTime == nil && willUseTearDownDuration {
@@ -105,14 +105,19 @@ func (c *controller) sendPullRequestQueueReport(ctx context.Context, prQueue *s2
 }
 
 func (c *controller) isTearDownDurationCriteriaMet(criteria s2hv1.PullRequestTearDownDurationCriteria,
-	result s2hv1.PullRequestQueueResult) bool {
+	prq *s2hv1.PullRequestQueue) bool {
+	if (prq.Spec.IsPRTriggerFailed != nil && *prq.Spec.IsPRTriggerFailed) ||
+		!prq.Status.IsConditionTrue(s2hv1.PullRequestQueueCondDeployed) {
+		return false
+	}
+
 	switch criteria {
 	case s2hv1.PullRequestTearDownDurationCriteriaBoth:
 		return true
 	case s2hv1.PullRequestTearDownDurationCriteriaFailure:
-		return result == s2hv1.PullRequestQueueFailure
+		return prq.Status.Result == s2hv1.PullRequestQueueFailure
 	case s2hv1.PullRequestTearDownDurationCriteriaSuccess:
-		return result == s2hv1.PullRequestQueueSuccess
+		return prq.Status.Result == s2hv1.PullRequestQueueSuccess
 	}
 	return false
 }
