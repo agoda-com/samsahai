@@ -962,6 +962,19 @@ func (c *controller) LoadTeamSecret(teamComp *s2hv1.Team) error {
 		teamComp.Status.Used.Credential.Github.Token = string(s2hSecret.Data[gitToken.Key])
 	}
 
+	gitlabToken := teamComp.Status.Used.Credential.Gitlab
+	if gitlabToken != nil {
+		ref := gitlabToken.TokenRef
+		token := string(s2hSecret.Data[ref.Key])
+		teamComp.Status.Used.Credential.Gitlab.Token = token
+		//	override reporter from k8s secret
+		reporter := gitlabReporter.New(
+			gitlabReporter.WithGitlabURL(c.configs.GitlabURL),
+			gitlabReporter.WithGitlabToken(token),
+		)
+		c.reporters[reporter.GetName()] = reporter
+	}
+
 	return nil
 }
 
