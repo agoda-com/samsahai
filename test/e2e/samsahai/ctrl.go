@@ -49,8 +49,8 @@ const (
 	verifyTime10s          = 10 * time.Second
 	verifyTime15s          = 15 * time.Second
 	verifyTime30s          = 30 * time.Second
-	verifyTime45s          = 45 * time.Second
 	verifyTime60s          = 60 * time.Second
+	verifyTime90s          = 90 * time.Second
 	verifyNSCreatedTimeout = verifyTime15s
 	promoteTimeOut         = 30 * time.Second
 )
@@ -1365,7 +1365,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify redis DesiredComponent error")
 
 		By("Verifying wordpress DesiredComponent has been created")
-		err = wait.PollImmediate(verifyTime1s, verifyTime45s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime90s, func() (ok bool, err error) {
 			_, _, err = utilhttp.Post(server.URL+"/webhook/component", jsonDataWordpress)
 			if err != nil {
 				return false, err
