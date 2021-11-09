@@ -396,6 +396,10 @@ definitions:
         $ref: '#/definitions/v1.ReporterGithub'
         description: +optional
         type: object
+      gitlab:
+        $ref: '#/definitions/v1.ReporterGitlab'
+        description: +optional
+        type: object
       msTeams:
         $ref: '#/definitions/v1.ReporterMSTeams'
         description: +optional
@@ -534,6 +538,12 @@ definitions:
         $ref: '#/definitions/v1.TokenCredential'
         description: |-
           Github
+          +optional
+        type: object
+      gitlab:
+        $ref: '#/definitions/v1.TokenCredential'
+        description: |-
+          Gitlab
           +optional
         type: object
       secretName:
@@ -893,7 +903,7 @@ definitions:
     properties:
       criteria:
         description: |-
-          Criteria tells how does the duration apply, default is `both`.
+          Criteria tells how does the duration apply, default is `failure`.
           +optional
         type: string
       duration:
@@ -1117,6 +1127,19 @@ definitions:
       baseURL:
         description: |-
           BaseURL represents a github base url e.g., https://github.com
+          +optional
+        type: string
+      enabled:
+        description: |-
+          Enabled represents an enabled flag
+          +optional
+        type: boolean
+    type: object
+  v1.ReporterGitlab:
+    properties:
+      baseURL:
+        description: |-
+          BaseURL represents a gitlab base url e.g., https://gitlab.com
           +optional
         type: string
       enabled:
