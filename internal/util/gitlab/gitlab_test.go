@@ -1,7 +1,6 @@
 package gitlab_test
 
 import (
-	"github.com/agoda-com/samsahai/internal/util/gitlab"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/agoda-com/samsahai/internal/util/gitlab"
 	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
 
