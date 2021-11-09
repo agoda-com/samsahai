@@ -376,6 +376,15 @@ spec:
       # github base url
       baseURL: https://github.com
 
+    # publishing commit status into Gitlab repository for a given commit SHA
+    gitlab:
+      # enabled flag of Gitlab reporter
+      # commit status will not be published if enabled is false
+      enabled: true
+
+      # gitlab base url
+      baseURL: https://gitlab.com
+
     # sending notification via slack
     slack:
       # if you would like to specify your channel
@@ -458,7 +467,7 @@ spec:
       # check supported value format from
       # https://raw.githubusercontent.com/agoda-com/samsahai/master/internal/reporter.go#ActivePromotionReporter
       activePromotion:
-        command: ["/bin/sh", "-c"]
+        command: [ "/bin/sh", "-c" ]
         args:
           - |
             echo "active promotion result: {{ .Result }} of {{ .TeamName }}"
@@ -467,7 +476,7 @@ spec:
       # check support values format from
       # https://raw.githubusercontent.com/agoda-com/samsahai/master/internal/reporter.go#ComponentUpgradeReporter
       componentUpgrade:
-        command: ["/bin/sh", "-c"]
+        command: [ "/bin/sh", "-c" ]
         args:
           - |
             echo "queue name: {{ .Name }} of {{ .TeamName }}"
@@ -476,7 +485,7 @@ spec:
       # check support values format from
       # https://raw.githubusercontent.com/agoda-com/samsahai/master/internal/reporter.go#ImageMissingReporter
       imageMissing:
-        command: ["/bin/sh", "-c"]
+        command: [ "/bin/sh", "-c" ]
         args:
           - |
             echo "image missing: {{ .Repository }}:{{ .Tag }}, component: {{ .ComponentName }}"
@@ -485,7 +494,7 @@ spec:
       # check support values format from
       # https://raw.githubusercontent.com/agoda-com/samsahai/master/internal/reporter.go#ComponentUpgradeReporter
       pullRequestQueue:
-        command: ["/bin/sh", "-c"]
+        command: [ "/bin/sh", "-c" ]
         args:
           - |
             echo "pr queue name: {{ .Name }} of {{ .TeamName }}"
@@ -494,7 +503,7 @@ spec:
       # check support values format from
       # https://raw.githubusercontent.com/agoda-com/samsahai/master/internal/reporter.go#PullRequestTriggerReporter
       pullRequestTrigger:
-        command: ["/bin/sh", "-c"]
+        command: [ "/bin/sh", "-c" ]
         args:
           - |
             "echo pull request trigger of {{ .PRNumber }}: {{ .Result }}"
