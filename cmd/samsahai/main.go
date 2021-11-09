@@ -141,6 +141,7 @@ func startCtrlCmd() *cobra.Command {
 				// TODO: move to credential
 				TeamcityURL: viper.GetString(s2h.VKTeamcityURL),
 				GithubURL:   viper.GetString(s2h.VKGithubURL),
+				GitlabURL:   viper.GetString(s2h.VKGitlabURL),
 				SamsahaiURL: fmt.Sprintf("%s://%s.%s:%s",
 					viper.GetString(s2h.VKS2HServiceScheme),
 					viper.GetString(s2h.VKS2HServiceName),
@@ -262,6 +263,8 @@ func startCtrlCmd() *cobra.Command {
 	cmd.Flags().String(s2h.VKS2HServiceName, "samsahai", "Service name for connecting to Samsahai.")
 	cmd.Flags().String(s2h.VKS2HExternalURL, "http://localhost:8080", "External url for Samsahai.")
 	cmd.Flags().String(s2h.VKGithubToken, "", "Github access token for publishing commit status into github.")
+	cmd.Flags().String(s2h.VKGitlabToken, "", "Gitlab access token for publishing commit status into gitlab.")
+	cmd.Flags().String(s2h.VKGitlabURL, "", "Gitlab base URL used for initializing Gitlab reporter.")
 	cmd.Flags().String(s2h.VKGithubURL, "", "Github base URL used for initializing Github reporter.")
 	cmd.Flags().String(s2h.VKTeamcityURL, "",
 		"Teamcity base URL used for initializing Teamcity test runner.")
