@@ -301,7 +301,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				},
 			},
 			"tearDownDuration": map[string]string{
-				"duration": "15s",
+				"duration": "5s",
 				"criteria": "both",
 			},
 		})
@@ -607,7 +607,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(queue.Spec.Components[1].Repository).To(Equal(prComps[1].Repository))
 		Expect(queue.Spec.Components[1].Version).To(Equal(prComps[1].Version),
 			"dependency version should equal active version")
-	}, 125)
+	}, 200)
 
 	It("should successfully add/remove/run pull request from queue", func(done Done) {
 		defer close(done)
@@ -1192,7 +1192,7 @@ var (
 		"created-for": "s2h-testing",
 	}
 
-	prNumber = "32"
+	prNumber = "59"
 
 	wordpressMariadbBundleName = "wp-mariadb"
 	wordpressBundleName        = "wordpress-bd"
@@ -1270,7 +1270,7 @@ var (
 		Repository: "bitnami/wordpress",
 		Pattern:    "5.3.2-debian-10-r{{ .PRNumber }}",
 	}
-	wordpressImageTag = "5.3.2-debian-10-r32"
+	wordpressImageTag = "5.3.2-debian-10-r59"
 
 	wordpressInvalidImage = s2hv1.ComponentImage{
 		Repository: "invalid/wordpress",
@@ -1281,7 +1281,7 @@ var (
 		Repository: "bitnami/mariadb",
 		Pattern:    "10.5.8-debian-10-r{{ .PRNumber }}",
 	}
-	mariaDBImageTag = "10.5.8-debian-10-r32"
+	mariaDBImageTag = "10.5.8-debian-10-r59"
 
 	prDepImage = s2hv1.ComponentImage{
 		Repository: mariaDBImage.Repository,
