@@ -207,6 +207,8 @@ type ConfigReporter struct {
 	// +optional
 	Github *ReporterGithub `json:"github,omitempty"`
 	// +optional
+	Gitlab *ReporterGitlab `json:"gitlab,omitempty"`
+	// +optional
 	Rest *ReporterRest `json:"rest,omitempty"`
 	// +optional
 	Shell *ReporterShell `json:"cmd,omitempty"`
@@ -303,6 +305,17 @@ type ReporterGithub struct {
 	// +optional
 	Enabled bool `json:"enabled"`
 	// BaseURL represents a github base url e.g., https://github.com
+	// +optional
+	BaseURL string `json:"baseURL,omitempty"`
+}
+
+// ReporterGitlab defines a configuration of gitlab reporter
+// supports pull request queue reporter type only
+type ReporterGitlab struct {
+	// Enabled represents an enabled flag
+	// +optional
+	Enabled bool `json:"enabled"`
+	// BaseURL represents a gitlab base url e.g., https://gitlab.com
 	// +optional
 	BaseURL string `json:"baseURL,omitempty"`
 }

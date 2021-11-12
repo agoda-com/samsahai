@@ -47,7 +47,9 @@ const (
 	verifyTime30s          = 30 * time.Second
 	verifyTime45s          = 45 * time.Second
 	verifyTime60s          = 60 * time.Second
-	verifyNSCreatedTimeout = verifyTime15s
+	verifyTime75s          = 75 * time.Second
+	verifyTime120s         = 120 * time.Second
+	verifyNSCreatedTimeout = verifyTime30s
 )
 
 var (
@@ -297,7 +299,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 				},
 			},
 			"tearDownDuration": map[string]string{
-				"duration": "15s",
+				"duration": "5s",
 				"criteria": "both",
 			},
 		})
@@ -318,7 +320,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger error")
 
 		By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
-		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime75s, func() (ok bool, err error) {
 			prQueue := s2hv1.PullRequestQueue{}
 			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prQueue)
 			if err != nil {
@@ -446,7 +448,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(strings.Contains(prQueueHistList.Items[0].Name, bundledPRTriggerName)).To(BeTrue())
 		Expect(prQueueHistList.Items[0].Spec.PullRequestQueue).NotTo(BeNil())
 		Expect(prQueueHistList.Items[0].Spec.PullRequestQueue.Status.Result).To(Equal(s2hv1.PullRequestQueueSuccess))
-	}, 140)
+	}, 150)
 
 	It("should successfully deploy pull request queue with 1 component and dependencies", func() {
 		By("Starting Samsahai internal process")
@@ -511,7 +513,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger error")
 
 		By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
-		err = wait.PollImmediate(verifyTime1s, verifyTime45s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime120s, func() (ok bool, err error) {
 			prQueue := s2hv1.PullRequestQueue{}
 			err = client.Get(ctx, types.NamespacedName{Name: singlePRTriggerName, Namespace: stgNamespace}, &prQueue)
 			if err != nil {
@@ -601,7 +603,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(queue.Spec.Components[1].Repository).To(Equal(prComps[1].Repository))
 		Expect(queue.Spec.Components[1].Version).To(Equal(prComps[1].Version),
 			"dependency version should equal active version")
-	}, 90)
+	}, 200)
 
 	It("should successfully add/remove/run pull request from queue", func() {
 		By("Starting Samsahai internal process")
@@ -1174,7 +1176,7 @@ var (
 		"created-for": "s2h-testing",
 	}
 
-	prNumber = "32"
+	prNumber = "59"
 
 	wordpressMariadbBundleName = "wp-mariadb"
 	wordpressBundleName        = "wordpress-bd"
@@ -1252,7 +1254,7 @@ var (
 		Repository: "bitnami/wordpress",
 		Pattern:    "5.3.2-debian-10-r{{ .PRNumber }}",
 	}
-	wordpressImageTag = "5.3.2-debian-10-r32"
+	wordpressImageTag = "5.3.2-debian-10-r59"
 
 	wordpressInvalidImage = s2hv1.ComponentImage{
 		Repository: "invalid/wordpress",
@@ -1263,7 +1265,7 @@ var (
 		Repository: "bitnami/mariadb",
 		Pattern:    "10.5.8-debian-10-r{{ .PRNumber }}",
 	}
-	mariaDBImageTag = "10.5.8-debian-10-r32"
+	mariaDBImageTag = "10.5.8-debian-10-r59"
 
 	prDepImage = s2hv1.ComponentImage{
 		Repository: mariaDBImage.Repository,

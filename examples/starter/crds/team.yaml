@@ -33,3 +33,6 @@ spec:
     # # the secret name has to be the same as specifying
     # # in metadata.name of secret.yaml
     # secretName: <secret_name>
+    # gitlab:
+    #   token:
+    #     key: gitlabToken <-- key reference from secret.yaml

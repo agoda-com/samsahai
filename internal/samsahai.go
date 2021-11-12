@@ -66,6 +66,9 @@ type SamsahaiConfig struct {
 	// GithubURL defines a Github url
 	GithubURL string `json:"githubURL" yaml:"githubURL"`
 
+	// GitlabURL defines a Gitlab url
+	GitlabURL string `json:"gitlabURL" yaml:"gitlabURL"`
+
 	// TeamcityURL defines a Teamcity url
 	TeamcityURL string `json:"teamcityURL" yaml:"teamcityURL"`
 

@@ -37,6 +37,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/errors"
 	s2hlog "github.com/agoda-com/samsahai/internal/log"
 	"github.com/agoda-com/samsahai/internal/reporter/github"
+	gitlabReporter "github.com/agoda-com/samsahai/internal/reporter/gitlab"
 	"github.com/agoda-com/samsahai/internal/reporter/msteams"
 	"github.com/agoda-com/samsahai/internal/reporter/reportermock"
 	"github.com/agoda-com/samsahai/internal/reporter/rest"
@@ -218,6 +219,15 @@ func (c *controller) loadReporters() {
 		cred.MSTeams.Username != "" && cred.MSTeams.Password != "" {
 		reporters = append(reporters, msteams.New(cred.MSTeams.TenantID, cred.MSTeams.ClientID,
 			cred.MSTeams.ClientSecret, cred.MSTeams.Username, cred.MSTeams.Password))
+	}
+
+	if cred.GitlabToken != "" {
+		reporters = append(
+			reporters,
+			gitlabReporter.New(
+				gitlabReporter.WithGitlabURL(c.configs.GitlabURL),
+				gitlabReporter.WithGitlabToken(cred.GitlabToken)),
+		)
 	}
 
 	for _, reporter := range reporters {
@@ -947,6 +957,19 @@ func (c *controller) LoadTeamSecret(teamComp *s2hv1.Team) error {
 	if gitCred != nil {
 		gitToken := gitCred.TokenRef
 		teamComp.Status.Used.Credential.Github.Token = string(s2hSecret.Data[gitToken.Key])
+	}
+
+	gitlabToken := teamComp.Status.Used.Credential.Gitlab
+	if gitlabToken != nil {
+		ref := gitlabToken.TokenRef
+		token := string(s2hSecret.Data[ref.Key])
+		teamComp.Status.Used.Credential.Gitlab.Token = token
+		//	override reporter from k8s secret
+		reporter := gitlabReporter.New(
+			gitlabReporter.WithGitlabURL(c.configs.GitlabURL),
+			gitlabReporter.WithGitlabToken(token),
+		)
+		c.reporters[reporter.GetName()] = reporter
 	}
 
 	return nil

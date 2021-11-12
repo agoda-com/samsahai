@@ -1294,6 +1294,11 @@
                     "type": "object",
                     "$ref": "#/definitions/v1.ReporterGithub"
                 },
+                "gitlab": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ReporterGitlab"
+                },
                 "msTeams": {
                     "description": "+optional",
                     "type": "object",
@@ -1444,6 +1449,11 @@
             "properties": {
                 "github": {
                     "description": "Github\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.TokenCredential"
+                },
+                "gitlab": {
+                    "description": "Gitlab\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1.TokenCredential"
                 },
@@ -2127,6 +2137,19 @@
             "properties": {
                 "baseURL": {
                     "description": "BaseURL represents a github base url e.g., https://github.com\n+optional",
+                    "type": "string"
+                },
+                "enabled": {
+                    "description": "Enabled represents an enabled flag\n+optional",
+                    "type": "boolean"
+                }
+            }
+        },
+        "v1.ReporterGitlab": {
+            "type": "object",
+            "properties": {
+                "baseURL": {
+                    "description": "BaseURL represents a gitlab base url e.g., https://gitlab.com\n+optional",
                     "type": "string"
                 },
                 "enabled": {
