@@ -1,7 +1,5 @@
 name: Release
-on:
-  push:
-    branches: [ master ]
+on: [push]
 
 jobs:
   release:
@@ -32,7 +30,7 @@ jobs:
 
       # RELEASE
       - name: Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        if: github.event_name == 'push'
         env:
           GITHUB_TOKEN: ${{ secrets.TEST_GIT_PASSWORD }}
           GITHUB_REPO: agoda-com/samsahai
