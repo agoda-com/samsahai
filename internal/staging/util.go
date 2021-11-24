@@ -24,28 +24,38 @@ func (c *controller) getDeployConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigDep
 		return &s2hv1.ConfigDeploy{}
 	}
 
+	var configDeploy *s2hv1.ConfigDeploy
+
 	switch {
 	case queue.IsActivePromotionQueue():
 		if cfg.ActivePromotion != nil && cfg.ActivePromotion.Deployment != nil {
-			return cfg.ActivePromotion.Deployment
+			configDeploy = cfg.ActivePromotion.Deployment
 		}
-		return &s2hv1.ConfigDeploy{}
 	case queue.IsPullRequestQueue():
 		bundleName := queue.Spec.Name
 		if cfg.PullRequest != nil && len(cfg.PullRequest.Bundles) > 0 {
 			for _, bundle := range cfg.PullRequest.Bundles {
 				if bundle.Name == bundleName {
-					return bundle.Deployment
+					configDeploy = bundle.Deployment
 				}
 			}
 		}
-		return &s2hv1.ConfigDeploy{}
 	default:
 		if cfg.Staging != nil {
-			return cfg.Staging.Deployment
+			configDeploy = cfg.Staging.Deployment
 		}
-		return &s2hv1.ConfigDeploy{}
 	}
+
+	if configDeploy == nil {
+		configDeploy = &s2hv1.ConfigDeploy{}
+	}
+
+	// override testRunner
+	if testRunner := queue.GetTestRunnerExtraParameter(); testRunner != nil {
+		testRunner.Override(configDeploy.TestRunner)
+	}
+
+	return configDeploy
 }
 
 func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestRunner {

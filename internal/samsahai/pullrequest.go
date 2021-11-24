@@ -14,7 +14,8 @@ import (
 
 // TriggerPullRequestDeployment creates/updates PullRequestTrigger crd object
 func (c *controller) TriggerPullRequestDeployment(teamName, bundleName, prNumber, commitSHA string,
-	bundleCompsTag map[string]string, tearDownDuration *s2hv1.PullRequestTearDownDuration) error {
+	bundleCompsTag map[string]string, tearDownDuration *s2hv1.PullRequestTearDownDuration,
+	testRunner *s2hv1.ConfigTestRunnerOverrider) error {
 
 	if err := c.validatePullRequestBundleName(teamName, bundleName); err != nil {
 		return err
@@ -64,6 +65,7 @@ func (c *controller) TriggerPullRequestDeployment(teamName, bundleName, prNumber
 			CommitSHA:        commitSHA,
 			Components:       components,
 			TearDownDuration: tearDownDuration,
+			TestRunner:       testRunner,
 		},
 	}
 

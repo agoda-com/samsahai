@@ -135,6 +135,41 @@ type ConfigTestRunner struct {
 	TestMock *ConfigTestMock `json:"testMock,omitempty"`
 }
 
+// ConfigTestRunnerOverrider is data that overrides ConfigTestRunner field by field
+type ConfigTestRunnerOverrider struct {
+	// +optional
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
+	// +optional
+	PollingTime *metav1.Duration `json:"pollingTime,omitempty"`
+	// +optional
+	Gitlab *ConfigGitlab `json:"gitlab,omitempty"`
+	// +optional
+	Teamcity *ConfigTeamcity `json:"teamcity,omitempty"`
+	// +optional
+	TestMock *ConfigTestMock `json:"testMock,omitempty"`
+}
+
+func (c ConfigTestRunnerOverrider) Override(confTestRunner *ConfigTestRunner) {
+	if confTestRunner == nil {
+		return
+	}
+	if c.Timeout != nil {
+		confTestRunner.Timeout = *c.Timeout.DeepCopy()
+	}
+	if c.PollingTime != nil {
+		confTestRunner.PollingTime = *c.PollingTime.DeepCopy()
+	}
+	if c.Gitlab != nil {
+		confTestRunner.Gitlab = c.Gitlab.DeepCopy()
+	}
+	if c.Teamcity != nil {
+		confTestRunner.Teamcity = c.Teamcity.DeepCopy()
+	}
+	if c.TestMock != nil {
+		confTestRunner.TestMock = c.TestMock.DeepCopy()
+	}
+}
+
 // ConfigTeamcity defines a http rest configuration of teamcity
 type ConfigTeamcity struct {
 	BuildTypeID string `json:"buildTypeID" yaml:"buildTypeID"`
