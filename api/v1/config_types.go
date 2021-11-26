@@ -147,25 +147,39 @@ type ConfigTestRunnerOverrider struct {
 	Teamcity *ConfigTeamcity `json:"teamcity,omitempty"`
 	// +optional
 	TestMock *ConfigTestMock `json:"testMock,omitempty"`
+
+	ConfigTestRunnerOverriderExtraParameters
+}
+
+type ConfigTestRunnerOverriderExtraParameters struct {
+	// +optional
+	PullRequestInferGitlabMRBranch *bool `json:"pullRequestInferGitlabMRBranch,omitempty"`
 }
 
 func (c ConfigTestRunnerOverrider) Override(confTestRunner *ConfigTestRunner) {
-	if confTestRunner == nil {
-		return
+	ensureConfTestRunner := func(confTestRunner *ConfigTestRunner) {
+		if confTestRunner == nil {
+			confTestRunner = &ConfigTestRunner{}
+		}
 	}
 	if c.Timeout != nil {
+		ensureConfTestRunner(confTestRunner)
 		confTestRunner.Timeout = *c.Timeout.DeepCopy()
 	}
 	if c.PollingTime != nil {
+		ensureConfTestRunner(confTestRunner)
 		confTestRunner.PollingTime = *c.PollingTime.DeepCopy()
 	}
 	if c.Gitlab != nil {
+		ensureConfTestRunner(confTestRunner)
 		confTestRunner.Gitlab = c.Gitlab.DeepCopy()
 	}
 	if c.Teamcity != nil {
+		ensureConfTestRunner(confTestRunner)
 		confTestRunner.Teamcity = c.Teamcity.DeepCopy()
 	}
 	if c.TestMock != nil {
+		ensureConfTestRunner(confTestRunner)
 		confTestRunner.TestMock = c.TestMock.DeepCopy()
 	}
 }

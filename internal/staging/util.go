@@ -3,6 +3,7 @@ package staging
 import (
 	"context"
 	"fmt"
+	"github.com/agoda-com/samsahai/internal/util/gitlab"
 	"net/http"
 	"time"
 
@@ -50,11 +51,6 @@ func (c *controller) getDeployConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigDep
 		configDeploy = &s2hv1.ConfigDeploy{}
 	}
 
-	// override testRunner
-	if testRunner := queue.GetTestRunnerExtraParameter(); testRunner != nil {
-		testRunner.Override(configDeploy.TestRunner)
-	}
-
 	return configDeploy
 }
 
@@ -64,7 +60,32 @@ func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestR
 		return nil
 	}
 
-	return deployConfig.TestRunner
+	testRunner := deployConfig.TestRunner
+
+	// override testRunner
+	if testRunnerOverrider := queue.GetTestRunnerExtraParameter(); testRunnerOverrider != nil {
+		testRunnerOverrider.Override(testRunner)
+
+		inferBranch := testRunnerOverrider.PullRequestInferGitlabMRBranch
+		canInferBranch := inferBranch != nil && *inferBranch
+
+		canQueryGitlab := testRunner != nil &&
+			testRunner.Gitlab != nil &&
+			testRunner.Gitlab.ProjectID != "" &&
+			testRunner.Gitlab.PipelineTriggerToken != ""
+
+		// infer branch name from MR in case of PRQueue
+		if queue.IsPullRequestQueue() && canInferBranch && canQueryGitlab{
+			gl := gitlab.NewClient(c.gitlabBaseURL, testRunner.Gitlab.PipelineTriggerToken)
+			branch, err := gl.GetMRSourceBranch(testRunner.Gitlab.ProjectID, queue.Spec.PRNumber)
+			// silently ignore error (in case of error, don't override the branch)
+			if err == nil && branch != "" {
+				testRunner.Gitlab.Branch = branch
+			}
+		}
+	}
+
+	return testRunner
 }
 
 func (c *controller) getDeployEngine(queue *s2hv1.Queue) internal.DeployEngine {
