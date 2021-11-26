@@ -142,6 +142,10 @@ func (s *mockGitlab) PublishCommitStatus(repository, commitSHA, labelName, targe
 	return nil
 }
 
+func (s *mockGitlab) GetMRSourceBranch(repository, MRiid string) (string, error) {
+	panic("expect not to call GetMRSourceBranch method")
+}
+
 type mockConfigCtrl struct {
 	configType string
 }

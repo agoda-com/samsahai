@@ -3,9 +3,10 @@ package staging
 import (
 	"context"
 	"fmt"
-	"github.com/agoda-com/samsahai/internal/util/gitlab"
 	"net/http"
 	"time"
+
+	"github.com/agoda-com/samsahai/internal/util/gitlab"
 
 	"github.com/pkg/errors"
 	"github.com/twitchtv/twirp"
@@ -75,7 +76,7 @@ func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestR
 			testRunner.Gitlab.PipelineTriggerToken != ""
 
 		// infer branch name from MR in case of PRQueue
-		if queue.IsPullRequestQueue() && canInferBranch && canQueryGitlab{
+		if queue.IsPullRequestQueue() && canInferBranch && canQueryGitlab {
 			gl := gitlab.NewClient(c.gitlabBaseURL, testRunner.Gitlab.PipelineTriggerToken)
 			branch, err := gl.GetMRSourceBranch(testRunner.Gitlab.ProjectID, queue.Spec.PRNumber)
 			// silently ignore error (in case of error, don't override the branch)

@@ -579,12 +579,12 @@ func NewInitialPullRequestQueue(teamName, namespace, queueName, prBundleName, pr
 			Namespace: namespace,
 		},
 		Spec: s2hv1.QueueSpec{
-			Name:       prBundleName,
-			Type:       s2hv1.QueueTypePullRequest,
-			TeamName:   teamName,
-			PRNumber:   prNumber,
-			Components: comps,
-			NoOfRetry:  noOfRetry,
+			Name:                 prBundleName,
+			Type:                 s2hv1.QueueTypePullRequest,
+			TeamName:             teamName,
+			PRNumber:             prNumber,
+			Components:           comps,
+			NoOfRetry:            noOfRetry,
 			QueueExtraParameters: extra,
 		},
 	}

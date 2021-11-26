@@ -16,7 +16,7 @@ var logger = s2hlog.S2HLog.WithName("Gitlab-util")
 
 const requestTimeout = 5 * time.Second
 
-const commitStatusAPI = "%s/api/v4/projects/%s/statuses/%s" // base url, repository, commit SHA
+const commitStatusAPI = "%s/api/v4/projects/%s/statuses/%s"            // base url, repository, commit SHA
 const getMRSourceBranchAPI = "%s/api/v4/projects/%s/merge_requests/%s" // base url, repository, iid
 
 // CommitStatus represents a commit status

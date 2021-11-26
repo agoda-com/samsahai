@@ -148,7 +148,7 @@ type ConfigTestRunnerOverrider struct {
 	// +optional
 	TestMock *ConfigTestMock `json:"testMock,omitempty"`
 
-	ConfigTestRunnerOverriderExtraParameters
+	ConfigTestRunnerOverriderExtraParameters `json:",inline"`
 }
 
 type ConfigTestRunnerOverriderExtraParameters struct {
@@ -159,7 +159,7 @@ type ConfigTestRunnerOverriderExtraParameters struct {
 func (c ConfigTestRunnerOverrider) Override(confTestRunner *ConfigTestRunner) {
 	ensureConfTestRunner := func(confTestRunner *ConfigTestRunner) {
 		if confTestRunner == nil {
-			confTestRunner = &ConfigTestRunner{}
+			*confTestRunner = ConfigTestRunner{}
 		}
 	}
 	if c.Timeout != nil {
