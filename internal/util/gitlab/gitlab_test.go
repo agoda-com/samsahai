@@ -101,8 +101,8 @@ var _ = Describe("Gitlab REST API", func() {
 
 	Describe("GetMRSourceBranch", func() {
 		const (
-			repoId = "3"
-			mrIid = "15"
+			repoID       = "3"
+			mrIID        = "15"
 			targetBranch = "test123"
 		)
 
@@ -126,13 +126,13 @@ var _ = Describe("Gitlab REST API", func() {
   "target_branch": "master",
   "source_branch": "%s"
 }
-`, mrIid, repoId, targetBranch)))
+`, mrIID, repoID, targetBranch)))
 				g.Expect(err).NotTo(HaveOccurred())
 			}))
 			defer server.Close()
 
 			gitlabClient = gitlab.NewClient(server.URL, token)
-			branch, err := gitlabClient.GetMRSourceBranch(repoId, mrIid)
+			branch, err := gitlabClient.GetMRSourceBranch(repoID, mrIID)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(branch).To(Equal(targetBranch))
 		})
@@ -151,7 +151,7 @@ var _ = Describe("Gitlab REST API", func() {
 			defer server.Close()
 
 			gitlabClient = gitlab.NewClient(server.URL, token)
-			branch, err := gitlabClient.GetMRSourceBranch(repoId, mrIid);
+			branch, err := gitlabClient.GetMRSourceBranch(repoID, mrIID)
 			g.Expect(err).NotTo(BeNil())
 			g.Expect(branch).To(BeEmpty())
 		})

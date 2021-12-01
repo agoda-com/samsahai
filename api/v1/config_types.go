@@ -152,6 +152,9 @@ type ConfigTestRunnerOverrider struct {
 }
 
 type ConfigTestRunnerOverriderExtraParameters struct {
+	// PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.
+	// If true, samsahai will try to infer the testRunner branch name
+	// from the gitlab MR associated with the PR flow.
 	// +optional
 	PullRequestInferGitlabMRBranch *bool `json:"pullRequestInferGitlabMRBranch,omitempty"`
 }
