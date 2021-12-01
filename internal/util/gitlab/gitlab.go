@@ -63,8 +63,8 @@ type bodyReq struct {
 }
 
 type gitlabMR struct {
-	ID           int `json:"id"`
-	IID          int `json:"iid"`
+	ID           int    `json:"id"`
+	IID          int    `json:"iid"`
 	SourceBranch string `json:"source_branch"`
 }
 

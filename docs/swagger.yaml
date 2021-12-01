@@ -331,6 +331,18 @@ definitions:
       projectID:
         type: string
     type: object
+  v1.ConfigGitlabOverrider:
+    properties:
+      branch:
+        description: +optional
+        type: string
+      pipelineTriggerToken:
+        description: +optional
+        type: string
+      projectID:
+        description: +optional
+        type: string
+    type: object
   v1.ConfigPullRequest:
     properties:
       bundles:
@@ -506,6 +518,15 @@ definitions:
       buildTypeID:
         type: string
     type: object
+  v1.ConfigTeamcityOverrider:
+    properties:
+      branch:
+        description: +optional
+        type: string
+      buildTypeID:
+        description: +optional
+        type: string
+    type: object
   v1.ConfigTestMock:
     properties:
       result:
@@ -535,7 +556,7 @@ definitions:
   v1.ConfigTestRunnerOverrider:
     properties:
       gitlab:
-        $ref: '#/definitions/v1.ConfigGitlab'
+        $ref: '#/definitions/v1.ConfigGitlabOverrider'
         description: +optional
         type: object
       pollingTime:
@@ -545,7 +566,7 @@ definitions:
         description: +optional
         type: boolean
       teamcity:
-        $ref: '#/definitions/v1.ConfigTeamcity'
+        $ref: '#/definitions/v1.ConfigTeamcityOverrider'
         description: +optional
         type: object
       testMock:

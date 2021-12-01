@@ -1221,6 +1221,23 @@
                 }
             }
         },
+        "v1.ConfigGitlabOverrider": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "pipelineTriggerToken": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "projectID": {
+                    "description": "+optional",
+                    "type": "string"
+                }
+            }
+        },
         "v1.ConfigPullRequest": {
             "type": "object",
             "properties": {
@@ -1408,6 +1425,19 @@
                 }
             }
         },
+        "v1.ConfigTeamcityOverrider": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "buildTypeID": {
+                    "description": "+optional",
+                    "type": "string"
+                }
+            }
+        },
         "v1.ConfigTestMock": {
             "type": "object",
             "properties": {
@@ -1450,7 +1480,7 @@
                 "gitlab": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1.ConfigGitlab"
+                    "$ref": "#/definitions/v1.ConfigGitlabOverrider"
                 },
                 "pollingTime": {
                     "description": "+optional",
@@ -1463,7 +1493,7 @@
                 "teamcity": {
                     "description": "+optional",
                     "type": "object",
-                    "$ref": "#/definitions/v1.ConfigTeamcity"
+                    "$ref": "#/definitions/v1.ConfigTeamcityOverrider"
                 },
                 "testMock": {
                     "description": "+optional",

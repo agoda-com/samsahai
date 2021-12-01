@@ -142,9 +142,9 @@ type ConfigTestRunnerOverrider struct {
 	// +optional
 	PollingTime *metav1.Duration `json:"pollingTime,omitempty"`
 	// +optional
-	Gitlab *ConfigGitlab `json:"gitlab,omitempty"`
+	Gitlab *ConfigGitlabOverrider `json:"gitlab,omitempty"`
 	// +optional
-	Teamcity *ConfigTeamcity `json:"teamcity,omitempty"`
+	Teamcity *ConfigTeamcityOverrider `json:"teamcity,omitempty"`
 	// +optional
 	TestMock *ConfigTestMock `json:"testMock,omitempty"`
 
@@ -172,11 +172,11 @@ func (c ConfigTestRunnerOverrider) Override(confTestRunner *ConfigTestRunner) {
 	}
 	if c.Gitlab != nil {
 		ensureConfTestRunner(confTestRunner)
-		confTestRunner.Gitlab = c.Gitlab.DeepCopy()
+		c.Gitlab.Override(confTestRunner.Gitlab)
 	}
 	if c.Teamcity != nil {
 		ensureConfTestRunner(confTestRunner)
-		confTestRunner.Teamcity = c.Teamcity.DeepCopy()
+		c.Teamcity.Override(confTestRunner.Teamcity)
 	}
 	if c.TestMock != nil {
 		ensureConfTestRunner(confTestRunner)
@@ -190,11 +190,65 @@ type ConfigTeamcity struct {
 	Branch      string `json:"branch" yaml:"branch"`
 }
 
+// ConfigTeamcityOverrider is data that overrides ConfigTeamcity field by field
+type ConfigTeamcityOverrider struct {
+	// +optional
+	BuildTypeID *string `json:"buildTypeID,omitempty"`
+	// +optional
+	Branch *string `json:"branch,omitempty"`
+}
+
+func (c ConfigTeamcityOverrider) Override(confTeamcity *ConfigTeamcity) {
+	ensureConfTeamcity := func(confTeamcity *ConfigTeamcity) {
+		if confTeamcity == nil {
+			*confTeamcity = ConfigTeamcity{}
+		}
+	}
+	if c.BuildTypeID != nil {
+		ensureConfTeamcity(confTeamcity)
+		confTeamcity.BuildTypeID = *c.BuildTypeID
+	}
+	if c.Branch != nil {
+		ensureConfTeamcity(confTeamcity)
+		confTeamcity.Branch = *c.Branch
+	}
+}
+
 // ConfigGitlab defines a http rest configuration of gitlab
 type ConfigGitlab struct {
 	ProjectID            string `json:"projectID" yaml:"projectID"`
 	Branch               string `json:"branch" yaml:"branch"`
 	PipelineTriggerToken string `json:"pipelineTriggerToken" yaml:"pipelineTriggerToken"`
+}
+
+// ConfigGitlabOverrider is data that overrides ConfigGitlab field by field
+type ConfigGitlabOverrider struct {
+	// +optional
+	ProjectID *string `json:"projectID,omitempty"`
+	// +optional
+	Branch *string `json:"branch,omitempty"`
+	// +optional
+	PipelineTriggerToken *string `json:"pipelineTriggerToken,omitempty"`
+}
+
+func (c ConfigGitlabOverrider) Override(confGitlab *ConfigGitlab) {
+	ensureConfGitlab := func(confGitlab *ConfigGitlab) {
+		if confGitlab == nil {
+			*confGitlab = ConfigGitlab{}
+		}
+	}
+	if c.ProjectID != nil {
+		ensureConfGitlab(confGitlab)
+		confGitlab.ProjectID = *c.ProjectID
+	}
+	if c.Branch != nil {
+		ensureConfGitlab(confGitlab)
+		confGitlab.Branch = *c.Branch
+	}
+	if c.PipelineTriggerToken != nil {
+		ensureConfGitlab(confGitlab)
+		confGitlab.PipelineTriggerToken = *c.PipelineTriggerToken
+	}
 }
 
 // ConfigTestMock defines a result of testmock
