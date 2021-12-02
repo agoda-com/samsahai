@@ -26,7 +26,7 @@ func (c *controller) getDeployConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigDep
 		return &s2hv1.ConfigDeploy{}
 	}
 
-	var configDeploy *s2hv1.ConfigDeploy
+	configDeploy := &s2hv1.ConfigDeploy{}
 
 	switch {
 	case queue.IsActivePromotionQueue():
@@ -46,10 +46,6 @@ func (c *controller) getDeployConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigDep
 		if cfg.Staging != nil {
 			configDeploy = cfg.Staging.Deployment
 		}
-	}
-
-	if configDeploy == nil {
-		configDeploy = &s2hv1.ConfigDeploy{}
 	}
 
 	return configDeploy
