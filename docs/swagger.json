@@ -1487,7 +1487,7 @@
                     "type": "string"
                 },
                 "pullRequestInferGitlabMRBranch": {
-                    "description": "+optional",
+                    "description": "PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.\nIf true, samsahai will try to infer the testRunner branch name\nfrom the gitlab MR associated with the PR flow.\n+optional",
                     "type": "boolean"
                 },
                 "teamcity": {

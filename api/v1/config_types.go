@@ -123,6 +123,8 @@ type ConfigDeploy struct {
 
 // ConfigTestRunner represents configuration about how to test the environment
 type ConfigTestRunner struct {
+	// TODO: make Timeout and PollingTime pointers to reduce duplicate code in ConfigTestRunnerOverrider
+
 	// +optional
 	Timeout metav1.Duration `json:"timeout,omitempty"`
 	// +optional
@@ -159,36 +161,41 @@ type ConfigTestRunnerOverriderExtraParameters struct {
 	PullRequestInferGitlabMRBranch *bool `json:"pullRequestInferGitlabMRBranch,omitempty"`
 }
 
-func (c ConfigTestRunnerOverrider) Override(confTestRunner *ConfigTestRunner) {
-	ensureConfTestRunner := func(confTestRunner *ConfigTestRunner) {
+// Override overrides ConfigTestRunner and return a reference to the overridden instance.
+// The operation will try to override an instance in-place if possible.
+func (c ConfigTestRunnerOverrider) Override(confTestRunner *ConfigTestRunner) *ConfigTestRunner {
+	ensureConfTestRunner := func() {
 		if confTestRunner == nil {
-			*confTestRunner = ConfigTestRunner{}
+			confTestRunner = &ConfigTestRunner{}
 		}
 	}
 	if c.Timeout != nil {
-		ensureConfTestRunner(confTestRunner)
+		ensureConfTestRunner()
 		confTestRunner.Timeout = *c.Timeout.DeepCopy()
 	}
 	if c.PollingTime != nil {
-		ensureConfTestRunner(confTestRunner)
+		ensureConfTestRunner()
 		confTestRunner.PollingTime = *c.PollingTime.DeepCopy()
 	}
 	if c.Gitlab != nil {
-		ensureConfTestRunner(confTestRunner)
-		c.Gitlab.Override(confTestRunner.Gitlab)
+		ensureConfTestRunner()
+		confTestRunner.Gitlab = c.Gitlab.Override(confTestRunner.Gitlab)
 	}
 	if c.Teamcity != nil {
-		ensureConfTestRunner(confTestRunner)
-		c.Teamcity.Override(confTestRunner.Teamcity)
+		ensureConfTestRunner()
+		confTestRunner.Teamcity = c.Teamcity.Override(confTestRunner.Teamcity)
 	}
 	if c.TestMock != nil {
-		ensureConfTestRunner(confTestRunner)
+		ensureConfTestRunner()
 		confTestRunner.TestMock = c.TestMock.DeepCopy()
 	}
+	return confTestRunner
 }
 
 // ConfigTeamcity defines a http rest configuration of teamcity
 type ConfigTeamcity struct {
+	// TODO: make every fields optional to reduce duplicate code in ConfigTeamcityOverrider
+
 	BuildTypeID string `json:"buildTypeID" yaml:"buildTypeID"`
 	Branch      string `json:"branch" yaml:"branch"`
 }
@@ -201,24 +208,29 @@ type ConfigTeamcityOverrider struct {
 	Branch *string `json:"branch,omitempty"`
 }
 
-func (c ConfigTeamcityOverrider) Override(confTeamcity *ConfigTeamcity) {
-	ensureConfTeamcity := func(confTeamcity *ConfigTeamcity) {
+// Override overrides ConfigTeamcity and return a reference to the overridden instance.
+// The operation will try to override an instance in-place if possible.
+func (c ConfigTeamcityOverrider) Override(confTeamcity *ConfigTeamcity) *ConfigTeamcity {
+	ensureConfTeamcity := func() {
 		if confTeamcity == nil {
-			*confTeamcity = ConfigTeamcity{}
+			confTeamcity = &ConfigTeamcity{}
 		}
 	}
 	if c.BuildTypeID != nil {
-		ensureConfTeamcity(confTeamcity)
+		ensureConfTeamcity()
 		confTeamcity.BuildTypeID = *c.BuildTypeID
 	}
 	if c.Branch != nil {
-		ensureConfTeamcity(confTeamcity)
+		ensureConfTeamcity()
 		confTeamcity.Branch = *c.Branch
 	}
+	return confTeamcity
 }
 
 // ConfigGitlab defines a http rest configuration of gitlab
 type ConfigGitlab struct {
+	// TODO: make every fields optional to reduce duplicate code in ConfigGitlabOverrider
+
 	ProjectID            string `json:"projectID" yaml:"projectID"`
 	Branch               string `json:"branch" yaml:"branch"`
 	PipelineTriggerToken string `json:"pipelineTriggerToken" yaml:"pipelineTriggerToken"`
@@ -234,24 +246,27 @@ type ConfigGitlabOverrider struct {
 	PipelineTriggerToken *string `json:"pipelineTriggerToken,omitempty"`
 }
 
-func (c ConfigGitlabOverrider) Override(confGitlab *ConfigGitlab) {
-	ensureConfGitlab := func(confGitlab *ConfigGitlab) {
+// Override overrides ConfigGitlab and return a reference to the overridden instance.
+// The operation will try to override an instance in-place if possible.
+func (c ConfigGitlabOverrider) Override(confGitlab *ConfigGitlab) *ConfigGitlab {
+	ensureConfGitlab := func() {
 		if confGitlab == nil {
-			*confGitlab = ConfigGitlab{}
+			confGitlab = &ConfigGitlab{}
 		}
 	}
 	if c.ProjectID != nil {
-		ensureConfGitlab(confGitlab)
+		ensureConfGitlab()
 		confGitlab.ProjectID = *c.ProjectID
 	}
 	if c.Branch != nil {
-		ensureConfGitlab(confGitlab)
+		ensureConfGitlab()
 		confGitlab.Branch = *c.Branch
 	}
 	if c.PipelineTriggerToken != nil {
-		ensureConfGitlab(confGitlab)
+		ensureConfGitlab()
 		confGitlab.PipelineTriggerToken = *c.PipelineTriggerToken
 	}
+	return confGitlab
 }
 
 // ConfigTestMock defines a result of testmock

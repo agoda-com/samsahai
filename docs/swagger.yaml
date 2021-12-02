@@ -563,7 +563,11 @@ definitions:
         description: +optional
         type: string
       pullRequestInferGitlabMRBranch:
-        description: +optional
+        description: |-
+          PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.
+          If true, samsahai will try to infer the testRunner branch name
+          from the gitlab MR associated with the PR flow.
+          +optional
         type: boolean
       teamcity:
         $ref: '#/definitions/v1.ConfigTeamcityOverrider'
