@@ -62,6 +62,8 @@ type bodyReq struct {
 	PrivateToken string `json:"private_token"`
 }
 
+// based on the json returned by fetching a single MR
+// ref: https://docs.gitlab.com/ee/api/merge_requests.html#get-single-mr
 type gitlabMR struct {
 	ID           int    `json:"id"`
 	IID          int    `json:"iid"`
