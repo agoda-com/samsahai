@@ -1,18 +1,10 @@
 package v1_test
 
 import (
-	"testing"
-
 	v1 "github.com/agoda-com/samsahai/api/v1"
-	"github.com/agoda-com/samsahai/internal/util/unittest"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-func TestConfigOverrider(t *testing.T) {
-	unittest.InitGinkgo(t, "Test Config Overrider")
-}
 
 var _ = Describe("Config Overrider", func() {
 	g := NewWithT(GinkgoT())
