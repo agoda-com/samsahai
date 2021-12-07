@@ -571,7 +571,7 @@ func EnsureDemoteFromActiveComponents(c client.Client, teamName, namespace strin
 
 // NewInitialPullRequestQueue returns initial value of PullRequestQueue
 func NewInitialPullRequestQueue(teamName, namespace, queueName, prBundleName, prNumber string,
-	comps s2hv1.QueueComponents, noOfRetry int) *s2hv1.Queue {
+	comps s2hv1.QueueComponents, noOfRetry int, extra *s2hv1.QueueExtraParameters) *s2hv1.Queue {
 
 	return &s2hv1.Queue{
 		ObjectMeta: metav1.ObjectMeta{
@@ -579,24 +579,20 @@ func NewInitialPullRequestQueue(teamName, namespace, queueName, prBundleName, pr
 			Namespace: namespace,
 		},
 		Spec: s2hv1.QueueSpec{
-			Name:       prBundleName,
-			Type:       s2hv1.QueueTypePullRequest,
-			TeamName:   teamName,
-			PRNumber:   prNumber,
-			Components: comps,
-			NoOfRetry:  noOfRetry,
+			Name:                 prBundleName,
+			Type:                 s2hv1.QueueTypePullRequest,
+			TeamName:             teamName,
+			PRNumber:             prNumber,
+			Components:           comps,
+			NoOfRetry:            noOfRetry,
+			QueueExtraParameters: extra,
 		},
 	}
 }
 
 // EnsurePullRequestComponents ensures that pull request components were deployed with `pull-request` config and tested
-func EnsurePullRequestComponents(c client.Client, teamName, namespace, queueName, prBundleName, prNumber string,
-	comps s2hv1.QueueComponents, noOfRetry int) (q *s2hv1.Queue, err error) {
-
-	q = NewInitialPullRequestQueue(teamName, namespace, queueName, prBundleName, prNumber, comps, noOfRetry)
-
-	err = ensureQueue(context.TODO(), c, q)
-	return
+func EnsurePullRequestComponents(c client.Client, q *s2hv1.Queue) error {
+	return ensureQueue(context.TODO(), c, q)
 }
 
 func DeletePreActiveQueue(c client.Client, ns string) error {

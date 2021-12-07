@@ -28,6 +28,7 @@ type pullRequestWebhookEventJSON struct {
 	CommitSHA        string                          `json:"commitSHA,omitempty"`
 	Components       []Components                    `json:"components,omitempty"`
 	TearDownDuration *v1.PullRequestTearDownDuration `json:"tearDownDuration,omitempty"`
+	TestRunner       *v1.ConfigTestRunnerOverrider   `json:"testRunner,omitempty"`
 }
 
 type teamPRQueueJSON struct {
@@ -87,7 +88,7 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 	}
 
 	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.BundleName, jsonData.PRNumber.String(),
-		jsonData.CommitSHA, mapCompTag, jsonData.TearDownDuration)
+		jsonData.CommitSHA, mapCompTag, jsonData.TearDownDuration, jsonData.TestRunner)
 	if err != nil {
 		if s2herrors.IsErrPullRequestBundleNotFound(err) {
 			h.error(w, http.StatusBadRequest,

@@ -1,33 +1,15 @@
 package v1_test
 
 import (
-	"os"
-	"testing"
 	"time"
 
+	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	s2hv1 "github.com/agoda-com/samsahai/api/v1"
-	s2hlog "github.com/agoda-com/samsahai/internal/log"
-	"github.com/agoda-com/samsahai/internal/util/unittest"
 )
 
-func TestQueueList_Sort(t *testing.T) {
-	unittest.InitGinkgo(t, "Queue List Sort")
-}
-
-var _ = BeforeSuite(func() {
-	if os.Getenv("DEBUG") != "" {
-		s2hlog.SetLogger(zap.New(func(o *zap.Options) {
-			o.Development = true
-		}))
-	}
-})
-
-var _ = Describe("Sort by no of order", func() {
+var _ = Describe("Queue List Sort by no of order", func() {
 	g := NewWithT(GinkgoT())
 
 	beforeNow := metav1.Time{Time: metav1.Now().Add(-10 * time.Minute)}

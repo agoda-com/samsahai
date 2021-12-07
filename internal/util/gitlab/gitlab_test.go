@@ -1,6 +1,7 @@
 package gitlab_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -95,6 +96,64 @@ var _ = Describe("Gitlab REST API", func() {
 			err := gitlabClient.PublishCommitStatus("", "", "", "",
 				"", "")
 			g.Expect(err).NotTo(BeNil())
+		})
+	})
+
+	Describe("GetMRSourceBranch", func() {
+		const (
+			repoID       = "3"
+			mrIID        = "15"
+			targetBranch = "test123"
+		)
+
+		It("should successfully query mr source branch", func(done Done) {
+			defer close(done)
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				defer GinkgoRecover()
+				_, err := ioutil.ReadAll(r.Body)
+				g.Expect(err).NotTo(HaveOccurred())
+
+				_, err = w.Write([]byte(fmt.Sprintf(`
+{
+  "id": 1,
+  "iid": %s,
+  "project_id": %s,
+  "title": "test1",
+  "description": "fixed login page css paddings",
+  "state": "merged",
+  "created_at": "2017-04-29T08:46:00Z",
+  "updated_at": "2017-04-29T08:46:00Z",
+  "target_branch": "master",
+  "source_branch": "%s"
+}
+`, mrIID, repoID, targetBranch)))
+				g.Expect(err).NotTo(HaveOccurred())
+			}))
+			defer server.Close()
+
+			gitlabClient = gitlab.NewClient(server.URL, token)
+			branch, err := gitlabClient.GetMRSourceBranch(repoID, mrIID)
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(branch).To(Equal(targetBranch))
+		})
+
+		Specify("Not found response", func(done Done) {
+			defer close(done)
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				defer GinkgoRecover()
+				_, err := ioutil.ReadAll(r.Body)
+				g.Expect(err).NotTo(HaveOccurred())
+
+				w.WriteHeader(404)
+				_, err = w.Write([]byte(``))
+				g.Expect(err).NotTo(HaveOccurred())
+			}))
+			defer server.Close()
+
+			gitlabClient = gitlab.NewClient(server.URL, token)
+			branch, err := gitlabClient.GetMRSourceBranch(repoID, mrIID)
+			g.Expect(err).NotTo(BeNil())
+			g.Expect(branch).To(BeEmpty())
 		})
 	})
 })

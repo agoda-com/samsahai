@@ -120,6 +120,24 @@ type QueueSpec struct {
 	// SkipTestRunner represents a flag for skipping running test
 	// +optional
 	SkipTestRunner bool `json:"skipTestRunner,omitempty"`
+
+	// QueueExtraParameters override default behavior of how to process this queue according to QueueType
+	// +optional
+	*QueueExtraParameters `json:"queueExtraParameters,omitempty"`
+}
+
+// QueueExtraParameters override default behavior of how to process this queue according to QueueType
+type QueueExtraParameters struct {
+	// TestRunner represents configuration about how to test the environment
+	// +optional
+	TestRunner *ConfigTestRunnerOverrider `json:"testRunner"`
+}
+
+func (q *Queue) GetTestRunnerExtraParameter() *ConfigTestRunnerOverrider {
+	if q.Spec.QueueExtraParameters == nil {
+		return nil
+	}
+	return q.Spec.QueueExtraParameters.TestRunner
 }
 
 type Image struct {
