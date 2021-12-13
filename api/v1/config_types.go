@@ -135,6 +135,11 @@ type ConfigTestRunner struct {
 	Teamcity *ConfigTeamcity `json:"teamcity,omitempty"`
 	// +optional
 	TestMock *ConfigTestMock `json:"testMock,omitempty"`
+	// PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.
+	// If true, samsahai will try to infer the testRunner branch name
+	// from the gitlab MR associated with the PR flow [default: false].
+	// +optional
+	PullRequestInferGitlabMRBranch bool `json:"pullRequestInferGitlabMRBranch,omitempty"`
 }
 
 // ConfigTestRunnerOverrider is data that overrides ConfigTestRunner field by field
@@ -149,14 +154,6 @@ type ConfigTestRunnerOverrider struct {
 	Teamcity *ConfigTeamcityOverrider `json:"teamcity,omitempty"`
 	// +optional
 	TestMock *ConfigTestMock `json:"testMock,omitempty"`
-
-	ConfigTestRunnerOverriderExtraParameters `json:",inline"`
-}
-
-type ConfigTestRunnerOverriderExtraParameters struct {
-	// PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.
-	// If true, samsahai will try to infer the testRunner branch name
-	// from the gitlab MR associated with the PR flow.
 	// +optional
 	PullRequestInferGitlabMRBranch *bool `json:"pullRequestInferGitlabMRBranch,omitempty"`
 }
@@ -188,6 +185,10 @@ func (c ConfigTestRunnerOverrider) Override(confTestRunner *ConfigTestRunner) *C
 	if c.TestMock != nil {
 		ensureConfTestRunner()
 		confTestRunner.TestMock = c.TestMock.DeepCopy()
+	}
+	if c.PullRequestInferGitlabMRBranch != nil {
+		ensureConfTestRunner()
+		confTestRunner.PullRequestInferGitlabMRBranch = *c.PullRequestInferGitlabMRBranch
 	}
 	return confTestRunner
 }

@@ -541,6 +541,13 @@ definitions:
       pollingTime:
         description: +optional
         type: string
+      pullRequestInferGitlabMRBranch:
+        description: |-
+          PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.
+          If true, samsahai will try to infer the testRunner branch name
+          from the gitlab MR associated with the PR flow [default: false].
+          +optional
+        type: boolean
       teamcity:
         $ref: '#/definitions/v1.ConfigTeamcity'
         description: +optional
@@ -563,11 +570,7 @@ definitions:
         description: +optional
         type: string
       pullRequestInferGitlabMRBranch:
-        description: |-
-          PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.
-          If true, samsahai will try to infer the testRunner branch name
-          from the gitlab MR associated with the PR flow.
-          +optional
+        description: +optional
         type: boolean
       teamcity:
         $ref: '#/definitions/v1.ConfigTeamcityOverrider'

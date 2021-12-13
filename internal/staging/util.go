@@ -61,39 +61,37 @@ func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestR
 
 	// override testRunner
 	if testRunnerOverrider := queue.GetTestRunnerExtraParameter(); testRunnerOverrider != nil {
-		gitlabClientGetter := func(token string) gitlab.Gitlab {
-			return gitlab.NewClient(c.gitlabBaseURL, token)
-		}
-		testRunner = overrideTestRunner(testRunner, *testRunnerOverrider, queue, gitlabClientGetter)
+		testRunner = testRunnerOverrider.Override(testRunner)
 	}
+
+	// try to infer gitlab MR branch in PR flow
+	gitlabClientGetter := func(token string) gitlab.Gitlab {
+		return gitlab.NewClient(c.gitlabBaseURL, token)
+	}
+	tryInferPullRequestGitlabBranch(testRunner, queue, gitlabClientGetter)
 
 	return testRunner
 }
 
-// overrideTestRunner overrides testRunner as well as fetching required information
-func overrideTestRunner(testRunner *s2hv1.ConfigTestRunner, overrider s2hv1.ConfigTestRunnerOverrider,
-	queue *s2hv1.Queue, gitlabClientGetter func(token string) gitlab.Gitlab) *s2hv1.ConfigTestRunner {
-	output := testRunner.DeepCopy()
-	output = overrider.Override(output)
+// tryInferPullRequestGitlabBranch will check whether the Gitlab MR could be fetched from project ID and pipeline token
+// and override branch in testRunner with the associated MR branch.
+func tryInferPullRequestGitlabBranch(testRunner *s2hv1.ConfigTestRunner, queue *s2hv1.Queue,
+	gitlabClientGetter func(token string) gitlab.Gitlab) {
 
-	inferBranch := overrider.PullRequestInferGitlabMRBranch
-	canInferBranch := inferBranch != nil && *inferBranch
-
-	canQueryGitlab := output != nil &&
-		output.Gitlab != nil &&
-		output.Gitlab.ProjectID != "" &&
-		output.Gitlab.PipelineTriggerToken != ""
+	canInferBranch := testRunner.PullRequestInferGitlabMRBranch
+	canQueryGitlab := testRunner.Gitlab != nil &&
+		testRunner.Gitlab.ProjectID != "" &&
+		testRunner.Gitlab.PipelineTriggerToken != ""
 
 	// infer branch name from MR in case of PRQueue
-	if queue != nil && queue.IsPullRequestQueue() && canInferBranch && canQueryGitlab {
-		gl := gitlabClientGetter(output.Gitlab.PipelineTriggerToken)
-		branch, err := gl.GetMRSourceBranch(output.Gitlab.ProjectID, queue.Spec.PRNumber)
+	if queue.IsPullRequestQueue() && canInferBranch && canQueryGitlab && gitlabClientGetter != nil {
+		gl := gitlabClientGetter(testRunner.Gitlab.PipelineTriggerToken)
+		branch, err := gl.GetMRSourceBranch(testRunner.Gitlab.ProjectID, queue.Spec.PRNumber)
 		// silently ignore error (in case of error, don't override the branch)
 		if err == nil && branch != "" {
-			output.Gitlab.Branch = branch
+			testRunner.Gitlab.Branch = branch
 		}
 	}
-	return output
 }
 
 func (c *controller) getDeployEngine(queue *s2hv1.Queue) internal.DeployEngine {
