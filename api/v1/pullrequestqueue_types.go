@@ -80,6 +80,11 @@ type PullRequestQueueSpec struct {
 	// TearDownDuration defines duration before teardown the pull request components
 	// +optional
 	TearDownDuration PullRequestTearDownDuration `json:"tearDownDuration,omitempty"`
+
+	// TestRunner represents configuration about how to test the environment. If defined, this will override
+	// testRunner from config
+	// +optional
+	TestRunner *ConfigTestRunnerOverrider `json:"testRunner,omitempty"`
 }
 
 // PullRequestQueueConditionType represents a condition type of pull request queue

@@ -225,8 +225,15 @@ func (c *controller) ensurePullRequestComponents(
 	prComps s2hv1.QueueComponents,
 ) (*s2hv1.Queue, error) {
 	prNamespace := prQueue.Status.PullRequestNamespace
+	var extra *s2hv1.QueueExtraParameters
+	if prQueue.Spec.TestRunner != nil {
+		extra = &s2hv1.QueueExtraParameters{
+			TestRunner: prQueue.Spec.TestRunner,
+		}
+	}
+
 	deployedQueue := queue.NewInitialPullRequestQueue(c.teamName, prNamespace, prQueue.Name,
-		prQueue.Spec.BundleName, prQueue.Spec.PRNumber, prComps, prQueue.Spec.NoOfRetry)
+		prQueue.Spec.BundleName, prQueue.Spec.PRNumber, prComps, prQueue.Spec.NoOfRetry, extra)
 
 	if prQueue.Spec.IsPRTriggerFailed != nil && !*prQueue.Spec.IsPRTriggerFailed {
 		runtimeClient, err := c.getRuntimeClient()
@@ -234,8 +241,7 @@ func (c *controller) ensurePullRequestComponents(
 			return nil, err
 		}
 
-		deployedQueue, err = queue.EnsurePullRequestComponents(runtimeClient, c.teamName, prNamespace, prQueue.Name,
-			prQueue.Spec.BundleName, prQueue.Spec.PRNumber, prComps, prQueue.Spec.NoOfRetry)
+		err = queue.EnsurePullRequestComponents(runtimeClient, deployedQueue)
 		if err != nil {
 			return nil, err
 		}

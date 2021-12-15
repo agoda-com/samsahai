@@ -701,8 +701,9 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Ensure Pull Request Components")
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			retry := 0
-			queue, err := queue.EnsurePullRequestComponents(client, teamName, namespace, redisBundleName,
-				redisBundleName, "123", prComps, retry)
+			q := queue.NewInitialPullRequestQueue(teamName, namespace, redisBundleName, redisBundleName,
+				"123", prComps, retry, nil)
+			err = queue.EnsurePullRequestComponents(client, q)
 			if err != nil {
 				logger.Error(err, "cannot ensure pull request components")
 				return false, nil
@@ -714,7 +715,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 				return false, nil
 			}
 
-			if queue.Status.State != s2hv1.Finished {
+			if q.Status.State != s2hv1.Finished {
 				return false, nil
 			}
 

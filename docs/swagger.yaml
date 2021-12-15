@@ -331,6 +331,18 @@ definitions:
       projectID:
         type: string
     type: object
+  v1.ConfigGitlabOverrider:
+    properties:
+      branch:
+        description: +optional
+        type: string
+      pipelineTriggerToken:
+        description: +optional
+        type: string
+      projectID:
+        description: +optional
+        type: string
+    type: object
   v1.ConfigPullRequest:
     properties:
       bundles:
@@ -506,6 +518,15 @@ definitions:
       buildTypeID:
         type: string
     type: object
+  v1.ConfigTeamcityOverrider:
+    properties:
+      branch:
+        description: +optional
+        type: string
+      buildTypeID:
+        description: +optional
+        type: string
+    type: object
   v1.ConfigTestMock:
     properties:
       result:
@@ -522,6 +543,34 @@ definitions:
         type: string
       teamcity:
         $ref: '#/definitions/v1.ConfigTeamcity'
+        description: +optional
+        type: object
+      testMock:
+        $ref: '#/definitions/v1.ConfigTestMock'
+        description: +optional
+        type: object
+      timeout:
+        description: +optional
+        type: string
+    type: object
+  v1.ConfigTestRunnerOverrider:
+    properties:
+      gitlab:
+        $ref: '#/definitions/v1.ConfigGitlabOverrider'
+        description: +optional
+        type: object
+      pollingTime:
+        description: +optional
+        type: string
+      pullRequestInferGitlabMRBranch:
+        description: |-
+          PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.
+          If true, samsahai will try to infer the testRunner branch name
+          from the gitlab MR associated with the PR flow.
+          +optional
+        type: boolean
+      teamcity:
+        $ref: '#/definitions/v1.ConfigTeamcityOverrider'
         description: +optional
         type: object
       testMock:
@@ -840,6 +889,13 @@ definitions:
           TearDownDuration defines duration before teardown the pull request components
           +optional
         type: object
+      testRunner:
+        $ref: '#/definitions/v1.ConfigTestRunnerOverrider'
+        description: |-
+          TestRunner represents configuration about how to test the environment. If defined, this will override
+          testRunner from config
+          +optional
+        type: object
       upcomingCommitSHA:
         description: |-
           UpcomingCommitSHA represents an upcoming commit SHA in case queue is running
@@ -1049,6 +1105,12 @@ definitions:
       teamName:
         description: TeamName represents team owner of the queue
         type: string
+      testRunner:
+        $ref: '#/definitions/v1.ConfigTestRunnerOverrider'
+        description: |-
+          TestRunner represents configuration about how to test the environment
+          +optional
+        type: object
       type:
         description: Type represents how we will process this queue
         type: string
@@ -1525,6 +1587,9 @@ definitions:
         type: string
       tearDownDuration:
         $ref: '#/definitions/v1.PullRequestTearDownDuration'
+        type: object
+      testRunner:
+        $ref: '#/definitions/v1.ConfigTestRunnerOverrider'
         type: object
     type: object
   webhook.teamActivePromotion:
