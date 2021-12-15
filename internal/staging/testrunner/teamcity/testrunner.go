@@ -255,15 +255,5 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 
 	currentQueue.Status.TestRunner.Teamcity.BuildNumber = "#" + response.BuildNumber
 
-	isBuildFinished = false
-	if strings.EqualFold(buildFinished, response.State) {
-		isBuildFinished = true
-	}
-
-	isResultSuccess = false
-	if strings.EqualFold(statusSuccess, response.Status) {
-		isResultSuccess = true
-	}
-
-	return isResultSuccess, isBuildFinished, nil
+	return strings.EqualFold(statusSuccess, response.Status), strings.EqualFold(buildFinished, response.State), nil
 }

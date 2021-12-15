@@ -218,14 +218,7 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 		return false, false, err
 	}
 
-	isBuildFinished = false
-	if !strings.EqualFold("", response.StartedAt) && !strings.EqualFold("", response.FinishedAt) {
-		isBuildFinished = true
-	}
+	isBuildFinished = !strings.EqualFold("", response.StartedAt) && !strings.EqualFold("", response.FinishedAt)
 
-	isResultSuccess = false
-	if strings.EqualFold(statusSuccess, response.Status) {
-		isResultSuccess = true
-	}
-	return isResultSuccess, isBuildFinished, nil
+	return strings.EqualFold(statusSuccess, response.Status), isBuildFinished, nil
 }
