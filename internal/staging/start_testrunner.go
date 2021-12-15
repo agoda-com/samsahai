@@ -39,62 +39,63 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	skipTest, testRunners, err := c.checkTestConfig(queue)
 	if err != nil {
 		return err
-	} else if skipTest {
+	}
+	if skipTest {
 		return nil
 	}
 
 	// trigger the tests
-	for _, testRunner := range testRunners {
-		if err := c.triggerTest(queue, testRunner); err != nil {
-			return err
+	notTriggeredTest := !queue.Status.IsConditionTrue(s2hv1.QueueTestTriggered)
+	if notTriggeredTest {
+		for _, testRunner := range testRunners {
+			_ = c.triggerTest(queue, testRunner)
 		}
-	}
 
-	if !queue.Status.IsConditionTrue(s2hv1.QueueTestTriggered) {
+		// set state, test has been trigged
 		queue.Status.SetCondition(
 			s2hv1.QueueTestTriggered,
 			v1.ConditionTrue,
 			"queue testing triggered")
 
 		// update queue back to k8s
-		if err := c.updateQueue(queue); err != nil {
-			return err
-		}
+		// return function, wait to be called again
+		return c.updateQueue(queue)
 	}
 
 	// get result from tests (polling check)
-	finished := true
 	testCondition := v1.ConditionTrue
 	message := "queue testing succeeded"
 	for _, testRunner := range testRunners {
 		testRunnerName := testRunner.GetName()
 		testResult, err := c.getTestResult(queue, testRunner)
-		if err != nil {
-			return err
+
+		unableToGetResultFromRunner := err != nil && testResult == testResultUnknown
+		if unableToGetResultFromRunner {
+			testResult = testResultFailure
 		}
 
 		switch testResult {
 		case testResultUnknown:
-			finished = false
-		case testResultFailure, testResultSuccess:
-			if testResult == testResultFailure {
-				testCondition = v1.ConditionFalse
-				message = "queue testing failed"
+			// return function, wait to be called again...
+			return nil
+		case testResultFailure:
+			testCondition = v1.ConditionFalse
+			message = "queue testing failed"
+			if unableToGetResultFromRunner {
+				message = "unable to get result from runner"
 			}
-
-			if err := c.setTestResultCondition(queue, testRunnerName, testResult); err != nil {
-				return err
-			}
+		case testResultSuccess:
 		}
-	}
 
-	if finished {
-		if err := c.updateTestQueueCondition(queue, testCondition, message); err != nil {
+		// state failed or success, then...
+		// update test result
+		if err := c.setTestResultCondition(queue, testRunnerName, testResult); err != nil {
 			return err
 		}
 	}
 
-	return nil
+	// test finished, change state to `s2hv1.Collecting`
+	return c.updateTestQueueCondition(queue, testCondition, message)
 }
 
 func (c *controller) checkTestTimeout(queue *s2hv1.Queue, testingTimeout metav1.Duration) error {
@@ -175,19 +176,18 @@ func (c *controller) checkTestConfig(queue *s2hv1.Queue) (
 }
 
 func (c *controller) triggerTest(queue *s2hv1.Queue, testRunner internal.StagingTestRunner) error {
-	if !queue.Status.IsConditionTrue(s2hv1.QueueTestTriggered) {
-		testRunnerName := testRunner.GetName()
-		testConfig := c.getTestConfiguration(queue)
+	testRunnerName := testRunner.GetName()
+	testConfig := c.getTestConfiguration(queue)
 
-		if err := testRunner.Trigger(testConfig, c.getCurrentQueue()); err != nil {
-			logger.Error(err, "testing triggered error", "name", testRunnerName)
-			return err
-		}
+	// trigger test and update k8s object
+	if err := testRunner.Trigger(testConfig, c.getCurrentQueue()); err != nil {
+		logger.Error(err, "testing triggered error", "name", testRunnerName)
+		return err
+	}
 
-		// set teamcity build number to message
-		if tr := testRunner.GetName(); tr == teamcity.TestRunnerName {
-			queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
-		}
+	// set teamcity build number to message
+	if tr := testRunner.GetName(); tr == teamcity.TestRunnerName {
+		queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
 	}
 
 	return nil
@@ -211,12 +211,10 @@ func (c *controller) getTestResult(queue *s2hv1.Queue, testRunner internal.Stagi
 		return testResultUnknown, nil
 	}
 
-	testResult := testResultSuccess
 	if !isResultSuccess {
-		testResult = testResultFailure
+		return testResultFailure, nil
 	}
-
-	return testResult, nil
+	return testResultSuccess, nil
 }
 
 // updateTestQueueCondition updates queue status, condition and save to k8s for Testing state
