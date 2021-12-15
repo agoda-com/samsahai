@@ -52,6 +52,10 @@ type PullRequestTriggerSpec struct {
 	// tearDownDuration from pull request extra config
 	// +optional
 	TearDownDuration *PullRequestTearDownDuration `json:"tearDownDuration,omitempty"`
+	// TestRunner represents configuration about how to test the environment. If defined, this will override
+	// testRunner from config
+	// +optional
+	TestRunner *ConfigTestRunnerOverrider `json:"testRunner,omitempty"`
 }
 
 // PullRequestTriggerResult represents the result status of a pull request trigger

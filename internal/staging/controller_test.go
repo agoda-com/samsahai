@@ -1,7 +1,6 @@
 package staging
 
 import (
-	"testing"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -14,97 +13,94 @@ import (
 	"github.com/agoda-com/samsahai/internal/util"
 	conf "github.com/agoda-com/samsahai/internal/util/config"
 	"github.com/agoda-com/samsahai/internal/util/dotaccess"
-	"github.com/agoda-com/samsahai/internal/util/unittest"
 	"github.com/agoda-com/samsahai/internal/util/valuesutil"
 )
 
-func TestStagingController(t *testing.T) {
-	unittest.InitGinkgo(t, "Staging controller")
-}
+var _ = Describe("Controller", func() {
+	Describe("Apply Env Based Config", func() {
+		var err error
+		var configCtrl internal.ConfigController
+		var teamName = "teamtest"
+		g := NewWithT(GinkgoT())
 
-var _ = Describe("Apply Env Based Config", func() {
-	var err error
-	var configCtrl internal.ConfigController
-	var teamName = "teamtest"
-	g := NewWithT(GinkgoT())
-
-	BeforeEach(func() {
-		configCtrl = newMockConfigCtrl()
-		g.Expect(err).NotTo(HaveOccurred())
-	})
-
-	It("should successfully apply configuration based on queue type", func() {
-		config, err := configCtrl.Get("mock")
-		g.Expect(err).NotTo(HaveOccurred())
-
-		comps, err := configCtrl.GetParentComponents("mock")
-		g.Expect(err).NotTo(HaveOccurred())
-
-		{
-			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1.QueueTypeUpgrade,
-				comps["redis"], teamName)
-			v, err := dotaccess.Get(values, "master.service.nodePort")
+		BeforeEach(func() {
+			configCtrl = newMockConfigCtrl()
 			g.Expect(err).NotTo(HaveOccurred())
-			port, ok := v.(float64)
+		})
 
-			g.Expect(ok).To(BeTrue())
-			g.Expect(int(port)).To(Equal(31001))
-		}
-
-		{
-			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1.QueueTypePreActive,
-				comps["redis"], teamName)
-			v, err := dotaccess.Get(values, "master.service.nodePort")
+		It("should successfully apply configuration based on queue type", func() {
+			config, err := configCtrl.Get("mock")
 			g.Expect(err).NotTo(HaveOccurred())
-			port, ok := v.(float64)
 
-			g.Expect(ok).To(BeTrue())
-			g.Expect(int(port)).To(Equal(31002))
-		}
-
-		{
-			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1.QueueTypePromoteToActive,
-				comps["redis"], teamName)
-			v, err := dotaccess.Get(values, "master.service.nodePort")
+			comps, err := configCtrl.GetParentComponents("mock")
 			g.Expect(err).NotTo(HaveOccurred())
-			port, ok := v.(float64)
 
-			g.Expect(ok).To(BeTrue())
-			g.Expect(int(port)).To(Equal(31003))
-		}
+			{
+				values := util.CopyMap(comps["redis"].Values)
+				values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1.QueueTypeUpgrade,
+					comps["redis"], teamName)
+				v, err := dotaccess.Get(values, "master.service.nodePort")
+				g.Expect(err).NotTo(HaveOccurred())
+				port, ok := v.(float64)
 
-		{
-			values := util.CopyMap(comps["redis"].Values)
-			values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1.QueueTypeDemoteFromActive,
-				comps["redis"], teamName)
-			val, err := dotaccess.Get(values, "master.service.nodePort")
+				g.Expect(ok).To(BeTrue())
+				g.Expect(int(port)).To(Equal(31001))
+			}
+
+			{
+				values := util.CopyMap(comps["redis"].Values)
+				values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1.QueueTypePreActive,
+					comps["redis"], teamName)
+				v, err := dotaccess.Get(values, "master.service.nodePort")
+				g.Expect(err).NotTo(HaveOccurred())
+				port, ok := v.(float64)
+
+				g.Expect(ok).To(BeTrue())
+				g.Expect(int(port)).To(Equal(31002))
+			}
+
+			{
+				values := util.CopyMap(comps["redis"].Values)
+				values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1.QueueTypePromoteToActive,
+					comps["redis"], teamName)
+				v, err := dotaccess.Get(values, "master.service.nodePort")
+				g.Expect(err).NotTo(HaveOccurred())
+				port, ok := v.(float64)
+
+				g.Expect(ok).To(BeTrue())
+				g.Expect(int(port)).To(Equal(31003))
+			}
+
+			{
+				values := util.CopyMap(comps["redis"].Values)
+				values = applyEnvBaseConfig(&config.Status.Used, values, s2hv1.QueueTypeDemoteFromActive,
+					comps["redis"], teamName)
+				val, err := dotaccess.Get(values, "master.service.nodePort")
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(val).To(BeNil())
+			}
+		})
+
+		It("should correctly combine base values and config", func() {
+			config, err := configCtrl.Get("mock")
 			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(val).To(BeNil())
-		}
-	})
 
-	It("should correctly combine base values and config", func() {
-		config, err := configCtrl.Get("mock")
-		g.Expect(err).NotTo(HaveOccurred())
+			comps, err := configCtrl.GetParentComponents("mock")
+			g.Expect(err).NotTo(HaveOccurred())
 
-		comps, err := configCtrl.GetParentComponents("mock")
-		g.Expect(err).NotTo(HaveOccurred())
+			wordpress := comps["wordpress"]
+			envValues, err := configctrl.GetEnvComponentValues(&config.Status.Used, "wordpress",
+				teamName, s2hv1.EnvBase)
+			g.Expect(err).NotTo(HaveOccurred())
 
-		wordpress := comps["wordpress"]
-		envValues, err := configctrl.GetEnvComponentValues(&config.Status.Used, "wordpress",
-			teamName, s2hv1.EnvBase)
-		g.Expect(err).NotTo(HaveOccurred())
-
-		values := valuesutil.GenStableComponentValues(wordpress, nil, envValues)
-		val, err := dotaccess.Get(values, "mariadb.enabled")
-		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(val).To(BeTrue())
-		val, err = dotaccess.Get(values, "ingress.enabled")
-		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(val).To(BeTrue())
+			values := valuesutil.GenStableComponentValues(wordpress, nil, envValues)
+			val, err := dotaccess.Get(values, "mariadb.enabled")
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(val).To(BeTrue())
+			val, err = dotaccess.Get(values, "ingress.enabled")
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(val).To(BeTrue())
+		})
 	})
 })
 

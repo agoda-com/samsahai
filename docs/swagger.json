@@ -1221,6 +1221,23 @@
                 }
             }
         },
+        "v1.ConfigGitlabOverrider": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "pipelineTriggerToken": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "projectID": {
+                    "description": "+optional",
+                    "type": "string"
+                }
+            }
+        },
         "v1.ConfigPullRequest": {
             "type": "object",
             "properties": {
@@ -1408,6 +1425,19 @@
                 }
             }
         },
+        "v1.ConfigTeamcityOverrider": {
+            "type": "object",
+            "properties": {
+                "branch": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "buildTypeID": {
+                    "description": "+optional",
+                    "type": "string"
+                }
+            }
+        },
         "v1.ConfigTestMock": {
             "type": "object",
             "properties": {
@@ -1432,6 +1462,38 @@
                     "description": "+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1.ConfigTeamcity"
+                },
+                "testMock": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigTestMock"
+                },
+                "timeout": {
+                    "description": "+optional",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ConfigTestRunnerOverrider": {
+            "type": "object",
+            "properties": {
+                "gitlab": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigGitlabOverrider"
+                },
+                "pollingTime": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "pullRequestInferGitlabMRBranch": {
+                    "description": "PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.\nIf true, samsahai will try to infer the testRunner branch name\nfrom the gitlab MR associated with the PR flow.\n+optional",
+                    "type": "boolean"
+                },
+                "teamcity": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigTeamcityOverrider"
                 },
                 "testMock": {
                     "description": "+optional",
@@ -1802,6 +1864,11 @@
                     "type": "object",
                     "$ref": "#/definitions/v1.PullRequestTearDownDuration"
                 },
+                "testRunner": {
+                    "description": "TestRunner represents configuration about how to test the environment. If defined, this will override\ntestRunner from config\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigTestRunnerOverrider"
+                },
                 "upcomingCommitSHA": {
                     "description": "UpcomingCommitSHA represents an upcoming commit SHA in case queue is running\n+optional",
                     "type": "string"
@@ -2043,6 +2110,11 @@
                 "teamName": {
                     "description": "TeamName represents team owner of the queue",
                     "type": "string"
+                },
+                "testRunner": {
+                    "description": "TestRunner represents configuration about how to test the environment\n+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigTestRunnerOverrider"
                 },
                 "type": {
                     "description": "Type represents how we will process this queue",
@@ -2642,6 +2714,10 @@
                 "tearDownDuration": {
                     "type": "object",
                     "$ref": "#/definitions/v1.PullRequestTearDownDuration"
+                },
+                "testRunner": {
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigTestRunnerOverrider"
                 }
             }
         },

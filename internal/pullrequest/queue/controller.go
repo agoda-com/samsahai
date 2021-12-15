@@ -57,7 +57,8 @@ func WithClient(client client.Client) Option {
 }
 
 func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA, gitRepo string, comps []*s2hv1.QueueComponent,
-	imageMissingList []s2hv1.Image, isFailed bool, createAt, finishedAt *metav1.Time, teardownDuration s2hv1.PullRequestTearDownDuration) *s2hv1.PullRequestQueue {
+	imageMissingList []s2hv1.Image, isFailed bool, createAt, finishedAt *metav1.Time,
+	teardownDuration s2hv1.PullRequestTearDownDuration, testRunner *s2hv1.ConfigTestRunnerOverrider) *s2hv1.PullRequestQueue {
 
 	qLabels := getPullRequestQueueLabels(teamName, bundleName, prNumber)
 	prQueueName := internal.GenPullRequestBundleName(bundleName, prNumber)
@@ -82,6 +83,7 @@ func NewPullRequestQueue(teamName, namespace, bundleName, prNumber, commitSHA, g
 			PRTriggerCreatedAt:  createAt,
 			PRTriggerFinishedAt: finishedAt,
 			TearDownDuration:    teardownDuration,
+			TestRunner:          testRunner,
 		},
 		Status: s2hv1.PullRequestQueueStatus{},
 	}
