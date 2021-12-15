@@ -17,8 +17,8 @@ import (
 type testResult string
 
 const (
-	testTimeout = 1800 * time.Second
-	testPolling = 5 * time.Second
+	testTimeout = 30 * time.Minute // 30 minutes
+	testPolling = 5 * time.Second  // 5 secs
 
 	testResultSuccess testResult = "PASSED"
 	testResultFailure testResult = "FAILED"
@@ -32,16 +32,16 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	}
 
 	// check testing timeout
+	// if timeout, change state to `s2hv1.Collecting`
 	if err := c.checkTestTimeout(queue, testingTimeout); err != nil {
 		return err
 	}
 
+	// check test config
+	// if no test configuration, change state to `s2hv1.Collecting`
 	skipTest, testRunners, err := c.checkTestConfig(queue)
-	if err != nil {
+	if err != nil || skipTest {
 		return err
-	}
-	if skipTest {
-		return nil
 	}
 
 	// trigger the tests
@@ -51,15 +51,16 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 			_ = c.triggerTest(queue, testRunner)
 		}
 
-		// set state, test has been trigged
+		// set state, test has been triggered
 		queue.Status.SetCondition(
 			s2hv1.QueueTestTriggered,
 			v1.ConditionTrue,
 			"queue testing triggered")
 
 		// update queue back to k8s
-		// return function, wait to be called again
-		return c.updateQueue(queue)
+		if err := c.updateQueue(queue); err != nil {
+			return err
+		}
 	}
 
 	// get result from tests (polling check)
@@ -68,11 +69,7 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	for _, testRunner := range testRunners {
 		testRunnerName := testRunner.GetName()
 		testResult, err := c.getTestResult(queue, testRunner)
-
-		unableToGetResultFromRunner := err != nil && testResult == testResultUnknown
-		if unableToGetResultFromRunner {
-			testResult = testResultFailure
-		}
+		failToGetResult := err != nil && testResult == testResultUnknown
 
 		switch testResult {
 		case testResultUnknown:
@@ -81,7 +78,7 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 		case testResultFailure:
 			testCondition = v1.ConditionFalse
 			message = "queue testing failed"
-			if unableToGetResultFromRunner {
+			if failToGetResult {
 				message = "unable to get result from runner"
 			}
 		case testResultSuccess:
