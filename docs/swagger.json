@@ -1211,7 +1211,12 @@
             "type": "object",
             "properties": {
                 "branch": {
+                    "description": "+optional",
                     "type": "string"
+                },
+                "inferBranch": {
+                    "description": "InferBranch is for Pull Request's testRunner on gitlab.\nIf true, samsahai will try to infer the testRunner branch name\nfrom the gitlab MR associated with the PR flow [default: false].\n+optional",
+                    "type": "boolean"
                 },
                 "pipelineTriggerToken": {
                     "type": "string"
@@ -1227,6 +1232,10 @@
                 "branch": {
                     "description": "+optional",
                     "type": "string"
+                },
+                "inferBranch": {
+                    "description": "+optional",
+                    "type": "boolean"
                 },
                 "pipelineTriggerToken": {
                     "description": "+optional",
@@ -1458,10 +1467,6 @@
                     "description": "+optional",
                     "type": "string"
                 },
-                "pullRequestInferGitlabMRBranch": {
-                    "description": "PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.\nIf true, samsahai will try to infer the testRunner branch name\nfrom the gitlab MR associated with the PR flow [default: false].\n+optional",
-                    "type": "boolean"
-                },
                 "teamcity": {
                     "description": "+optional",
                     "type": "object",
@@ -1489,10 +1494,6 @@
                 "pollingTime": {
                     "description": "+optional",
                     "type": "string"
-                },
-                "pullRequestInferGitlabMRBranch": {
-                    "description": "+optional",
-                    "type": "boolean"
                 },
                 "teamcity": {
                     "description": "+optional",

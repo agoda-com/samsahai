@@ -5,85 +5,94 @@ import (
 	"github.com/agoda-com/samsahai/internal/util/gitlab"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("Util", func() {
 	Describe("tryInferPullRequestGitlabBranch", func() {
-		var testRunner *s2hv1.ConfigTestRunner
-		var queue *s2hv1.Queue
+		var gitlabConf *s2hv1.ConfigGitlab
+		var MRiid string
 		var gitlabClientGetter func(token string) gitlab.Gitlab
 		g := NewWithT(GinkgoT())
 
 		BeforeEach(func() {
-			testRunner = &s2hv1.ConfigTestRunner{
-				Timeout:     v1.Duration{Duration: 10},
-				PollingTime: v1.Duration{Duration: 20},
-				Gitlab: &s2hv1.ConfigGitlab{
-					ProjectID:            "123",
-					Branch:               "abc",
-					PipelineTriggerToken: "xyz",
-				},
-				Teamcity: &s2hv1.ConfigTeamcity{
-					BuildTypeID: "alpha",
-					Branch:      "beta",
-				},
+			gitlabConf = &s2hv1.ConfigGitlab{
+				ProjectID:            "123",
+				PipelineTriggerToken: "xyz",
 			}
-			queue = &s2hv1.Queue{
-				Spec: s2hv1.QueueSpec{
-					PRNumber: "87878",
-					Type:     s2hv1.QueueTypePullRequest,
-				},
-			}
+			MRiid = "87878"
 			gitlabClientGetter = nil
 		})
 
 		It("should not infer if false", func() {
-			testRunner.PullRequestInferGitlabMRBranch = false
-			before := testRunner.DeepCopy()
+			gitlabConf.InferBranch = false
+			before := gitlabConf.DeepCopy()
 
 			inferredBranch := "falsebranch"
 
 			gitlabClientGetter = func(token string) gitlab.Gitlab {
-				g.Expect(token).To(Equal(before.Gitlab.PipelineTriggerToken))
+				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
 				return mockGitlab{
 					G:                  g,
-					ExpectedRepository: before.Gitlab.ProjectID,
-					ExpectedPRNumber:   queue.Spec.PRNumber,
+					ExpectedRepository: gitlabConf.ProjectID,
+					ExpectedPRNumber:   MRiid,
 					Branch:             inferredBranch,
 					Error:              nil,
 				}
 			}
 
-			tryInferPullRequestGitlabBranch(testRunner, queue, gitlabClientGetter)
+			tryInferPullRequestGitlabBranch(gitlabConf, MRiid, gitlabClientGetter)
 
-			g.Expect(testRunner).To(Equal(before))
+			g.Expect(gitlabConf).To(Equal(before))
 		})
 
-		It("should infer if true", func() {
-			testRunner.PullRequestInferGitlabMRBranch = true
-			before := testRunner.DeepCopy()
+		It("should infer if true and branch empty", func() {
+			gitlabConf.InferBranch = true
+			gitlabConf.Branch = ""
+			before := gitlabConf.DeepCopy()
 
 			inferredBranch := "truebranch"
 
 			gitlabClientGetter = func(token string) gitlab.Gitlab {
-				g.Expect(token).To(Equal(before.Gitlab.PipelineTriggerToken))
+				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
 				return mockGitlab{
 					G:                  g,
-					ExpectedRepository: before.Gitlab.ProjectID,
-					ExpectedPRNumber:   queue.Spec.PRNumber,
+					ExpectedRepository: before.ProjectID,
+					ExpectedPRNumber:   MRiid,
 					Branch:             inferredBranch,
 					Error:              nil,
 				}
 			}
 
-			tryInferPullRequestGitlabBranch(testRunner, queue, gitlabClientGetter)
+			tryInferPullRequestGitlabBranch(gitlabConf, MRiid, gitlabClientGetter)
 
-			g.Expect(testRunner).ToNot(Equal(before))
-			g.Expect(testRunner.Gitlab.Branch).To(Equal(inferredBranch))
-			testRunner.Gitlab.Branch = before.Gitlab.Branch
+			g.Expect(gitlabConf).ToNot(Equal(before))
+			g.Expect(gitlabConf.Branch).To(Equal(inferredBranch))
+			gitlabConf.Branch = before.Branch
 			// should change only branch field
-			g.Expect(testRunner).To(Equal(before))
+			g.Expect(gitlabConf).To(Equal(before))
+		})
+
+		It("should not infer if true and branch not empty", func() {
+			gitlabConf.InferBranch = true
+			gitlabConf.Branch = "abc"
+			before := gitlabConf.DeepCopy()
+
+			inferredBranch := "truebranch"
+
+			gitlabClientGetter = func(token string) gitlab.Gitlab {
+				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
+				return mockGitlab{
+					G:                  g,
+					ExpectedRepository: before.ProjectID,
+					ExpectedPRNumber:   MRiid,
+					Branch:             inferredBranch,
+					Error:              nil,
+				}
+			}
+
+			tryInferPullRequestGitlabBranch(gitlabConf, MRiid, gitlabClientGetter)
+
+			g.Expect(gitlabConf).To(Equal(before))
 		})
 	})
 })

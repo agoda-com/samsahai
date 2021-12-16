@@ -609,14 +609,19 @@ func (in *ConfigGitlabOverrider) DeepCopyInto(out *ConfigGitlabOverrider) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.PipelineTriggerToken != nil {
+		in, out := &in.PipelineTriggerToken, &out.PipelineTriggerToken
+		*out = new(string)
+		**out = **in
+	}
 	if in.Branch != nil {
 		in, out := &in.Branch, &out.Branch
 		*out = new(string)
 		**out = **in
 	}
-	if in.PipelineTriggerToken != nil {
-		in, out := &in.PipelineTriggerToken, &out.PipelineTriggerToken
-		*out = new(string)
+	if in.InferBranch != nil {
+		in, out := &in.InferBranch, &out.InferBranch
+		*out = new(bool)
 		**out = **in
 	}
 }
@@ -1018,11 +1023,6 @@ func (in *ConfigTestRunnerOverrider) DeepCopyInto(out *ConfigTestRunnerOverrider
 	if in.TestMock != nil {
 		in, out := &in.TestMock, &out.TestMock
 		*out = new(ConfigTestMock)
-		**out = **in
-	}
-	if in.PullRequestInferGitlabMRBranch != nil {
-		in, out := &in.PullRequestInferGitlabMRBranch, &out.PullRequestInferGitlabMRBranch
-		*out = new(bool)
 		**out = **in
 	}
 }

@@ -65,31 +65,39 @@ func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestR
 	}
 
 	// try to infer gitlab MR branch in PR flow
-	gitlabClientGetter := func(token string) gitlab.Gitlab {
-		return gitlab.NewClient(c.gitlabBaseURL, token)
+	if queue.IsPullRequestQueue() && testRunner != nil {
+		gitlabClientGetter := func(token string) gitlab.Gitlab {
+			return gitlab.NewClient(c.gitlabBaseURL, token)
+		}
+		tryInferPullRequestGitlabBranch(testRunner.Gitlab, queue.Spec.PRNumber, gitlabClientGetter)
 	}
-	tryInferPullRequestGitlabBranch(testRunner, queue, gitlabClientGetter)
 
 	return testRunner
 }
 
 // tryInferPullRequestGitlabBranch will check whether the Gitlab MR could be fetched from project ID and pipeline token
 // and override branch in testRunner with the associated MR branch.
-func tryInferPullRequestGitlabBranch(testRunner *s2hv1.ConfigTestRunner, queue *s2hv1.Queue,
+func tryInferPullRequestGitlabBranch(confGitlab *s2hv1.ConfigGitlab, MRiid string,
 	gitlabClientGetter func(token string) gitlab.Gitlab) {
 
-	canInferBranch := testRunner.PullRequestInferGitlabMRBranch
-	canQueryGitlab := testRunner.Gitlab != nil &&
-		testRunner.Gitlab.ProjectID != "" &&
-		testRunner.Gitlab.PipelineTriggerToken != ""
+	confGitlabOk := confGitlab != nil
 
-	// infer branch name from MR in case of PRQueue
-	if queue.IsPullRequestQueue() && canInferBranch && canQueryGitlab && gitlabClientGetter != nil {
-		gl := gitlabClientGetter(testRunner.Gitlab.PipelineTriggerToken)
-		branch, err := gl.GetMRSourceBranch(testRunner.Gitlab.ProjectID, queue.Spec.PRNumber)
-		// silently ignore error (in case of error, don't override the branch)
-		if err == nil && branch != "" {
-			testRunner.Gitlab.Branch = branch
+	// infer branch only if branch is not specified
+	canInferBranch := confGitlabOk &&
+		confGitlab.InferBranch &&
+		confGitlab.Branch == ""
+	canQueryGitlab := confGitlabOk &&
+		confGitlab.ProjectID != "" &&
+		confGitlab.PipelineTriggerToken != ""
+
+	if canInferBranch && canQueryGitlab && gitlabClientGetter != nil {
+		gl := gitlabClientGetter(confGitlab.PipelineTriggerToken)
+		if gl != nil {
+			branch, err := gl.GetMRSourceBranch(confGitlab.ProjectID, MRiid)
+			// silently ignore error (in case of error, don't override the branch)
+			if err == nil && branch != "" {
+				confGitlab.Branch = branch
+			}
 		}
 	}
 }
