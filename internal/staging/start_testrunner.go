@@ -69,7 +69,11 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	for _, testRunner := range testRunners {
 		testRunnerName := testRunner.GetName()
 		testResult, err := c.getTestResult(queue, testRunner)
+
 		failToGetResult := err != nil && testResult == testResultUnknown
+		if failToGetResult {
+			testResult = testResultFailure
+		}
 
 		switch testResult {
 		case testResultUnknown:
