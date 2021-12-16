@@ -189,12 +189,18 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	isResultSuccess bool, isBuildFinished bool, err error) {
 
 	if testConfig == nil {
-		return false, false, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
+		return false, true, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
 	}
 
 	projectID := testConfig.Gitlab.ProjectID
 	pipelineID := currentQueue.Status.TestRunner.Gitlab.PipelineID
+
+	if projectID == "" || pipelineID == "" {
+		return false, true, errors.Wrapf(s2herrors.ErrTestIDEmpty,
+			"cannot get test result. projectID: '%s'. pipelineID: '%s'. queue: %s", projectID, pipelineID, currentQueue.Name)
+	}
+
 	apiURL := fmt.Sprintf("%s/%s/%s/pipelines/%s", t.baseURL, baseAPIPath, projectID, pipelineID)
 	opts := []http.Option{
 		http.WithSkipTLSVerify(),
