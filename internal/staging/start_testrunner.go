@@ -80,8 +80,13 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 		if err := c.setTestResultCondition(queue, testRunnerName, testResult); err != nil {
 			return err
 		}
-	}
 
+		// if some runners test were failed
+		if testResult == testResultUnknown || testResult == testResultFailure {
+			testCondition = v1.ConditionFalse
+			message = "queue testing failed"
+		}
+	}
 	// test finished, change state to `s2hv1.Collecting`
 	return c.updateTestQueueCondition(queue, testCondition, message)
 }
@@ -236,7 +241,7 @@ func (c *controller) setTestResultCondition(queue *s2hv1.Queue, testRunnerName s
 		message = "unable to get result from runner"
 		cond = v1.ConditionFalse
 	case testResultFailure:
-		message = "queue testing of failed"
+		message = "queue testing failed"
 		cond = v1.ConditionFalse
 	case testResultSuccess:
 	}
