@@ -1,19 +1,20 @@
 package teamcity_test
 
 import (
-	s2herrors "github.com/agoda-com/samsahai/internal/errors"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
+	"github.com/agoda-com/samsahai/internal/util/unittest"
+	"github.com/pkg/errors"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
-	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
-	"github.com/agoda-com/samsahai/internal/util/unittest"
+	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
 
 func TestTeamcity(t *testing.T) {

@@ -1,19 +1,20 @@
 package gitlab_test
 
 import (
-	s2herrors "github.com/agoda-com/samsahai/internal/errors"
-	"github.com/agoda-com/samsahai/internal/staging/testrunner/gitlab"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/agoda-com/samsahai/internal/staging/testrunner/gitlab"
+	"github.com/agoda-com/samsahai/internal/util/unittest"
+	"github.com/pkg/errors"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
-	"github.com/agoda-com/samsahai/internal/util/unittest"
+	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
 
 func TestGitlab(t *testing.T) {
