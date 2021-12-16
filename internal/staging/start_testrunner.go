@@ -70,26 +70,13 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 		testRunnerName := testRunner.GetName()
 		testResult, err := c.getTestResult(queue, testRunner)
 
-		failToGetResult := err != nil && testResult == testResultUnknown
-		if failToGetResult {
-			testResult = testResultFailure
-		}
-
-		switch testResult {
-		case testResultUnknown:
-			// return function, wait to be called again...
+		unfinishedTest := err == nil && testResult == testResultUnknown
+		if unfinishedTest {
+			// return function, wait to be call again...
 			return nil
-		case testResultFailure:
-			testCondition = v1.ConditionFalse
-			message = "queue testing failed"
-			if failToGetResult {
-				message = "unable to get result from runner"
-			}
-		case testResultSuccess:
 		}
 
-		// state failed or success, then...
-		// update test result
+		// if finished, then update test result
 		if err := c.setTestResultCondition(queue, testRunnerName, testResult); err != nil {
 			return err
 		}
@@ -231,6 +218,7 @@ func (c *controller) updateTestQueueCondition(queue *s2hv1.Queue, status v1.Cond
 }
 
 func (c *controller) setTestResultCondition(queue *s2hv1.Queue, testRunnerName string, testResult testResult) error {
+
 	var condType s2hv1.QueueConditionType
 	switch testRunnerName {
 	case gitlab.TestRunnerName:
@@ -241,14 +229,16 @@ func (c *controller) setTestResultCondition(queue *s2hv1.Queue, testRunnerName s
 		return nil
 	}
 
-	message := "unknown result"
+	message := "queue testing succeeded"
 	cond := v1.ConditionTrue
 	switch testResult {
+	case testResultUnknown:
+		message = "unable to get result from runner"
+		cond = v1.ConditionFalse
 	case testResultFailure:
 		message = "queue testing of failed"
 		cond = v1.ConditionFalse
 	case testResultSuccess:
-		message = "queue testing succeeded"
 	}
 
 	// testing timeout
