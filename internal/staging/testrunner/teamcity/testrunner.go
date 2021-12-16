@@ -235,7 +235,7 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	buildTypeID := testConfig.Teamcity.BuildTypeID
 
 	if buildID == "" {
-		return false, true, errors.Wrapf(s2herrors.ErrTestIDEmpty,
+		return false, true, errors.Wrapf(s2herrors.ErrTestPipelineIDNotFound,
 			"cannot get test result. buildId: '%s'. queue: %s", buildID, currentQueue.Name)
 	}
 

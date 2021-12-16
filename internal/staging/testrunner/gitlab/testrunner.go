@@ -196,9 +196,9 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	projectID := testConfig.Gitlab.ProjectID
 	pipelineID := currentQueue.Status.TestRunner.Gitlab.PipelineID
 
-	if projectID == "" || pipelineID == "" {
-		return false, true, errors.Wrapf(s2herrors.ErrTestIDEmpty,
-			"cannot get test result. projectID: '%s'. pipelineID: '%s'. queue: %s", projectID, pipelineID, currentQueue.Name)
+	if pipelineID == "" {
+		return false, true, errors.Wrapf(s2herrors.ErrTestPipelineIDNotFound,
+			"cannot get test result. pipelineID: '%s'. queue: %s", pipelineID, currentQueue.Name)
 	}
 
 	apiURL := fmt.Sprintf("%s/%s/%s/pipelines/%s", t.baseURL, baseAPIPath, projectID, pipelineID)

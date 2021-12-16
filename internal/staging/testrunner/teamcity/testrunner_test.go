@@ -1,6 +1,8 @@
 package teamcity_test
 
 import (
+	s2herrors "github.com/agoda-com/samsahai/internal/errors"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -26,6 +28,13 @@ var _ = Describe("Teamcity Test Runner", func() {
 	mockQueue := s2hv1.Queue{
 		Spec: s2hv1.QueueSpec{
 			Name: "test",
+		},
+		Status: s2hv1.QueueStatus{
+			TestRunner: s2hv1.TestRunner{
+				Teamcity: s2hv1.Teamcity{
+					BuildID: "1234",
+				},
+			},
 		},
 	}
 
@@ -57,6 +66,7 @@ var _ = Describe("Teamcity Test Runner", func() {
 			err := tcRunner.Trigger(&testConfig, &currentQueue)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(currentQueue.Status.TestRunner.Teamcity.Branch).To(Equal(testConfig.Teamcity.Branch))
+			g.Expect(currentQueue.Status.TestRunner.Teamcity.BuildID).To(Equal("1234567890"))
 		})
 
 		It("should successfully trigger test with PR data rendering", func(done Done) {
@@ -84,6 +94,7 @@ var _ = Describe("Teamcity Test Runner", func() {
 			err := tcRunner.Trigger(&testConfig, &currentQueue)
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(currentQueue.Status.TestRunner.Teamcity.Branch).To(Equal("pull/1234"))
+			g.Expect(currentQueue.Status.TestRunner.Teamcity.BuildID).To(Equal("1234567890"))
 		})
 
 		Specify("Invalid json response", func(done Done) {
@@ -196,8 +207,37 @@ var _ = Describe("Teamcity Test Runner", func() {
 			currentQueue := mockQueue
 
 			tcRunner := teamcity.New(nil, server.URL, "", "")
-			_, _, err := tcRunner.GetResult(&testConfig, &currentQueue)
+			isSuccess, isFinished, err := tcRunner.GetResult(&testConfig, &currentQueue)
 			g.Expect(err).NotTo(BeNil())
+			g.Expect(isFinished).To(BeFalse())
+			g.Expect(isSuccess).To(BeFalse())
+		})
+
+		Specify("Trigger test fail, then pipelineID not found", func(done Done) {
+			defer close(done)
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				defer GinkgoRecover()
+				_, err := ioutil.ReadAll(r.Body)
+				g.Expect(err).NotTo(HaveOccurred())
+
+				_, err = w.Write([]byte(``))
+				g.Expect(err).NotTo(HaveOccurred())
+			}))
+			defer server.Close()
+
+			testConfig := mockTestConfig
+			currentQueue := mockQueue
+			currentQueue.Status.TestRunner.Teamcity.BuildID = ""
+
+			tcRunner := teamcity.New(nil, server.URL, "", "")
+			isSuccess, isFinished, err := tcRunner.GetResult(&testConfig, &currentQueue)
+			g.Expect(err.Error()).To(BeEquivalentTo(errors.Wrapf(s2herrors.ErrTestPipelineIDNotFound,
+				"cannot get test result. buildId: '%s'. queue: %s",
+				currentQueue.Status.TestRunner.Teamcity.BuildID,
+				currentQueue.Name).Error(),
+			))
+			g.Expect(isFinished).To(BeTrue())
+			g.Expect(isSuccess).To(BeFalse())
 		})
 	})
 })
