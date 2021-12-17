@@ -1940,20 +1940,20 @@ var (
 
 	wordpressImage = s2hv1.ComponentImage{
 		Repository: "bitnami/wordpress",
-		Pattern:    "5\\.3.*debian-10.*",
-		Tag:        "5.3.2-debian-10-r32",
+		Pattern:    "5\\.8.*debian-10.*",
+		Tag:        "5.8.1-debian-10-r59",
 	}
 
 	mariaDBImage = s2hv1.ComponentImage{
 		Repository: "bitnami/mariadb",
 		Pattern:    "10\\.5.*debian-10.*",
-		Tag:        "10.5.8-debian-10-r32",
+		Tag:        "10.5.12-debian-10-r59",
 	}
 
 	redisImage = s2hv1.ComponentImage{
 		Repository: "bitnami/redis",
-		Pattern:    "5.*debian-10.*",
-		Tag:        "5.0.10-debian-10-r90",
+		Pattern:    "6.*debian-10.*",
+		Tag:        "6.2.6-debian-10-r69",
 	}
 
 	maxActivePromotionRetry = 2
