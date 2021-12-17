@@ -47,7 +47,7 @@ const (
 	verifyTime30s          = 30 * time.Second
 	verifyTime45s          = 45 * time.Second
 	verifyTime60s          = 60 * time.Second
-	verifyTime90s          = 90 * time.Second
+	verifyTime75s          = 90 * time.Second
 	verifyTime120s         = 120 * time.Second
 	verifyNSCreatedTimeout = verifyTime30s
 )
@@ -322,7 +322,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Verify PullRequestTrigger error")
 
 		By("Verifying PullRequestQueue has been created and PullRequestTrigger has been deleted")
-		err = wait.PollImmediate(verifyTime1s, verifyTime90s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime75s, func() (ok bool, err error) {
 			prQueue := s2hv1.PullRequestQueue{}
 			err = client.Get(ctx, types.NamespacedName{Name: bundledPRTriggerName, Namespace: stgNamespace}, &prQueue)
 			if err != nil {
@@ -450,7 +450,7 @@ var _ = Describe("[e2e] Pull request controller", func() {
 		Expect(strings.Contains(prQueueHistList.Items[0].Name, bundledPRTriggerName)).To(BeTrue())
 		Expect(prQueueHistList.Items[0].Spec.PullRequestQueue).NotTo(BeNil())
 		Expect(prQueueHistList.Items[0].Spec.PullRequestQueue.Status.Result).To(Equal(s2hv1.PullRequestQueueSuccess))
-	}, 175)
+	}, 150)
 
 	It("should successfully deploy pull request queue with 1 component and dependencies", func(done Done) {
 		defer close(done)
@@ -1268,9 +1268,9 @@ var (
 
 	wordpressImage = s2hv1.ComponentImage{
 		Repository: "bitnami/wordpress",
-		Pattern:    "5.3.2-debian-10-r{{ .PRNumber }}",
+		Pattern:    "{{ .PRNumber }}",
 	}
-	wordpressImageTag = "5.3.2-debian-10-r59"
+	wordpressImageTag = "latest"
 
 	wordpressInvalidImage = s2hv1.ComponentImage{
 		Repository: "invalid/wordpress",
@@ -1279,9 +1279,9 @@ var (
 
 	mariaDBImage = s2hv1.ComponentImage{
 		Repository: "bitnami/mariadb",
-		Pattern:    "10.5.8-debian-10-r{{ .PRNumber }}",
+		Pattern:    "{{ .PRNumber }}",
 	}
-	mariaDBImageTag = "10.5.8-debian-10-r59"
+	mariaDBImageTag = "latest"
 
 	prDepImage = s2hv1.ComponentImage{
 		Repository: mariaDBImage.Repository,
