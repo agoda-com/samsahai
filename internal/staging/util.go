@@ -80,13 +80,13 @@ func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestR
 func tryInferPullRequestGitlabBranch(confGitlab *s2hv1.ConfigGitlab, MRiid string,
 	gitlabClientGetter func(token string) gitlab.Gitlab) {
 
-	confGitlabOk := confGitlab != nil
+	confGitlabExists := confGitlab != nil
 
 	// infer branch only if branch is not specified
-	canInferBranch := confGitlabOk &&
+	canInferBranch := confGitlabExists &&
 		confGitlab.InferBranch &&
 		confGitlab.Branch == ""
-	canQueryGitlab := confGitlabOk &&
+	canQueryGitlab := confGitlabExists &&
 		confGitlab.ProjectID != "" &&
 		confGitlab.PipelineTriggerToken != ""
 
