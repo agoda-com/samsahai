@@ -20,6 +20,8 @@ const (
 	testTimeout = 30 * time.Minute // 30 minutes
 	testPolling = 5 * time.Second  // 5 secs
 
+	MAXRETRY = 3
+
 	testResultSuccess testResult = "PASSED"
 	testResultFailure testResult = "FAILED"
 	testResultUnknown testResult = "UNKNOWN"
@@ -70,7 +72,6 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	for _, testRunner := range testRunners {
 		testRunnerName := testRunner.GetName()
 		testResult, err := c.getTestResult(queue, testRunner)
-
 		unfinishedTest := err == nil && testResult == testResultUnknown
 		if unfinishedTest {
 			allTestFinished = false
@@ -191,23 +192,42 @@ func (c *controller) triggerTest(queue *s2hv1.Queue, testRunner internal.Staging
 }
 
 func (c *controller) getTestResult(queue *s2hv1.Queue, testRunner internal.StagingTestRunner) (testResult, error) {
-	testRunnerName := testRunner.GetName()
-	testConfig := c.getTestConfiguration(queue)
-	isResultSuccess, isBuildFinished, err := testRunner.GetResult(testConfig, c.getCurrentQueue())
-	if err != nil {
-		logger.Error(err, "testing get result error", "name", testRunnerName)
-		return testResultUnknown, err
+	pollingTime := metav1.Duration{Duration: testPolling}
+	if c.getTestConfiguration(queue).PollingTime.Duration != 0 {
+		pollingTime = c.getTestConfiguration(queue).PollingTime
 	}
 
-	if !isBuildFinished {
-		pollingTime := metav1.Duration{Duration: testPolling}
-		if c.getTestConfiguration(queue).PollingTime.Duration != 0 {
-			pollingTime = c.getTestConfiguration(queue).PollingTime
+	testRunnerName := testRunner.GetName()
+	testConfig := c.getTestConfiguration(queue)
+
+	// Getting result with retry MAXRETRY times
+	var isResultSuccess, isBuildFinished bool
+	var err error
+	for retry := 0; retry <= MAXRETRY; retry++ {
+		isResultSuccess, isBuildFinished, err = testRunner.GetResult(testConfig, c.getCurrentQueue())
+		if err == nil {
+			// if no error, break the loop
+			break
 		}
+		// error != nil
+		// if configuration is invalid
+		// OR if still error after MAXRETRY, return error
+		if isBuildFinished || retry == MAXRETRY {
+			logger.Error(err, "testing get result error", "name", testRunnerName)
+			return testResultUnknown, err
+		}
+		// if getting result failed
+		// continue
+		time.Sleep(pollingTime.Duration)
+	}
+
+	// if test is still running
+	if !isBuildFinished {
 		time.Sleep(pollingTime.Duration)
 		return testResultUnknown, nil
 	}
 
+	// if test finished and result failed
 	if !isResultSuccess {
 		return testResultFailure, nil
 	}
