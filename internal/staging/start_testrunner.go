@@ -66,14 +66,15 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	// get result from tests (polling check)
 	testCondition := v1.ConditionTrue
 	message := "queue testing succeeded"
+	allTestFinished := true
 	for _, testRunner := range testRunners {
 		testRunnerName := testRunner.GetName()
 		testResult, err := c.getTestResult(queue, testRunner)
 
 		unfinishedTest := err == nil && testResult == testResultUnknown
 		if unfinishedTest {
-			// return function, wait to be call again...
-			return nil
+			allTestFinished = false
+			continue
 		}
 
 		// if finished, then update test result
@@ -88,7 +89,10 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 		}
 	}
 	// test finished, change state to `s2hv1.Collecting`
-	return c.updateTestQueueCondition(queue, testCondition, message)
+	if allTestFinished {
+		return c.updateTestQueueCondition(queue, testCondition, message)
+	}
+	return nil
 }
 
 func (c *controller) checkTestTimeout(queue *s2hv1.Queue, testingTimeout metav1.Duration) error {
