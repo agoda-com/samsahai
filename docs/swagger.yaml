@@ -331,7 +331,7 @@ definitions:
         description: |-
           InferBranch is for Pull Request's testRunner on gitlab.
           If true, samsahai will try to infer the testRunner branch name
-          from the gitlab MR associated with the PR flow [default: false].
+          from the gitlab MR associated with the PR flow if branch is empty [default: true].
           +optional
         type: boolean
       pipelineTriggerToken:
@@ -2159,7 +2159,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Endpoint for manually triggering pull request deployment
+      description: |-
+        Endpoint for manually triggering pull request deployment.
+        If testRunner.gitlab.inferBranch is true and testRunner.gitlab.branch is not set,
+        it will always try to infer branch regardless of the branch in config.
       parameters:
       - description: Team name
         in: path

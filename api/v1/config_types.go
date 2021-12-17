@@ -227,9 +227,21 @@ type ConfigGitlab struct {
 	Branch string `json:"branch,omitempty" yaml:"branch,omitempty"`
 	// InferBranch is for Pull Request's testRunner on gitlab.
 	// If true, samsahai will try to infer the testRunner branch name
-	// from the gitlab MR associated with the PR flow [default: false].
+	// from the gitlab MR associated with the PR flow if branch is empty [default: true].
 	// +optional
-	InferBranch bool `json:"inferBranch,omitempty" yaml:"inferBranch,omitempty"`
+	InferBranch *bool `json:"inferBranch,omitempty" yaml:"inferBranch,omitempty"`
+}
+
+func (c ConfigGitlab) GetInferBranch() bool {
+	// default is true
+	if c.InferBranch == nil {
+		return true
+	}
+	return *c.InferBranch
+}
+
+func (c *ConfigGitlab) SetInferBranch(inferBranch bool) {
+	c.InferBranch = &inferBranch
 }
 
 // ConfigGitlabOverrider is data that overrides ConfigGitlab field by field
@@ -266,7 +278,8 @@ func (c ConfigGitlabOverrider) Override(confGitlab *ConfigGitlab) *ConfigGitlab 
 	}
 	if c.InferBranch != nil {
 		ensureConfGitlab()
-		confGitlab.InferBranch = *c.InferBranch
+		clone := *c.InferBranch
+		confGitlab.InferBranch = &clone
 	}
 	return confGitlab
 }

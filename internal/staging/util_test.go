@@ -24,7 +24,7 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should not infer if false", func() {
-			gitlabConf.InferBranch = false
+			gitlabConf.SetInferBranch(false)
 			before := gitlabConf.DeepCopy()
 
 			inferredBranch := "falsebranch"
@@ -46,7 +46,7 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should infer if true and branch empty", func() {
-			gitlabConf.InferBranch = true
+			gitlabConf.SetInferBranch(true)
 			gitlabConf.Branch = ""
 			before := gitlabConf.DeepCopy()
 
@@ -73,7 +73,7 @@ var _ = Describe("Util", func() {
 		})
 
 		It("should not infer if true and branch not empty", func() {
-			gitlabConf.InferBranch = true
+			gitlabConf.SetInferBranch(true)
 			gitlabConf.Branch = "abc"
 			before := gitlabConf.DeepCopy()
 

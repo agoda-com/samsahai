@@ -84,7 +84,7 @@ func tryInferPullRequestGitlabBranch(confGitlab *s2hv1.ConfigGitlab, MRiid strin
 
 	// infer branch only if branch is not specified
 	canInferBranch := confGitlabExists &&
-		confGitlab.InferBranch &&
+		confGitlab.GetInferBranch() &&
 		confGitlab.Branch == ""
 	canQueryGitlab := confGitlabExists &&
 		confGitlab.ProjectID != "" &&
