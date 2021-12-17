@@ -49,7 +49,7 @@ const (
 	verifyTime60s          = 60 * time.Second
 	verifyTime75s          = 90 * time.Second
 	verifyTime120s         = 120 * time.Second
-	verifyNSCreatedTimeout = verifyTime30s
+	verifyNSCreatedTimeout = verifyTime45s
 )
 
 var (
