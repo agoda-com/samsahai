@@ -38,7 +38,7 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	isResultSuccess bool, isBuildFinished bool, err error) {
 
 	if testConfig == nil {
-		return false, false, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
+		return false, true, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
 	}
 
