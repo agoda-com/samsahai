@@ -149,16 +149,6 @@ type ConfigTestRunnerOverrider struct {
 	Teamcity *ConfigTeamcityOverrider `json:"teamcity,omitempty"`
 	// +optional
 	TestMock *ConfigTestMock `json:"testMock,omitempty"`
-
-	ConfigTestRunnerOverriderExtraParameters `json:",inline"`
-}
-
-type ConfigTestRunnerOverriderExtraParameters struct {
-	// PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.
-	// If true, samsahai will try to infer the testRunner branch name
-	// from the gitlab MR associated with the PR flow.
-	// +optional
-	PullRequestInferGitlabMRBranch *bool `json:"pullRequestInferGitlabMRBranch,omitempty"`
 }
 
 // Override overrides ConfigTestRunner and return a reference to the overridden instance.
@@ -232,8 +222,26 @@ type ConfigGitlab struct {
 	// TODO: make every fields optional to reduce duplicate code in ConfigGitlabOverrider
 
 	ProjectID            string `json:"projectID" yaml:"projectID"`
-	Branch               string `json:"branch" yaml:"branch"`
 	PipelineTriggerToken string `json:"pipelineTriggerToken" yaml:"pipelineTriggerToken"`
+	// +optional
+	Branch string `json:"branch,omitempty" yaml:"branch,omitempty"`
+	// InferBranch is for Pull Request's testRunner on gitlab.
+	// If true, samsahai will try to infer the testRunner branch name
+	// from the gitlab MR associated with the PR flow if branch is empty [default: true].
+	// +optional
+	InferBranch *bool `json:"inferBranch,omitempty" yaml:"inferBranch,omitempty"`
+}
+
+func (c ConfigGitlab) GetInferBranch() bool {
+	// default is true
+	if c.InferBranch == nil {
+		return true
+	}
+	return *c.InferBranch
+}
+
+func (c *ConfigGitlab) SetInferBranch(inferBranch bool) {
+	c.InferBranch = &inferBranch
 }
 
 // ConfigGitlabOverrider is data that overrides ConfigGitlab field by field
@@ -241,9 +249,11 @@ type ConfigGitlabOverrider struct {
 	// +optional
 	ProjectID *string `json:"projectID,omitempty"`
 	// +optional
+	PipelineTriggerToken *string `json:"pipelineTriggerToken,omitempty"`
+	// +optional
 	Branch *string `json:"branch,omitempty"`
 	// +optional
-	PipelineTriggerToken *string `json:"pipelineTriggerToken,omitempty"`
+	InferBranch *bool `json:"inferBranch,omitempty"`
 }
 
 // Override overrides ConfigGitlab and return a reference to the overridden instance.
@@ -265,6 +275,11 @@ func (c ConfigGitlabOverrider) Override(confGitlab *ConfigGitlab) *ConfigGitlab 
 	if c.PipelineTriggerToken != nil {
 		ensureConfGitlab()
 		confGitlab.PipelineTriggerToken = *c.PipelineTriggerToken
+	}
+	if c.InferBranch != nil {
+		ensureConfGitlab()
+		clone := *c.InferBranch
+		confGitlab.InferBranch = &clone
 	}
 	return confGitlab
 }

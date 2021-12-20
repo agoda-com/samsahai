@@ -325,7 +325,15 @@ definitions:
   v1.ConfigGitlab:
     properties:
       branch:
+        description: +optional
         type: string
+      inferBranch:
+        description: |-
+          InferBranch is for Pull Request's testRunner on gitlab.
+          If true, samsahai will try to infer the testRunner branch name
+          from the gitlab MR associated with the PR flow if branch is empty [default: true].
+          +optional
+        type: boolean
       pipelineTriggerToken:
         type: string
       projectID:
@@ -336,6 +344,9 @@ definitions:
       branch:
         description: +optional
         type: string
+      inferBranch:
+        description: +optional
+        type: boolean
       pipelineTriggerToken:
         description: +optional
         type: string
@@ -562,13 +573,6 @@ definitions:
       pollingTime:
         description: +optional
         type: string
-      pullRequestInferGitlabMRBranch:
-        description: |-
-          PullRequestInferGitlabMRBranch is for Pull Request's testRunner on gitlab.
-          If true, samsahai will try to infer the testRunner branch name
-          from the gitlab MR associated with the PR flow.
-          +optional
-        type: boolean
       teamcity:
         $ref: '#/definitions/v1.ConfigTeamcityOverrider'
         description: +optional
@@ -2155,7 +2159,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Endpoint for manually triggering pull request deployment
+      description: |-
+        Endpoint for manually triggering pull request deployment.
+        If testRunner.gitlab.inferBranch is true and testRunner.gitlab.branch is not set,
+        it will always try to infer branch regardless of the branch in config.
       parameters:
       - description: Team name
         in: path

@@ -321,12 +321,19 @@ spec:
               # gitlab repository id which wants to run against desired components
               projectID: <gitlab_project_id>
 
-              # pipeline branch which wants to run against desired components
-              branch: <pipeline_branch>
-
               # pipeline trigger token of your ci/cd pipeline
               # generate in gitlab repository which wants to run against desired components
               pipelineTriggerToken: <pipeline_trigger_token>
+
+              # [optional] pipeline branch which wants to run against desired components
+              # default value is empty string
+              branch: <pipeline_branch>
+
+              # [optional] for Pull Request flow.
+              #	If true, samsahai will try to infer the testRunner branch name if branch is empty
+              #	from the gitlab MR associated with the PR flow
+              # default value is true
+              inferBranch: true
 
             # how long all testing flows in teamcity should take?
             # support units are either <number>s, <number>m or <number>h

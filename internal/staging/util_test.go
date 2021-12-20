@@ -1,128 +1,98 @@
 package staging
 
 import (
-	"time"
-
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal/util/gitlab"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("Util", func() {
-	Describe("overrideTestRunner", func() {
-		var testRunner *s2hv1.ConfigTestRunner
-		var overrider s2hv1.ConfigTestRunnerOverrider
-		var queue *s2hv1.Queue
+	Describe("tryInferPullRequestGitlabBranch", func() {
+		var gitlabConf *s2hv1.ConfigGitlab
+		var MRiid string
 		var gitlabClientGetter func(token string) gitlab.Gitlab
 		g := NewWithT(GinkgoT())
 
 		BeforeEach(func() {
-			testRunner = nil
-			overrider = s2hv1.ConfigTestRunnerOverrider{}
-			queue = &s2hv1.Queue{}
+			gitlabConf = &s2hv1.ConfigGitlab{
+				ProjectID:            "123",
+				PipelineTriggerToken: "xyz",
+			}
+			MRiid = "87878"
 			gitlabClientGetter = nil
 		})
 
-		It("should ignore testRunner if nothing to override", func() {
-			testRunner = &s2hv1.ConfigTestRunner{
-				Timeout:     v1.Duration{Duration: 40},
-				PollingTime: v1.Duration{Duration: 50},
+		It("should not infer if false", func() {
+			gitlabConf.SetInferBranch(false)
+			before := gitlabConf.DeepCopy()
+
+			inferredBranch := "falsebranch"
+
+			gitlabClientGetter = func(token string) gitlab.Gitlab {
+				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
+				return mockGitlab{
+					G:                  g,
+					ExpectedRepository: gitlabConf.ProjectID,
+					ExpectedPRNumber:   MRiid,
+					Branch:             inferredBranch,
+					Error:              nil,
+				}
 			}
-			before := testRunner.DeepCopy()
-			res := overrideTestRunner(testRunner, overrider, queue, gitlabClientGetter)
-			g.Expect(res).To(Equal(before))
-			g.Expect(testRunner).To(Equal(before))
+
+			tryInferPullRequestGitlabBranch(gitlabConf, MRiid, gitlabClientGetter)
+
+			g.Expect(gitlabConf).To(Equal(before))
 		})
 
-		It("should override testRunner field by field", func() {
-			testRunner = &s2hv1.ConfigTestRunner{
-				Timeout:     v1.Duration{Duration: 10},
-				PollingTime: v1.Duration{Duration: 20},
-				Gitlab: &s2hv1.ConfigGitlab{
-					ProjectID:            "123",
-					Branch:               "abc",
-					PipelineTriggerToken: "xyz",
-				},
-				Teamcity: nil,
-			}
-			before := testRunner.DeepCopy()
+		It("should infer if true and branch empty", func() {
+			gitlabConf.SetInferBranch(true)
+			gitlabConf.Branch = ""
+			before := gitlabConf.DeepCopy()
 
-			expectedProjectID := "456"
-			expectedTeamcityBranch := "teamcity"
+			inferredBranch := "truebranch"
 
-			expectedTestRunner := testRunner.DeepCopy()
-			expectedTestRunner.Timeout = v1.Duration{Duration: time.Minute * 5}
-			expectedTestRunner.Gitlab.ProjectID = expectedProjectID
-			expectedTestRunner.Teamcity = &s2hv1.ConfigTeamcity{
-				Branch: expectedTeamcityBranch,
+			gitlabClientGetter = func(token string) gitlab.Gitlab {
+				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
+				return mockGitlab{
+					G:                  g,
+					ExpectedRepository: before.ProjectID,
+					ExpectedPRNumber:   MRiid,
+					Branch:             inferredBranch,
+					Error:              nil,
+				}
 			}
 
-			overrider = s2hv1.ConfigTestRunnerOverrider{
-				Timeout: expectedTestRunner.Timeout.DeepCopy(),
-				Gitlab: &s2hv1.ConfigGitlabOverrider{
-					ProjectID: &expectedProjectID,
-				},
-				Teamcity: &s2hv1.ConfigTeamcityOverrider{
-					Branch: &expectedTeamcityBranch,
-				},
-			}
+			tryInferPullRequestGitlabBranch(gitlabConf, MRiid, gitlabClientGetter)
 
-			res := overrideTestRunner(testRunner, overrider, queue, gitlabClientGetter)
-			g.Expect(res).To(Equal(expectedTestRunner))
-			g.Expect(testRunner).To(Equal(before))
+			g.Expect(gitlabConf).ToNot(Equal(before))
+			g.Expect(gitlabConf.Branch).To(Equal(inferredBranch))
+			gitlabConf.Branch = before.Branch
+			// should change only branch field
+			g.Expect(gitlabConf).To(Equal(before))
 		})
 
-		Context("PullRequest Flow", func() {
-			BeforeEach(func() {
-				queue.Spec.Type = s2hv1.QueueTypePullRequest
-			})
+		It("should not infer if true and branch not empty", func() {
+			gitlabConf.SetInferBranch(true)
+			gitlabConf.Branch = "abc"
+			before := gitlabConf.DeepCopy()
 
-			It("should be able to fetch branch from gitlab", func() {
-				testRunner = &s2hv1.ConfigTestRunner{
-					Timeout:     v1.Duration{Duration: 10},
-					PollingTime: v1.Duration{Duration: 20},
-					Gitlab: &s2hv1.ConfigGitlab{
-						ProjectID:            "123",
-						Branch:               "abc",
-						PipelineTriggerToken: "xyz",
-					},
-					Teamcity: nil,
+			inferredBranch := "truebranch"
+
+			gitlabClientGetter = func(token string) gitlab.Gitlab {
+				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
+				return mockGitlab{
+					G:                  g,
+					ExpectedRepository: before.ProjectID,
+					ExpectedPRNumber:   MRiid,
+					Branch:             inferredBranch,
+					Error:              nil,
 				}
-				before := testRunner.DeepCopy()
+			}
 
-				expectedGitlabBranch := "realbranch"
-				expectedPRNumber := "6767"
+			tryInferPullRequestGitlabBranch(gitlabConf, MRiid, gitlabClientGetter)
 
-				expectedTestRunner := testRunner.DeepCopy()
-				expectedTestRunner.Gitlab.Branch = expectedGitlabBranch
-
-				infer := true
-				overrider = s2hv1.ConfigTestRunnerOverrider{
-					ConfigTestRunnerOverriderExtraParameters: s2hv1.ConfigTestRunnerOverriderExtraParameters{
-						PullRequestInferGitlabMRBranch: &infer,
-					},
-				}
-
-				gitlabClientGetter = func(token string) gitlab.Gitlab {
-					g.Expect(token).To(Equal(before.Gitlab.PipelineTriggerToken))
-					return mockGitlab{
-						G:                  g,
-						ExpectedRepository: before.Gitlab.ProjectID,
-						ExpectedPRNumber:   expectedPRNumber,
-						Branch:             expectedGitlabBranch,
-						Error:              nil,
-					}
-				}
-
-				queue.Spec.PRNumber = expectedPRNumber
-
-				res := overrideTestRunner(testRunner, overrider, queue, gitlabClientGetter)
-
-				g.Expect(res).To(Equal(expectedTestRunner))
-				g.Expect(testRunner).To(Equal(before))
-			})
+			g.Expect(gitlabConf).To(Equal(before))
 		})
 	})
 })

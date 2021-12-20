@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -118,7 +119,8 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 	defer cancelFn()
 
 	go func() {
-		apiURL := fmt.Sprintf("%s/%s/%s/ref/%s/trigger/pipeline", t.baseURL, baseAPIPath, projectID, branchName)
+		apiURL := fmt.Sprintf("%s/%s/%s/ref/%s/trigger/pipeline",
+			t.baseURL, baseAPIPath, projectID, url.QueryEscape(branchName))
 		teamName := currentQueue.Spec.TeamName
 		compVersion := "multiple-components"
 		if len(currentQueue.Spec.Components) == 1 {
