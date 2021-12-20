@@ -1,6 +1,8 @@
 package staging
 
 import (
+	"fmt"
+	"sync"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -17,10 +19,11 @@ import (
 type testResult string
 
 const (
-	testTimeout = 30 * time.Minute // 30 minutes
-	testPolling = 5 * time.Second  // 5 secs
+	testTimeout        = 30 * time.Minute // 30 minutes
+	testPolling        = 5 * time.Second  // 5 secs
+	testTriggerTimeout = 1 * time.Minute  // 10 minutes
 
-	MAXRETRY = 3
+	testResultRetry = 3 // 3 times
 
 	testResultSuccess testResult = "PASSED"
 	testResultFailure testResult = "FAILED"
@@ -48,32 +51,43 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 
 	// trigger the tests
 	notTriggeredTest := !queue.Status.IsConditionTrue(s2hv1.QueueTestTriggered)
-	if notTriggeredTest {
-		for _, testRunner := range testRunners {
-			_ = c.triggerTest(queue, testRunner)
-		}
-
-		// set state, test has been triggered
-		queue.Status.SetCondition(
-			s2hv1.QueueTestTriggered,
-			v1.ConditionTrue,
-			"queue testing triggered")
-
-		// update queue back to k8s
-		if err := c.updateQueue(queue); err != nil {
+	reachTriggerTimeout := queue.Status.StartTestingTime != nil &&
+		metav1.Now().Sub(queue.Status.StartTestingTime.Time) > testTriggerTimeout
+	// check testing timeout
+	if notTriggeredTest && !reachTriggerTimeout {
+		err = c.triggerTest(queue, testRunners)
+		if err != nil {
+			// retry util time passed testTriggerTimeout
 			return err
 		}
+	}
+
+	// set state, test has been triggered
+	queue.Status.SetCondition(
+		s2hv1.QueueTestTriggered,
+		v1.ConditionTrue,
+		"queue testing triggered")
+	// update queue back to k8s
+	if err := c.updateQueue(queue); err != nil {
+		return err
 	}
 
 	// get result from tests (polling check)
 	testCondition := v1.ConditionTrue
 	message := "queue testing succeeded"
 	allTestFinished := true
+	triggerTestMsg := ""
 	for _, testRunner := range testRunners {
 		testRunnerName := testRunner.GetName()
+		if !testRunner.IsTriggered(queue) {
+			triggerTestMsg += fmt.Sprintf("cannot trigger test on %s", testRunnerName)
+			continue
+		}
+
 		testResult, err := c.getTestResult(queue, testRunner)
-		unfinishedTest := err == nil && testResult == testResultUnknown
-		if unfinishedTest {
+
+		// unfinished test
+		if testResult == testResultUnknown && err == nil {
 			allTestFinished = false
 			continue
 		}
@@ -87,6 +101,9 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 		if testResult == testResultUnknown || testResult == testResultFailure {
 			testCondition = v1.ConditionFalse
 			message = "queue testing failed"
+			if triggerTestMsg != "" {
+				message = triggerTestMsg
+			}
 		}
 	}
 	// test finished, change state to `s2hv1.Collecting`
@@ -173,19 +190,41 @@ func (c *controller) checkTestConfig(queue *s2hv1.Queue) (
 	return
 }
 
-func (c *controller) triggerTest(queue *s2hv1.Queue, testRunner internal.StagingTestRunner) error {
-	testRunnerName := testRunner.GetName()
+func (c *controller) triggerTest(queue *s2hv1.Queue, testRunners []internal.StagingTestRunner) error {
+	var wg sync.WaitGroup
+	errs := make([]error, len(testRunners))
 	testConfig := c.getTestConfiguration(queue)
 
-	// trigger test and update k8s object
-	if err := testRunner.Trigger(testConfig, c.getCurrentQueue()); err != nil {
-		logger.Error(err, "testing triggered error", "name", testRunnerName)
-		return err
+	for i, testRunner := range testRunners {
+		// if test is not triggered yet, do...
+		if !testRunner.IsTriggered(queue) {
+			wg.Add(1)
+			go func(runner internal.StagingTestRunner) {
+				defer wg.Done()
+				// trigger test and update k8s object
+				if err := runner.Trigger(testConfig, c.getCurrentQueue()); err != nil {
+					logger.Error(err, "testing triggered error", "name", runner.GetName())
+					errs[i] = err
+					return
+				}
+
+				// set teamcity build number to message
+				if tr := runner.GetName(); tr == teamcity.TestRunnerName {
+					queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
+				}
+			}(testRunner)
+		}
 	}
 
-	// set teamcity build number to message
-	if tr := testRunner.GetName(); tr == teamcity.TestRunnerName {
-		queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
+	// wait all trigger complete
+	wg.Wait()
+
+	// if some trigger error, retry util exceed testTriggerTimeout
+	for _, err := range errs {
+		if err != nil {
+			time.Sleep(testPolling)
+			return err
+		}
 	}
 
 	return nil
@@ -203,22 +242,18 @@ func (c *controller) getTestResult(queue *s2hv1.Queue, testRunner internal.Stagi
 	// Getting result with retry MAXRETRY times
 	var isResultSuccess, isBuildFinished bool
 	var err error
-	for retry := 0; retry <= MAXRETRY; retry++ {
+	for retry := 0; retry <= testResultRetry; retry++ {
 		isResultSuccess, isBuildFinished, err = testRunner.GetResult(testConfig, c.getCurrentQueue())
-		if err == nil {
-			// if no error, break the loop
-			break
+		if err != nil {
+			// if configuration is invalid, or test is not triggered in first place
+			if isBuildFinished || retry == testResultRetry {
+				logger.Error(err, "testing get result error", "name", testRunnerName)
+				return testResultUnknown, err
+			}
+			// if getting result failed
+			// sleep and try fetch result again...
+			time.Sleep(pollingTime.Duration)
 		}
-		// error != nil
-		// if configuration is invalid
-		// OR if still error after MAXRETRY, return error
-		if isBuildFinished || retry == MAXRETRY {
-			logger.Error(err, "testing get result error", "name", testRunnerName)
-			return testResultUnknown, err
-		}
-		// if getting result failed
-		// continue
-		time.Sleep(pollingTime.Duration)
 	}
 
 	// if test is still running
