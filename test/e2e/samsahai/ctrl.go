@@ -1080,7 +1080,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Trigger delete active environment error")
 
 		By("Active environment should be deleted")
-		err = wait.PollImmediate(verifyTime1s, verifyTime30s, func() (ok bool, err error) {
+		err = wait.PollImmediate(verifyTime1s, verifyTime60s, func() (ok bool, err error) {
 			team := s2hv1.Team{}
 			if err := client.Get(ctx, types.NamespacedName{Name: teamName}, &team); err != nil {
 				return false, nil
