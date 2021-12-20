@@ -49,7 +49,7 @@ const (
 	verifyTime60s          = 60 * time.Second
 	verifyTime75s          = 75 * time.Second
 	verifyTime120s         = 120 * time.Second
-	verifyNSCreatedTimeout = verifyTime30s
+	verifyNSCreatedTimeout = verifyTime45s
 )
 
 var (
@@ -1268,9 +1268,9 @@ var (
 
 	wordpressImage = s2hv1.ComponentImage{
 		Repository: "bitnami/wordpress",
-		Pattern:    "5.3.2-debian-10-r{{ .PRNumber }}",
+		Pattern:    "5.8.1-debian-10-r{{ .PRNumber }}",
 	}
-	wordpressImageTag = "5.3.2-debian-10-r59"
+	wordpressImageTag = "5.8.1-debian-10-r59"
 
 	wordpressInvalidImage = s2hv1.ComponentImage{
 		Repository: "invalid/wordpress",
@@ -1279,9 +1279,9 @@ var (
 
 	mariaDBImage = s2hv1.ComponentImage{
 		Repository: "bitnami/mariadb",
-		Pattern:    "10.5.8-debian-10-r{{ .PRNumber }}",
+		Pattern:    "10.5.12-debian-10-r{{ .PRNumber }}",
 	}
-	mariaDBImageTag = "10.5.8-debian-10-r59"
+	mariaDBImageTag = "10.5.12-debian-10-r59"
 
 	prDepImage = s2hv1.ComponentImage{
 		Repository: mariaDBImage.Repository,

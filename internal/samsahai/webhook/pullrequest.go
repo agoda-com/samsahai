@@ -46,7 +46,9 @@ type teamPRQueueJSON struct {
 
 // pullRequestWebhook godoc
 // @Summary Webhook For Pull Request Deployment
-// @Description Endpoint for manually triggering pull request deployment
+// @Description Endpoint for manually triggering pull request deployment.
+// @Description If testRunner.gitlab.inferBranch is true and testRunner.gitlab.branch is not set,
+// @Description it will always try to infer branch regardless of the branch in config.
 // @Tags POST
 // @Param team path string true "Team name"
 // @Accept  json
@@ -80,6 +82,17 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 	if err != nil || !matched {
 		h.error(w, http.StatusBadRequest, fmt.Errorf("invalid prNumber, must match regex %s", validK8sNamePattern))
 		return
+	}
+
+	// if infer branch is true, override branch to prefer branch inference
+	if jsonData.TestRunner != nil &&
+		jsonData.TestRunner.Gitlab != nil &&
+		jsonData.TestRunner.Gitlab.InferBranch != nil &&
+		*jsonData.TestRunner.Gitlab.InferBranch &&
+		jsonData.TestRunner.Gitlab.Branch == nil {
+
+		branch := ""
+		jsonData.TestRunner.Gitlab.Branch = &branch
 	}
 
 	mapCompTag := make(map[string]string)
