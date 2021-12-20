@@ -51,10 +51,10 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 
 	// trigger the tests
 	notTriggeredTest := !queue.Status.IsConditionTrue(s2hv1.QueueTestTriggered)
-	reachTriggerTimeout := queue.Status.StartTestingTime != nil &&
-		metav1.Now().Sub(queue.Status.StartTestingTime.Time) > testTriggerTimeout
+	notReachTriggerTimeout := queue.Status.StartTestingTime != nil &&
+		metav1.Now().Sub(queue.Status.StartTestingTime.Time) <= testTriggerTimeout
 	// check testing timeout
-	if notTriggeredTest && !reachTriggerTimeout {
+	if notTriggeredTest && notReachTriggerTimeout {
 		err = c.triggerTest(queue, testRunners)
 		if err != nil {
 			// retry util time passed testTriggerTimeout
@@ -79,8 +79,10 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	triggerTestMsg := ""
 	for _, testRunner := range testRunners {
 		testRunnerName := testRunner.GetName()
+
 		if !testRunner.IsTriggered(queue) {
-			triggerTestMsg += fmt.Sprintf("cannot trigger test on %s", testRunnerName)
+			// add message in k8s object
+			triggerTestMsg += fmt.Sprintf("cannot trigger test on %s ", testRunnerName)
 			continue
 		}
 
