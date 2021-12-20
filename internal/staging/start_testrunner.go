@@ -21,7 +21,7 @@ type testResult string
 const (
 	testTimeout        = 30 * time.Minute // 30 minutes
 	testPolling        = 5 * time.Second  // 5 secs
-	testTriggerTimeout = 1 * time.Minute  // 10 minutes
+	testTriggerTimeout = 1 * time.Minute  // 1 minutes
 
 	testResultRetry = 3 // 3 times
 
