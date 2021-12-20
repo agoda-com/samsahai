@@ -198,7 +198,7 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	projectID := testConfig.Gitlab.ProjectID
 	pipelineID := currentQueue.Status.TestRunner.Gitlab.PipelineID
 
-	if pipelineID == "" {
+	if !t.IsTriggered(currentQueue) {
 		return false, true, errors.Wrapf(s2herrors.ErrTestPipelineIDNotFound,
 			"cannot get test result. pipelineID: '%s'. queue: %s", pipelineID, currentQueue.Name)
 	}
@@ -230,4 +230,8 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	isResultSuccess = strings.EqualFold(statusSuccess, response.Status)
 
 	return
+}
+
+func (t *testRunner) IsTriggered(queue *s2hv1.Queue) bool {
+	return queue.Status.TestRunner.Gitlab.PipelineID != ""
 }

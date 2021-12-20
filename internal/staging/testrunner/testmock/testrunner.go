@@ -53,3 +53,7 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 
 	return false, true, nil
 }
+
+func (t *testRunner) IsTriggered(queue *s2hv1.Queue) bool {
+	return true
+}

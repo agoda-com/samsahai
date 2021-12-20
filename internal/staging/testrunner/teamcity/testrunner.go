@@ -234,7 +234,7 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	buildID := currentQueue.Status.TestRunner.Teamcity.BuildID
 	buildTypeID := testConfig.Teamcity.BuildTypeID
 
-	if buildID == "" {
+	if !t.IsTriggered(currentQueue) {
 		return false, true, errors.Wrapf(s2herrors.ErrTestPipelineIDNotFound,
 			"cannot get test result. buildId: '%s'. queue: %s", buildID, currentQueue.Name)
 	}
@@ -265,4 +265,8 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	isBuildFinished = strings.EqualFold(buildFinished, response.State)
 
 	return
+}
+
+func (t *testRunner) IsTriggered(queue *s2hv1.Queue) bool {
+	return queue.Status.TestRunner.Teamcity.BuildID != ""
 }
