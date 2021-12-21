@@ -68,6 +68,7 @@ var _ = Describe("Teamcity Test Runner", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(currentQueue.Status.TestRunner.Teamcity.Branch).To(Equal(testConfig.Teamcity.Branch))
 			g.Expect(currentQueue.Status.TestRunner.Teamcity.BuildID).To(Equal("1234567890"))
+			g.Expect(tcRunner.IsTriggered(&currentQueue)).To(BeTrue())
 		})
 
 		It("should successfully trigger test with PR data rendering", func(done Done) {
@@ -96,6 +97,7 @@ var _ = Describe("Teamcity Test Runner", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(currentQueue.Status.TestRunner.Teamcity.Branch).To(Equal("pull/1234"))
 			g.Expect(currentQueue.Status.TestRunner.Teamcity.BuildID).To(Equal("1234567890"))
+			g.Expect(tcRunner.IsTriggered(&currentQueue)).To(BeTrue())
 		})
 
 		Specify("Invalid json response", func(done Done) {
@@ -112,10 +114,12 @@ var _ = Describe("Teamcity Test Runner", func() {
 
 			testConfig := mockTestConfig
 			currentQueue := mockQueue
+			currentQueue.Status.TestRunner.Teamcity.BuildID = ""
 
 			tcRunner := teamcity.New(nil, server.URL, "", "")
 			err := tcRunner.Trigger(&testConfig, &currentQueue)
 			g.Expect(err).NotTo(BeNil())
+			g.Expect(tcRunner.IsTriggered(&currentQueue)).To(BeFalse())
 		})
 	})
 
@@ -142,6 +146,7 @@ var _ = Describe("Teamcity Test Runner", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(isFinished).To(BeFalse())
 			g.Expect(isSuccess).To(BeFalse())
+			g.Expect(tcRunner.IsTriggered(&currentQueue)).To(BeTrue())
 		})
 
 		It("should successfully get test result with success status", func(done Done) {
@@ -166,6 +171,7 @@ var _ = Describe("Teamcity Test Runner", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(isFinished).To(BeTrue())
 			g.Expect(isSuccess).To(BeTrue())
+			g.Expect(tcRunner.IsTriggered(&currentQueue)).To(BeTrue())
 		})
 
 		It("should successfully get test result with failure status", func(done Done) {
@@ -190,6 +196,7 @@ var _ = Describe("Teamcity Test Runner", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(isFinished).To(BeTrue())
 			g.Expect(isSuccess).To(BeFalse())
+			g.Expect(tcRunner.IsTriggered(&currentQueue)).To(BeTrue())
 		})
 
 		Specify("Invalid json response", func(done Done) {
@@ -212,6 +219,7 @@ var _ = Describe("Teamcity Test Runner", func() {
 			g.Expect(err).NotTo(BeNil())
 			g.Expect(isFinished).To(BeFalse())
 			g.Expect(isSuccess).To(BeFalse())
+			g.Expect(tcRunner.IsTriggered(&currentQueue)).To(BeTrue())
 		})
 
 		Specify("Trigger test fail, then pipelineID not found", func(done Done) {
@@ -239,6 +247,7 @@ var _ = Describe("Teamcity Test Runner", func() {
 			))
 			g.Expect(isFinished).To(BeTrue())
 			g.Expect(isSuccess).To(BeFalse())
+			g.Expect(tcRunner.IsTriggered(&currentQueue)).To(BeFalse())
 		})
 	})
 })

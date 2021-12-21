@@ -1,6 +1,7 @@
 package gitlab_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -73,6 +74,7 @@ var _ = Describe("GitLab", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(currentQueue.Status.TestRunner.Gitlab.PipelineID).To(Equal("4321"))
 			g.Expect(currentQueue.Status.TestRunner.Gitlab.PipelineURL).To(Equal("https://gitlab.com/test/-/pipelines/4321"))
+			g.Expect(glRunner.IsTriggered(&currentQueue)).To(BeTrue())
 		})
 
 		It("should successfully trigger test with PR data rendering", func(done Done) {
@@ -100,6 +102,7 @@ var _ = Describe("GitLab", func() {
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(currentQueue.Status.TestRunner.Gitlab.PipelineID).To(Equal("4321"))
 			g.Expect(currentQueue.Status.TestRunner.Gitlab.PipelineURL).To(Equal("https://gitlab.com/test/-/pipelines/4321"))
+			g.Expect(glRunner.IsTriggered(&currentQueue)).To(BeTrue())
 		})
 
 		Specify("Invalid json response", func(done Done) {
@@ -120,6 +123,8 @@ var _ = Describe("GitLab", func() {
 			glRunner := gitlab.New(nil, server.URL)
 			err := glRunner.Trigger(&testConfig, &currentQueue)
 			g.Expect(err).NotTo(BeNil())
+			fmt.Println(currentQueue.Status.TestRunner.Gitlab.PipelineID)
+			g.Expect(glRunner.IsTriggered(&currentQueue)).To(BeTrue())
 		})
 
 		Describe("Get Result", func() {
@@ -145,6 +150,7 @@ var _ = Describe("GitLab", func() {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(isFinished).To(BeFalse())
 				g.Expect(isSuccess).To(BeFalse())
+				g.Expect(glRunner.IsTriggered(&currentQueue)).To(BeTrue())
 			})
 
 			It("should successfully get test result with success status", func(done Done) {
@@ -169,6 +175,7 @@ var _ = Describe("GitLab", func() {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(isFinished).To(BeTrue())
 				g.Expect(isSuccess).To(BeTrue())
+				g.Expect(glRunner.IsTriggered(&currentQueue)).To(BeTrue())
 			})
 
 			It("should successfully get test result with failure status", func(done Done) {
@@ -193,6 +200,7 @@ var _ = Describe("GitLab", func() {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(isFinished).To(BeTrue())
 				g.Expect(isSuccess).To(BeFalse())
+				g.Expect(glRunner.IsTriggered(&currentQueue)).To(BeTrue())
 			})
 
 			Specify("Invalid json response", func(done Done) {
@@ -241,6 +249,7 @@ var _ = Describe("GitLab", func() {
 				))
 				g.Expect(isFinished).To(BeTrue())
 				g.Expect(isSuccess).To(BeFalse())
+				g.Expect(glRunner.IsTriggered(&currentQueue)).To(BeFalse())
 			})
 
 		})
