@@ -2,6 +2,7 @@ package staging
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -82,7 +83,7 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 
 		if !testRunner.IsTriggered(queue) {
 			// add message in k8s object
-			triggerTestMsg += fmt.Sprintf("cannot trigger test on %s ", testRunnerName)
+			triggerTestMsg += fmt.Sprintf("cannot trigger test on %s, ", testRunnerName)
 			continue
 		}
 
@@ -104,7 +105,7 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 			testCondition = v1.ConditionFalse
 			message = "queue testing failed"
 			if triggerTestMsg != "" {
-				message = triggerTestMsg
+				message = strings.TrimSuffix(triggerTestMsg, ", ")
 			}
 		}
 	}
