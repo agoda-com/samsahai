@@ -227,12 +227,18 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	isResultSuccess bool, isBuildFinished bool, err error) {
 
 	if testConfig == nil {
-		return false, false, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
+		return false, true, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
 	}
 
 	buildID := currentQueue.Status.TestRunner.Teamcity.BuildID
 	buildTypeID := testConfig.Teamcity.BuildTypeID
+
+	if !t.IsTriggered(currentQueue) {
+		return false, true, errors.Wrapf(s2herrors.ErrTestPipelineIDNotFound,
+			"cannot get test result. buildId: '%s'. queue: %s", buildID, currentQueue.Name)
+	}
+
 	apiURL := fmt.Sprintf("%s/httpAuth/app/rest/builds/id:%s?locator=buildType:%s", t.baseURL, buildID, buildTypeID)
 	opts := []http.Option{
 		http.WithSkipTLSVerify(),
@@ -255,15 +261,12 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 
 	currentQueue.Status.TestRunner.Teamcity.BuildNumber = "#" + response.BuildNumber
 
-	isBuildFinished = false
-	if strings.EqualFold(buildFinished, response.State) {
-		isBuildFinished = true
-	}
+	isResultSuccess = strings.EqualFold(statusSuccess, response.Status)
+	isBuildFinished = strings.EqualFold(buildFinished, response.State)
 
-	isResultSuccess = false
-	if strings.EqualFold(statusSuccess, response.Status) {
-		isResultSuccess = true
-	}
+	return
+}
 
-	return isResultSuccess, isBuildFinished, nil
+func (t *testRunner) IsTriggered(queue *s2hv1.Queue) bool {
+	return queue.Status.TestRunner.Teamcity.BuildID != ""
 }

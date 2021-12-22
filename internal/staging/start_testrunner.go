@@ -1,6 +1,9 @@
 package staging
 
 import (
+	"fmt"
+	"strings"
+	"sync"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -17,8 +20,11 @@ import (
 type testResult string
 
 const (
-	testTimeout = 1800 * time.Second
-	testPolling = 5 * time.Second
+	testTimeout        = 30 * time.Minute // 30 minutes
+	testPolling        = 5 * time.Second  // 5 secs
+	testTriggerTimeout = 1 * time.Minute  // 1 minutes
+
+	testResultRetry = 3 // 3 times
 
 	testResultSuccess testResult = "PASSED"
 	testResultFailure testResult = "FAILED"
@@ -32,68 +38,81 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	}
 
 	// check testing timeout
+	// if timeout, change state to `s2hv1.Collecting`
 	if err := c.checkTestTimeout(queue, testingTimeout); err != nil {
 		return err
 	}
 
+	// check test config
+	// if no test configuration, change state to `s2hv1.Collecting`
 	skipTest, testRunners, err := c.checkTestConfig(queue)
-	if err != nil {
+	if err != nil || skipTest {
 		return err
-	} else if skipTest {
-		return nil
 	}
 
 	// trigger the tests
-	for _, testRunner := range testRunners {
-		if err := c.triggerTest(queue, testRunner); err != nil {
+	notTriggeredTest := !queue.Status.IsConditionTrue(s2hv1.QueueTestTriggered)
+	notReachTriggerTimeout := queue.Status.StartTestingTime != nil &&
+		metav1.Now().Sub(queue.Status.StartTestingTime.Time) <= testTriggerTimeout
+	// check testing timeout
+	if notTriggeredTest && notReachTriggerTimeout {
+		err = c.triggerTest(queue, testRunners)
+		if err != nil {
+			// retry util time passed testTriggerTimeout
 			return err
 		}
 	}
 
-	if !queue.Status.IsConditionTrue(s2hv1.QueueTestTriggered) {
-		queue.Status.SetCondition(
-			s2hv1.QueueTestTriggered,
-			v1.ConditionTrue,
-			"queue testing triggered")
-
-		// update queue back to k8s
-		if err := c.updateQueue(queue); err != nil {
-			return err
-		}
+	// set state, test has been triggered
+	queue.Status.SetCondition(
+		s2hv1.QueueTestTriggered,
+		v1.ConditionTrue,
+		"queue testing triggered")
+	// update queue back to k8s
+	if err := c.updateQueue(queue); err != nil {
+		return err
 	}
 
 	// get result from tests (polling check)
-	finished := true
 	testCondition := v1.ConditionTrue
 	message := "queue testing succeeded"
+	allTestFinished := true
+	triggerTestMsg := ""
 	for _, testRunner := range testRunners {
 		testRunnerName := testRunner.GetName()
+
+		if !testRunner.IsTriggered(queue) {
+			// add message in k8s object
+			triggerTestMsg += fmt.Sprintf("cannot trigger test on %s, ", testRunnerName)
+			continue
+		}
+
 		testResult, err := c.getTestResult(queue, testRunner)
-		if err != nil {
+
+		// unfinished test
+		if testResult == testResultUnknown && err == nil {
+			allTestFinished = false
+			continue
+		}
+
+		// if finished, then update test result
+		if err := c.setTestResultCondition(queue, testRunnerName, testResult); err != nil {
 			return err
 		}
 
-		switch testResult {
-		case testResultUnknown:
-			finished = false
-		case testResultFailure, testResultSuccess:
-			if testResult == testResultFailure {
-				testCondition = v1.ConditionFalse
-				message = "queue testing failed"
-			}
-
-			if err := c.setTestResultCondition(queue, testRunnerName, testResult); err != nil {
-				return err
+		// if some runners test were failed
+		if testResult == testResultUnknown || testResult == testResultFailure {
+			testCondition = v1.ConditionFalse
+			message = "queue testing failed"
+			if triggerTestMsg != "" {
+				message = strings.TrimSuffix(triggerTestMsg, ", ")
 			}
 		}
 	}
-
-	if finished {
-		if err := c.updateTestQueueCondition(queue, testCondition, message); err != nil {
-			return err
-		}
+	// test finished, change state to `s2hv1.Collecting`
+	if allTestFinished {
+		return c.updateTestQueueCondition(queue, testCondition, message)
 	}
-
 	return nil
 }
 
@@ -174,19 +193,40 @@ func (c *controller) checkTestConfig(queue *s2hv1.Queue) (
 	return
 }
 
-func (c *controller) triggerTest(queue *s2hv1.Queue, testRunner internal.StagingTestRunner) error {
-	if !queue.Status.IsConditionTrue(s2hv1.QueueTestTriggered) {
-		testRunnerName := testRunner.GetName()
-		testConfig := c.getTestConfiguration(queue)
+func (c *controller) triggerTest(queue *s2hv1.Queue, testRunners []internal.StagingTestRunner) error {
+	var wg sync.WaitGroup
+	errs := make([]error, len(testRunners))
+	testConfig := c.getTestConfiguration(queue)
 
-		if err := testRunner.Trigger(testConfig, c.getCurrentQueue()); err != nil {
-			logger.Error(err, "testing triggered error", "name", testRunnerName)
-			return err
+	for i, testRunner := range testRunners {
+		// if test is not triggered yet, do...
+		if !testRunner.IsTriggered(queue) {
+			wg.Add(1)
+			go func(runner internal.StagingTestRunner) {
+				defer wg.Done()
+				// trigger test and update k8s object
+				if err := runner.Trigger(testConfig, c.getCurrentQueue()); err != nil {
+					logger.Error(err, "testing triggered error", "name", runner.GetName())
+					errs[i] = err
+					return
+				}
+
+				// set teamcity build number to message
+				if tr := runner.GetName(); tr == teamcity.TestRunnerName {
+					queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
+				}
+			}(testRunner)
 		}
+	}
 
-		// set teamcity build number to message
-		if tr := testRunner.GetName(); tr == teamcity.TestRunnerName {
-			queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
+	// wait all trigger complete
+	wg.Wait()
+
+	// if some trigger error, retry util exceed testTriggerTimeout
+	for _, err := range errs {
+		if err != nil {
+			time.Sleep(testPolling)
+			return err
 		}
 	}
 
@@ -194,29 +234,42 @@ func (c *controller) triggerTest(queue *s2hv1.Queue, testRunner internal.Staging
 }
 
 func (c *controller) getTestResult(queue *s2hv1.Queue, testRunner internal.StagingTestRunner) (testResult, error) {
-	testRunnerName := testRunner.GetName()
-	testConfig := c.getTestConfiguration(queue)
-	isResultSuccess, isBuildFinished, err := testRunner.GetResult(testConfig, c.getCurrentQueue())
-	if err != nil {
-		logger.Error(err, "testing get result error", "name", testRunnerName)
-		return testResultUnknown, err
+	pollingTime := metav1.Duration{Duration: testPolling}
+	if c.getTestConfiguration(queue).PollingTime.Duration != 0 {
+		pollingTime = c.getTestConfiguration(queue).PollingTime
 	}
 
-	if !isBuildFinished {
-		pollingTime := metav1.Duration{Duration: testPolling}
-		if c.getTestConfiguration(queue).PollingTime.Duration != 0 {
-			pollingTime = c.getTestConfiguration(queue).PollingTime
+	testRunnerName := testRunner.GetName()
+	testConfig := c.getTestConfiguration(queue)
+
+	// Getting result with retry MAXRETRY times
+	var isResultSuccess, isBuildFinished bool
+	var err error
+	for retry := 0; retry <= testResultRetry; retry++ {
+		isResultSuccess, isBuildFinished, err = testRunner.GetResult(testConfig, c.getCurrentQueue())
+		if err != nil {
+			// if configuration is invalid, or test is not triggered in first place
+			if isBuildFinished || retry == testResultRetry {
+				logger.Error(err, "testing get result error", "name", testRunnerName)
+				return testResultUnknown, err
+			}
+			// if getting result failed
+			// sleep and try fetch result again...
+			time.Sleep(pollingTime.Duration)
 		}
+	}
+
+	// if test is still running
+	if !isBuildFinished {
 		time.Sleep(pollingTime.Duration)
 		return testResultUnknown, nil
 	}
 
-	testResult := testResultSuccess
+	// if test finished and result failed
 	if !isResultSuccess {
-		testResult = testResultFailure
+		return testResultFailure, nil
 	}
-
-	return testResult, nil
+	return testResultSuccess, nil
 }
 
 // updateTestQueueCondition updates queue status, condition and save to k8s for Testing state
@@ -232,6 +285,7 @@ func (c *controller) updateTestQueueCondition(queue *s2hv1.Queue, status v1.Cond
 }
 
 func (c *controller) setTestResultCondition(queue *s2hv1.Queue, testRunnerName string, testResult testResult) error {
+
 	var condType s2hv1.QueueConditionType
 	switch testRunnerName {
 	case gitlab.TestRunnerName:
@@ -242,14 +296,16 @@ func (c *controller) setTestResultCondition(queue *s2hv1.Queue, testRunnerName s
 		return nil
 	}
 
-	message := "unknown result"
+	message := "queue testing succeeded"
 	cond := v1.ConditionTrue
 	switch testResult {
+	case testResultUnknown:
+		message = "unable to get result from runner"
+		cond = v1.ConditionFalse
 	case testResultFailure:
-		message = "queue testing of failed"
+		message = "queue testing failed"
 		cond = v1.ConditionFalse
 	case testResultSuccess:
-		message = "queue testing succeeded"
 	}
 
 	// testing timeout

@@ -24,6 +24,9 @@ type StagingTestRunner interface {
 	// It returns bool results of is build success and is build finished
 	GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue *s2hv1.Queue) (
 		isResultSuccess bool, isBuildFinished bool, err error)
+
+	// IsTriggered check if the test has been triggered or not
+	IsTriggered(queue *s2hv1.Queue) bool
 }
 
 type StagingController interface {
