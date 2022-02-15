@@ -123,6 +123,8 @@ type ConfigDeploy struct {
 
 // ConfigTestRunner represents configuration about how to test the environment
 type ConfigTestRunner struct {
+	// TODO: make Timeout and PollingTime pointers to reduce duplicate code in ConfigTestRunnerOverrider
+
 	// +optional
 	Timeout metav1.Duration `json:"timeout,omitempty"`
 	// +optional
@@ -135,17 +137,151 @@ type ConfigTestRunner struct {
 	TestMock *ConfigTestMock `json:"testMock,omitempty"`
 }
 
+// ConfigTestRunnerOverrider is data that overrides ConfigTestRunner field by field
+type ConfigTestRunnerOverrider struct {
+	// +optional
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
+	// +optional
+	PollingTime *metav1.Duration `json:"pollingTime,omitempty"`
+	// +optional
+	Gitlab *ConfigGitlabOverrider `json:"gitlab,omitempty"`
+	// +optional
+	Teamcity *ConfigTeamcityOverrider `json:"teamcity,omitempty"`
+	// +optional
+	TestMock *ConfigTestMock `json:"testMock,omitempty"`
+}
+
+// Override overrides ConfigTestRunner and return a reference to the overridden instance.
+// The operation will try to override an instance in-place if possible.
+func (c ConfigTestRunnerOverrider) Override(confTestRunner *ConfigTestRunner) *ConfigTestRunner {
+	ensureConfTestRunner := func() {
+		if confTestRunner == nil {
+			confTestRunner = &ConfigTestRunner{}
+		}
+	}
+	if c.Timeout != nil {
+		ensureConfTestRunner()
+		confTestRunner.Timeout = *c.Timeout.DeepCopy()
+	}
+	if c.PollingTime != nil {
+		ensureConfTestRunner()
+		confTestRunner.PollingTime = *c.PollingTime.DeepCopy()
+	}
+	if c.Gitlab != nil {
+		ensureConfTestRunner()
+		confTestRunner.Gitlab = c.Gitlab.Override(confTestRunner.Gitlab)
+	}
+	if c.Teamcity != nil {
+		ensureConfTestRunner()
+		confTestRunner.Teamcity = c.Teamcity.Override(confTestRunner.Teamcity)
+	}
+	if c.TestMock != nil {
+		ensureConfTestRunner()
+		confTestRunner.TestMock = c.TestMock.DeepCopy()
+	}
+	return confTestRunner
+}
+
 // ConfigTeamcity defines a http rest configuration of teamcity
 type ConfigTeamcity struct {
+	// TODO: make every fields optional to reduce duplicate code in ConfigTeamcityOverrider
+
 	BuildTypeID string `json:"buildTypeID" yaml:"buildTypeID"`
 	Branch      string `json:"branch" yaml:"branch"`
 }
 
+// ConfigTeamcityOverrider is data that overrides ConfigTeamcity field by field
+type ConfigTeamcityOverrider struct {
+	// +optional
+	BuildTypeID *string `json:"buildTypeID,omitempty"`
+	// +optional
+	Branch *string `json:"branch,omitempty"`
+}
+
+// Override overrides ConfigTeamcity and return a reference to the overridden instance.
+// The operation will try to override an instance in-place if possible.
+func (c ConfigTeamcityOverrider) Override(confTeamcity *ConfigTeamcity) *ConfigTeamcity {
+	ensureConfTeamcity := func() {
+		if confTeamcity == nil {
+			confTeamcity = &ConfigTeamcity{}
+		}
+	}
+	if c.BuildTypeID != nil {
+		ensureConfTeamcity()
+		confTeamcity.BuildTypeID = *c.BuildTypeID
+	}
+	if c.Branch != nil {
+		ensureConfTeamcity()
+		confTeamcity.Branch = *c.Branch
+	}
+	return confTeamcity
+}
+
 // ConfigGitlab defines a http rest configuration of gitlab
 type ConfigGitlab struct {
+	// TODO: make every fields optional to reduce duplicate code in ConfigGitlabOverrider
+
 	ProjectID            string `json:"projectID" yaml:"projectID"`
-	Branch               string `json:"branch" yaml:"branch"`
 	PipelineTriggerToken string `json:"pipelineTriggerToken" yaml:"pipelineTriggerToken"`
+	// +optional
+	Branch string `json:"branch,omitempty" yaml:"branch,omitempty"`
+	// InferBranch is for Pull Request's testRunner on gitlab.
+	// If true, samsahai will try to infer the testRunner branch name
+	// from the gitlab MR associated with the PR flow if branch is empty [default: true].
+	// +optional
+	InferBranch *bool `json:"inferBranch,omitempty" yaml:"inferBranch,omitempty"`
+}
+
+func (c ConfigGitlab) GetInferBranch() bool {
+	// default is true
+	if c.InferBranch == nil {
+		return true
+	}
+	return *c.InferBranch
+}
+
+func (c *ConfigGitlab) SetInferBranch(inferBranch bool) {
+	c.InferBranch = &inferBranch
+}
+
+// ConfigGitlabOverrider is data that overrides ConfigGitlab field by field
+type ConfigGitlabOverrider struct {
+	// +optional
+	ProjectID *string `json:"projectID,omitempty"`
+	// +optional
+	PipelineTriggerToken *string `json:"pipelineTriggerToken,omitempty"`
+	// +optional
+	Branch *string `json:"branch,omitempty"`
+	// +optional
+	InferBranch *bool `json:"inferBranch,omitempty"`
+}
+
+// Override overrides ConfigGitlab and return a reference to the overridden instance.
+// The operation will try to override an instance in-place if possible.
+func (c ConfigGitlabOverrider) Override(confGitlab *ConfigGitlab) *ConfigGitlab {
+	ensureConfGitlab := func() {
+		if confGitlab == nil {
+			confGitlab = &ConfigGitlab{}
+		}
+	}
+	if c.ProjectID != nil {
+		ensureConfGitlab()
+		confGitlab.ProjectID = *c.ProjectID
+	}
+	if c.Branch != nil {
+		ensureConfGitlab()
+		confGitlab.Branch = *c.Branch
+	}
+	if c.PipelineTriggerToken != nil {
+		ensureConfGitlab()
+		confGitlab.PipelineTriggerToken = *c.PipelineTriggerToken
+	}
+	if c.InferBranch != nil {
+		ensureConfGitlab()
+		clone := *c.InferBranch
+		confGitlab.InferBranch = &clone
+	}
+	return confGitlab
 }
 
 // ConfigTestMock defines a result of testmock

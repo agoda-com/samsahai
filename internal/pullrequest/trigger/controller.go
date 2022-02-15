@@ -134,6 +134,7 @@ func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	prNumber := prTrigger.Spec.PRNumber
 	commitSHA := prTrigger.Spec.CommitSHA
 	noOfRetry := prTrigger.Spec.NoOfRetry
+	testRunner := prTrigger.Spec.TestRunner
 	maxRetry := prConfig.Trigger.MaxRetry
 	gitRepo := prConfig.GitRepository
 
@@ -169,7 +170,8 @@ func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		prTriggerCreateAt := prTrigger.Status.CreatedAt
 		prTriggerFinishedAt := prTrigger.Status.UpdatedAt
 		err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, gitRepo,
-			s2hv1.QueueComponents{}, imageMissingList, isPRTriggerFailed, prTriggerCreateAt, prTriggerFinishedAt, tearDownDuration)
+			s2hv1.QueueComponents{}, imageMissingList, isPRTriggerFailed, prTriggerCreateAt, prTriggerFinishedAt,
+			tearDownDuration, testRunner)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -240,7 +242,8 @@ func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	prTriggerCreateAt := prTrigger.Status.CreatedAt
 	prTriggerFinishedAt := prTrigger.Status.UpdatedAt
 	err = c.createPullRequestQueue(req.Namespace, name, prNumber, commitSHA, gitRepo,
-		prQueueComponents, imageMissingList, isPRTriggerFailed, prTriggerCreateAt, prTriggerFinishedAt, tearDownDuration)
+		prQueueComponents, imageMissingList, isPRTriggerFailed, prTriggerCreateAt, prTriggerFinishedAt,
+		tearDownDuration, testRunner)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -441,9 +444,10 @@ func (c *controller) getPRQueueComponentsIfImageExisted(ctx context.Context, prT
 }
 
 func (c *controller) createPullRequestQueue(namespace, name, prNumber, commitSHA, gitRepo string, comps s2hv1.QueueComponents,
-	imageMissingList []s2hv1.Image, isPRTriggerFailed bool, createAt, finishedAt *metav1.Time, teardownDuration s2hv1.PullRequestTearDownDuration) error {
+	imageMissingList []s2hv1.Image, isPRTriggerFailed bool, createAt, finishedAt *metav1.Time,
+	teardownDuration s2hv1.PullRequestTearDownDuration, testRunner *s2hv1.ConfigTestRunnerOverrider) error {
 	prQueue := prqueuectrl.NewPullRequestQueue(c.teamName, namespace, name, prNumber, commitSHA, gitRepo, comps,
-		imageMissingList, isPRTriggerFailed, createAt, finishedAt, teardownDuration)
+		imageMissingList, isPRTriggerFailed, createAt, finishedAt, teardownDuration, testRunner)
 	if err := c.prQueueCtrl.Add(prQueue, nil); err != nil {
 		return err
 	}

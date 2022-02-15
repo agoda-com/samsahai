@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/agoda-com/samsahai/internal/util/gitlab"
+
 	"github.com/pkg/errors"
 	"github.com/twitchtv/twirp"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -24,28 +26,29 @@ func (c *controller) getDeployConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigDep
 		return &s2hv1.ConfigDeploy{}
 	}
 
+	configDeploy := &s2hv1.ConfigDeploy{}
+
 	switch {
 	case queue.IsActivePromotionQueue():
 		if cfg.ActivePromotion != nil && cfg.ActivePromotion.Deployment != nil {
-			return cfg.ActivePromotion.Deployment
+			configDeploy = cfg.ActivePromotion.Deployment
 		}
-		return &s2hv1.ConfigDeploy{}
 	case queue.IsPullRequestQueue():
 		bundleName := queue.Spec.Name
 		if cfg.PullRequest != nil && len(cfg.PullRequest.Bundles) > 0 {
 			for _, bundle := range cfg.PullRequest.Bundles {
 				if bundle.Name == bundleName {
-					return bundle.Deployment
+					configDeploy = bundle.Deployment
 				}
 			}
 		}
-		return &s2hv1.ConfigDeploy{}
 	default:
 		if cfg.Staging != nil {
-			return cfg.Staging.Deployment
+			configDeploy = cfg.Staging.Deployment
 		}
-		return &s2hv1.ConfigDeploy{}
 	}
+
+	return configDeploy
 }
 
 func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestRunner {
@@ -54,7 +57,49 @@ func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestR
 		return nil
 	}
 
-	return deployConfig.TestRunner
+	testRunner := deployConfig.TestRunner
+
+	// override testRunner
+	if testRunnerOverrider := queue.GetTestRunnerExtraParameter(); testRunnerOverrider != nil {
+		testRunner = testRunnerOverrider.Override(testRunner)
+	}
+
+	// try to infer gitlab MR branch in PR flow
+	if queue.IsPullRequestQueue() && testRunner != nil {
+		gitlabClientGetter := func(token string) gitlab.Gitlab {
+			return gitlab.NewClient(c.gitlabBaseURL, token)
+		}
+		tryInferPullRequestGitlabBranch(testRunner.Gitlab, queue.Spec.PRNumber, gitlabClientGetter)
+	}
+
+	return testRunner
+}
+
+// tryInferPullRequestGitlabBranch will check whether the Gitlab MR could be fetched from project ID and pipeline token
+// and override branch in testRunner with the associated MR branch.
+func tryInferPullRequestGitlabBranch(confGitlab *s2hv1.ConfigGitlab, MRiid string,
+	gitlabClientGetter func(token string) gitlab.Gitlab) {
+
+	confGitlabExists := confGitlab != nil
+
+	// infer branch only if branch is not specified
+	canInferBranch := confGitlabExists &&
+		confGitlab.GetInferBranch() &&
+		confGitlab.Branch == ""
+	canQueryGitlab := confGitlabExists &&
+		confGitlab.ProjectID != "" &&
+		confGitlab.PipelineTriggerToken != ""
+
+	if canInferBranch && canQueryGitlab && gitlabClientGetter != nil {
+		gl := gitlabClientGetter(confGitlab.PipelineTriggerToken)
+		if gl != nil {
+			branch, err := gl.GetMRSourceBranch(confGitlab.ProjectID, MRiid)
+			// silently ignore error (in case of error, don't override the branch)
+			if err == nil && branch != "" {
+				confGitlab.Branch = branch
+			}
+		}
+	}
 }
 
 func (c *controller) getDeployEngine(queue *s2hv1.Queue) internal.DeployEngine {

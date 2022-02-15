@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -118,7 +119,8 @@ func (t *testRunner) Trigger(testConfig *s2hv1.ConfigTestRunner, currentQueue *s
 	defer cancelFn()
 
 	go func() {
-		apiURL := fmt.Sprintf("%s/%s/%s/ref/%s/trigger/pipeline", t.baseURL, baseAPIPath, projectID, branchName)
+		apiURL := fmt.Sprintf("%s/%s/%s/ref/%s/trigger/pipeline",
+			t.baseURL, baseAPIPath, projectID, url.QueryEscape(branchName))
 		teamName := currentQueue.Spec.TeamName
 		compVersion := "multiple-components"
 		if len(currentQueue.Spec.Components) == 1 {
@@ -189,12 +191,18 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 	isResultSuccess bool, isBuildFinished bool, err error) {
 
 	if testConfig == nil {
-		return false, false, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
+		return false, true, errors.Wrapf(s2herrors.ErrTestConfigurationNotFound,
 			"test configuration should not be nil. queue: %s", currentQueue.Name)
 	}
 
 	projectID := testConfig.Gitlab.ProjectID
 	pipelineID := currentQueue.Status.TestRunner.Gitlab.PipelineID
+
+	if !t.IsTriggered(currentQueue) {
+		return false, true, errors.Wrapf(s2herrors.ErrTestPipelineIDNotFound,
+			"cannot get test result. pipelineID: '%s'. queue: %s", pipelineID, currentQueue.Name)
+	}
+
 	apiURL := fmt.Sprintf("%s/%s/%s/pipelines/%s", t.baseURL, baseAPIPath, projectID, pipelineID)
 	opts := []http.Option{
 		http.WithSkipTLSVerify(),
@@ -218,14 +226,12 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 		return false, false, err
 	}
 
-	isBuildFinished = false
-	if !strings.EqualFold("", response.StartedAt) && !strings.EqualFold("", response.FinishedAt) {
-		isBuildFinished = true
-	}
+	isBuildFinished = !strings.EqualFold("", response.StartedAt) && !strings.EqualFold("", response.FinishedAt)
+	isResultSuccess = strings.EqualFold(statusSuccess, response.Status)
 
-	isResultSuccess = false
-	if strings.EqualFold(statusSuccess, response.Status) {
-		isResultSuccess = true
-	}
-	return isResultSuccess, isBuildFinished, nil
+	return
+}
+
+func (t *testRunner) IsTriggered(queue *s2hv1.Queue) bool {
+	return queue.Status.TestRunner.Gitlab.PipelineID != ""
 }

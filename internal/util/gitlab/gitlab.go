@@ -16,7 +16,8 @@ var logger = s2hlog.S2HLog.WithName("Gitlab-util")
 
 const requestTimeout = 5 * time.Second
 
-const commitStatusAPI = "%s/api/v4/projects/%s/statuses/%s" // base url, repository, commit SHA
+const commitStatusAPI = "%s/api/v4/projects/%s/statuses/%s"            // base url, repository, commit SHA
+const getMRSourceBranchAPI = "%s/api/v4/projects/%s/merge_requests/%s" // base url, repository, iid
 
 // CommitStatus represents a commit status
 type CommitStatus string
@@ -32,6 +33,7 @@ const (
 type Gitlab interface {
 	// PublishCommitStatus publishes a commit status for a given SHA
 	PublishCommitStatus(repository, commitSHA, labelName, targetURL, description string, status CommitStatus) error
+	GetMRSourceBranch(repository, MRiid string) (string, error)
 }
 
 var _ Gitlab = &Client{}
@@ -58,6 +60,14 @@ type bodyReq struct {
 	Description  string `json:"description"`
 	Context      string `json:"context"`
 	PrivateToken string `json:"private_token"`
+}
+
+// based on the json returned by fetching a single MR
+// ref: https://docs.gitlab.com/ee/api/merge_requests.html#get-single-mr
+type gitlabMR struct {
+	ID           int    `json:"id"`
+	IID          int    `json:"iid"`
+	SourceBranch string `json:"source_branch"`
 }
 
 // PublishCommitStatus publishes a commit status for a given SHA
@@ -121,6 +131,69 @@ func (c *Client) PublishCommitStatus(repository, commitSHA, labelName, targetURL
 			"repository", repository, "commitSHA", commitSHA)
 		return nil
 	}
+}
+
+func (c *Client) GetMRSourceBranch(repository, MRiid string) (string, error) {
+	logger.Debug("getting gitlab mr source branch",
+		"repository", repository, "MRiid", MRiid)
+
+	repoEncoded := url.QueryEscape(repository)
+	iidEncoded := url.QueryEscape(MRiid)
+
+	getMRSourceBranchAPI := fmt.Sprintf(getMRSourceBranchAPI, c.baseURL, repoEncoded, iidEncoded)
+
+	resCh := make(chan []byte, 1)
+	errCh := make(chan error, 1)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancelFunc()
+	go func() {
+		gitToken := c.token
+
+		opts := []http.Option{
+			http.WithTimeout(requestTimeout),
+			http.WithContext(ctx),
+			http.WithHeader("Authorization", gitToken),
+		}
+
+		_, res, err := getRequest(getMRSourceBranchAPI, opts...)
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		resCh <- res
+	}()
+
+	select {
+	case <-ctx.Done():
+		logger.Error(s2herrors.ErrRequestTimeout,
+			fmt.Sprintf("get MR source branch from gitlab repository: %s, iid: %s took longer than %v",
+				repository, MRiid, requestTimeout))
+		return "", s2herrors.ErrRequestTimeout
+	case err := <-errCh:
+		logger.Error(err, "cannot get MR source branch",
+			"repository", repository, "iid", MRiid)
+		return "", err
+	case res := <-resCh:
+		var MR gitlabMR
+		if err := json.Unmarshal(res, &MR); err != nil {
+			logger.Error(err, "cannot unmarshal MR data", "data", string(res))
+			return "", err
+		}
+
+		logger.Info("get MR source branch successfully ",
+			"repository", repository, "iid", MRiid)
+		return MR.SourceBranch, nil
+	}
+}
+
+func getRequest(reqURL string, opts ...http.Option) (int, []byte, error) {
+	respCode, res, err := http.Get(reqURL, opts...)
+	if err != nil {
+		return respCode, []byte{}, err
+	}
+
+	return respCode, res, nil
 }
 
 func postRequest(reqURL string, body []byte, opts ...http.Option) (int, []byte, error) {

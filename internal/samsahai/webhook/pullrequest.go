@@ -28,6 +28,7 @@ type pullRequestWebhookEventJSON struct {
 	CommitSHA        string                          `json:"commitSHA,omitempty"`
 	Components       []Components                    `json:"components,omitempty"`
 	TearDownDuration *v1.PullRequestTearDownDuration `json:"tearDownDuration,omitempty"`
+	TestRunner       *v1.ConfigTestRunnerOverrider   `json:"testRunner,omitempty"`
 }
 
 type teamPRQueueJSON struct {
@@ -45,7 +46,9 @@ type teamPRQueueJSON struct {
 
 // pullRequestWebhook godoc
 // @Summary Webhook For Pull Request Deployment
-// @Description Endpoint for manually triggering pull request deployment
+// @Description Endpoint for manually triggering pull request deployment.
+// @Description If testRunner.gitlab.inferBranch is true and testRunner.gitlab.branch is not set,
+// @Description it will always try to infer branch regardless of the branch in config.
 // @Tags POST
 // @Param team path string true "Team name"
 // @Accept  json
@@ -81,13 +84,24 @@ func (h *handler) pullRequestWebhook(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
+	// if infer branch is true, override branch to prefer branch inference
+	if jsonData.TestRunner != nil &&
+		jsonData.TestRunner.Gitlab != nil &&
+		jsonData.TestRunner.Gitlab.InferBranch != nil &&
+		*jsonData.TestRunner.Gitlab.InferBranch &&
+		jsonData.TestRunner.Gitlab.Branch == nil {
+
+		branch := ""
+		jsonData.TestRunner.Gitlab.Branch = &branch
+	}
+
 	mapCompTag := make(map[string]string)
 	for _, comp := range jsonData.Components {
 		mapCompTag[comp.Name] = comp.Tag
 	}
 
 	err = h.samsahai.TriggerPullRequestDeployment(teamName, jsonData.BundleName, jsonData.PRNumber.String(),
-		jsonData.CommitSHA, mapCompTag, jsonData.TearDownDuration)
+		jsonData.CommitSHA, mapCompTag, jsonData.TearDownDuration, jsonData.TestRunner)
 	if err != nil {
 		if s2herrors.IsErrPullRequestBundleNotFound(err) {
 			h.error(w, http.StatusBadRequest,

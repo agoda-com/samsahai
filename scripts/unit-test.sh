@@ -29,6 +29,15 @@ eval $GO test \
 tail -n +2 coverage.out >> coverage.txt || exit 255
 rm coverage.out
 
+eval $GO test \
+  -race \
+  -covermode=atomic \
+  -coverprofile=coverage.out \
+  -coverpkg $cover_pkgs \
+  ./api/...
+tail -n +2 coverage.out >> coverage.txt || exit 255
+rm coverage.out
+
 CI=${CI:-}
 if [[ ! -z "$CI" ]]; then
   mkdir -p ./test/result/
@@ -37,5 +46,6 @@ if [[ ! -z "$CI" ]]; then
   ls -al ./test/result/
   find . -type f -regex "./internal/.*unit-test.xml" -exec rm {} +;
   find . -type f -regex "./pkg/.*unit-test.xml" -exec rm {} +;
+  find . -type f -regex "./api/.*unit-test.xml" -exec rm {} +;
   ls -al ./test/result/
 fi

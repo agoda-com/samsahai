@@ -216,7 +216,7 @@ type SamsahaiController interface {
 
 	// TriggerPullRequestDeployment creates PullRequestTrigger crd object
 	TriggerPullRequestDeployment(teamName, component, prNumber, commitSHA string, bundleCompTag map[string]string,
-		tearDownDuration *s2hv1.PullRequestTearDownDuration) error
+		tearDownDuration *s2hv1.PullRequestTearDownDuration, testRunner *s2hv1.ConfigTestRunnerOverrider) error
 
 	// API
 
