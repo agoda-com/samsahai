@@ -55,6 +55,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		chStop      chan struct{}
 		mgr         manager.Manager
 		err         error
+		cancel      context.CancelFunc
 	)
 
 	logger := s2hlog.Log.WithName(fmt.Sprintf("%s-test", internal.StagingCtrlName))
@@ -329,10 +330,11 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Status: corev1.ServiceStatus{},
 	}
 
-	BeforeEach(func(done Done) {
+	BeforeEach(func() {
 		defer GinkgoRecover()
-		defer close(done)
 		var err error
+
+		ctx, cancel = context.WithCancel(context.TODO())
 
 		namespace = os.Getenv("POD_NAMESPACE")
 		Expect(namespace).NotTo(BeEmpty(), "POD_NAMESPACE should be provided")
@@ -361,13 +363,11 @@ var _ = Describe("[e2e] Staging controller", func() {
 		go func() {
 			defer GinkgoRecover()
 			defer wgStop.Done()
-			Expect(mgr.Start(chStop)).To(BeNil())
+			Expect(mgr.Start(ctx)).To(BeNil())
 		}()
 	}, 10)
 
-	AfterEach(func(done Done) {
-		defer close(done)
-
+	AfterEach(func() {
 		By("Deleting nginx deployment")
 		deploy := &deployNginx
 		_ = client.Delete(ctx, deploy)
@@ -450,13 +450,12 @@ var _ = Describe("[e2e] Staging controller", func() {
 		err = helm3.DeleteAllReleases(namespace, true)
 		Expect(err).NotTo(HaveOccurred())
 
+		cancel()
 		close(chStop)
 		wgStop.Wait()
 	}, 90)
 
-	It("should successfully start and stop", func(done Done) {
-		defer close(done)
-
+	It("should successfully start and stop", func() {
 		By("Creating Config")
 		config := mockConfig
 		Expect(client.Create(ctx, &config)).To(BeNil())
@@ -644,9 +643,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 	}, 300)
 
-	It("should successfully deploy pull request type", func(done Done) {
-		defer close(done)
-
+	It("should successfully deploy pull request type", func() {
 		authToken := "12345"
 		s2hConfig := internal.SamsahaiConfig{
 			SamsahaiCredential: internal.SamsahaiCredential{InternalAuthToken: authToken},
@@ -661,7 +658,8 @@ var _ = Describe("[e2e] Staging controller", func() {
 
 		stagingCfgCtrl := configctrl.New(mgr)
 		stagingCtrl = staging.NewController(teamName, namespace, authToken, samsahaiClient, mgr, queueCtrl,
-			stagingCfgCtrl, "", "", "", "", "", internal.StagingConfig{})
+			stagingCfgCtrl, "", "", "", "", "",
+			internal.StagingConfig{})
 		go stagingCtrl.Start(chStop)
 
 		By("Creating Config")
@@ -735,9 +733,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(queue.DeletePullRequestQueue(client, namespace, redisBundleName))
 	}, 300)
 
-	It("should create error log in case of deploy failed", func(done Done) {
-		defer close(done)
-
+	It("should create error log in case of deploy failed", func() {
 		By("Creating Config")
 		config := mockConfig
 		config.Status.Used.Staging.MaxRetry = 0
@@ -798,9 +794,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Should have waiting queue")
 	}, 200)
 
-	It("should successfully get health check", func(done Done) {
-		defer close(done)
-
+	It("should successfully get health check", func() {
 		stagingCtrl = staging.NewController(teamName, namespace, "", nil, mgr, queueCtrl,
 			nil, "", "", "", "", "", internal.StagingConfig{})
 

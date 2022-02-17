@@ -652,7 +652,7 @@ func (c *controller) createEnvironmentObjects(teamComp *s2hv1.Team, namespace st
 		},
 	}
 
-	k8sObjects := []runtime.Object{
+	k8sObjects := []client.Object{
 		k8sobject.GetService(c.scheme, teamComp, namespace),
 		k8sobject.GetServiceAccount(teamComp, namespace),
 		k8sobject.GetRole(teamComp, namespace),
@@ -728,13 +728,10 @@ func setPostNamespaceCreationCondition(teamComp *s2hv1.Team, nsConditionType s2h
 	}
 }
 
-func deployStagingCtrl(c client.Client, obj runtime.Object) error {
+func deployStagingCtrl(c client.Client, obj client.Object) error {
 	ctx := context.TODO()
 	target := obj.DeepCopyObject()
-	objKey, err := client.ObjectKeyFromObject(obj)
-	if err != nil {
-		return err
-	}
+	objKey := client.ObjectKeyFromObject(obj)
 
 	if err := c.Get(ctx, objKey, obj); err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -1595,10 +1592,10 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error {
 
 	configTemplate := configComp.Spec.Template
 	if configTemplate != "" && configTemplate != teamComp.Name {
+
 		templateObj := &s2hv1.Team{}
 		err := c.getTeam(configTemplate, templateObj)
 		if err != nil {
-			logger.Error(err, "team template not found", "template", configTemplate)
 			return err
 		}
 
@@ -1611,7 +1608,6 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error {
 	}
 
 	hashID := internal.GenTeamHashID(teamComp.Status)
-
 	if !teamComp.Status.SyncTemplate {
 		teamComp.Status.SyncTemplate = true
 	}
@@ -1623,29 +1619,35 @@ func (c *controller) EnsureTeamTemplateChanged(teamComp *s2hv1.Team) error {
 			corev1.ConditionFalse,
 			"need update team")
 	}
+
 	return nil
 }
 
-func (c *controller) ensureTriggerChildrenTeam(name string) error {
+func (c *controller) ensureTriggerChildrenTeam(name string) (childTemplateUpdated bool, err error) {
 	ctx := context.TODO()
 	configs := &s2hv1.ConfigList{}
-	if err := c.client.List(ctx, configs, &client.ListOptions{}); err != nil {
-		logger.Error(err, "cannot list Configs ")
-		return err
+	if err = c.client.List(ctx, configs, &client.ListOptions{}); err != nil {
+		logger.Error(err, "cannot list Configs")
+		return
 	}
+
 	for _, conf := range configs.Items {
 		if conf.Spec.Template == name {
 			team := &s2hv1.Team{}
-			if err := c.getTeam(conf.Name, team); err != nil {
-				return err
+			if err = c.getTeam(conf.Name, team); err != nil {
+				return
 			}
+
 			team.Status.SyncTemplate = false
-			if err := c.updateTeam(team); err != nil {
-				return err
+			if err = c.updateTeam(team); err != nil {
+				return
 			}
+
+			childTemplateUpdated = true
 		}
 	}
-	return nil
+
+	return
 }
 
 func (c *controller) validateTeamRequiredField(teamComp *s2hv1.Team) error {
@@ -1689,9 +1691,7 @@ func applyTeamTemplate(teamComp, teamTemplate *s2hv1.Team) error {
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=queuehistories/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=stablecomponents,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=stablecomponents/status,verbs=get;update;patch
-func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
-	ctx := context.TODO()
-
+func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	teamComp := &s2hv1.Team{}
 	err := c.client.Get(ctx, types.NamespacedName{Name: req.NamespacedName.Name}, teamComp)
 	if err != nil {
@@ -1772,11 +1772,19 @@ func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		if err := c.updateTeam(teamComp); err != nil {
 			return reconcile.Result{}, err
 		}
+
 		return reconcile.Result{}, nil
 	}
 
-	if err := c.ensureTriggerChildrenTeam(teamComp.Name); err != nil {
+	childTemplateUpdated, err := c.ensureTriggerChildrenTeam(teamComp.Name)
+	if err != nil {
 		return reconcile.Result{}, err
+	}
+	if childTemplateUpdated {
+		return reconcile.Result{
+			Requeue:      true,
+			RequeueAfter: 1 * time.Second,
+		}, nil
 	}
 
 	if err := c.validateTeamRequiredField(teamComp); err != nil {

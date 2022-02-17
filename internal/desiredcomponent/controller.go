@@ -91,9 +91,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=desiredcomponents/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=queues,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=env.samsahai.io,resources=queues/status,verbs=get;update;patch
-func (c *controller) Reconcile(req reconcile.Request) (reconcile.Result, error) {
-	ctx := context.TODO()
-
+func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	now := metav1.Now()
 	comp := &s2hv1.DesiredComponent{}
 	err := c.client.Get(ctx, req.NamespacedName, comp)

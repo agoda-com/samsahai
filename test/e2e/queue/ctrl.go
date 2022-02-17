@@ -21,8 +21,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 	var client rclient.Client
 	var teamName = "teamtest-queue"
 
-	BeforeEach(func(done Done) {
-		defer close(done)
+	BeforeEach(func() {
 
 		namespace = os.Getenv("POD_NAMESPACE")
 		Expect(namespace).NotTo(BeEmpty(), "Please provide POD_NAMESPACE")
@@ -39,15 +38,12 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(controller.RemoveAllQueues(namespace)).To(BeNil())
 	}, 5)
 
-	AfterEach(func(done Done) {
-		defer close(done)
+	AfterEach(func() {
 
 		Expect(controller.RemoveAllQueues(namespace)).To(BeNil())
 	}, 5)
 
-	It("should successfully create/get/delete Queue", func(done Done) {
-		defer close(done)
-
+	It("should successfully create/get/delete Queue", func() {
 		q := queue.NewQueue(teamName, namespace, "alpine", "",
 			s2hv1.QueueComponents{{Name: "alpine", Version: "3.9.3"}}, s2hv1.QueueTypeUpgrade,
 		)
@@ -69,9 +65,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(size).To(Equal(0))
 	}, 3)
 
-	It("should successfully remove old Queue", func(done Done) {
-		defer close(done)
-
+	It("should successfully remove old Queue", func() {
 		var err error
 		var first runtime.Object
 		var alpine390 = queue.NewQueue(teamName, namespace, "alpine", "",
@@ -146,9 +140,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(size).To(Equal(0))
 	}, 3)
 
-	It("should successfully add component to existing bundle", func(done Done) {
-		defer close(done)
-
+	It("should successfully add component to existing bundle", func() {
 		var err error
 		var first runtime.Object
 		var alpine = queue.NewQueue(teamName, namespace, "group", "group",
@@ -192,9 +184,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(size).To(Equal(0))
 	}, 3)
 
-	It("should successfully update component in existing bundle", func(done Done) {
-		defer close(done)
-
+	It("should successfully update component in existing bundle", func() {
 		var err error
 		var first runtime.Object
 		var application = queue.NewQueue(teamName, namespace, "group", "group",
@@ -241,9 +231,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(size).To(Equal(0))
 	}, 3)
 
-	It("should successfully remove queue/component from existing bundle and create new queue", func(done Done) {
-		defer close(done)
-
+	It("should successfully remove queue/component from existing bundle and create new queue", func() {
 		var err error
 		var first runtime.Object
 		var application = queue.NewQueue(teamName, namespace, "group", "group",
@@ -289,9 +277,7 @@ var _ = Describe("[e2e] Queue controller", func() {
 		Expect(size).To(Equal(0))
 	}, 3)
 
-	It("should successfully create queue following priority queues", func(done Done) {
-		defer close(done)
-
+	It("should successfully create queue following priority queues", func() {
 		priorityQueues := []string{"alpine", "ubuntu"}
 
 		var err error

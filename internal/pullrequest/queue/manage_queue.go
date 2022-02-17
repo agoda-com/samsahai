@@ -7,7 +7,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -15,7 +14,7 @@ import (
 	s2herrors "github.com/agoda-com/samsahai/internal/errors"
 )
 
-func (c *controller) Add(obj runtime.Object, priorityQueues []string) error {
+func (c *controller) Add(obj client.Object, priorityQueues []string) error {
 	prQueue, ok := obj.(*s2hv1.PullRequestQueue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
@@ -25,7 +24,7 @@ func (c *controller) Add(obj runtime.Object, priorityQueues []string) error {
 }
 
 // does not support add top
-func (c *controller) AddTop(obj runtime.Object) error {
+func (c *controller) AddTop(obj client.Object) error {
 	return nil
 }
 
@@ -40,11 +39,11 @@ func (c *controller) Size(namespace string) int {
 }
 
 // does not support first queue
-func (c *controller) First(namespace string) (runtime.Object, error) {
+func (c *controller) First(namespace string) (client.Object, error) {
 	return &s2hv1.PullRequestQueue{}, nil
 }
 
-func (c *controller) Remove(obj runtime.Object) error {
+func (c *controller) Remove(obj client.Object) error {
 	return c.client.Delete(context.TODO(), obj)
 }
 
@@ -52,7 +51,7 @@ func (c *controller) RemoveAllQueues(namespace string) error {
 	return c.client.DeleteAllOf(context.TODO(), &s2hv1.PullRequestQueue{}, client.InNamespace(namespace))
 }
 
-func (c *controller) SetLastOrder(obj runtime.Object) error {
+func (c *controller) SetLastOrder(obj client.Object) error {
 	prQueue, ok := obj.(*s2hv1.PullRequestQueue)
 	if !ok {
 		return s2herrors.ErrParsingRuntimeObject
@@ -77,11 +76,11 @@ func (c *controller) SetLastOrder(obj runtime.Object) error {
 }
 
 // does not support reverify type
-func (c *controller) SetReverifyQueueAtFirst(obj runtime.Object) error {
+func (c *controller) SetReverifyQueueAtFirst(obj client.Object) error {
 	return nil
 }
 
-func (c *controller) SetRetryQueue(obj runtime.Object, noOfRetry int, nextAt time.Time,
+func (c *controller) SetRetryQueue(obj client.Object, noOfRetry int, nextAt time.Time,
 	isTriggerFailed *bool, triggerCreateAt, triggerFinishedAt *metav1.Time) error {
 	prQueue, ok := obj.(*s2hv1.PullRequestQueue)
 	if !ok {

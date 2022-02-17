@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"context"
 	"log"
 	"os"
 	"path/filepath"
@@ -57,14 +58,15 @@ func TestMain(m *testing.M) {
 }
 
 var _ = Describe("Samsahai Exporter", func() {
+	ctx := context.TODO()
 	timeout := float64(3000)
 	namespace := "default"
 	g := NewWithT(GinkgoT())
 	var (
 		wgStop     *sync.WaitGroup
-		chStop     chan struct{}
 		configCtrl internal.ConfigController
 		err        error
+		cancel     context.CancelFunc
 	)
 
 	RegisterMetrics()
@@ -72,6 +74,8 @@ var _ = Describe("Samsahai Exporter", func() {
 	BeforeEach(func(done Done) {
 		defer GinkgoRecover()
 		defer close(done)
+
+		ctx, cancel = context.WithCancel(context.TODO())
 
 		configCtrl = newMockConfigCtrl()
 		g.Expect(err).NotTo(HaveOccurred())
@@ -128,22 +132,22 @@ var _ = Describe("Samsahai Exporter", func() {
 		SetActivePromotionMetric(activePromotion)
 		SetHealthStatusMetric("9.9.9.8", "777888999", 234000)
 
-		chStop = make(chan struct{})
 		wgStop = &sync.WaitGroup{}
 		wgStop.Add(1)
 		go func() {
 			defer wgStop.Done()
-			Expect(mgr.Start(chStop)).To(BeNil())
+			Expect(mgr.Start(ctx)).To(BeNil())
 		}()
 	}, timeout)
 
 	AfterEach(func(done Done) {
 		defer close(done)
-		close(chStop)
+		cancel()
 		wgStop.Wait()
 	}, timeout)
 
-	It("should show team name correctly ", func() {
+	It("should show team name correctly ", func(done Done) {
+		defer close(done)
 		_, data, err := http.Get("http://localhost:8008/metrics")
 		g.Expect(err).NotTo(HaveOccurred())
 		expectedData := strings.Contains(string(data), `samsahai_team{teamName="testQTeamName1"} 1`)

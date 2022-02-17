@@ -39,10 +39,10 @@ var (
 	samsahaiCtrl internal.SamsahaiController
 	configCtrl   internal.ConfigController
 	wgStop       *sync.WaitGroup
-	chStop       chan struct{}
 	mgr          manager.Manager
 	client       rclient.Client
 	namespace    string
+	cancel       context.CancelFunc
 )
 
 func setupSamsahai() {
@@ -58,14 +58,13 @@ func setupSamsahai() {
 	wgStop.Add(1)
 	go func() {
 		defer wgStop.Done()
-		Expect(mgr.Start(chStop)).To(BeNil())
+		Expect(mgr.Start(ctx)).To(BeNil())
 	}()
 }
 
 var _ = Describe("[e2e] Config controller", func() {
-	BeforeEach(func(done Done) {
-		defer close(done)
-		chStop = make(chan struct{})
+	BeforeEach(func() {
+		ctx, cancel = context.WithCancel(context.TODO())
 
 		adminRestConfig, err := config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
@@ -86,9 +85,7 @@ var _ = Describe("[e2e] Config controller", func() {
 
 	}, 5)
 
-	AfterEach(func(done Done) {
-		defer close(done)
-
+	AfterEach(func() {
 		By("Deleting all Teams")
 		err := client.DeleteAllOf(ctx, &s2hv1.Team{}, rclient.MatchingLabels(testLabels))
 		Expect(err).NotTo(HaveOccurred())
@@ -127,10 +124,12 @@ var _ = Describe("[e2e] Config controller", func() {
 			return false, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "Delete all Configs error")
+
+		cancel()
+		wgStop.Wait()
 	}, 30)
 
-	It("should successfully get/delete Config", func(done Done) {
-		defer close(done)
+	It("should successfully get/delete Config", func() {
 		setupSamsahai()
 
 		By("Creating Config")
@@ -204,8 +203,7 @@ var _ = Describe("[e2e] Config controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Delete config error")
 	}, 10)
 
-	It("Should successfully apply/update config template", func(done Done) {
-		defer close(done)
+	It("Should successfully apply/update config template", func() {
 		setupSamsahai()
 
 		By("Creating Config")
