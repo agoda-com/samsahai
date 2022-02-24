@@ -226,7 +226,10 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 		return false, false, err
 	}
 
-	isBuildFinished = !strings.EqualFold("", response.StartedAt) && !strings.EqualFold("", response.FinishedAt)
+	if strings.EqualFold("", response.StartedAt) {
+		logger.Debug("start time of test is empty")
+	}
+	isBuildFinished = !strings.EqualFold("", response.FinishedAt)
 	isResultSuccess = strings.EqualFold(statusSuccess, response.Status)
 
 	return
