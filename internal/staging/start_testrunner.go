@@ -255,6 +255,7 @@ func (c *controller) getTestResult(queue *s2hv1.Queue, testRunner internal.Stagi
 			}
 			// if getting result failed
 			// sleep and try fetch result again...
+			logger.Debug("waiting for test result", "name", testRunnerName)
 			time.Sleep(pollingTime.Duration)
 		}
 	}
