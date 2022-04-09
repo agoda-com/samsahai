@@ -11,7 +11,6 @@ var _ = Describe("Util", func() {
 	Describe("tryInferPullRequestGitlabBranch", func() {
 		var gitlabConf *s2hv1.ConfigGitlab
 		var MRiid string
-		var gitlabClientGetter func(token string) gitlab.Gitlab
 		g := NewWithT(GinkgoT())
 
 		BeforeEach(func() {
@@ -20,12 +19,11 @@ var _ = Describe("Util", func() {
 				PipelineTriggerToken: "xyz",
 			}
 			MRiid = "87878"
-			gitlabClientGetter = nil
 		})
 
 		It("interBranch=True defaultBranch=''", func() {
 			gitlabConf.SetInferBranch(true)
-			//before := gitlabConf.DeepCopy()
+			before := gitlabConf.DeepCopy()
 
 			inferredBranch := "falsebranch"
 
@@ -41,13 +39,14 @@ var _ = Describe("Util", func() {
 
 			tryInferPullRequestGitlabBranch(gitlabConf, MRiid, gitlabClientGetter)
 
+			g.Expect(gitlabConf).ToNot(Equal(before))
 			g.Expect(gitlabConf.Branch).To(Equal(inferredBranch))
 		})
 
 		It("interBranch=True defaultBranch='test2'", func() {
 			gitlabConf.SetInferBranch(true)
 			gitlabConf.Branch = "test2"
-			//before := gitlabConf.DeepCopy()
+			before := gitlabConf.DeepCopy()
 
 			inferredBranch := "falsebranch"
 
@@ -63,6 +62,7 @@ var _ = Describe("Util", func() {
 
 			tryInferPullRequestGitlabBranch(gitlabConf, MRiid, gitlabClientGetter)
 
+			g.Expect(gitlabConf).ToNot(Equal(before))
 			g.Expect(gitlabConf.Branch).To(Equal(inferredBranch))
 		})
 
