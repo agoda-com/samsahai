@@ -29,8 +29,7 @@ var _ = Describe("Util", func() {
 
 			inferredBranch := "falsebranch"
 
-			gitlabClientGetter = func(token string) gitlab.Gitlab {
-				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
+			gitlabClientGetter := func() gitlab.Gitlab {
 				return mockGitlab{
 					G:                  g,
 					ExpectedRepository: gitlabConf.ProjectID,
@@ -52,8 +51,7 @@ var _ = Describe("Util", func() {
 
 			inferredBranch := "falsebranch"
 
-			gitlabClientGetter = func(token string) gitlab.Gitlab {
-				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
+			gitlabClientGetter := func() gitlab.Gitlab {
 				return mockGitlab{
 					G:                  g,
 					ExpectedRepository: gitlabConf.ProjectID,
@@ -75,8 +73,7 @@ var _ = Describe("Util", func() {
 
 			inferredBranch := "truebranch"
 
-			gitlabClientGetter = func(token string) gitlab.Gitlab {
-				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
+			gitlabClientGetter := func() gitlab.Gitlab {
 				return mockGitlab{
 					G:                  g,
 					ExpectedRepository: before.ProjectID,
@@ -97,8 +94,7 @@ var _ = Describe("Util", func() {
 			gitlabConf.Branch = "test4"
 			before := gitlabConf.DeepCopy()
 
-			gitlabClientGetter = func(token string) gitlab.Gitlab {
-				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
+			gitlabClientGetter := func() gitlab.Gitlab {
 				return mockGitlab{
 					G:                  g,
 					ExpectedRepository: before.ProjectID,

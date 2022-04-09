@@ -152,7 +152,7 @@ func (c *Client) GetMRSourceBranch(repository, MRiid string) (string, error) {
 		opts := []http.Option{
 			http.WithTimeout(requestTimeout),
 			http.WithContext(ctx),
-			http.WithHeader("Authorization", gitToken),
+			http.WithHeader("PRIVATE-TOKEN", gitToken),
 		}
 
 		_, res, err := getRequest(getMRSourceBranchAPI, opts...)

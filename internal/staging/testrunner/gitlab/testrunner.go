@@ -25,7 +25,7 @@ var logger = s2hlog.Log.WithName(TestRunnerName)
 const (
 	TestRunnerName = "gitlab"
 
-	maxRunnerTimeout      = 15 * time.Second
+	maxRunnerTimeout      = 30 * time.Second
 	maxHTTPRequestTimeout = 10 * time.Second
 
 	baseAPIPath = "api/v4/projects"
