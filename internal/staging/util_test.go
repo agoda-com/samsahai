@@ -21,7 +21,7 @@ var _ = Describe("Util", func() {
 			MRiid = "87878"
 		})
 
-		It("interBranch=True defaultBranch=''", func() {
+		It("interBranch=True defaultBranch='', use branch from MR ", func() {
 			gitlabConf.SetInferBranch(true)
 			before := gitlabConf.DeepCopy()
 
@@ -43,7 +43,7 @@ var _ = Describe("Util", func() {
 			g.Expect(gitlabConf.Branch).To(Equal(inferredBranch))
 		})
 
-		It("interBranch=True defaultBranch='test2'", func() {
+		It("interBranch=True defaultBranch='test2', use branch from MR", func() {
 			gitlabConf.SetInferBranch(true)
 			gitlabConf.Branch = "test2"
 			before := gitlabConf.DeepCopy()
@@ -66,7 +66,7 @@ var _ = Describe("Util", func() {
 			g.Expect(gitlabConf.Branch).To(Equal(inferredBranch))
 		})
 
-		It("inferBranch=False defaultBranch=''", func() {
+		It("inferBranch=False defaultBranch='', use branch from MR", func() {
 			gitlabConf.SetInferBranch(false)
 			gitlabConf.Branch = ""
 			before := gitlabConf.DeepCopy()
@@ -89,7 +89,7 @@ var _ = Describe("Util", func() {
 			g.Expect(gitlabConf.Branch).To(Equal(inferredBranch))
 		})
 
-		It("inferBranch=False defaultBranch='test4'", func() {
+		It("inferBranch=False defaultBranch='test4', use default branch", func() {
 			gitlabConf.SetInferBranch(false)
 			gitlabConf.Branch = "test4"
 			before := gitlabConf.DeepCopy()
