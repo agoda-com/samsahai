@@ -66,32 +66,31 @@ func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestR
 
 	// try to infer gitlab MR branch in PR flow
 	if queue.IsPullRequestQueue() && testRunner != nil {
-		gitlabClientGetter := func(token string) gitlab.Gitlab {
-			return gitlab.NewClient(c.gitlabBaseURL, token)
+		gitlabClientGetter := func() gitlab.Gitlab {
+			return gitlab.NewClient(c.gitlabBaseURL, c.gitlabToken)
 		}
 		tryInferPullRequestGitlabBranch(testRunner.Gitlab, queue.Spec.PRNumber, gitlabClientGetter)
 	}
-
 	return testRunner
 }
 
 // tryInferPullRequestGitlabBranch will check whether the Gitlab MR could be fetched from project ID and pipeline token
 // and override branch in testRunner with the associated MR branch.
 func tryInferPullRequestGitlabBranch(confGitlab *s2hv1.ConfigGitlab, MRiid string,
-	gitlabClientGetter func(token string) gitlab.Gitlab) {
+	gitlabClientGetter func() gitlab.Gitlab) {
 
 	confGitlabExists := confGitlab != nil
 
-	// infer branch only if branch is not specified
+	// infer branch only if inferBranch flag == True or default branch is not set
 	canInferBranch := confGitlabExists &&
-		confGitlab.GetInferBranch() &&
-		confGitlab.Branch == ""
+		(confGitlab.GetInferBranch() ||
+			confGitlab.Branch == "")
 	canQueryGitlab := confGitlabExists &&
 		confGitlab.ProjectID != "" &&
 		confGitlab.PipelineTriggerToken != ""
 
 	if canInferBranch && canQueryGitlab && gitlabClientGetter != nil {
-		gl := gitlabClientGetter(confGitlab.PipelineTriggerToken)
+		gl := gitlabClientGetter()
 		if gl != nil {
 			branch, err := gl.GetMRSourceBranch(confGitlab.ProjectID, MRiid)
 			// silently ignore error (in case of error, don't override the branch)

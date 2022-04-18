@@ -11,7 +11,6 @@ var _ = Describe("Util", func() {
 	Describe("tryInferPullRequestGitlabBranch", func() {
 		var gitlabConf *s2hv1.ConfigGitlab
 		var MRiid string
-		var gitlabClientGetter func(token string) gitlab.Gitlab
 		g := NewWithT(GinkgoT())
 
 		BeforeEach(func() {
@@ -20,17 +19,15 @@ var _ = Describe("Util", func() {
 				PipelineTriggerToken: "xyz",
 			}
 			MRiid = "87878"
-			gitlabClientGetter = nil
 		})
 
-		It("should not infer if false", func() {
-			gitlabConf.SetInferBranch(false)
+		It("interBranch=True defaultBranch='', use branch from MR ", func() {
+			gitlabConf.SetInferBranch(true)
 			before := gitlabConf.DeepCopy()
 
 			inferredBranch := "falsebranch"
 
-			gitlabClientGetter = func(token string) gitlab.Gitlab {
-				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
+			gitlabClientGetter := func() gitlab.Gitlab {
 				return mockGitlab{
 					G:                  g,
 					ExpectedRepository: gitlabConf.ProjectID,
@@ -42,18 +39,41 @@ var _ = Describe("Util", func() {
 
 			tryInferPullRequestGitlabBranch(gitlabConf, MRiid, gitlabClientGetter)
 
-			g.Expect(gitlabConf).To(Equal(before))
+			g.Expect(gitlabConf).ToNot(Equal(before))
+			g.Expect(gitlabConf.Branch).To(Equal(inferredBranch))
 		})
 
-		It("should infer if true and branch empty", func() {
+		It("interBranch=True defaultBranch='test2', use branch from MR", func() {
 			gitlabConf.SetInferBranch(true)
+			gitlabConf.Branch = "test2"
+			before := gitlabConf.DeepCopy()
+
+			inferredBranch := "falsebranch"
+
+			gitlabClientGetter := func() gitlab.Gitlab {
+				return mockGitlab{
+					G:                  g,
+					ExpectedRepository: gitlabConf.ProjectID,
+					ExpectedPRNumber:   MRiid,
+					Branch:             inferredBranch,
+					Error:              nil,
+				}
+			}
+
+			tryInferPullRequestGitlabBranch(gitlabConf, MRiid, gitlabClientGetter)
+
+			g.Expect(gitlabConf).ToNot(Equal(before))
+			g.Expect(gitlabConf.Branch).To(Equal(inferredBranch))
+		})
+
+		It("inferBranch=False defaultBranch='', use branch from MR", func() {
+			gitlabConf.SetInferBranch(false)
 			gitlabConf.Branch = ""
 			before := gitlabConf.DeepCopy()
 
 			inferredBranch := "truebranch"
 
-			gitlabClientGetter = func(token string) gitlab.Gitlab {
-				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
+			gitlabClientGetter := func() gitlab.Gitlab {
 				return mockGitlab{
 					G:                  g,
 					ExpectedRepository: before.ProjectID,
@@ -67,25 +87,19 @@ var _ = Describe("Util", func() {
 
 			g.Expect(gitlabConf).ToNot(Equal(before))
 			g.Expect(gitlabConf.Branch).To(Equal(inferredBranch))
-			gitlabConf.Branch = before.Branch
-			// should change only branch field
-			g.Expect(gitlabConf).To(Equal(before))
 		})
 
-		It("should not infer if true and branch not empty", func() {
-			gitlabConf.SetInferBranch(true)
-			gitlabConf.Branch = "abc"
+		It("inferBranch=False defaultBranch='test4', use default branch", func() {
+			gitlabConf.SetInferBranch(false)
+			gitlabConf.Branch = "test4"
 			before := gitlabConf.DeepCopy()
 
-			inferredBranch := "truebranch"
-
-			gitlabClientGetter = func(token string) gitlab.Gitlab {
-				g.Expect(token).To(Equal(gitlabConf.PipelineTriggerToken))
+			gitlabClientGetter := func() gitlab.Gitlab {
 				return mockGitlab{
 					G:                  g,
 					ExpectedRepository: before.ProjectID,
 					ExpectedPRNumber:   MRiid,
-					Branch:             inferredBranch,
+					Branch:             "test4",
 					Error:              nil,
 				}
 			}
