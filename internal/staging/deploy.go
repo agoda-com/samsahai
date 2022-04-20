@@ -561,12 +561,12 @@ func (c *controller) deployComponentsExceptQueue(
 		switch queue.Spec.Type {
 		case s2hv1.QueueTypeDemoteFromActive:
 			// rollback current active instead of upgrading
-			if err := deployEngine.Rollback(c.genReleaseName(comp), 1); err != nil {
+			if err := deployEngine.Rollback(internal.GenReleaseName(comp.Name), 1); err != nil {
 				return true, err
 			}
 		default:
 			values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, comp, c.teamName)
-			if err := deployEngine.Create(c.genReleaseName(comp), comp, comp, values, &deployTimeout); err != nil {
+			if err := deployEngine.Create(internal.GenReleaseName(comp.Name), comp, comp, values, &deployTimeout); err != nil {
 				return true, err
 			}
 		}
@@ -649,7 +649,7 @@ func (c *controller) deployQueueComponent(
 			}
 
 			values = applyEnvBaseConfig(cfg, values, queue.Spec.Type, parentComp, c.teamName)
-			err = deployEngine.Create(c.genReleaseName(parentComp), parentComp, parentComp, values, &deployTimeout)
+			err = deployEngine.Create(internal.GenReleaseName(parentComp.Name), parentComp, parentComp, values, &deployTimeout)
 			if err != nil {
 				errCh <- err
 				return
@@ -680,7 +680,7 @@ func (c *controller) waitForComponentsReady(deployEngine internal.DeployEngine, 
 	}
 
 	for _, comp := range parentComps {
-		selectors := deployEngine.GetLabelSelectors(c.genReleaseName(comp))
+		selectors := deployEngine.GetLabelSelectors(internal.GenReleaseName(comp.Name))
 		isReady, err := c.waitForReady(selectors)
 		if err != nil {
 			return false, err

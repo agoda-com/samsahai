@@ -832,10 +832,7 @@ func (c *controller) getDifferentServices(prSvcList, activeSvcList *corev1.Servi
 }
 
 func (c *controller) replaceServiceFromReleaseName(svcName, prNamespace, activeNamespace string) string {
-	prReleaseName := s2h.GenReleaseName(prNamespace, "")
-	activeReleaseName := s2h.GenReleaseName(activeNamespace, "")
-
-	return strings.ReplaceAll(svcName, activeReleaseName, prReleaseName)
+	return strings.ReplaceAll(svcName, activeNamespace, prNamespace)
 }
 
 func (c *controller) ensureTeamPullRequestNamespaceUpdated(teamName, targetNs string) error {

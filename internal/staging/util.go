@@ -227,10 +227,6 @@ func (c *controller) updateQueueWithState(q *s2hv1.Queue, state s2hv1.QueueState
 	return c.updateQueue(q)
 }
 
-func (c *controller) genReleaseName(comp *s2hv1.Component) string {
-	return internal.GenReleaseName(c.namespace, comp.Name)
-}
-
 func (c *controller) updateQueueHistory(q *s2hv1.Queue) error {
 	ctx := context.TODO()
 
