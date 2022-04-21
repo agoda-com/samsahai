@@ -43,7 +43,7 @@ type DeployEngine interface {
 }
 
 const (
-	MaxReleaseNameLength = 53
+	MaxReleaseNameLength = 45
 )
 
 // GenReleaseName returns the release name for deploying components

@@ -114,7 +114,7 @@ unit-test: format lint swag
 	./scripts/unit-test.sh
 
 e2e-test:
-	go get -d github.com/onsi/ginkgo/ginkgo@v1.16.4; \
+	go get -d github.com/onsi/ginkgo/ginkgo@v1.16.5; \
 	export KUBECONFIG=$(KUBECONFIG); \
 	export POD_NAMESPACE=$(POD_NAMESPACE); \
 	./scripts/e2e-test.sh;
