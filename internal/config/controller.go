@@ -796,6 +796,8 @@ func (c *controller) detectRemovedStableComponents(comps map[string]*s2hv1.Compo
 func (c *controller) getCronJobSuffix(schedule string) string {
 	suffix := strings.Replace(schedule, " ", "x", -1)
 	suffix = strings.Replace(suffix, "*", "", -1)
+	suffix = strings.Replace(suffix, "/", "e", -1) // e short for every
+	suffix = strings.Replace(suffix, ",", "n", -1) // n short for and
 
 	return suffix
 }

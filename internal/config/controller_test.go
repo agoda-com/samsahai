@@ -151,7 +151,7 @@ wordpress:
 		namespaceTest := "namespace"
 		compSource := s2hv1.UpdatingSource("public-registry")
 		redisCompName := "redis"
-		redisSchedules := []string{"0 4 * * *", "0 5 * * *"}
+		redisSchedules := []string{"0 4 * * *", "*/5 2,3 * * *"}
 
 		cronJobCmd := mockController.getCronJobCmd("redis", teamTest, "bitnami/redis")
 		cronJobResources := mockController.getCronJobResources()
@@ -231,10 +231,12 @@ wordpress:
 		It("should create/delete cronjob correctly", func() {
 			g := NewWithT(GinkgoT())
 
-			cronJobName04 := redisConfigComp.Name + "-checker-0x4xxx"
+			cronJobName04 := redisConfigComp.Name + "-checker-" + mockController.getCronJobSuffix(redisSchedules[0])
 			cronJobLabels04 := mockController.getCronJobLabels(cronJobName04, teamTest, redisConfigComp.Name)
-			cronJobName05 := redisConfigComp.Name + "-checker-0x5xxx"
+			cronJobName05 := redisConfigComp.Name + "-checker-" + mockController.getCronJobSuffix(redisSchedules[1])
 			cronJobLabels05 := mockController.getCronJobLabels(cronJobName05, teamTest, redisConfigComp.Name)
+			g.Expect(cronJobName04).To(Equal("redis-checker-0x4xxx"))
+			g.Expect(cronJobName05).To(Equal("redis-checker-e5x2n3xxx"))
 			expectedCronjob := []batchv1beta1.CronJob{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -275,7 +277,7 @@ wordpress:
 					},
 					Spec: batchv1beta1.CronJobSpec{
 						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
-						Schedule:                   "0 5 * * *",
+						Schedule:                   "*/5 2,3 * * *",
 						JobTemplate: batchv1beta1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
 								Template: corev1.PodTemplateSpec{
