@@ -47,11 +47,10 @@ const (
 )
 
 // GenReleaseName returns the release name for deploying components
-func GenReleaseName(namespace, compName string) string {
-	refName := namespace + "-" + compName
-	if len(refName) > MaxReleaseNameLength {
+func GenReleaseName(compName string) string {
+	if len(compName) > MaxReleaseNameLength {
 		// component name is more important than team name
-		return refName[len(refName)-MaxReleaseNameLength:]
+		return compName[len(compName)-MaxReleaseNameLength:]
 	}
-	return refName
+	return compName
 }

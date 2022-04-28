@@ -1345,7 +1345,7 @@ func (c *controller) DeleteTeamActiveEnvironment(teamName, namespace, deletedBy 
 	}
 
 	for compName := range parentComps {
-		refName := internal.GenReleaseName(namespace, compName)
+		refName := internal.GenReleaseName(compName)
 		if err := deployEngine.Delete(refName); err != nil &&
 			!k8serrors.IsNotFound(err) {
 			logger.Error(err, "cannot delete release",

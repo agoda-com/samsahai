@@ -352,7 +352,7 @@ func (c *controller) cleanBefore(queue *s2hv1.Queue) error {
 
 	if !queue.Status.IsConditionTrue(s2hv1.QueueCleanedBefore) {
 		for compName := range parentComps {
-			refName := internal.GenReleaseName(c.namespace, compName)
+			refName := internal.GenReleaseName(compName)
 			if err := deployEngine.Delete(refName); err != nil {
 				logger.Error(err, "cannot delete release",
 					"refName", refName,
@@ -402,7 +402,7 @@ func (c *controller) cleanAfter(queue *s2hv1.Queue) error {
 
 	if !queue.Status.IsConditionTrue(s2hv1.QueueCleanedAfter) {
 		for compName := range parentComps {
-			refName := internal.GenReleaseName(c.namespace, compName)
+			refName := internal.GenReleaseName(compName)
 			if err := deployEngine.Delete(refName); err != nil {
 				logger.Error(err, "cannot delete release",
 					"refName", refName,
@@ -475,7 +475,7 @@ func WaitForComponentsCleaned(
 	}
 
 	for compName := range parentComps {
-		refName := internal.GenReleaseName(namespace, compName)
+		refName := internal.GenReleaseName(compName)
 		selectors := deployEngine.GetLabelSelectors(refName)
 		listOpt := &client.ListOptions{Namespace: namespace, LabelSelector: labels.SelectorFromSet(selectors)}
 		log := logger.WithValues(
