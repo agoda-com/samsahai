@@ -92,7 +92,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 	}
 
 	nginxReplicas := int32(1)
-	nginxLabels := map[string]string{"app": "nginx", "release": "samsahai-system-redis"}
+	nginxLabels := map[string]string{"app": "nginx", "release": "redis"}
 	deployNginx := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "nginx",
@@ -561,7 +561,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(client.Update(ctx, &config)).To(BeNil())
 
 		By("Ensure Pre Active Components")
-		redisServiceName := fmt.Sprintf("%s-redis-master", namespace)
+		redisServiceName := fmt.Sprintf("%s-master", redisCompName)
 
 		err = wait.PollImmediate(2*time.Second, deployTimeout, func() (ok bool, err error) {
 			queue, err := queue.EnsurePreActiveComponents(client, teamName, namespace, true)

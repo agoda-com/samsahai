@@ -422,7 +422,7 @@ func (c *controller) setDeploymentIssues(queue *s2hv1.Queue) error {
 	deploymentIssuesMaps := make(map[s2hv1.DeploymentIssueType][]s2hv1.FailureComponent)
 	for parentComp := range parentComps {
 		ns := c.namespace
-		refName := internal.GenReleaseName(ns, parentComp)
+		refName := internal.GenReleaseName(parentComp)
 		selectors := deployEngine.GetLabelSelectors(refName)
 		if len(selectors) == 0 {
 			continue
