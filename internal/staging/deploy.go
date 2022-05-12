@@ -451,8 +451,8 @@ func (c *controller) deployComponents(
 		releaseRevision[rel.Name] = rel.Version
 	}
 
-	timeout := 5 * time.Minute
-	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	helmValidationTimeout := 15 * time.Minute
+	ctx, cancelFunc := context.WithTimeout(context.Background(), helmValidationTimeout)
 	defer cancelFunc()
 
 	isDeployedCh := make(chan bool, 2)
@@ -492,7 +492,7 @@ func (c *controller) deployComponents(
 	for i := 0; i < 2; i++ {
 		select {
 		case <-ctx.Done():
-			logger.Warnf("validating helm release took longer than %.0f seconds, queue: %s", timeout.Seconds(),
+			logger.Warnf("validating helm release took longer than %.0f seconds, queue: %s", helmValidationTimeout.Seconds(),
 				queue.Name)
 
 			var postInstalledReleases []*release.Release
