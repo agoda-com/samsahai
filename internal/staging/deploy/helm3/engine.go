@@ -436,6 +436,11 @@ func (e *engine) isPreHookJobsReady(k8sClient client.Client, listOpt *client.Lis
 		return false, err
 	}
 
+	isReady := isPreHookJobsReady(jobs)
+	return isReady, nil
+}
+
+func isPreHookJobsReady(jobs *batchv1.JobList) bool {
 	for _, job := range jobs.Items {
 		for annotationKey, annotationVals := range job.Annotations {
 			if annotationKey == release.HookAnnotation {
@@ -443,7 +448,7 @@ func (e *engine) isPreHookJobsReady(k8sClient client.Client, listOpt *client.Lis
 				for _, hookEvent := range hookEvents {
 					if hookEvent == string(release.HookPreInstall) || hookEvent == string(release.HookPreUpgrade) {
 						if job.Status.CompletionTime == nil {
-							return false, nil
+							return false
 						}
 						break
 					}
@@ -454,7 +459,7 @@ func (e *engine) isPreHookJobsReady(k8sClient client.Client, listOpt *client.Lis
 		}
 	}
 
-	return true, nil
+	return true
 }
 
 // DeleteAllReleases deletes all releases in the namespace
