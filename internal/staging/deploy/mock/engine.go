@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"helm.sh/helm/v3/pkg/release"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -91,6 +92,10 @@ func (e *engine) GetName() string {
 
 func (e *engine) GetLabelSelectors(refName string) map[string]string {
 	return nil
+}
+
+func (e *engine) WaitForPreHookReady(k8sClient client.Client, refName string) (bool, error) {
+	return true, nil
 }
 
 func (e *engine) IsMocked() bool {

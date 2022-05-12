@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"helm.sh/helm/v3/pkg/release"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 )
@@ -30,11 +31,14 @@ type DeployEngine interface {
 	// ForceDelete deletes environment when timeout
 	ForceDelete(refName string) error
 
-	// GetLabelSelector returns map of label for select the components that created by the engine
+	// GetLabelSelectors returns map of label for select the components that created by the engine
 	GetLabelSelectors(refName string) map[string]string
 
 	// GetReleases returns all deployed releases
 	GetReleases() ([]*release.Release, error)
+
+	// WaitForPreHookReady waits until all pre-hook pods are completed
+	WaitForPreHookReady(k8sClient client.Client, refName string) (bool, error)
 
 	// IsMocked uses for skip some functions due to mock deploy
 	//

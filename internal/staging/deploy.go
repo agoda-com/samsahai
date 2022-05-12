@@ -117,6 +117,21 @@ func (c *controller) deployEnvironment(queue *s2hv1.Queue) error {
 		return nil
 	}
 
+	// verifies pre-hooks are completed
+	for _, rel := range releases {
+		isCompleted, err := deployEngine.WaitForPreHookReady(c.client, rel.Name)
+		if err != nil {
+			logger.Error(err, "error occurs while waiting for pre-hook ready",
+				"release", rel.Name, "queue", queue.Name)
+			return err
+		}
+
+		if !isCompleted {
+			time.Sleep(2 * time.Second)
+			return nil
+		}
+	}
+
 	if len(releases) != 0 && queue.IsPullRequestQueue() {
 		if err := c.deployActiveServicesIntoPullRequestEnvironment(); err != nil {
 			logger.Error(err, "cannot deploy active services into pull request environment",
