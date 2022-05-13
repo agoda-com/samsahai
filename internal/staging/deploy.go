@@ -133,6 +133,20 @@ func (c *controller) deployEnvironment(queue *s2hv1.Queue) error {
 	}
 
 	if len(releases) != 0 && queue.IsPullRequestQueue() {
+		// verifies at least one service is ready
+		svcList := &corev1.ServiceList{}
+		if err := c.client.List(context.TODO(), svcList); err != nil {
+			logger.Error(err, "error occurs while listing all services to check at least one service deployed "+
+				"except s2h controller")
+			return err
+		}
+
+		// one is s2h controller service, so have to wait for another service deployed
+		if len(svcList.Items) <= 1 {
+			time.Sleep(2 * time.Second)
+			return nil
+		}
+
 		if err := c.deployActiveServicesIntoPullRequestEnvironment(); err != nil {
 			logger.Error(err, "cannot deploy active services into pull request environment",
 				"queue", queue.Name)
@@ -451,7 +465,7 @@ func (c *controller) deployComponents(
 		releaseRevision[rel.Name] = rel.Version
 	}
 
-	helmValidationTimeout := 15 * time.Minute
+	helmValidationTimeout := 20 * time.Minute
 	ctx, cancelFunc := context.WithTimeout(context.Background(), helmValidationTimeout)
 	defer cancelFunc()
 
