@@ -117,6 +117,21 @@ func (c *controller) deployEnvironment(queue *s2hv1.Queue) error {
 		return nil
 	}
 
+	// verifies pre-hooks are completed
+	for _, rel := range releases {
+		isCompleted, err := deployEngine.WaitForPreHookReady(c.client, rel.Name)
+		if err != nil {
+			logger.Error(err, "error occurs while waiting for pre-hook ready",
+				"release", rel.Name, "queue", queue.Name)
+			return err
+		}
+
+		if !isCompleted {
+			time.Sleep(2 * time.Second)
+			return nil
+		}
+	}
+
 	if len(releases) != 0 && queue.IsPullRequestQueue() {
 		if err := c.deployActiveServicesIntoPullRequestEnvironment(); err != nil {
 			logger.Error(err, "cannot deploy active services into pull request environment",
@@ -436,8 +451,8 @@ func (c *controller) deployComponents(
 		releaseRevision[rel.Name] = rel.Version
 	}
 
-	timeout := 5 * time.Minute
-	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	helmValidationTimeout := 15 * time.Minute
+	ctx, cancelFunc := context.WithTimeout(context.Background(), helmValidationTimeout)
 	defer cancelFunc()
 
 	isDeployedCh := make(chan bool, 2)
@@ -477,7 +492,7 @@ func (c *controller) deployComponents(
 	for i := 0; i < 2; i++ {
 		select {
 		case <-ctx.Done():
-			logger.Warnf("validating helm release took longer than %.0f seconds, queue: %s", timeout.Seconds(),
+			logger.Warnf("validating helm release took longer than %.0f seconds, queue: %s", helmValidationTimeout.Seconds(),
 				queue.Name)
 
 			var postInstalledReleases []*release.Release

@@ -1,6 +1,7 @@
 package helm3
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -18,6 +19,9 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	batchv1 "k8s.io/api/batch/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -190,13 +194,19 @@ func (e *engine) GetReleases() ([]*release.Release, error) {
 	return releases, nil
 }
 
+func (e *engine) WaitForPreHookReady(k8sClient client.Client, refName string) (bool, error) {
+	selectors := e.GetLabelSelectors(refName)
+	listOpt := &client.ListOptions{Namespace: e.namespace, LabelSelector: labels.SelectorFromSet(selectors)}
+	return e.isPreHookJobsReady(k8sClient, listOpt)
+}
+
 func (e *engine) helmUninstall(refName string, disableHooks bool) error {
-	client := action.NewUninstall(e.actionSettings)
-	client.Timeout = DefaultUninstallTimeout
-	client.DisableHooks = disableHooks
+	helmCli := action.NewUninstall(e.actionSettings)
+	helmCli.Timeout = DefaultUninstallTimeout
+	helmCli.DisableHooks = disableHooks
 
 	logger.Debug("deleting release", "refName", refName)
-	if _, err := client.Run(refName); err != nil {
+	if _, err := helmCli.Run(refName); err != nil {
 		switch {
 		case errors.Is(errors.Cause(err), driver.ErrReleaseNotFound): // nolint
 			return nil
@@ -235,14 +245,14 @@ func (e *engine) helmInstall(
 ) error {
 	logger.Debug("helm install", "releaseName", refName, "chartName", chartName)
 
-	client := action.NewInstall(e.actionSettings)
-	client.ChartPathOptions = cpo
-	client.Namespace = e.namespace
-	client.ReleaseName = refName
-	client.DisableOpenAPIValidation = true
+	helmCli := action.NewInstall(e.actionSettings)
+	helmCli.ChartPathOptions = cpo
+	helmCli.Namespace = e.namespace
+	helmCli.ReleaseName = refName
+	helmCli.DisableOpenAPIValidation = true
 	if deployTimeout != nil {
-		client.Timeout = *deployTimeout
-		client.Wait = true
+		helmCli.Timeout = *deployTimeout
+		helmCli.Wait = true
 	}
 
 	ch, err := e.helmPrepareChart(chartName, cpo)
@@ -252,7 +262,7 @@ func (e *engine) helmInstall(
 	}
 	logger.Debug("helm prepare chart", "releaseName", refName, "chartName", chartName)
 
-	_, err = client.Run(ch, values)
+	_, err = helmCli.Run(ch, values)
 	if err != nil {
 		logger.Error(err, "helm install failed", "releaseName", refName, "chartName", chartName)
 		return errors.Wrapf(err, "helm install failed")
@@ -271,14 +281,14 @@ func (e *engine) helmUpgrade(
 ) error {
 	logger.Debug("helm upgrade", "releaseName", refName, "chartName", chartName)
 
-	client := action.NewUpgrade(e.actionSettings)
-	client.ChartPathOptions = cpo
-	client.Namespace = e.namespace
-	client.Atomic = true
-	client.DisableOpenAPIValidation = true
+	helmCli := action.NewUpgrade(e.actionSettings)
+	helmCli.ChartPathOptions = cpo
+	helmCli.Namespace = e.namespace
+	helmCli.Atomic = true
+	helmCli.DisableOpenAPIValidation = true
 	if deployTimeout != nil {
-		client.Timeout = *deployTimeout
-		client.Wait = true
+		helmCli.Timeout = *deployTimeout
+		helmCli.Wait = true
 	}
 
 	ch, err := e.helmPrepareChart(chartName, cpo)
@@ -287,7 +297,7 @@ func (e *engine) helmUpgrade(
 		return err
 	}
 
-	_, err = client.Run(refName, ch, values)
+	_, err = helmCli.Run(refName, ch, values)
 	if err != nil {
 		logger.Error(err, "helm upgrade failed", "releaseName", refName, "chartName", chartName)
 		return errors.Wrapf(err, "helm upgrade failed")
@@ -299,10 +309,10 @@ func (e *engine) helmUpgrade(
 func (e *engine) helmRollback(refName string, revision int) error {
 	logger.Debug("helm rollback", "releaseName", refName, "revision", revision)
 
-	client := action.NewRollback(e.actionSettings)
-	client.Version = revision
+	helmCli := action.NewRollback(e.actionSettings)
+	helmCli.Version = revision
 
-	err := client.Run(refName)
+	err := helmCli.Run(refName)
 	if err != nil {
 		logger.Error(err, "helm rollback failed", "releaseName", refName, "revision", revision)
 		return errors.Wrapf(err, "helm rollback failed")
@@ -362,10 +372,10 @@ func (e *engine) helmPrepareChart(
 }
 
 func (e *engine) helmList() ([]*release.Release, error) {
-	client := action.NewList(e.actionSettings)
-	client.StateMask = action.ListAll
-	client.All = true
-	releases, err := client.Run()
+	helmCli := action.NewList(e.actionSettings)
+	helmCli.StateMask = action.ListAll
+	helmCli.All = true
+	releases, err := helmCli.Run()
 	if err != nil {
 		return nil, err
 	}
@@ -380,8 +390,8 @@ func (e *engine) helmGetValues() (map[string][]byte, error) {
 
 	valuesYaml := make(map[string][]byte)
 	for _, r := range releases {
-		client := action.NewGetValues(e.actionSettings)
-		values, err := client.Run(r.Name)
+		helmCli := action.NewGetValues(e.actionSettings)
+		values, err := helmCli.Run(r.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -415,6 +425,41 @@ func (e *engine) ensureReleaseName(refName string) (string, error) {
 	}
 
 	return "", nil
+}
+
+func (e *engine) isPreHookJobsReady(k8sClient client.Client, listOpt *client.ListOptions) (bool, error) {
+	jobs := &batchv1.JobList{}
+
+	err := k8sClient.List(context.TODO(), jobs, listOpt)
+	if err != nil {
+		logger.Error(err, "list jobs error", "namespace", e.namespace)
+		return false, err
+	}
+
+	isReady := isPreHookJobsReady(jobs)
+	return isReady, nil
+}
+
+func isPreHookJobsReady(jobs *batchv1.JobList) bool {
+	for _, job := range jobs.Items {
+		for annotationKey, annotationVals := range job.Annotations {
+			if annotationKey == release.HookAnnotation {
+				hookEvents := strings.Split(annotationVals, ",")
+				for _, hookEvent := range hookEvents {
+					if hookEvent == string(release.HookPreInstall) || hookEvent == string(release.HookPreUpgrade) {
+						if job.Status.CompletionTime == nil {
+							return false
+						}
+						break
+					}
+				}
+
+				break
+			}
+		}
+	}
+
+	return true
 }
 
 // DeleteAllReleases deletes all releases in the namespace
