@@ -462,6 +462,7 @@ func (c *controller) generateCronJob(cronJobName, cronJobCmd, schedule, compName
 		Spec: batchv1beta1.CronJobSpec{
 			SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
 			Schedule:                   schedule,
+			ConcurrencyPolicy:          batchv1beta1.ForbidConcurrent,
 			JobTemplate: batchv1beta1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
@@ -653,7 +654,7 @@ func (c *controller) detectSchedulerChanged(comps map[string]*s2hv1.Component, t
 		creatingCronJobObjs, deletingCronJobObjs := c.getUpdatedCronJobs(namespace, teamName, comp, cronJobList)
 		if len(deletingCronJobObjs) > 0 {
 			for _, obj := range deletingCronJobObjs {
-				err := c.deleteCronJobAndMatchingJobs(obj)
+				err = c.deleteCronJobAndMatchingJobs(obj)
 				if err != nil && !k8serrors.IsNotFound(err) {
 					logger.Error(err, "cannot delete cronJob", "component", obj.Name)
 					return err
@@ -663,7 +664,7 @@ func (c *controller) detectSchedulerChanged(comps map[string]*s2hv1.Component, t
 
 		if len(creatingCronJobObjs) > 0 {
 			for _, obj := range creatingCronJobObjs {
-				err := c.createCronJob(obj)
+				err = c.createCronJob(obj)
 				if err != nil && !k8serrors.IsAlreadyExists(err) {
 					logger.Error(err, "cannot create cronJob", "component", obj.Name)
 					return err

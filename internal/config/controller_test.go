@@ -203,6 +203,7 @@ wordpress:
 					Spec: batchv1beta1.CronJobSpec{
 						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
 						Schedule:                   "0 11 * * *",
+						ConcurrencyPolicy:          batchv1beta1.ForbidConcurrent,
 						JobTemplate: batchv1beta1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
 								Template: corev1.PodTemplateSpec{
@@ -247,6 +248,7 @@ wordpress:
 					Spec: batchv1beta1.CronJobSpec{
 						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
 						Schedule:                   "0 4 * * *",
+						ConcurrencyPolicy:          batchv1beta1.ForbidConcurrent,
 						JobTemplate: batchv1beta1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
 								Template: corev1.PodTemplateSpec{
@@ -278,6 +280,7 @@ wordpress:
 					Spec: batchv1beta1.CronJobSpec{
 						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
 						Schedule:                   "*/5 2,3 * * *",
+						ConcurrencyPolicy:          batchv1beta1.ForbidConcurrent,
 						JobTemplate: batchv1beta1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
 								Template: corev1.PodTemplateSpec{
