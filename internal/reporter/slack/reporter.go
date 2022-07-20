@@ -72,7 +72,7 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 		return nil
 	}
 
-	var slackCustomMessage string
+	var slackExtraMessage string
 	if slackConfig.ComponentUpgrade != nil {
 		if err := util.CheckMatchingInterval(slackConfig.ComponentUpgrade.Interval, comp.IsReverify); err != nil {
 			return nil
@@ -82,16 +82,16 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 			return nil
 		}
 
-		if string(slackConfig.ComponentUpgrade.CustomMessage) != "" {
-			slackCustomMessage = string(slackConfig.ComponentUpgrade.CustomMessage)
+		if string(slackConfig.ComponentUpgrade.ExtraMessage) != "" {
+			slackExtraMessage = string(slackConfig.ComponentUpgrade.ExtraMessage)
 		}
 	}
 
-	if slackCustomMessage == "" {
-		slackCustomMessage = string(slackConfig.CustomMessage)
+	if slackExtraMessage == "" {
+		slackExtraMessage = string(slackConfig.ExtraMessage)
 	}
 
-	message := r.makeComponentUpgradeReport(comp, slackCustomMessage)
+	message := r.makeComponentUpgradeReport(comp, slackExtraMessage)
 	if len(comp.ImageMissingList) > 0 {
 		message += "\n"
 		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList), "")
@@ -107,7 +107,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 		return nil
 	}
 
-	var slackCustomMessage string
+	var slackExtraMessage string
 	if slackConfig.PullRequestQueue != nil {
 		if err := util.CheckMatchingInterval(slackConfig.PullRequestQueue.Interval, comp.IsReverify); err != nil {
 			return nil
@@ -116,16 +116,16 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 		if err := util.CheckMatchingCriteria(slackConfig.PullRequestQueue.Criteria, string(comp.StatusStr)); err != nil {
 			return nil
 		}
-		if string(slackConfig.PullRequestQueue.CustomMessage) != "" {
-			slackCustomMessage = string(slackConfig.PullRequestQueue.CustomMessage)
+		if string(slackConfig.PullRequestQueue.ExtraMessage) != "" {
+			slackExtraMessage = string(slackConfig.PullRequestQueue.ExtraMessage)
 		}
 	}
 
-	if slackCustomMessage == "" {
-		slackCustomMessage = string(slackConfig.CustomMessage)
+	if slackExtraMessage == "" {
+		slackExtraMessage = string(slackConfig.ExtraMessage)
 	}
 
-	message := r.makePullRequestQueueReport(comp, slackCustomMessage)
+	message := r.makePullRequestQueueReport(comp, slackExtraMessage)
 	if len(comp.ImageMissingList) > 0 {
 		message += "\n"
 		message += r.makeImageMissingListReport(convertRPCImageListToK8SImageList(comp.ImageMissingList), "")
@@ -141,18 +141,18 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 		return nil
 	}
 
-	var slackCustomMessage string
+	var slackExtraMessage string
 	if slackConfig.ActivePromotion != nil {
-		if string(slackConfig.ActivePromotion.CustomMessage) != "" {
-			slackCustomMessage = string(slackConfig.ActivePromotion.CustomMessage)
+		if string(slackConfig.ActivePromotion.ExtraMessage) != "" {
+			slackExtraMessage = string(slackConfig.ActivePromotion.ExtraMessage)
 		}
 	}
 
-	if slackCustomMessage == "" {
-		slackCustomMessage = string(slackConfig.CustomMessage)
+	if slackExtraMessage == "" {
+		slackExtraMessage = string(slackConfig.ExtraMessage)
 	}
 
-	message := r.makeActivePromotionStatusReport(atpRpt, slackCustomMessage)
+	message := r.makeActivePromotionStatusReport(atpRpt, slackExtraMessage)
 
 	imageMissingList := atpRpt.ActivePromotionStatus.PreActiveQueue.ImageMissingList
 	if len(imageMissingList) > 0 {
@@ -208,24 +208,24 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 		return nil
 	}
 
-	var slackCustomMessage string
+	var slackExtraMessage string
 	if slackConfig.PullRequestTrigger != nil {
 		err := util.CheckMatchingCriteria(slackConfig.PullRequestTrigger.Criteria, prTriggerRpt.Result)
 		if err != nil {
 			return nil
 		}
 
-		if string(slackConfig.PullRequestTrigger.CustomMessage) != "" {
-			slackCustomMessage = string(slackConfig.PullRequestTrigger.CustomMessage)
+		if string(slackConfig.PullRequestTrigger.ExtraMessage) != "" {
+			slackExtraMessage = string(slackConfig.PullRequestTrigger.ExtraMessage)
 		}
 
 	}
 
-	if slackCustomMessage == "" {
-		slackCustomMessage = string(slackConfig.CustomMessage)
+	if slackExtraMessage == "" {
+		slackExtraMessage = string(slackConfig.ExtraMessage)
 	}
 
-	message := r.makePullRequestTriggerResultReport(prTriggerRpt, slackCustomMessage)
+	message := r.makePullRequestTriggerResultReport(prTriggerRpt, slackExtraMessage)
 	if len(prTriggerRpt.ImageMissingList) > 0 {
 		message += "\n"
 		message += r.makeImageMissingListReport(prTriggerRpt.ImageMissingList, "")
@@ -254,28 +254,28 @@ func convertRPCImageListToK8SImageList(images []*rpc.Image) []s2hv1.Image {
 	return k8sImages
 }
 
-func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter, customMessage string) string {
+func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter, extraMessage string) string {
 	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}`
 	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log`
 
-	var customMessageReport string
-	if customMessage != "" {
-		customMessageReport = fmt.Sprintf("*Message:* %s", customMessage)
+	var extraMessageReport string
+	if extraMessage != "" {
+		extraMessageReport = fmt.Sprintf("*Message:* %s", extraMessage)
 	}
 
 	message := `
 *Component Upgrade:* {{ .StatusStr }}
-` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL) + "\n" + customMessageReport
+` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL) + "\n" + extraMessageReport
 	return strings.TrimSpace(template.TextRender("SlackComponentUpgrade", message, comp))
 }
 
-func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeReporter, customMessage string) string {
+func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeReporter, extraMessage string) string {
 	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}`
 	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}/log`
 
-	var customMessageReport string
-	if customMessage != "" {
-		customMessageReport = fmt.Sprintf("*Message:* %s", customMessage)
+	var extraMessageReport string
+	if extraMessage != "" {
+		extraMessageReport = fmt.Sprintf("*Message:* %s", extraMessage)
 	}
 
 	message := `
@@ -284,7 +284,7 @@ func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeRep
 *Bundle:* {{ .PullRequestComponent.BundleName }}
 *PR Number:* {{ .PullRequestComponent.PRNumber }}
 {{- end }}
-` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL) + "\n" + customMessageReport
+` + r.makeDeploymentQueueReport(comp, queueHistURL, queueLogURL) + "\n" + extraMessageReport
 	return strings.TrimSpace(template.TextRender("SlackPullRequestQueue", message, comp))
 }
 
@@ -329,11 +329,11 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
 	return strings.TrimSpace(template.TextRender("SlackDeploymentQueue", message, comp))
 }
 
-func (r *reporter) makeActivePromotionStatusReport(atpRpt *internal.ActivePromotionReporter, customMessage string) string {
+func (r *reporter) makeActivePromotionStatusReport(atpRpt *internal.ActivePromotionReporter, extraMessage string) string {
 
-	var customMessageReport string
-	if customMessage != "" {
-		customMessageReport = fmt.Sprintf("*Message:* %s", customMessage)
+	var extraMessageReport string
+	if extraMessage != "" {
+		extraMessageReport = fmt.Sprintf("*Message:* %s", extraMessage)
 	}
 
 	var message = `
@@ -372,7 +372,7 @@ func (r *reporter) makeActivePromotionStatusReport(atpRpt *internal.ActivePromot
 *Deployment Logs:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}/log|Download here>
 {{- end }}
 *Active Promotion History:* <{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/activepromotions/histories/{{ .ActivePromotionHistoryName }}|Click here>
-` + customMessageReport
+` + extraMessageReport
 
 	return strings.TrimSpace(template.TextRender("SlackActivePromotionStatus", message, atpRpt))
 }
@@ -440,11 +440,11 @@ func (r *reporter) makeImageMissingListReport(images []s2hv1.Image, reason strin
 	return strings.TrimSpace(template.TextRender("SlackImageMissingList", message, imagesObj))
 }
 
-func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.PullRequestTriggerReporter, customMessage string) string {
+func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.PullRequestTriggerReporter, extraMessage string) string {
 
-	var customMessageReport string
-	if customMessage != "" {
-		customMessageReport = fmt.Sprintf("*Message:* %s", customMessage)
+	var extraMessageReport string
+	if extraMessage != "" {
+		extraMessageReport = fmt.Sprintf("*Message:* %s", extraMessage)
 	}
 
 	var message = `
@@ -463,7 +463,7 @@ func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.Pul
 *NO of Retry:* {{ .NoOfRetry }}
 *Owner:* {{ .TeamName }}
 *Start at:* {{ .CreatedAt | TimeFormat }}
-` + customMessageReport
+` + extraMessageReport
 
 	return strings.TrimSpace(template.TextRender("SlackPullRequestTriggerResult", message, prTriggerRpt))
 }

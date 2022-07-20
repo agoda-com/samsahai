@@ -21,7 +21,7 @@ func TestUnit(t *testing.T) {
 	unittest.InitGinkgo(t, "Slack Reporter")
 }
 
-var defaultCustomMessage = "default custom message"
+var defaultExtraMessage = "default extra message"
 
 var _ = Describe("send slack message", func() {
 	g := NewGomegaWithT(GinkgoT())
@@ -84,7 +84,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("*Issue type:* CrashLoopBackOff"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("*Components:* comp1"))
 			g.Expect(mockSlackCli.message).ShouldNot(ContainSubstring("Image Missing List"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should not send component upgrade failure with retry interval", func() {
@@ -120,7 +120,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(0))
 		})
 
-		It("should correctly send component upgrade failure with default custom message", func() {
+		It("should correctly send component upgrade failure with default extra message", func() {
 			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
@@ -144,12 +144,12 @@ var _ = Describe("send slack message", func() {
 			g.Expect(err).Should(BeNil())
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
-		It("should correctly send component upgrade failure with component upgrade custom message", func() {
-			var customMessage s2hv1.ReporterCustomMessage = "component custom message"
-			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "", customMessage)
+		It("should correctly send component upgrade failure with component upgrade extra message", func() {
+			var extraMessage s2hv1.ReporterExtraMessage = "component extra message"
+			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "", extraMessage)
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -172,7 +172,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(err).Should(BeNil())
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(customMessage)))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(extraMessage)))
 		})
 
 		It("should correctly send component upgrade failure with image missing list message", func() {
@@ -209,7 +209,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Image Missing List"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("- image-2:1.1.0"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("- image-3:1.2.0"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should send component upgrade failure of multiple components", func() {
@@ -243,7 +243,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("comp2"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("1.1.2"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("image-2"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should correctly send component upgrade failure with tested on gitlab", func() {
@@ -281,7 +281,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("image-1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("<gitlab-url|gitlab-pipeline-number>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 	})
 
@@ -351,12 +351,12 @@ var _ = Describe("send slack message", func() {
 				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log|Download here>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring(
 				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678|Click here>"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
-		It("should correctly send pull request queue failure with pull request custom message", func() {
-			var customMessage s2hv1.ReporterCustomMessage = "pull request custom message"
-			configCtrl := newMockConfigCtrl("", "", "", customMessage)
+		It("should correctly send pull request queue failure with pull request extra message", func() {
+			var extraMessage s2hv1.ReporterExtraMessage = "pull request extra message"
+			configCtrl := newMockConfigCtrl("", "", "", extraMessage)
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -420,7 +420,7 @@ var _ = Describe("send slack message", func() {
 				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log|Download here>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring(
 				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678|Click here>"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(customMessage)))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(extraMessage)))
 		})
 	})
 
@@ -472,7 +472,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Current Version: <http://repo/comp1|1.1.0>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Latest Version: <http://repo/comp1|1.1.2>"))
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should correctly send active promotion success without outdated components message", func() {
@@ -498,12 +498,12 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("All components are up to date!"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("previous active namespace `owner-prevns` will be destroyed at `" + timeNow.Format("2006-01-02 15:04:05 MST")))
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should correctly send active promotion success without outdated components message", func() {
-			var customMessage s2hv1.ReporterCustomMessage = "active promotion custom message"
-			configCtrl := newMockConfigCtrl("", "", "", customMessage)
+			var extraMessage s2hv1.ReporterExtraMessage = "active promotion extra message"
+			configCtrl := newMockConfigCtrl("", "", "", extraMessage)
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			timeNow := metav1.Now()
@@ -525,7 +525,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("All components are up to date!"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("previous active namespace `owner-prevns` will be destroyed at `" + timeNow.Format("2006-01-02 15:04:05 MST")))
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(customMessage)))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(extraMessage)))
 		})
 
 		It("should correctly send active promotion failure with outdated components/image missing/deployment issues message",
@@ -597,7 +597,7 @@ var _ = Describe("send slack message", func() {
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("*Components:* comp1"))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("*Wait for:* dep1"))
 				g.Expect(err).Should(BeNil())
-				g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+				g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 			})
 
 		It("should correctly send active promotion failure without outdated components message", func() {
@@ -621,7 +621,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner-123456"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("All components are up to date!"))
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should correctly send active promotion/demotion failure with rollback timeout message", func() {
@@ -649,7 +649,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring(
 				"cannot demote a previous active environment, previous active namespace has been destroyed immediately"))
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should correctly send active promotion success with tested on gitlab", func() {
@@ -674,7 +674,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("<gitlab-url|gitlab-pipeline-number"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("All components are up to date!"))
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 	})
 
@@ -740,12 +740,12 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Image Missing List"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("registry/comp-2-missing:2.0.0"))
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should correctly send pull request trigger failure message", func() {
-			var customMessage s2hv1.ReporterCustomMessage = "pull request trigger custom message"
-			configCtrl := newMockConfigCtrl("", "", "", customMessage)
+			var extraMessage s2hv1.ReporterExtraMessage = "pull request trigger extra message"
+			configCtrl := newMockConfigCtrl("", "", "", extraMessage)
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			mockSlackCli := &mockSlack{}
@@ -786,7 +786,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Image Missing List"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("registry/comp-2-missing:2.0.0"))
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(customMessage)))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(extraMessage)))
 		})
 
 		It("should correctly send pull request trigger success message", func() {
@@ -820,7 +820,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("*NO of Retry:* 0"))
 			g.Expect(mockSlackCli.message).ShouldNot(ContainSubstring("Image Missing List"))
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultCustomMessage))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 	})
 
@@ -875,18 +875,18 @@ func (s *mockSlack) PostMessage(channelNameOrID, message string, opts ...slack.M
 }
 
 type mockConfigCtrl struct {
-	configType    string
-	interval      s2hv1.ReporterInterval
-	criteria      s2hv1.ReporterCriteria
-	customMessage s2hv1.ReporterCustomMessage
+	configType   string
+	interval     s2hv1.ReporterInterval
+	criteria     s2hv1.ReporterCriteria
+	extraMessage s2hv1.ReporterExtraMessage
 }
 
-func newMockConfigCtrl(configType string, interval s2hv1.ReporterInterval, criteria s2hv1.ReporterCriteria, customMessage s2hv1.ReporterCustomMessage) internal.ConfigController {
+func newMockConfigCtrl(configType string, interval s2hv1.ReporterInterval, criteria s2hv1.ReporterCriteria, extraMessage s2hv1.ReporterExtraMessage) internal.ConfigController {
 	return &mockConfigCtrl{
-		configType:    configType,
-		interval:      interval,
-		criteria:      criteria,
-		customMessage: customMessage,
+		configType:   configType,
+		interval:     interval,
+		criteria:     criteria,
+		extraMessage: extraMessage,
 	}
 }
 
@@ -912,24 +912,24 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 				Used: s2hv1.ConfigSpec{
 					Reporter: &s2hv1.ConfigReporter{
 						Slack: &s2hv1.ReporterSlack{
-							Channels:      []string{"chan1", "chan2"},
-							CustomMessage: s2hv1.ReporterCustomMessage(defaultCustomMessage),
+							Channels:     []string{"chan1", "chan2"},
+							ExtraMessage: s2hv1.ReporterExtraMessage(defaultExtraMessage),
 							ComponentUpgrade: &s2hv1.ConfigComponentUpgradeReport{
-								Interval:      c.interval,
-								Criteria:      c.criteria,
-								CustomMessage: c.customMessage,
+								Interval:     c.interval,
+								Criteria:     c.criteria,
+								ExtraMessage: c.extraMessage,
 							},
 							ActivePromotion: &s2hv1.ConfigActivePromotionReport{
-								CustomMessage: c.customMessage,
+								ExtraMessage: c.extraMessage,
 							},
 							PullRequestQueue: &s2hv1.ConfigPullRequestQueueReport{
-								Interval:      c.interval,
-								Criteria:      c.criteria,
-								CustomMessage: c.customMessage,
+								Interval:     c.interval,
+								Criteria:     c.criteria,
+								ExtraMessage: c.extraMessage,
 							},
 							PullRequestTrigger: &s2hv1.ConfigPullRequestTriggerReport{
-								Criteria:      c.criteria,
-								CustomMessage: c.customMessage,
+								Criteria:     c.criteria,
+								ExtraMessage: c.extraMessage,
 							},
 						},
 					},
