@@ -745,9 +745,10 @@ func (s *mockMSTeams) GetChannelID(groupID, channelNameOrID, accessToken string)
 }
 
 type mockConfigCtrl struct {
-	configType string
-	interval   s2hv1.ReporterInterval
-	criteria   s2hv1.ReporterCriteria
+	configType    string
+	interval      s2hv1.ReporterInterval
+	criteria      s2hv1.ReporterCriteria
+	customMessage s2hv1.ReporterCustomMessage
 }
 
 func newMockConfigCtrl(configType string, interval s2hv1.ReporterInterval, criteria s2hv1.ReporterCriteria) internal.ConfigController {
@@ -800,8 +801,9 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 								},
 							},
 							ComponentUpgrade: &s2hv1.ConfigComponentUpgradeReport{
-								Interval: c.interval,
-								Criteria: c.criteria,
+								Interval:      c.interval,
+								Criteria:      c.criteria,
+								CustomMessage: c.customMessage,
 							},
 						},
 					},

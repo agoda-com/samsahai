@@ -371,6 +371,9 @@ const (
 // ReporterCriteria represents a criteria of sending component upgrade notification
 type ReporterCriteria string
 
+// ReporterCustomMessage represents a custom message of sending component upgrade notification
+type ReporterCustomMessage string
+
 const (
 	// CriteriaSuccess means sending slack notification when component upgrade is success only
 	CriteriaSuccess ReporterCriteria = "success"
@@ -388,7 +391,11 @@ const (
 type ReporterSlack struct {
 	Channels []string `json:"channels"`
 	// +optional
+	CustomMessage ReporterCustomMessage `json:"customMessage,omitempty"`
+	// +optional
 	ComponentUpgrade *ConfigComponentUpgradeReport `json:"componentUpgrade,omitempty"`
+	// +optional
+	ActivePromotion *ConfigActivePromotionReport `json:"activePromotion,omitempty"`
 	// +optional
 	PullRequestTrigger *ConfigPullRequestTriggerReport `json:"pullRequestTrigger,omitempty"`
 	// +optional
@@ -418,12 +425,22 @@ type ConfigComponentUpgradeReport struct {
 	Interval ReporterInterval `json:"interval,omitempty"`
 	// +optional
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
+	// +optional
+	CustomMessage ReporterCustomMessage `json:"customMessage,omitempty"`
+}
+
+// ConfigActivePromotionReport defines a configuration of active promotion report
+type ConfigActivePromotionReport struct {
+	// +optional
+	CustomMessage ReporterCustomMessage `json:"customMessage,omitempty"`
 }
 
 // ConfigPullRequestTrigger defines a configuration of pull request trigger report
 type ConfigPullRequestTriggerReport struct {
 	// +optional
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
+	// +optional
+	CustomMessage ReporterCustomMessage `json:"customMessage,omitempty"`
 }
 
 // ConfigPullRequestQueueReport defines a configuration of pull request queues report
@@ -432,6 +449,8 @@ type ConfigPullRequestQueueReport struct {
 	Interval ReporterInterval `json:"interval,omitempty"`
 	// +optional
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
+	// +optional
+	CustomMessage ReporterCustomMessage `json:"customMessage,omitempty"`
 }
 
 // ReporterGithub defines a configuration of github reporter
