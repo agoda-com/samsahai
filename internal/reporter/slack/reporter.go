@@ -72,7 +72,7 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 		return nil
 	}
 
-	slackExtraMessage := string(slackConfig.ExtraMessage)
+	slackExtraMessage := slackConfig.ExtraMessage
 	if slackConfig.ComponentUpgrade != nil {
 		if err := util.CheckMatchingInterval(slackConfig.ComponentUpgrade.Interval, comp.IsReverify); err != nil {
 			return nil
@@ -82,8 +82,8 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController, co
 			return nil
 		}
 
-		if string(slackConfig.ComponentUpgrade.ExtraMessage) != "" {
-			slackExtraMessage = string(slackConfig.ComponentUpgrade.ExtraMessage)
+		if slackConfig.ComponentUpgrade.ExtraMessage != "" {
+			slackExtraMessage = slackConfig.ComponentUpgrade.ExtraMessage
 		}
 	}
 
@@ -103,7 +103,7 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 		return nil
 	}
 
-	slackExtraMessage := string(slackConfig.ExtraMessage)
+	slackExtraMessage := slackConfig.ExtraMessage
 	if slackConfig.PullRequestQueue != nil {
 		if err := util.CheckMatchingInterval(slackConfig.PullRequestQueue.Interval, comp.IsReverify); err != nil {
 			return nil
@@ -112,8 +112,8 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController, co
 		if err := util.CheckMatchingCriteria(slackConfig.PullRequestQueue.Criteria, string(comp.StatusStr)); err != nil {
 			return nil
 		}
-		if string(slackConfig.PullRequestQueue.ExtraMessage) != "" {
-			slackExtraMessage = string(slackConfig.PullRequestQueue.ExtraMessage)
+		if slackConfig.PullRequestQueue.ExtraMessage != "" {
+			slackExtraMessage = slackConfig.PullRequestQueue.ExtraMessage
 		}
 	}
 
@@ -133,10 +133,10 @@ func (r *reporter) SendActivePromotionStatus(configCtrl internal.ConfigControlle
 		return nil
 	}
 
-	slackExtraMessage := string(slackConfig.ExtraMessage)
+	slackExtraMessage := slackConfig.ExtraMessage
 	if slackConfig.ActivePromotion != nil {
-		if string(slackConfig.ActivePromotion.ExtraMessage) != "" {
-			slackExtraMessage = string(slackConfig.ActivePromotion.ExtraMessage)
+		if slackConfig.ActivePromotion.ExtraMessage != "" {
+			slackExtraMessage = slackConfig.ActivePromotion.ExtraMessage
 		}
 	}
 
@@ -196,15 +196,15 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 		return nil
 	}
 
-	slackExtraMessage := string(slackConfig.ExtraMessage)
+	slackExtraMessage := slackConfig.ExtraMessage
 	if slackConfig.PullRequestTrigger != nil {
 		err := util.CheckMatchingCriteria(slackConfig.PullRequestTrigger.Criteria, prTriggerRpt.Result)
 		if err != nil {
 			return nil
 		}
 
-		if string(slackConfig.PullRequestTrigger.ExtraMessage) != "" {
-			slackExtraMessage = string(slackConfig.PullRequestTrigger.ExtraMessage)
+		if slackConfig.PullRequestTrigger.ExtraMessage != "" {
+			slackExtraMessage = slackConfig.PullRequestTrigger.ExtraMessage
 		}
 
 	}
