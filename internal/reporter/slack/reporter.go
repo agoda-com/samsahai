@@ -254,19 +254,14 @@ func convertRPCImageListToK8SImageList(images []*rpc.Image) []s2hv1.Image {
 	return k8sImages
 }
 
-func addCustomMessage(statusStr string, customMessage string) string {
-	var customMessageReport string
-	if statusStr == "Failure" && customMessage != "" {
-		customMessageReport = fmt.Sprintf("*Message:* %s", customMessage)
-	}
-	return customMessageReport
-}
-
 func (r *reporter) makeComponentUpgradeReport(comp *internal.ComponentUpgradeReporter, customMessage string) string {
 	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}`
 	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/queue/histories/{{ .QueueHistoryName }}/log`
 
-	customMessageReport := addCustomMessage(string(comp.StatusStr), customMessage)
+	var customMessageReport string
+	if customMessage != "" {
+		customMessageReport = fmt.Sprintf("*Message:* %s", customMessage)
+	}
 
 	message := `
 *Component Upgrade:* {{ .StatusStr }}
@@ -278,7 +273,10 @@ func (r *reporter) makePullRequestQueueReport(comp *internal.ComponentUpgradeRep
 	queueHistURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}`
 	queueLogURL := `{{ .SamsahaiExternalURL }}/teams/{{ .TeamName }}/pullrequest/queue/histories/{{ .QueueHistoryName }}/log`
 
-	customMessageReport := addCustomMessage(string(comp.StatusStr), customMessage)
+	var customMessageReport string
+	if customMessage != "" {
+		customMessageReport = fmt.Sprintf("*Message:* %s", customMessage)
+	}
 
 	message := `
 *Pull Request Queue:* {{ .StatusStr }}
@@ -333,7 +331,10 @@ func (r *reporter) makeDeploymentQueueReport(comp *internal.ComponentUpgradeRepo
 
 func (r *reporter) makeActivePromotionStatusReport(atpRpt *internal.ActivePromotionReporter, customMessage string) string {
 
-	customMessageReport := addCustomMessage(string(atpRpt.Result), customMessage)
+	var customMessageReport string
+	if customMessage != "" {
+		customMessageReport = fmt.Sprintf("*Message:* %s", customMessage)
+	}
 
 	var message = `
 *Active Promotion:* {{ .Result }}
@@ -441,7 +442,10 @@ func (r *reporter) makeImageMissingListReport(images []s2hv1.Image, reason strin
 
 func (r *reporter) makePullRequestTriggerResultReport(prTriggerRpt *internal.PullRequestTriggerReporter, customMessage string) string {
 
-	customMessageReport := addCustomMessage(prTriggerRpt.Result, customMessage)
+	var customMessageReport string
+	if customMessage != "" {
+		customMessageReport = fmt.Sprintf("*Message:* %s", customMessage)
+	}
 
 	var message = `
 *Pull Request Trigger:* {{ .Result }}
