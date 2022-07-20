@@ -400,11 +400,11 @@ spec:
         - samsahai-dev
 
       # [optional] an extra message that will append to componentUpgrade, activePromotion, pullRequestQueue pullRequestTrigger report
-      # if you want to tag users, groups and so on. you have to send in the slack format
-      # use `<@UserId>` for mention users in the message e.g. "Hello <@U024BE7LH>, please check the report"
-      # use `<!subteam^ID>` for mention groups in the message e.g. "<!subteam^SAZ94GDB8>, please help check."
+      # if you want to tag users, groups, or else, you have to define it in the slack format below
+      # use `<@UserId>` to mention users in the message e.g., "Hello <@U024BE7LH>, please check the report"
+      # use `<!subteam^ID>` to mention groups in the message e.g., "<!subteam^SAZ94GDB8>, please help check."
       # additional format: https://api.slack.com/reference/surfaces/formatting#linking_to_channels_and_users
-      extraMessage: "Default Extra Message"
+      extraMessage: "<!subteam^SAZ94GDB8>, samsahai slack extra message"
 
       componentUpgrade:
         # how often of sending component upgrade notification within a retry cycle
@@ -419,19 +419,19 @@ spec:
         criteria: failure
 
         # [optional] override default extra message to when sending with componentUpgrade report
-        # if you want to tag users, groups in slack. you have to sending with the slack format
-        # use `<@UserId>` for mention users in the message e.g. "Hello <@U024BE7LH>, please check the report"
-        # use `<!subteam^ID>` for mention groups in the message e.g. "<!subteam^SAZ94GDB8>, please help check."
+        # if you want to tag users, groups, or else, you have to define it in the slack format below
+        # use `<@UserId>` to mention users in the message e.g., "Hello <@U024BE7LH>, please check the report"
+        # use `<!subteam^ID>` to mention groups in the message e.g., "<!subteam^SAZ94GDB8>, please help check."
         # additional format: https://api.slack.com/reference/surfaces/formatting#linking_to_channels_and_users
-        extraMessage: "ComponentUpgrade Extra Message"
+        extraMessage: "<!subteam^SAZ94GDB8>, samsahai componentUpgrade extra message"
 
       activePromotion:
         # [optional] override default extra message to when sending with activePromotion report
-        # if you want to tag users, groups in slack. you have to sending with the slack format
-        # use `<@UserId>` for mention users in the message e.g. "Hello <@U024BE7LH>, please check the report"
-        # use `<!subteam^ID>` for mention groups in the message e.g. "<!subteam^SAZ94GDB8>, please help check."
+        # if you want to tag users, groups, or else, you have to define it in the slack format below
+        # use `<@UserId>` to mention users in the message e.g., "Hello <@U024BE7LH>, please check the report"
+        # use `<!subteam^ID>` to mention groups in the message e.g., "<!subteam^SAZ94GDB8>, please help check."
         # additional format: https://api.slack.com/reference/surfaces/formatting#linking_to_channels_and_users
-        extraMessage: "ComponentUpgrade Extra Message"
+        extraMessage: "<!subteam^SAZ94GDB8>, samsahai activePromotion extra message"
 
 
       pullRequestQueue:
@@ -447,11 +447,11 @@ spec:
         criteria: failure
 
         # [optional] override default extra message to when sending with pullRequestQueue report
-        # if you want to tag users, groups in slack. you have to sending with the slack format
-        # use `<@UserId>` for mention users in the message e.g. "Hello <@U024BE7LH>, please check the report"
-        # use `<!subteam^ID>` for mention groups in the message e.g. "<!subteam^SAZ94GDB8>, please help check."
+        # if you want to tag users, groups, or else, you have to define it in the slack format below
+        # use `<@UserId>` to mention users in the message e.g., "Hello <@U024BE7LH>, please check the report"
+        # use `<!subteam^ID>` to mention groups in the message e.g., "<!subteam^SAZ94GDB8>, please help check."
         # additional format: https://api.slack.com/reference/surfaces/formatting#linking_to_channels_and_users
-        extraMessage: "PullRequestQueue Extra Message"
+        extraMessage: "<!subteam^SAZ94GDB8>, samsahai pullRequestQueue extra message"
 
       pullRequestTrigger:
         # a criteria of sending pull request trigger notification
@@ -461,11 +461,11 @@ spec:
         criteria: failure
 
         # [optional] override default extra message to when sending with pullRequestTrigger report
-        # if you want to tag users, groups in slack. you have to sending with the slack format
-        # use `<@UserId>` for mention users in the message e.g. "Hello <@U024BE7LH>, please check the report"
-        # use `<!subteam^ID>` for mention groups in the message e.g. "<!subteam^SAZ94GDB8>, please help check."
+        # if you want to tag users, groups, or else, you have to define it in the slack format below
+        # use `<@UserId>` to mention users in the message e.g., "Hello <@U024BE7LH>, please check the report"
+        # use `<!subteam^ID>` to mention groups in the message e.g., "<!subteam^SAZ94GDB8>, please help check."
         # additional format: https://api.slack.com/reference/surfaces/formatting#linking_to_channels_and_users
-        extraMessage: "PullRequestTrigger Extra Message"
+        extraMessage: "<!subteam^SAZ94GDB8>, samsahai pullRequestTrigger extra message"
 
     # sending notification via Microsoft Teams
     msTeams:

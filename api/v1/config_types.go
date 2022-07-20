@@ -371,9 +371,6 @@ const (
 // ReporterCriteria represents a criteria of sending component upgrade notification
 type ReporterCriteria string
 
-// ReporterExtraMessage represents an extra message of sending component upgrade notification
-type ReporterExtraMessage string
-
 const (
 	// CriteriaSuccess means sending slack notification when component upgrade is success only
 	CriteriaSuccess ReporterCriteria = "success"
@@ -391,7 +388,7 @@ const (
 type ReporterSlack struct {
 	Channels []string `json:"channels"`
 	// +optional
-	ExtraMessage ReporterExtraMessage `json:"extraMessage,omitempty"`
+	ExtraMessage string `json:"extraMessage,omitempty"`
 	// +optional
 	ComponentUpgrade *ConfigComponentUpgradeReport `json:"componentUpgrade,omitempty"`
 	// +optional
@@ -426,13 +423,13 @@ type ConfigComponentUpgradeReport struct {
 	// +optional
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
 	// +optional
-	ExtraMessage ReporterExtraMessage `json:"extraMessage,omitempty"`
+	ExtraMessage string `json:"extraMessage,omitempty"`
 }
 
 // ConfigActivePromotionReport defines a configuration of active promotion report
 type ConfigActivePromotionReport struct {
 	// +optional
-	ExtraMessage ReporterExtraMessage `json:"extraMessage,omitempty"`
+	ExtraMessage string `json:"extraMessage,omitempty"`
 }
 
 // ConfigPullRequestTrigger defines a configuration of pull request trigger report
@@ -440,7 +437,7 @@ type ConfigPullRequestTriggerReport struct {
 	// +optional
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
 	// +optional
-	ExtraMessage ReporterExtraMessage `json:"extraMessage,omitempty"`
+	ExtraMessage string `json:"extraMessage,omitempty"`
 }
 
 // ConfigPullRequestQueueReport defines a configuration of pull request queues report
@@ -450,7 +447,7 @@ type ConfigPullRequestQueueReport struct {
 	// +optional
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
 	// +optional
-	ExtraMessage ReporterExtraMessage `json:"extraMessage,omitempty"`
+	ExtraMessage string `json:"extraMessage,omitempty"`
 }
 
 // ReporterGithub defines a configuration of github reporter

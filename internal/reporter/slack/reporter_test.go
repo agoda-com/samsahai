@@ -148,7 +148,7 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should correctly send component upgrade failure with component upgrade extra message", func() {
-			var extraMessage s2hv1.ReporterExtraMessage = "component extra message"
+			extraMessage := "component extra message"
 			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "", extraMessage)
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
@@ -355,7 +355,7 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should correctly send pull request queue failure with pull request extra message", func() {
-			var extraMessage s2hv1.ReporterExtraMessage = "pull request extra message"
+			extraMessage := "pull request extra message"
 			configCtrl := newMockConfigCtrl("", "", "", extraMessage)
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
@@ -502,7 +502,7 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should correctly send active promotion success without outdated components message", func() {
-			var extraMessage s2hv1.ReporterExtraMessage = "active promotion extra message"
+			extraMessage := "active promotion extra message"
 			configCtrl := newMockConfigCtrl("", "", "", extraMessage)
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
@@ -744,7 +744,7 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should correctly send pull request trigger failure message", func() {
-			var extraMessage s2hv1.ReporterExtraMessage = "pull request trigger extra message"
+			extraMessage := "pull request trigger extra message"
 			configCtrl := newMockConfigCtrl("", "", "", extraMessage)
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
@@ -878,10 +878,10 @@ type mockConfigCtrl struct {
 	configType   string
 	interval     s2hv1.ReporterInterval
 	criteria     s2hv1.ReporterCriteria
-	extraMessage s2hv1.ReporterExtraMessage
+	extraMessage string
 }
 
-func newMockConfigCtrl(configType string, interval s2hv1.ReporterInterval, criteria s2hv1.ReporterCriteria, extraMessage s2hv1.ReporterExtraMessage) internal.ConfigController {
+func newMockConfigCtrl(configType string, interval s2hv1.ReporterInterval, criteria s2hv1.ReporterCriteria, extraMessage string) internal.ConfigController {
 	return &mockConfigCtrl{
 		configType:   configType,
 		interval:     interval,
@@ -913,7 +913,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 					Reporter: &s2hv1.ConfigReporter{
 						Slack: &s2hv1.ReporterSlack{
 							Channels:     []string{"chan1", "chan2"},
-							ExtraMessage: s2hv1.ReporterExtraMessage(defaultExtraMessage),
+							ExtraMessage: defaultExtraMessage,
 							ComponentUpgrade: &s2hv1.ConfigComponentUpgradeReport{
 								Interval:     c.interval,
 								Criteria:     c.criteria,
