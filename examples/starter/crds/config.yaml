@@ -399,7 +399,7 @@ spec:
       channels:
         - samsahai-dev
 
-      # [optional] default extra message that will append to componentUpgrade, activePromotion, pullRequestQueue pullRequestTrigger report
+      # [optional] an extra message that will append to componentUpgrade, activePromotion, pullRequestQueue pullRequestTrigger report
       # if you want to tag users, groups and so on. you have to send in the slack format
       # use `<@UserId>` for mention users in the message e.g. "Hello <@U024BE7LH>, please check the report"
       # use `<!subteam^ID>` for mention groups in the message e.g. "<!subteam^SAZ94GDB8>, please help check."
