@@ -388,7 +388,11 @@ const (
 type ReporterSlack struct {
 	Channels []string `json:"channels"`
 	// +optional
+	ExtraMessage string `json:"extraMessage,omitempty"`
+	// +optional
 	ComponentUpgrade *ConfigComponentUpgradeReport `json:"componentUpgrade,omitempty"`
+	// +optional
+	ActivePromotion *ConfigActivePromotionReport `json:"activePromotion,omitempty"`
 	// +optional
 	PullRequestTrigger *ConfigPullRequestTriggerReport `json:"pullRequestTrigger,omitempty"`
 	// +optional
@@ -418,12 +422,22 @@ type ConfigComponentUpgradeReport struct {
 	Interval ReporterInterval `json:"interval,omitempty"`
 	// +optional
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
+	// +optional
+	ExtraMessage string `json:"extraMessage,omitempty"`
+}
+
+// ConfigActivePromotionReport defines a configuration of active promotion report
+type ConfigActivePromotionReport struct {
+	// +optional
+	ExtraMessage string `json:"extraMessage,omitempty"`
 }
 
 // ConfigPullRequestTrigger defines a configuration of pull request trigger report
 type ConfigPullRequestTriggerReport struct {
 	// +optional
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
+	// +optional
+	ExtraMessage string `json:"extraMessage,omitempty"`
 }
 
 // ConfigPullRequestQueueReport defines a configuration of pull request queues report
@@ -432,6 +446,8 @@ type ConfigPullRequestQueueReport struct {
 	Interval ReporterInterval `json:"interval,omitempty"`
 	// +optional
 	Criteria ReporterCriteria `json:"criteria,omitempty"`
+	// +optional
+	ExtraMessage string `json:"extraMessage,omitempty"`
 }
 
 // ReporterGithub defines a configuration of github reporter

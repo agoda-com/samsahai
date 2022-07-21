@@ -398,6 +398,14 @@ spec:
       # please add our samsahai bot to your channel
       channels:
         - samsahai-dev
+
+      # [optional] an extra message that will append to componentUpgrade, activePromotion, pullRequestQueue, and pullRequestTrigger report
+      # if you want to tag users, groups, or else, you have to define it in the slack format below
+      # use `<@UserId>` to mention users in the message e.g., "Hello <@U024BE7LH>, please check the report"
+      # use `<!subteam^ID>` to mention groups in the message e.g., "<!subteam^SAZ94GDB8>, please help check."
+      # additional format: https://api.slack.com/reference/surfaces/formatting#linking_to_channels_and_users
+      extraMessage: "<!subteam^SAZ94GDB8>, samsahai slack extra message"
+
       componentUpgrade:
         # how often of sending component upgrade notification within a retry cycle
         # use 'everytime' for sending slack notification in every component upgrade runs
@@ -408,6 +416,76 @@ spec:
         # use 'success' for sending slack notification when component upgrade is success only
         # use 'failure' for sending slack notification when component upgrade is failure only <default>
         # use 'both' for sending slack notification whether component upgrade is success or failure
+        criteria: failure
+
+        # [optional] override default extra message to when sending with componentUpgrade report
+        # if you want to tag users, groups, or else, you have to define it in the slack format below
+        # use `<@UserId>` to mention users in the message e.g., "Hello <@U024BE7LH>, please check the report"
+        # use `<!subteam^ID>` to mention groups in the message e.g., "<!subteam^SAZ94GDB8>, please help check."
+        # additional format: https://api.slack.com/reference/surfaces/formatting#linking_to_channels_and_users
+        extraMessage: "<!subteam^SAZ94GDB8>, samsahai componentUpgrade extra message"
+
+      activePromotion:
+        # [optional] override default extra message to when sending with activePromotion report
+        # if you want to tag users, groups, or else, you have to define it in the slack format below
+        # use `<@UserId>` to mention users in the message e.g., "Hello <@U024BE7LH>, please check the report"
+        # use `<!subteam^ID>` to mention groups in the message e.g., "<!subteam^SAZ94GDB8>, please help check."
+        # additional format: https://api.slack.com/reference/surfaces/formatting#linking_to_channels_and_users
+        extraMessage: "<!subteam^SAZ94GDB8>, samsahai activePromotion extra message"
+
+
+      pullRequestQueue:
+        # how often of sending pull request queue notification within a retry cycle
+        # use 'everytime' for sending slack notification in every pull request queue runs
+        # use 'retry' for sending slack notification after retry only <default>
+        interval: retry
+
+        # a criteria of sending pull request queue notification
+        # use 'success' for sending slack notification when pull request queue is success only
+        # use 'failure' for sending slack notification when pull request queue is failure only <default>
+        # use 'both' for sending slack notification whether pull request queue is success or failure
+        criteria: failure
+
+        # [optional] override default extra message to when sending with pullRequestQueue report
+        # if you want to tag users, groups, or else, you have to define it in the slack format below
+        # use `<@UserId>` to mention users in the message e.g., "Hello <@U024BE7LH>, please check the report"
+        # use `<!subteam^ID>` to mention groups in the message e.g., "<!subteam^SAZ94GDB8>, please help check."
+        # additional format: https://api.slack.com/reference/surfaces/formatting#linking_to_channels_and_users
+        extraMessage: "<!subteam^SAZ94GDB8>, samsahai pullRequestQueue extra message"
+
+      pullRequestTrigger:
+        # a criteria of sending pull request trigger notification
+        # use 'success' for sending slack notification when pull request trigger is success only
+        # use 'failure' for sending slack notification when pull request trigger is failure only <default>
+        # use 'both' for sending slack notification whether pull request trigger is success or failure
+        criteria: failure
+
+        # [optional] override default extra message to when sending with pullRequestTrigger report
+        # if you want to tag users, groups, or else, you have to define it in the slack format below
+        # use `<@UserId>` to mention users in the message e.g., "Hello <@U024BE7LH>, please check the report"
+        # use `<!subteam^ID>` to mention groups in the message e.g., "<!subteam^SAZ94GDB8>, please help check."
+        # additional format: https://api.slack.com/reference/surfaces/formatting#linking_to_channels_and_users
+        extraMessage: "<!subteam^SAZ94GDB8>, samsahai pullRequestTrigger extra message"
+
+    # sending notification via Microsoft Teams
+    msTeams:
+      groups:
+        # support both group name and group id
+        # in case there are duplicated group names, will use the first found group
+        - groupNameOrID: Samsahai
+          # support both channel name and channel id
+          channelNameOrIDs:
+            - Samsahai Dev
+      componentUpgrade:
+        # how often of sending component upgrade notification within a retry cycle
+        # use 'everytime' for sending ms teams notification in every component upgrade runs
+        # use 'retry' for sending ms teams notification after retry only <default>
+        interval: retry
+
+        # a criteria of sending component upgrade notification
+        # use 'success' for sending ms teams notification when component upgrade is success only
+        # use 'failure' for sending ms teams notification when component upgrade is failure only <default>
+        # use 'both' for sending ms teams notification whether component upgrade is success or failure
         criteria: failure
 
       pullRequestQueue:
@@ -428,46 +506,6 @@ spec:
         # use 'failure' for sending slack notification when pull request trigger is failure only <default>
         # use 'both' for sending slack notification whether pull request trigger is success or failure
         criteria: failure
-
-    # sending notification via Microsoft Teams
-    msTeams:
-      groups:
-        # support both group name and group id
-        # in case there are duplicated group names, will use the first found group
-        - groupNameOrID: Samsahai
-          # support both channel name and channel id
-          channelNameOrIDs:
-            - Samsahai Dev
-        componentUpgrade:
-          # how often of sending component upgrade notification within a retry cycle
-          # use 'everytime' for sending ms teams notification in every component upgrade runs
-          # use 'retry' for sending ms teams notification after retry only <default>
-          interval: retry
-
-          # a criteria of sending component upgrade notification
-          # use 'success' for sending ms teams notification when component upgrade is success only
-          # use 'failure' for sending ms teams notification when component upgrade is failure only <default>
-          # use 'both' for sending ms teams notification whether component upgrade is success or failure
-          criteria: failure
-
-        pullRequestQueue:
-          # how often of sending pull request queue notification within a retry cycle
-          # use 'everytime' for sending slack notification in every pull request queue runs
-          # use 'retry' for sending slack notification after retry only <default>
-          interval: retry
-
-          # a criteria of sending pull request queue notification
-          # use 'success' for sending slack notification when pull request queue is success only
-          # use 'failure' for sending slack notification when pull request queue is failure only <default>
-          # use 'both' for sending slack notification whether pull request queue is success or failure
-          criteria: failure
-
-        pullRequestTrigger:
-          # a criteria of sending pull request trigger notification
-          # use 'success' for sending slack notification when pull request trigger is success only
-          # use 'failure' for sending slack notification when pull request trigger is failure only <default>
-          # use 'both' for sending slack notification whether pull request trigger is success or failure
-          criteria: failure
 
     cmd:
       # active promotion external command line

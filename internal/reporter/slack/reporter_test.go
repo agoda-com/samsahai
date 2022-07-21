@@ -21,12 +21,14 @@ func TestUnit(t *testing.T) {
 	unittest.InitGinkgo(t, "Slack Reporter")
 }
 
+var defaultExtraMessage = "default extra message"
+
 var _ = Describe("send slack message", func() {
 	g := NewGomegaWithT(GinkgoT())
 
 	Describe("send component upgrade", func() {
 		It("should correctly send component upgrade failure with everytime interval", func() {
-			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "")
+			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -82,10 +84,11 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("*Issue type:* CrashLoopBackOff"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("*Components:* comp1"))
 			g.Expect(mockSlackCli.message).ShouldNot(ContainSubstring("Image Missing List"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should not send component upgrade failure with retry interval", func() {
-			configCtrl := newMockConfigCtrl("", "", "")
+			configCtrl := newMockConfigCtrl("", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -102,7 +105,7 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should not send component upgrade failure with success criteria", func() {
-			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, s2hv1.CriteriaSuccess)
+			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, s2hv1.CriteriaSuccess, "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -117,8 +120,63 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(0))
 		})
 
+		It("should correctly send component upgrade failure with default extra message", func() {
+			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "", "")
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			rpcComp := &rpc.ComponentUpgrade{
+				Name:   "comp1",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "comp1",
+						Image: &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
+					},
+				},
+				TeamName:  "owner",
+				IssueType: rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED,
+				Namespace: "owner-staging",
+			}
+			mockSlackCli := &mockSlack{}
+			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
+			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
+			err := r.SendComponentUpgrade(configCtrl, comp)
+			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
+		})
+
+		It("should correctly send component upgrade failure with component upgrade extra message", func() {
+			extraMessage := "component extra message"
+			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "", extraMessage)
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			rpcComp := &rpc.ComponentUpgrade{
+				Name:   "comp1",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "comp1",
+						Image: &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
+					},
+				},
+				TeamName:  "owner",
+				IssueType: rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED,
+				Namespace: "owner-staging",
+			}
+			mockSlackCli := &mockSlack{}
+			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
+			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
+			err := r.SendComponentUpgrade(configCtrl, comp)
+			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(extraMessage))
+		})
+
 		It("should correctly send component upgrade failure with image missing list message", func() {
-			configCtrl := newMockConfigCtrl("", "", "")
+			configCtrl := newMockConfigCtrl("", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -151,10 +209,11 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Image Missing List"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("- image-2:1.1.0"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("- image-3:1.2.0"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should send component upgrade failure of multiple components", func() {
-			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "")
+			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -184,10 +243,11 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("comp2"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("1.1.2"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("image-2"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should correctly send component upgrade failure with tested on gitlab", func() {
-			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "")
+			configCtrl := newMockConfigCtrl("", s2hv1.IntervalEveryTime, "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -221,12 +281,13 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("image-1"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("<gitlab-url|gitlab-pipeline-number>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 	})
 
 	Describe("send pull request queue", func() {
 		It("should correctly send pull request queue failure", func() {
-			configCtrl := newMockConfigCtrl("", "", "")
+			configCtrl := newMockConfigCtrl("", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -290,13 +351,82 @@ var _ = Describe("send slack message", func() {
 				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log|Download here>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring(
 				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678|Click here>"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
+		})
 
+		It("should correctly send pull request queue failure with pull request extra message", func() {
+			extraMessage := "pull request extra message"
+			configCtrl := newMockConfigCtrl("", "", "", extraMessage)
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			rpcComp := &rpc.ComponentUpgrade{
+				Name:   "bundle-1",
+				Status: rpc.ComponentUpgrade_UpgradeStatus_FAILURE,
+				Components: []*rpc.Component{
+					{
+						Name:  "bundle1-comp1",
+						Image: &rpc.Image{Repository: "image-1", Tag: "1.1.0"},
+					},
+					{
+						Name:  "bundle1-comp2",
+						Image: &rpc.Image{Repository: "image-2", Tag: "2.1.0"},
+					},
+				},
+				TeamName:         "owner",
+				IssueType:        rpc.ComponentUpgrade_IssueType_DESIRED_VERSION_FAILED,
+				Namespace:        "owner-staging",
+				QueueHistoryName: "comp1-1234",
+				IsReverify:       true,
+				Runs:             3,
+				DeploymentIssues: []*rpc.DeploymentIssue{
+					{
+						IssueType: string(s2hv1.DeploymentIssueCrashLoopBackOff),
+						FailureComponents: []*rpc.FailureComponent{
+							{ComponentName: "bundle1-comp1"},
+						},
+					},
+				},
+				PullRequestComponent: &rpc.TeamWithPullRequest{
+					BundleName: "bundle-1",
+					PRNumber:   "pr1234",
+				},
+			}
+			mockSlackCli := &mockSlack{}
+			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
+			testRunner := s2hv1.TestRunner{
+				Teamcity: s2hv1.Teamcity{BuildURL: "teamcity-url", BuildNumber: "teamcity-build-number"},
+			}
+			comp := internal.NewComponentUpgradeReporter(
+				rpcComp,
+				internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"},
+				internal.WithTestRunner(testRunner),
+				internal.WithQueueHistoryName("comp1-5678"),
+				internal.WithNamespace("pr-namespace"),
+			)
+			err := r.SendPullRequestQueue(configCtrl, comp)
+			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
+			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Pull Request Queue"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
+			// Should contain information
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("pr1234"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("bundle-1"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("bundle1-comp1"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("bundle1-comp2"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("#3"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("pr-namespace"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(
+				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log|Download here>"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(
+				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678|Click here>"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(extraMessage))
 		})
 	})
 
 	Describe("send active promotion status", func() {
 		It("should correctly send active promotion success with outdated components message", func() {
-			configCtrl := newMockConfigCtrl("", "", "")
+			configCtrl := newMockConfigCtrl("", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			var comp1, repoComp1, comp2, repoComp2 = "comp1", "repo/comp1", "comp2", "repo/comp2"
@@ -342,10 +472,11 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Current Version: <http://repo/comp1|1.1.0>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Latest Version: <http://repo/comp1|1.1.2>"))
 			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should correctly send active promotion success without outdated components message", func() {
-			configCtrl := newMockConfigCtrl("", "", "")
+			configCtrl := newMockConfigCtrl("", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			timeNow := metav1.Now()
@@ -367,11 +498,39 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("All components are up to date!"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("previous active namespace `owner-prevns` will be destroyed at `" + timeNow.Format("2006-01-02 15:04:05 MST")))
 			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
+		})
+
+		It("should correctly send active promotion success without outdated components message", func() {
+			extraMessage := "active promotion extra message"
+			configCtrl := newMockConfigCtrl("", "", "", extraMessage)
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			timeNow := metav1.Now()
+			status := s2hv1.ActivePromotionStatus{
+				Result:                     s2hv1.ActivePromotionSuccess,
+				HasOutdatedComponent:       false,
+				ActivePromotionHistoryName: "owner-12345",
+				PreviousActiveNamespace:    "owner-prevns",
+				DestroyedTime:              &timeNow,
+			}
+			atpRpt := internal.NewActivePromotionReporter(status, internal.SamsahaiConfig{SamsahaiExternalURL: "http://localhost:8080"}, "owner", "owner-123456", 1)
+
+			mockSlackCli := &mockSlack{}
+			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
+			err := r.SendActivePromotionStatus(configCtrl, atpRpt)
+			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Success"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("<http://localhost:8080/teams/owner/activepromotions/histories/owner-12345|Click here>"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("All components are up to date!"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("previous active namespace `owner-prevns` will be destroyed at `" + timeNow.Format("2006-01-02 15:04:05 MST")))
+			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(extraMessage))
 		})
 
 		It("should correctly send active promotion failure with outdated components/image missing/deployment issues message",
 			func() {
-				configCtrl := newMockConfigCtrl("", "", "")
+				configCtrl := newMockConfigCtrl("", "", "", "")
 				g.Expect(configCtrl).ShouldNot(BeNil())
 
 				var comp1, repoComp1, comp2, repoComp2 = "comp1", "repo/comp1", "comp2", "repo/comp2"
@@ -438,10 +597,11 @@ var _ = Describe("send slack message", func() {
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("*Components:* comp1"))
 				g.Expect(mockSlackCli.message).Should(ContainSubstring("*Wait for:* dep1"))
 				g.Expect(err).Should(BeNil())
+				g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 			})
 
 		It("should correctly send active promotion failure without outdated components message", func() {
-			configCtrl := newMockConfigCtrl("", "", "")
+			configCtrl := newMockConfigCtrl("", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			status := s2hv1.ActivePromotionStatus{
@@ -461,10 +621,11 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner-123456"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("All components are up to date!"))
 			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should correctly send active promotion/demotion failure with rollback timeout message", func() {
-			configCtrl := newMockConfigCtrl("", "", "")
+			configCtrl := newMockConfigCtrl("", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			status := s2hv1.ActivePromotionStatus{
@@ -488,10 +649,11 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring(
 				"cannot demote a previous active environment, previous active namespace has been destroyed immediately"))
 			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 
 		It("should correctly send active promotion success with tested on gitlab", func() {
-			configCtrl := newMockConfigCtrl("", "", "")
+			configCtrl := newMockConfigCtrl("", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			status := s2hv1.ActivePromotionStatus{
@@ -512,12 +674,13 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("<gitlab-url|gitlab-pipeline-number"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("All components are up to date!"))
 			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 	})
 
 	Describe("send image missing", func() {
 		It("should correctly send image missing message", func() {
-			configCtrl := newMockConfigCtrl("", "", "")
+			configCtrl := newMockConfigCtrl("", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			mockSlackCli := &mockSlack{}
@@ -536,7 +699,7 @@ var _ = Describe("send slack message", func() {
 
 	Describe("send pull request trigger result", func() {
 		It("should correctly send pull request trigger failure message", func() {
-			configCtrl := newMockConfigCtrl("", "", "")
+			configCtrl := newMockConfigCtrl("", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			mockSlackCli := &mockSlack{}
@@ -577,10 +740,57 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Image Missing List"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("registry/comp-2-missing:2.0.0"))
 			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
+		})
+
+		It("should correctly send pull request trigger failure message", func() {
+			extraMessage := "pull request trigger extra message"
+			configCtrl := newMockConfigCtrl("", "", "", extraMessage)
+			g.Expect(configCtrl).ShouldNot(BeNil())
+
+			mockSlackCli := &mockSlack{}
+			r := s2hslack.New("mock-token", s2hslack.WithSlackClient(mockSlackCli))
+
+			timeNow := metav1.Now()
+			status := s2hv1.PullRequestTriggerStatus{
+				CreatedAt: &timeNow,
+				ImageMissingList: []s2hv1.Image{
+					{Repository: "registry/comp-2-missing", Tag: "2.0.0"},
+				},
+			}
+			prComps := []*s2hv1.PullRequestTriggerComponent{
+				{
+					ComponentName: "bundle1-comp1",
+					Image:         &s2hv1.Image{Repository: "registry/comp-1", Tag: "1.0.0"},
+				},
+				{
+					ComponentName: "bundle1-comp2",
+					Image:         &s2hv1.Image{Repository: "registry/comp-2", Tag: "2.0.0"},
+				},
+			}
+
+			prTriggerRpt := internal.NewPullRequestTriggerResultReporter(status, internal.SamsahaiConfig{},
+				"owner", "bundle-1", "pr1234", "Failure", 2, prComps)
+			err := r.SendPullRequestTriggerResult(configCtrl, prTriggerRpt)
+			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
+			g.Expect(mockSlackCli.channels).Should(Equal([]string{"chan1", "chan2"}))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("bundle-1"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("bundle1-comp1"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("bundle1-comp2"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("pr1234"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("owner"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("registry/comp-1:1.0.0"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("*NO of Retry:* 2"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(timeNow.Format("2006-01-02 15:04:05 MST")))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("Image Missing List"))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring("registry/comp-2-missing:2.0.0"))
+			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(extraMessage))
 		})
 
 		It("should correctly send pull request trigger success message", func() {
-			configCtrl := newMockConfigCtrl("", "", s2hv1.CriteriaBoth)
+			configCtrl := newMockConfigCtrl("", "", s2hv1.CriteriaBoth, "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			mockSlackCli := &mockSlack{}
@@ -610,12 +820,13 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("*NO of Retry:* 0"))
 			g.Expect(mockSlackCli.message).ShouldNot(ContainSubstring("Image Missing List"))
 			g.Expect(err).Should(BeNil())
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(defaultExtraMessage))
 		})
 	})
 
 	Describe("failure path", func() {
 		It("should not send message if not define slack reporter configuration", func() {
-			configCtrl := newMockConfigCtrl("empty", "", "")
+			configCtrl := newMockConfigCtrl("empty", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{}
@@ -628,7 +839,7 @@ var _ = Describe("send slack message", func() {
 		})
 
 		It("should fail to send message", func() {
-			configCtrl := newMockConfigCtrl("failure", "", "")
+			configCtrl := newMockConfigCtrl("failure", "", "", "")
 			g.Expect(configCtrl).ShouldNot(BeNil())
 
 			rpcComp := &rpc.ComponentUpgrade{
@@ -664,16 +875,18 @@ func (s *mockSlack) PostMessage(channelNameOrID, message string, opts ...slack.M
 }
 
 type mockConfigCtrl struct {
-	configType string
-	interval   s2hv1.ReporterInterval
-	criteria   s2hv1.ReporterCriteria
+	configType   string
+	interval     s2hv1.ReporterInterval
+	criteria     s2hv1.ReporterCriteria
+	extraMessage string
 }
 
-func newMockConfigCtrl(configType string, interval s2hv1.ReporterInterval, criteria s2hv1.ReporterCriteria) internal.ConfigController {
+func newMockConfigCtrl(configType string, interval s2hv1.ReporterInterval, criteria s2hv1.ReporterCriteria, extraMessage string) internal.ConfigController {
 	return &mockConfigCtrl{
-		configType: configType,
-		interval:   interval,
-		criteria:   criteria,
+		configType:   configType,
+		interval:     interval,
+		criteria:     criteria,
+		extraMessage: extraMessage,
 	}
 }
 
@@ -699,10 +912,24 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 				Used: s2hv1.ConfigSpec{
 					Reporter: &s2hv1.ConfigReporter{
 						Slack: &s2hv1.ReporterSlack{
-							Channels: []string{"chan1", "chan2"},
+							Channels:     []string{"chan1", "chan2"},
+							ExtraMessage: defaultExtraMessage,
 							ComponentUpgrade: &s2hv1.ConfigComponentUpgradeReport{
-								Interval: c.interval,
-								Criteria: c.criteria,
+								Interval:     c.interval,
+								Criteria:     c.criteria,
+								ExtraMessage: c.extraMessage,
+							},
+							ActivePromotion: &s2hv1.ConfigActivePromotionReport{
+								ExtraMessage: c.extraMessage,
+							},
+							PullRequestQueue: &s2hv1.ConfigPullRequestQueueReport{
+								Interval:     c.interval,
+								Criteria:     c.criteria,
+								ExtraMessage: c.extraMessage,
+							},
+							PullRequestTrigger: &s2hv1.ConfigPullRequestTriggerReport{
+								Criteria:     c.criteria,
+								ExtraMessage: c.extraMessage,
 							},
 						},
 					},
