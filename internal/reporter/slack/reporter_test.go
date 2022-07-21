@@ -172,7 +172,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(err).Should(BeNil())
 			g.Expect(mockSlackCli.postMessageCalls).Should(Equal(2))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Failure"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(extraMessage)))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(extraMessage))
 		})
 
 		It("should correctly send component upgrade failure with image missing list message", func() {
@@ -420,7 +420,7 @@ var _ = Describe("send slack message", func() {
 				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678/log|Download here>"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring(
 				"<http://localhost:8080/teams/owner/pullrequest/queue/histories/comp1-5678|Click here>"))
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(extraMessage)))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(extraMessage))
 		})
 	})
 
@@ -525,7 +525,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("All components are up to date!"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("previous active namespace `owner-prevns` will be destroyed at `" + timeNow.Format("2006-01-02 15:04:05 MST")))
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(extraMessage)))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(extraMessage))
 		})
 
 		It("should correctly send active promotion failure with outdated components/image missing/deployment issues message",
@@ -786,7 +786,7 @@ var _ = Describe("send slack message", func() {
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("Image Missing List"))
 			g.Expect(mockSlackCli.message).Should(ContainSubstring("registry/comp-2-missing:2.0.0"))
 			g.Expect(err).Should(BeNil())
-			g.Expect(mockSlackCli.message).Should(ContainSubstring(string(extraMessage)))
+			g.Expect(mockSlackCli.message).Should(ContainSubstring(extraMessage))
 		})
 
 		It("should correctly send pull request trigger success message", func() {
