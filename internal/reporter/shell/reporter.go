@@ -196,6 +196,13 @@ func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigContro
 	return nil
 }
 
+// SendPullRequestTestRunnerPendingResult send pull request test runner pending status
+func (r *reporter) SendPullRequestTestRunnerPendingResult(configCtrl internal.ConfigController, prTestRunnerRpt *internal.PullRequestTestRunnerPendingReporter) error {
+
+	// does not support
+	return nil
+}
+
 func (r *reporter) execute(cmdObj *s2hv1.CommandAndArgs, event internal.EventType) error {
 	logger.Debug("start executing command", "event", event)
 

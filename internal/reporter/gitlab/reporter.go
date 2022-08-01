@@ -88,13 +88,19 @@ func (r *reporter) SendComponentUpgrade(configCtrl internal.ConfigController,
 func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 	comp *internal.ComponentUpgradeReporter) error {
 
-	gitlabConfig, err := r.getGitlabConfig(comp.TeamName, configCtrl)
+	teamName := comp.TeamName
+	gitlabConfig, err := r.getGitlabConfig(teamName, configCtrl)
 	if err != nil {
 		return nil
 	}
 
-	repository := r.getGitlabRepository(comp, configCtrl)
-	r.overrideGitlabCredential(comp, gitlabConfig)
+	prBundlName := ""
+	if comp.PullRequestComponent != nil {
+		prBundlName = comp.PullRequestComponent.BundleName
+	}
+
+	repository := r.getGitlabRepository(teamName, prBundlName, configCtrl)
+	r.overrideGitlabCredential(comp.Credential, gitlabConfig)
 
 	commitSHA := comp.PullRequestComponent.CommitSHA
 	commitStatus := r.convertCommitStatus(comp.Status)
@@ -171,9 +177,43 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return nil
 }
 
-func (r *reporter) post(gitlabConfig *s2hv1.ReporterGitlab,
-	repository, commitSHA, labelName, targetURL, description string,
-	commitStatus gitlab.CommitStatus, event internal.EventType) error {
+// SendPullRequestTestRunnerPendingResult implements the reporter SendPullRequestTestRunnerPendingResult function
+func (r *reporter) SendPullRequestTestRunnerPendingResult(configCtrl internal.ConfigController,
+	prTestRunnerRpt *internal.PullRequestTestRunnerPendingReporter) error {
+
+	teamName := prTestRunnerRpt.TeamName
+	gitlabConfig, err := r.getGitlabConfig(teamName, configCtrl)
+	if err != nil {
+		return nil
+	}
+
+	prBundelName := prTestRunnerRpt.BundleName
+	repository := r.getGitlabRepository(teamName, prBundelName, configCtrl)
+	r.overrideGitlabCredential(prTestRunnerRpt.Credential, gitlabConfig)
+
+	commitSHA := prTestRunnerRpt.CommitSHA
+
+	// send pull request log status pending while testrunner pipeline is running
+	err = r.post(gitlabConfig, repository, commitSHA, LabelNameLogs, "", "",
+		gitlab.CommitStatusPending,
+		internal.PullRequestQueueType,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *reporter) post(
+	gitlabConfig *s2hv1.ReporterGitlab,
+	repository,
+	commitSHA,
+	labelName,
+	targetURL,
+	description string,
+	commitStatus gitlab.CommitStatus,
+	event internal.EventType,
+) error {
 
 	if !gitlabConfig.Enabled || repository == "" {
 		return nil
@@ -213,22 +253,17 @@ func (r *reporter) getGitlabConfig(teamName string, configCtrl internal.ConfigCo
 	return config.Status.Used.Reporter.Gitlab, nil
 }
 
-func (r *reporter) getGitlabRepository(comp *internal.ComponentUpgradeReporter,
+func (r *reporter) getGitlabRepository(teamName, prBundleName string,
 	configCtrl internal.ConfigController) string {
 
-	config, err := configCtrl.Get(comp.TeamName)
+	config, err := configCtrl.Get(teamName)
 	if err != nil {
 		return ""
 	}
 
-	// no Gitlab configuration
-	if comp.PullRequestComponent == nil {
-		return ""
-	}
-
 	repository := ""
-	prBundleName := comp.PullRequestComponent.BundleName
-	if config.Status.Used.PullRequest != nil && len(config.Status.Used.PullRequest.Bundles) > 0 {
+	if config.Status.Used.PullRequest != nil && prBundleName != "" &&
+		len(config.Status.Used.PullRequest.Bundles) > 0 {
 		for _, bundle := range config.Status.Used.PullRequest.Bundles {
 			if bundle.Name == prBundleName {
 				repository = bundle.GitRepository
@@ -240,11 +275,11 @@ func (r *reporter) getGitlabRepository(comp *internal.ComponentUpgradeReporter,
 	return repository
 }
 
-func (r *reporter) overrideGitlabCredential(comp *internal.ComponentUpgradeReporter,
+func (r *reporter) overrideGitlabCredential(credential s2hv1.Credential,
 	gitlabConfig *s2hv1.ReporterGitlab) {
 
-	if comp.Credential.Gitlab != nil && comp.Credential.Gitlab.Token != "" {
-		r.gitlabToken = comp.Credential.Gitlab.Token
+	if credential.Gitlab != nil && credential.Gitlab.Token != "" {
+		r.gitlabToken = credential.Gitlab.Token
 	}
 
 	if gitlabConfig.BaseURL != "" {

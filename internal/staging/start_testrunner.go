@@ -1,11 +1,13 @@
 package staging
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/gitlab"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/testmock"
+	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 type testResult string
@@ -71,6 +74,19 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	// update queue back to k8s
 	if err := c.updateQueue(queue); err != nil {
 		return err
+	}
+
+	// send commit status while test is running
+	if queue.Spec.Type == s2hv1.QueueTypePullRequest {
+		if _, err := c.s2hClient.RunPostPullRequestQueueTestRunnerTrigger(context.TODO(), &samsahairpc.TeamWithPullRequest{
+			TeamName:   c.teamName,
+			Namespace:  queue.Namespace,
+			BundleName: queue.Spec.Bundle,
+		}); err != nil {
+			return errors.Wrapf(err,
+				"cannot send pull request test runner pending status report, team: %s, component: %s, prNumber: %s",
+				c.teamName, queue.Spec.Bundle, queue.Spec.PRNumber)
+		}
 	}
 
 	// get result from tests (polling check)

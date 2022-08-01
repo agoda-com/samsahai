@@ -218,6 +218,13 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return r.post(slackConfig, message, internal.PullRequestTriggerType)
 }
 
+// SendPullRequestTestRunnerPendingResult send pull request test runner pending status
+func (r *reporter) SendPullRequestTestRunnerPendingResult(configCtrl internal.ConfigController, prTestRunnerRpt *internal.PullRequestTestRunnerPendingReporter) error {
+
+	// does not support
+	return nil
+}
+
 // SendActiveEnvironmentDeleted implements the reporter SendActiveEnvironmentDeleted function
 func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigController,
 	activeNsDeletedRpt *internal.ActiveEnvironmentDeletedReporter) error {

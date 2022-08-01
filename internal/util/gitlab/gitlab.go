@@ -27,6 +27,8 @@ const (
 	CommitStatusSuccess CommitStatus = "success"
 	// CommitStatusFailure represents a failure of commit status
 	CommitStatusFailure CommitStatus = "failed"
+	// CommitStatusPending represents a failure of commit status
+	CommitStatusPending CommitStatus = "Pending"
 )
 
 // Gitlab is the interface of Gitlab using Gitlab REST API

@@ -287,6 +287,29 @@ func (c *controller) RunPostPullRequestTrigger(ctx context.Context, prTriggerRPC
 	return &rpc.Empty{}, nil
 }
 
+func (c *controller) RunPostPullRequestQueueTestRunnerTrigger(ctx context.Context, teamWithPR *rpc.TeamWithPullRequest) (
+	*rpc.Empty, error) {
+
+	if err := c.authenticateRPC(ctx); err != nil {
+		return nil, err
+	}
+
+	prQueueName := teamWithPR.BundleName
+	prQueueNamespace := teamWithPR.Namespace
+	prQueue := &s2hv1.PullRequestQueue{}
+	err := c.client.Get(context.TODO(), types.NamespacedName{
+		Name:      prQueueName,
+		Namespace: prQueueNamespace,
+	}, prQueue)
+	if err != nil {
+		return nil, err
+	}
+
+	c.sendPullRequestTestRunnerPendingReport(prQueue, teamWithPR)
+
+	return &rpc.Empty{}, nil
+}
+
 func (c *controller) SendUpdateStateQueueMetric(ctx context.Context, comp *rpc.ComponentUpgrade) (*rpc.Empty, error) {
 	if err := c.authenticateRPC(ctx); err != nil {
 		return nil, err
@@ -873,6 +896,33 @@ func (c *controller) sendPullRequestTriggerReport(prTrigger *s2hv1.PullRequestTr
 		if err := reporter.SendPullRequestTriggerResult(configCtrl, prTriggerRpt); err != nil {
 			logger.Error(err, "cannot send pull request trigger result report",
 				"team", prTriggerRPC.TeamName, "bundle", bundleName, "prNumber", prNumber)
+		}
+	}
+}
+
+func (c *controller) sendPullRequestTestRunnerPendingReport(prQueue *s2hv1.PullRequestQueue, teamWithPR *rpc.TeamWithPullRequest) {
+	configCtrl := c.GetConfigController()
+
+	teamComp := &s2hv1.Team{}
+	err := c.getTeam(teamWithPR.TeamName, teamComp)
+	if err != nil {
+		logger.Error(err, "cannot get team", "team", teamWithPR.TeamName)
+	}
+
+	if err := c.LoadTeamSecret(teamComp); err != nil {
+		logger.Error(err, "cannot load team secret", "team", teamComp.Name)
+	}
+
+	bundleName := prQueue.Spec.BundleName
+	prNumber := prQueue.Spec.PRNumber
+	commitSHA := prQueue.Spec.CommitSHA
+	for _, reporter := range c.reporters {
+		prTriggerRpt := s2h.NewPullRequestTestRunnerPendingReporter(c.configs, teamWithPR.TeamName,
+			bundleName, prQueue.Spec.PRNumber, commitSHA, teamComp.Status.Used.Credential)
+
+		if err := reporter.SendPullRequestTestRunnerPendingResult(configCtrl, prTriggerRpt); err != nil {
+			logger.Error(err, "cannot send pull request trigger result report",
+				"team", teamWithPR.TeamName, "bundle", bundleName, "prNumber", prNumber)
 		}
 	}
 }
