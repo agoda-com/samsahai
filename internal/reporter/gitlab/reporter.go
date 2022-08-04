@@ -195,14 +195,10 @@ func (r *reporter) SendPullRequestTestRunnerPendingResult(configCtrl internal.Co
 	commitSHA := prTestRunnerRpt.CommitSHA
 
 	// send pull request log status pending while testrunner pipeline is running
-	err = r.post(gitlabConfig, projectID, commitSHA, LabelNameLogs, "", "",
+	return r.post(gitlabConfig, projectID, commitSHA, LabelNameLogs, "", "",
 		gitlab.CommitStatusPending,
 		internal.PullRequestQueueType,
 	)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (r *reporter) post(

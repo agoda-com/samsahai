@@ -927,6 +927,7 @@ func (c *controller) sendPullRequestTestRunnerPendingReport(prQueue *s2hv1.PullR
 		if err := reporter.SendPullRequestTestRunnerPendingResult(configCtrl, prTriggerRpt); err != nil {
 			logger.Error(err, "cannot send pull request trigger result report",
 				"team", teamWithPR.TeamName, "bundle", bundleName, "prNumber", prNumber)
+			return err
 		}
 	}
 	return nil

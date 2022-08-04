@@ -340,37 +340,37 @@ func (c *controller) sendTestPendingResult(queue *s2hv1.Queue) error {
 		logger.Error(err, "cannot set request header")
 		return err
 	}
+
 	for retry := 0; retry <= sendTestPendingRetry; retry++ {
 		if _, err := c.s2hClient.RunPostPullRequestQueueTestRunnerTrigger(ctx, &samsahairpc.TeamWithPullRequest{
 			TeamName:   c.teamName,
 			Namespace:  internal.GenStagingNamespace(c.teamName),
 			BundleName: internal.GenPullRequestBundleName(queue.Spec.Name, queue.Spec.PRNumber),
-		}); err == nil {
-			logger.Info("sent pull request test runner pending status successfully",
+		}); err != nil {
+			logger.Error(err,
+				"cannot send pull request test runner pending status report, team: %s, component: %s, prNumber: %s",
 				"team", c.teamName, "component", queue.Spec.Name, "pr number", queue.Spec.PRNumber)
-			// set state, test pending status has been sent
+			// set state, cannot send test pending status
 			queue.Status.SetCondition(
 				s2hv1.QueueTestPendingStatusSent,
-				v1.ConditionTrue,
-				"queue test pending status has been sent")
+				v1.ConditionFalse,
+				"cannot send queue test pending status")
 			if err := c.updateQueue(queue); err != nil {
-				return err
+				logger.Error(err, "cannot update queue", "name", queue.Name)
 			}
-			return nil
+			return  err
 		}
 	}
-	logger.Error(err,
-		"cannot send pull request test runner pending status report, team: %s, component: %s, prNumber: %s",
+	logger.Info("sent pull request test runner pending status successfully",
 		"team", c.teamName, "component", queue.Spec.Name, "pr number", queue.Spec.PRNumber)
-
-	// set state, cannot send test pending status
+	// set state, test pending status has been sent
 	queue.Status.SetCondition(
 		s2hv1.QueueTestPendingStatusSent,
-		v1.ConditionFalse,
-		"cannot send queue test pending status")
+		v1.ConditionTrue,
+		"queue test pending status has been sent")
 	if err := c.updateQueue(queue); err != nil {
+		logger.Error(err, "cannot update queue", "name", queue.Name)
 		return err
 	}
-
-	return err
+	return nil
 }
