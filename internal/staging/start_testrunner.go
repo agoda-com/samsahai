@@ -79,8 +79,8 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	}
 
 	// send pending status while test is running
-	isSendingPendingStatus := queue.Status.IsConditionNull(s2hv1.QueueTestPendingStatusSent)
-	if queue.Spec.Type == s2hv1.QueueTypePullRequest && isSendingPendingStatus {
+	isSentPendingStatus := queue.Status.IsConditionNull(s2hv1.QueueTestPendingStatusSent)
+	if queue.Spec.Type == s2hv1.QueueTypePullRequest && isSentPendingStatus {
 		if err := c.sendTestPendingResult(queue); err != nil {
 			return err
 		}
@@ -124,6 +124,8 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	}
 	// test finished, change state to `s2hv1.Collecting`
 	if allTestFinished {
+
+
 		return c.updateTestQueueCondition(queue, testCondition, message)
 	}
 	return nil
@@ -343,10 +345,10 @@ func (c *controller) sendTestPendingResult(queue *s2hv1.Queue) error {
 		if _, err := c.s2hClient.RunPostPullRequestQueueTestRunnerTrigger(ctx, &samsahairpc.TeamWithPullRequest{
 			TeamName:   c.teamName,
 			Namespace:  internal.GenStagingNamespace(c.teamName),
-			BundleName: queue.Spec.Name,
+			BundleName: internal.GenPullRequestBundleName(queue.Spec.Name,queue.Spec.PRNumber),
 		}); err == nil {
-			logger.Info("sent pull request test runner pending status successfully, team: %s, component: %s, prNumber: %s",
-				c.teamName, queue.Spec.Name, queue.Spec.PRNumber)
+			logger.Info("sent pull request test runner pending status successfully",
+				"team",c.teamName,"component" , queue.Spec.Name,"pr number", queue.Spec.PRNumber)
 			// set state, test pending status has been sent
 			queue.Status.SetCondition(
 				s2hv1.QueueTestPendingStatusSent,

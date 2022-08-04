@@ -28,7 +28,7 @@ const (
 	// CommitStatusFailure represents a failure of commit status
 	CommitStatusFailure CommitStatus = "failed"
 	// CommitStatusPending represents a failure of commit status
-	CommitStatusPending CommitStatus = "Pending"
+	CommitStatusPending CommitStatus = "pending"
 )
 
 // Gitlab is the interface of Gitlab using Gitlab REST API
@@ -92,6 +92,7 @@ func (c *Client) PublishCommitStatus(repository, commitSHA, labelName, targetURL
 		opts := []http.Option{
 			http.WithTimeout(requestTimeout),
 			http.WithContext(ctx),
+			http.WithHeader("PRIVATE-TOKEN", gitToken),
 		}
 
 		reqJSON := bodyReq{

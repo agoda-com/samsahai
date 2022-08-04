@@ -94,12 +94,23 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 		return nil
 	}
 
-	prBundlName := ""
-	if comp.PullRequestComponent != nil {
-		prBundlName = comp.PullRequestComponent.BundleName
+	conf, err := configCtrl.Get(teamName)
+	if err != nil {
+		return nil
+	}
+	repository := ""
+	for _, b := range conf.Spec.PullRequest.Bundles {
+		if b.Name == comp.Name {
+			repository = b.Deployment.TestRunner.Gitlab.ProjectID
+		}
 	}
 
-	repository := r.getGitlabRepository(teamName, prBundlName, configCtrl)
+	//prBundlName := ""
+	//if comp.PullRequestComponent != nil {
+	//	prBundlName = comp.PullRequestComponent.BundleName
+	//}
+
+	//repository := r.getGitlabRepository(teamName, prBundlName, configCtrl)
 	r.overrideGitlabCredential(comp.Credential, gitlabConfig)
 
 	commitSHA := comp.PullRequestComponent.CommitSHA
@@ -187,8 +198,17 @@ func (r *reporter) SendPullRequestTestRunnerPendingResult(configCtrl internal.Co
 		return nil
 	}
 
-	prBundelName := prTestRunnerRpt.BundleName
-	repository := r.getGitlabRepository(teamName, prBundelName, configCtrl)
+	conf, err := configCtrl.Get(teamName)
+	if err != nil {
+		return nil
+	}
+	repository := ""
+	for _, b := range conf.Spec.PullRequest.Bundles {
+		if b.Name == prTestRunnerRpt.BundleName {
+			repository = b.Deployment.TestRunner.Gitlab.ProjectID
+		}
+	}
+
 	r.overrideGitlabCredential(prTestRunnerRpt.Credential, gitlabConfig)
 
 	commitSHA := prTestRunnerRpt.CommitSHA
