@@ -79,8 +79,8 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	}
 
 	// send pending status while test is running
-	isSentPendingStatus := queue.Status.IsConditionNull(s2hv1.QueueTestPendingStatusSent)
-	if queue.Spec.Type == s2hv1.QueueTypePullRequest && isSentPendingStatus {
+	isSentPendingStatus := queue.Status.IsContains(s2hv1.QueueTestPendingStatusSent)
+	if queue.Spec.Type == s2hv1.QueueTypePullRequest && !isSentPendingStatus {
 		if err := c.sendTestPendingResult(queue); err != nil {
 			return err
 		}
@@ -124,8 +124,6 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	}
 	// test finished, change state to `s2hv1.Collecting`
 	if allTestFinished {
-
-
 		return c.updateTestQueueCondition(queue, testCondition, message)
 	}
 	return nil
@@ -340,15 +338,16 @@ func (c *controller) sendTestPendingResult(queue *s2hv1.Queue) error {
 	ctx, err := twirp.WithHTTPRequestHeaders(context.TODO(), headers)
 	if err != nil {
 		logger.Error(err, "cannot set request header")
+		return err
 	}
 	for retry := 0; retry <= sendTestPendingRetry; retry++ {
 		if _, err := c.s2hClient.RunPostPullRequestQueueTestRunnerTrigger(ctx, &samsahairpc.TeamWithPullRequest{
 			TeamName:   c.teamName,
 			Namespace:  internal.GenStagingNamespace(c.teamName),
-			BundleName: internal.GenPullRequestBundleName(queue.Spec.Name,queue.Spec.PRNumber),
+			BundleName: internal.GenPullRequestBundleName(queue.Spec.Name, queue.Spec.PRNumber),
 		}); err == nil {
 			logger.Info("sent pull request test runner pending status successfully",
-				"team",c.teamName,"component" , queue.Spec.Name,"pr number", queue.Spec.PRNumber)
+				"team", c.teamName, "component", queue.Spec.Name, "pr number", queue.Spec.PRNumber)
 			// set state, test pending status has been sent
 			queue.Status.SetCondition(
 				s2hv1.QueueTestPendingStatusSent,
@@ -362,7 +361,7 @@ func (c *controller) sendTestPendingResult(queue *s2hv1.Queue) error {
 	}
 	logger.Error(err,
 		"cannot send pull request test runner pending status report, team: %s, component: %s, prNumber: %s",
-		c.teamName, queue.Spec.Name, queue.Spec.PRNumber)
+		"team", c.teamName, "component", queue.Spec.Name, "pr number", queue.Spec.PRNumber)
 
 	// set state, cannot send test pending status
 	queue.Status.SetCondition(

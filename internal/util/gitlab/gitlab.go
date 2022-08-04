@@ -27,7 +27,7 @@ const (
 	CommitStatusSuccess CommitStatus = "success"
 	// CommitStatusFailure represents a failure of commit status
 	CommitStatusFailure CommitStatus = "failed"
-	// CommitStatusPending represents a failure of commit status
+	// CommitStatusPending represents a pending of commit status
 	CommitStatusPending CommitStatus = "pending"
 )
 
@@ -185,7 +185,7 @@ func (c *Client) GetMRSourceBranch(repository, MRiid string) (string, error) {
 		}
 
 		logger.Info("get MR source branch successfully ",
-			"repository", repository, "iid", MRiid)
+			"repository", repository, "iid", MRiid, "branch", MR.SourceBranch)
 		return MR.SourceBranch, nil
 	}
 }

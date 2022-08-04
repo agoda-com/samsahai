@@ -60,12 +60,14 @@ func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestR
 	testRunner := deployConfig.TestRunner
 
 	// override testRunner
-	if testRunnerOverrider := queue.GetTestRunnerExtraParameter(); testRunnerOverrider != nil {
+	testRunnerOverrider := queue.GetTestRunnerExtraParameter()
+	if testRunnerOverrider != nil {
 		testRunner = testRunnerOverrider.Override(testRunner)
 	}
 
 	// try to infer gitlab MR branch in PR flow
-	if queue.IsPullRequestQueue() && testRunner != nil {
+	if queue.IsPullRequestQueue() && testRunner != nil &&
+		testRunnerOverrider.Gitlab.Branch == nil {
 		gitlabClientGetter := func() gitlab.Gitlab {
 			return gitlab.NewClient(c.gitlabBaseURL, c.gitlabToken)
 		}

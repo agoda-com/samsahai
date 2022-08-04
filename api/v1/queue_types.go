@@ -343,13 +343,13 @@ func (qs *QueueStatus) IsConditionTrue(cond QueueConditionType) bool {
 	return false
 }
 
-func (qs *QueueStatus) IsConditionNull(cond QueueConditionType) bool {
+func (qs *QueueStatus) IsContains(cond QueueConditionType) bool {
 	for _, c := range qs.Conditions {
 		if c.Type == cond {
-			return false
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 func (qs *QueueStatus) SetCondition(cond QueueConditionType, status corev1.ConditionStatus, message string) {

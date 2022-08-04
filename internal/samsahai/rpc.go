@@ -297,7 +297,7 @@ func (c *controller) RunPostPullRequestQueueTestRunnerTrigger(ctx context.Contex
 	prQueueName := teamWithPR.BundleName
 	prQueueNamespace := teamWithPR.Namespace
 	prQueue := &s2hv1.PullRequestQueue{}
-	err := c.client.Get(context.TODO(), types.NamespacedName{
+	err := c.client.Get(ctx, types.NamespacedName{
 		Name:      prQueueName,
 		Namespace: prQueueNamespace,
 	}, prQueue)
@@ -305,7 +305,9 @@ func (c *controller) RunPostPullRequestQueueTestRunnerTrigger(ctx context.Contex
 		return nil, err
 	}
 
-	c.sendPullRequestTestRunnerPendingReport(prQueue, teamWithPR)
+	if err := c.sendPullRequestTestRunnerPendingReport(prQueue, teamWithPR); err != nil {
+		return nil, err
+	}
 
 	return &rpc.Empty{}, nil
 }
@@ -900,17 +902,19 @@ func (c *controller) sendPullRequestTriggerReport(prTrigger *s2hv1.PullRequestTr
 	}
 }
 
-func (c *controller) sendPullRequestTestRunnerPendingReport(prQueue *s2hv1.PullRequestQueue, teamWithPR *rpc.TeamWithPullRequest) {
+func (c *controller) sendPullRequestTestRunnerPendingReport(prQueue *s2hv1.PullRequestQueue, teamWithPR *rpc.TeamWithPullRequest) error {
 	configCtrl := c.GetConfigController()
 
 	teamComp := &s2hv1.Team{}
 	err := c.getTeam(teamWithPR.TeamName, teamComp)
 	if err != nil {
 		logger.Error(err, "cannot get team", "team", teamWithPR.TeamName)
+		return err
 	}
 
 	if err := c.LoadTeamSecret(teamComp); err != nil {
 		logger.Error(err, "cannot load team secret", "team", teamComp.Name)
+		return err
 	}
 
 	bundleName := prQueue.Spec.BundleName
@@ -925,4 +929,5 @@ func (c *controller) sendPullRequestTestRunnerPendingReport(prQueue *s2hv1.PullR
 				"team", teamWithPR.TeamName, "bundle", bundleName, "prNumber", prNumber)
 		}
 	}
+	return nil
 }
