@@ -94,10 +94,14 @@ func (r *reporter) SendPullRequestQueue(configCtrl internal.ConfigController,
 		return err
 	}
 
-	projectID, err := r.getGitlabProjectID(configCtrl, teamName, comp.Name)
-	if err != nil {
-		return err
+	projectID := ""
+	if comp.PullRequestComponent != nil {
+		projectID, err = r.getGitlabProjectID(configCtrl, teamName, comp.PullRequestComponent.BundleName)
+		if err != nil {
+			return err
+		}
 	}
+
 	r.overrideGitlabCredential(comp.Credential, gitlabConfig)
 
 	commitSHA := comp.PullRequestComponent.CommitSHA
@@ -269,8 +273,8 @@ func (r *reporter) getGitlabProjectID(configCtrl internal.ConfigController, team
 	}
 
 	projectID := ""
-	for _, b := range conf.Spec.PullRequest.Bundles {
-		if b.Name == bundleName {
+	for _, b := range conf.Status.Used.PullRequest.Bundles {
+		if b.Name == bundleName && b.Deployment != nil {
 			projectID = b.Deployment.TestRunner.Gitlab.ProjectID
 			break
 		}

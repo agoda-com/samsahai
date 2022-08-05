@@ -358,7 +358,7 @@ func (c *controller) sendTestPendingResult(queue *s2hv1.Queue) error {
 			if err := c.updateQueue(queue); err != nil {
 				logger.Error(err, "cannot update queue", "name", queue.Name)
 			}
-			return  err
+			return err
 		}
 	}
 	logger.Info("sent pull request test runner pending status successfully",
