@@ -49,7 +49,7 @@ var _ = Describe("publish commit status to gitlab", func() {
 			err := r.SendPullRequestQueue(configCtrl, comp)
 			g.Expect(err).Should(BeNil())
 			g.Expect(mockGitlabCli.publishCalls).Should(Equal(2))
-			g.Expect(mockGitlabCli.repository).Should(Equal("samsahai/samsahai"))
+			g.Expect(mockGitlabCli.repository).Should(Equal("12345"))
 			g.Expect(mockGitlabCli.commitSHA).Should(Equal("commit-sha-xxx"))
 			g.Expect(mockGitlabCli.status).Should(Equal(gitlab.CommitStatusSuccess))
 			g.Expect(mockGitlabCli.targetURLs).Should(Equal([]string{
@@ -93,7 +93,7 @@ var _ = Describe("publish commit status to gitlab", func() {
 			r := s2hgitlab.New(s2hgitlab.WithGitlabClient(mockGitlabCli))
 			comp := internal.NewComponentUpgradeReporter(rpcComp, internal.SamsahaiConfig{})
 			err := r.SendPullRequestQueue(configCtrl, comp)
-			g.Expect(err).To(BeNil())
+			g.Expect(err).To(HaveOccurred())
 			g.Expect(mockGitlabCli.publishCalls).Should(Equal(0))
 		})
 
@@ -175,6 +175,13 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 							{
 								Name:          "bundle-1",
 								GitRepository: "error",
+								Deployment: &s2hv1.ConfigDeploy{
+									TestRunner: &s2hv1.ConfigTestRunner{
+										Gitlab: &s2hv1.ConfigGitlab{
+											ProjectID: "error",
+										},
+									},
+								},
 							},
 						},
 					},
@@ -199,6 +206,13 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 									{},
 								},
 								GitRepository: "samsahai/samsahai",
+								Deployment: &s2hv1.ConfigDeploy{
+									TestRunner: &s2hv1.ConfigTestRunner{
+										Gitlab: &s2hv1.ConfigGitlab{
+											ProjectID: "12345",
+										},
+									},
+								},
 							},
 						},
 					},

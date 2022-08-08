@@ -247,6 +247,13 @@ func (r *reporter) SendActiveEnvironmentDeleted(configCtrl internal.ConfigContro
 	return nil
 }
 
+// SendPullRequestTestRunnerPendingResult send pull request test runner pending status
+func (r *reporter) SendPullRequestTestRunnerPendingResult(configCtrl internal.ConfigController, prTestRunnerRpt *internal.PullRequestTestRunnerPendingReporter) error {
+
+	// does not support
+	return nil
+}
+
 // send provides handling convert ReporterJSON to []byte and sent it via http POST
 func (r *reporter) send(url string, body []byte, event internal.EventType) error {
 	restCli := r.rest

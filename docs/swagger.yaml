@@ -280,6 +280,12 @@ definitions:
           +optional
         type: string
     type: object
+  v1.ConfigActivePromotionReport:
+    properties:
+      extraMessage:
+        description: +optional
+        type: string
+    type: object
   v1.ConfigBundles:
     additionalProperties:
       items: {}
@@ -288,6 +294,9 @@ definitions:
   v1.ConfigComponentUpgradeReport:
     properties:
       criteria:
+        description: +optional
+        type: string
+      extraMessage:
         description: +optional
         type: string
       interval:
@@ -399,6 +408,9 @@ definitions:
       criteria:
         description: +optional
         type: string
+      extraMessage:
+        description: +optional
+        type: string
       interval:
         description: +optional
         type: string
@@ -406,6 +418,9 @@ definitions:
   v1.ConfigPullRequestTriggerReport:
     properties:
       criteria:
+        description: +optional
+        type: string
+      extraMessage:
         description: +optional
         type: string
     type: object
@@ -1285,6 +1300,10 @@ definitions:
     type: object
   v1.ReporterSlack:
     properties:
+      activePromotion:
+        $ref: '#/definitions/v1.ConfigActivePromotionReport'
+        description: +optional
+        type: object
       channels:
         items:
           type: string
@@ -1293,6 +1312,9 @@ definitions:
         $ref: '#/definitions/v1.ConfigComponentUpgradeReport'
         description: +optional
         type: object
+      extraMessage:
+        description: +optional
+        type: string
       pullRequestQueue:
         $ref: '#/definitions/v1.ConfigPullRequestQueueReport'
         description: +optional

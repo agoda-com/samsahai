@@ -171,6 +171,13 @@ func (r *reporter) SendPullRequestTriggerResult(configCtrl internal.ConfigContro
 	return nil
 }
 
+// SendPullRequestTestRunnerPendingResult send pull request test runner pending status
+func (r *reporter) SendPullRequestTestRunnerPendingResult(configCtrl internal.ConfigController, prTestRunnerRpt *internal.PullRequestTestRunnerPendingReporter) error {
+
+	// does not support
+	return nil
+}
+
 func (r *reporter) post(githubConfig *s2hv1.ReporterGithub,
 	repository, commitSHA, labelName, targetURL, description string,
 	commitStatus github.CommitStatus, event internal.EventType) error {
