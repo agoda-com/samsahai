@@ -37,7 +37,7 @@ import (
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-var _ = Describe("[e2e] Staging controller", func() {
+var _ = FDescribe("[e2e] Staging controller", func() {
 	const (
 		verifyTime1s  = 1 * time.Second
 		verifyTime10s = 10 * time.Second
@@ -169,11 +169,11 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Chart: s2hv1.ComponentChart{
 			Repository: "https://charts.bitnami.com/bitnami",
 			Name:       redisCompName,
-			Version:    "12.10.1",
+			Version:    "17.2.0",
 		},
 		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/redis",
-			Pattern:    "5.*debian-9.*",
+			Pattern:    ".*debian-.*",
 		},
 		Source: &compSource,
 		Values: s2hv1.ComponentValues{
@@ -761,7 +761,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		go stagingCtrl.Start(chStop)
 
 		redis := queue.NewQueue(teamName, namespace, redisCompName, "",
-			s2hv1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r185"}},
+			s2hv1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "7.0.4-debian-11-r13"}},
 			s2hv1.QueueTypeUpgrade,
 		)
 		Expect(client.Create(ctx, redis)).To(BeNil())
