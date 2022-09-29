@@ -534,7 +534,7 @@ var _ = FDescribe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Testing error")
 
 		By("Collecting")
-		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(2*time.Second, 90*time.Second, func() (ok bool, err error) {
 			redisStableComp := &s2hv1.StableComponent{}
 			err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: redisCompName},
 				redisStableComp)
@@ -581,7 +581,7 @@ var _ = FDescribe("[e2e] Staging controller", func() {
 			}
 
 			for _, p := range svc.Spec.Ports {
-				if p.NodePort == 31002 {
+				if p.NodePort != 0 {
 					ok = true
 					return
 				}
@@ -641,7 +641,7 @@ var _ = FDescribe("[e2e] Staging controller", func() {
 		By("Delete Promote to Active Queue")
 		Expect(queue.DeletePromoteToActiveQueue(client, namespace))
 
-	}, 300)
+	}, 330)
 
 	It("should successfully deploy pull request type", func() {
 		authToken := "12345"
