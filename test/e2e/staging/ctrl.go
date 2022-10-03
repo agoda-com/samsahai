@@ -169,11 +169,11 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Chart: s2hv1.ComponentChart{
 			Repository: "https://charts.bitnami.com/bitnami",
 			Name:       redisCompName,
-			Version:    "12.10.1",
+			Version:    "17.2.0",
 		},
 		Image: s2hv1.ComponentImage{
 			Repository: "bitnami/redis",
-			Pattern:    "5.*debian-9.*",
+			Pattern:    ".*debian-.*",
 		},
 		Source: &compSource,
 		Values: s2hv1.ComponentValues{
@@ -534,7 +534,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Testing error")
 
 		By("Collecting")
-		err = wait.PollImmediate(2*time.Second, 60*time.Second, func() (ok bool, err error) {
+		err = wait.PollImmediate(2*time.Second, 90*time.Second, func() (ok bool, err error) {
 			redisStableComp := &s2hv1.StableComponent{}
 			err = client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: redisCompName},
 				redisStableComp)
@@ -581,7 +581,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 			}
 
 			for _, p := range svc.Spec.Ports {
-				if p.NodePort == 31002 {
+				if p.NodePort != 0 {
 					ok = true
 					return
 				}
@@ -641,7 +641,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		By("Delete Promote to Active Queue")
 		Expect(queue.DeletePromoteToActiveQueue(client, namespace))
 
-	}, 300)
+	}, 330)
 
 	It("should successfully deploy pull request type", func() {
 		authToken := "12345"
@@ -761,7 +761,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		go stagingCtrl.Start(chStop)
 
 		redis := queue.NewQueue(teamName, namespace, redisCompName, "",
-			s2hv1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "5.0.5-debian-9-r185"}},
+			s2hv1.QueueComponents{{Name: redisCompName, Repository: "bitnami/redis", Version: "7.0.4-debian-11-r13"}},
 			s2hv1.QueueTypeUpgrade,
 		)
 		Expect(client.Create(ctx, redis)).To(BeNil())
