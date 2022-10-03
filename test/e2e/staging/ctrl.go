@@ -37,7 +37,7 @@ import (
 	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
-var _ = FDescribe("[e2e] Staging controller", func() {
+var _ = Describe("[e2e] Staging controller", func() {
 	const (
 		verifyTime1s  = 1 * time.Second
 		verifyTime10s = 10 * time.Second
