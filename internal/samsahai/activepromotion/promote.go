@@ -52,9 +52,17 @@ func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv
 		"Result has been collected, promoted successfully")
 	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActivePromoted, corev1.ConditionTrue,
 		"Active environment has been promoted")
+
+	logger.Info("Promoted laew na")
+	if atpComp.Spec.SwitchBeforeDemote {
+		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemotionStarted, corev1.ConditionTrue,
+			"Active demotion has been started")
+		atpComp.SetState(s2hv1.ActivePromotionDemoting, "Demoting an active environment")
+		return nil
+	}
+
 	atpComp.SetState(s2hv1.ActivePromotionDestroyingPreviousActive,
 		"Destroying the previous active environment")
-
 	if err := c.runPostActive(ctx, atpComp); err != nil {
 		return err
 	}

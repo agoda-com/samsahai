@@ -144,6 +144,8 @@ type ActivePromotionConfig struct {
 
 	// PromoteOnTeamCreation defines whether auto-promote active environment or not when team creation?
 	PromoteOnTeamCreation bool `json:"promoteOnTeamCreation" yaml:"promoteOnTeamCreation"`
+
+	//	TODO Add SwitchBeforeDemote here
 }
 
 // SamsahaiController

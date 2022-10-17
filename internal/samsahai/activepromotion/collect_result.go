@@ -47,9 +47,16 @@ func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1.ActivePro
 		return nil
 	}
 
-	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemotionStarted, corev1.ConditionTrue,
-		"Active demotion has been started")
-	atpComp.SetState(s2hv1.ActivePromotionDemoting, "Demoting an active environment")
+	if atpComp.Spec.SwitchBeforeDemote {
+		// or can remove
+		//atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActivePromotionStarted, corev1.ConditionTrue,
+		//	"Active promotion an active environment has been started")
+		atpComp.SetState(s2hv1.ActivePromotionActiveEnvironment, "Promoting an active environment")
+	} else {
+		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemotionStarted, corev1.ConditionTrue,
+			"Active demotion has been started")
+		atpComp.SetState(s2hv1.ActivePromotionDemoting, "Demoting an active environment")
+	}
 
 	return nil
 }

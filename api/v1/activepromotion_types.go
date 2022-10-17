@@ -96,6 +96,9 @@ const (
 	// ActivePromotionCondActiveDemotionFinished means a previous active environment has been demoted
 	ActivePromotionCondActiveDemoted ActivePromotionConditionType = "ActiveDemoted"
 
+	// ActivePromotionCondActivePromotionStarted means the pre-active namespace start promoting to be a new active
+	// In case of successful promoting
+	ActivePromotionCondActivePromotionStarted ActivePromotionConditionType = "ActivePromotionStarted"
 	// ActivePromotionCondActivePromoted means the pre-active namespace has been promoted to be a new active
 	// In case of successful promoting
 	ActivePromotionCondActivePromoted ActivePromotionConditionType = "ActivePromoted"
@@ -130,6 +133,10 @@ type ActivePromotionSpec struct {
 	// PromotedBy represents a person who promoted the ActivePromotion
 	// +optional
 	PromotedBy string `json:"promotedBy,omitempty"`
+
+	// SwitchBeforeDemote represents a flag for switching to the new namespace before demote active namespace
+	// +optional
+	SwitchBeforeDemote bool `json:"switchBeforeDemote,omitempty"`
 }
 
 func (s *ActivePromotionSpec) SetTearDownDuration(d metav1.Duration) {
