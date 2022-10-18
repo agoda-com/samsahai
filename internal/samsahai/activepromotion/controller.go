@@ -83,20 +83,31 @@ func New(
 }
 
 func (c *controller) setup(ctx context.Context, atpComp *s2hv1.ActivePromotion) error {
+	config, err := c.s2hCtrl.GetConfigController().Get(atpComp.Name)
+	if err != nil {
+		return err
+	}
+
 	// set teardown duration from configuration if it's unset
 	if atpComp.Spec.TearDownDuration == nil {
 		duration := c.configs.ActivePromotion.TearDownDuration
-
-		config, err := c.s2hCtrl.GetConfigController().Get(atpComp.Name)
-		if err != nil {
-			return err
-		}
 
 		if config.Status.Used.ActivePromotion != nil && config.Status.Used.ActivePromotion.TearDownDuration.Duration != 0 {
 			duration = config.Status.Used.ActivePromotion.TearDownDuration
 		}
 
 		atpComp.Spec.SetTearDownDuration(duration)
+	}
+
+	// set NoDowntimeGuarantee from active-promotion.yaml if the value in the configuration file is not set
+	if atpComp.Spec.NoDowntimeGuarantee == nil {
+		atpComp.Spec.NoDowntimeGuarantee = &config.Spec.ActivePromotion.NoDowntimeGuarantee
+	}
+
+	if *atpComp.Spec.NoDowntimeGuarantee {
+		logger.Info("The active promotion will run promote before demote")
+	} else {
+		logger.Info("The active promotion will run demote before promote")
 	}
 
 	c.appendStateLabel(atpComp, stateWaiting)

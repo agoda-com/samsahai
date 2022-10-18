@@ -933,6 +933,10 @@
         "v1.ActivePromotionSpec": {
             "type": "object",
             "properties": {
+                "noDowntimeGuarantee": {
+                    "description": "NoDowntimeGuarantee represents a flag for switching to the new namespace before demoting the active namespace and guarantees the process will not have a downtime\n+optional",
+                    "type": "boolean"
+                },
                 "noOfRetry": {
                     "description": "NoOfRetry represents how many times this active promotion process has been run\n+optional",
                     "type": "integer"
@@ -1146,6 +1150,10 @@
                     "description": "MaxRetry defines max retry counts of active promotion process in case failure\n+optional",
                     "type": "integer"
                 },
+                "noDowntimeGuarantee": {
+                    "description": "NoDowntimeGuarantee defines a flag for switching to the new namespace before demoting the active namespace and guarantees the process will not have a downtime",
+                    "type": "boolean"
+                },
                 "outdatedNotification": {
                     "description": "OutdatedNotification defines a configuration of outdated notification\n+optional",
                     "type": "object",
@@ -1165,6 +1173,15 @@
                 }
             }
         },
+        "v1.ConfigActivePromotionReport": {
+            "type": "object",
+            "properties": {
+                "extraMessage": {
+                    "description": "+optional",
+                    "type": "string"
+                }
+            }
+        },
         "v1.ConfigBundles": {
             "type": "object",
             "additionalProperties": {
@@ -1176,6 +1193,10 @@
             "type": "object",
             "properties": {
                 "criteria": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "extraMessage": {
                     "description": "+optional",
                     "type": "string"
                 },
@@ -1292,6 +1313,10 @@
                     "description": "+optional",
                     "type": "string"
                 },
+                "extraMessage": {
+                    "description": "+optional",
+                    "type": "string"
+                },
                 "interval": {
                     "description": "+optional",
                     "type": "string"
@@ -1302,6 +1327,10 @@
             "type": "object",
             "properties": {
                 "criteria": {
+                    "description": "+optional",
+                    "type": "string"
+                },
+                "extraMessage": {
                     "description": "+optional",
                     "type": "string"
                 }
@@ -2329,6 +2358,11 @@
         "v1.ReporterSlack": {
             "type": "object",
             "properties": {
+                "activePromotion": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1.ConfigActivePromotionReport"
+                },
                 "channels": {
                     "type": "array",
                     "items": {
@@ -2339,6 +2373,10 @@
                     "description": "+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1.ConfigComponentUpgradeReport"
+                },
+                "extraMessage": {
+                    "description": "+optional",
+                    "type": "string"
                 },
                 "pullRequestQueue": {
                     "description": "+optional",

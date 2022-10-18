@@ -50,6 +50,11 @@ definitions:
     type: object
   v1.ActivePromotionSpec:
     properties:
+      noDowntimeGuarantee:
+        description: |-
+          NoDowntimeGuarantee represents a flag for switching to the new namespace before demoting the active namespace and guarantees the process will not have a downtime
+          +optional
+        type: boolean
       noOfRetry:
         description: |-
           NoOfRetry represents how many times this active promotion process has been run
@@ -258,6 +263,11 @@ definitions:
           MaxRetry defines max retry counts of active promotion process in case failure
           +optional
         type: integer
+      noDowntimeGuarantee:
+        description: NoDowntimeGuarantee defines a flag for switching to the new namespace
+          before demoting the active namespace and guarantees the process will not
+          have a downtime
+        type: boolean
       outdatedNotification:
         $ref: '#/definitions/v1.OutdatedNotification'
         description: |-
@@ -280,6 +290,12 @@ definitions:
           +optional
         type: string
     type: object
+  v1.ConfigActivePromotionReport:
+    properties:
+      extraMessage:
+        description: +optional
+        type: string
+    type: object
   v1.ConfigBundles:
     additionalProperties:
       items: {}
@@ -288,6 +304,9 @@ definitions:
   v1.ConfigComponentUpgradeReport:
     properties:
       criteria:
+        description: +optional
+        type: string
+      extraMessage:
         description: +optional
         type: string
       interval:
@@ -399,6 +418,9 @@ definitions:
       criteria:
         description: +optional
         type: string
+      extraMessage:
+        description: +optional
+        type: string
       interval:
         description: +optional
         type: string
@@ -406,6 +428,9 @@ definitions:
   v1.ConfigPullRequestTriggerReport:
     properties:
       criteria:
+        description: +optional
+        type: string
+      extraMessage:
         description: +optional
         type: string
     type: object
@@ -1285,6 +1310,10 @@ definitions:
     type: object
   v1.ReporterSlack:
     properties:
+      activePromotion:
+        $ref: '#/definitions/v1.ConfigActivePromotionReport'
+        description: +optional
+        type: object
       channels:
         items:
           type: string
@@ -1293,6 +1322,9 @@ definitions:
         $ref: '#/definitions/v1.ConfigComponentUpgradeReport'
         description: +optional
         type: object
+      extraMessage:
+        description: +optional
+        type: string
       pullRequestQueue:
         $ref: '#/definitions/v1.ConfigPullRequestQueueReport'
         description: +optional
