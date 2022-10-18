@@ -252,6 +252,8 @@ const (
 	QueueDeployed QueueConditionType = "QueueDeployed"
 	// QueueTestTriggered means the queue has been triggered testing
 	QueueTestTriggered QueueConditionType = "QueueTestTriggered"
+	// QueueTestPendingStatusSent means the queue has been sent the test pipeline pending status while testing
+	QueueTestPendingStatusSent QueueConditionType = "QueueTestPendingStatusSent"
 	// QueueTested means the queue has been finished testing
 	QueueTested QueueConditionType = "QueueTested"
 	// QueueTeamcityTestResult means the test result of Teamcity
@@ -336,6 +338,15 @@ func (qs *QueueStatus) IsConditionTrue(cond QueueConditionType) bool {
 	for i, c := range qs.Conditions {
 		if c.Type == cond {
 			return qs.Conditions[i].Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+func (qs *QueueStatus) IsContains(cond QueueConditionType) bool {
+	for _, c := range qs.Conditions {
+		if c.Type == cond {
+			return true
 		}
 	}
 	return false

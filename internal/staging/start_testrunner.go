@@ -1,11 +1,14 @@
 package staging
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/twitchtv/twirp"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -15,6 +18,7 @@ import (
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/gitlab"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/teamcity"
 	"github.com/agoda-com/samsahai/internal/staging/testrunner/testmock"
+	samsahairpc "github.com/agoda-com/samsahai/pkg/samsahai/rpc"
 )
 
 type testResult string
@@ -24,7 +28,8 @@ const (
 	testPolling        = 5 * time.Second  // 5 secs
 	testTriggerTimeout = 1 * time.Minute  // 1 minutes
 
-	testResultRetry = 3 // 3 times
+	testResultRetry      = 3 // 3 times
+	sendTestPendingRetry = 3 // 3 times
 
 	testResultSuccess testResult = "PASSED"
 	testResultFailure testResult = "FAILED"
@@ -71,6 +76,14 @@ func (c *controller) startTesting(queue *s2hv1.Queue) error {
 	// update queue back to k8s
 	if err := c.updateQueue(queue); err != nil {
 		return err
+	}
+
+	// send pending status while test is running
+	isSentPendingStatus := queue.Status.IsContains(s2hv1.QueueTestPendingStatusSent)
+	if queue.Spec.Type == s2hv1.QueueTypePullRequest && !isSentPendingStatus {
+		if err := c.sendTestPendingResult(queue); err != nil {
+			return err
+		}
 	}
 
 	// get result from tests (polling check)
@@ -317,4 +330,47 @@ func (c *controller) setTestResultCondition(queue *s2hv1.Queue, testRunnerName s
 
 	// update queue back to k8s
 	return c.updateQueue(queue)
+}
+
+func (c *controller) sendTestPendingResult(queue *s2hv1.Queue) error {
+	headers := make(http.Header)
+	headers.Set(internal.SamsahaiAuthHeader, c.authToken)
+	ctx, err := twirp.WithHTTPRequestHeaders(context.TODO(), headers)
+	if err != nil {
+		logger.Error(err, "cannot set request header")
+		return err
+	}
+
+	for retry := 0; retry <= sendTestPendingRetry; retry++ {
+		if _, err := c.s2hClient.RunPostPullRequestQueueTestRunnerTrigger(ctx, &samsahairpc.TeamWithPullRequest{
+			TeamName:   c.teamName,
+			Namespace:  internal.GenStagingNamespace(c.teamName),
+			BundleName: internal.GenPullRequestBundleName(queue.Spec.Name, queue.Spec.PRNumber),
+		}); err != nil {
+			logger.Error(err,
+				"cannot send pull request test runner pending status report, team: %s, component: %s, prNumber: %s",
+				"team", c.teamName, "component", queue.Spec.Name, "pr number", queue.Spec.PRNumber)
+			// set state, cannot send test pending status
+			queue.Status.SetCondition(
+				s2hv1.QueueTestPendingStatusSent,
+				v1.ConditionFalse,
+				"cannot send queue test pending status")
+			if err := c.updateQueue(queue); err != nil {
+				logger.Error(err, "cannot update queue", "name", queue.Name)
+			}
+			return err
+		}
+	}
+	logger.Info("sent pull request test runner pending status successfully",
+		"team", c.teamName, "component", queue.Spec.Name, "pr number", queue.Spec.PRNumber)
+	// set state, test pending status has been sent
+	queue.Status.SetCondition(
+		s2hv1.QueueTestPendingStatusSent,
+		v1.ConditionTrue,
+		"queue test pending status has been sent")
+	if err := c.updateQueue(queue); err != nil {
+		logger.Error(err, "cannot update queue", "name", queue.Name)
+		return err
+	}
+	return nil
 }

@@ -206,6 +206,34 @@ func NewPullRequestTriggerResultReporter(status s2hv1.PullRequestTriggerStatus, 
 	return c
 }
 
+// PullRequestTestRunnerPendingReporter manages pull request queue test runner report
+type PullRequestTestRunnerPendingReporter struct {
+	TeamName   string           `json:"teamName,omitempty"`
+	BundleName string           `json:"bundleName,omitempty"`
+	PRNumber   string           `json:"prNumber,omitempty"`
+	CommitSHA  string           `json:"commitSHA,omitempty"`
+	Credential s2hv1.Credential `json:"credential,omitempty"`
+
+	SamsahaiConfig
+}
+
+// NewPullRequestTestRunnerPendingReporter creates pull request test runner status pending reporter object
+func NewPullRequestTestRunnerPendingReporter(s2hConfig SamsahaiConfig,
+	teamName, bundleName, prNumber, commitSHA string, credential s2hv1.Credential,
+) *PullRequestTestRunnerPendingReporter {
+
+	c := &PullRequestTestRunnerPendingReporter{
+		TeamName:       teamName,
+		BundleName:     bundleName,
+		PRNumber:       prNumber,
+		SamsahaiConfig: s2hConfig,
+		CommitSHA:      commitSHA,
+		Credential:     credential,
+	}
+
+	return c
+}
+
 // ActiveEnvironmentDeletedReporter manages active namespace deletion report
 type ActiveEnvironmentDeletedReporter struct {
 	TeamName        string `json:"teamName,omitempty"`
@@ -279,6 +307,9 @@ type Reporter interface {
 
 	// SendPullRequestTriggerResult sends pull request trigger result information
 	SendPullRequestTriggerResult(configCtrl ConfigController, prTriggerRpt *PullRequestTriggerReporter) error
+
+	// SendPullRequestTestRunnerPendingResult send pull request test runner pending status
+	SendPullRequestTestRunnerPendingResult(configCtrl ConfigController, prTestRunnerRpt *PullRequestTestRunnerPendingReporter) error
 
 	// SendActiveEnvironmentDeleted send active namespace deleted information
 	SendActiveEnvironmentDeleted(configCtrl ConfigController, activeNsDeletedRpt *ActiveEnvironmentDeletedReporter) error

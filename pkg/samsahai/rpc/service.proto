@@ -8,6 +8,7 @@ service RPC {
     rpc RunPostComponentUpgrade (ComponentUpgrade) returns (Empty);
     rpc RunPostPullRequestQueue (ComponentUpgrade) returns (Empty);
     rpc RunPostPullRequestTrigger (PullRequestTrigger) returns (Empty);
+    rpc RunPostPullRequestQueueTestRunnerTrigger (TeamWithPullRequest) returns (Empty);
     rpc GetMissingVersions (TeamWithCurrentComponent) returns (ImageList);
     rpc SendUpdateStateQueueMetric (ComponentUpgrade) returns (Empty);
     rpc GetBundleName (TeamWithBundleName) returns (BundleName);

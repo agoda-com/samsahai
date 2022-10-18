@@ -60,7 +60,8 @@ func (c *controller) getTestConfiguration(queue *s2hv1.Queue) *s2hv1.ConfigTestR
 	testRunner := deployConfig.TestRunner
 
 	// override testRunner
-	if testRunnerOverrider := queue.GetTestRunnerExtraParameter(); testRunnerOverrider != nil {
+	testRunnerOverrider := queue.GetTestRunnerExtraParameter()
+	if testRunnerOverrider != nil {
 		testRunner = testRunnerOverrider.Override(testRunner)
 	}
 

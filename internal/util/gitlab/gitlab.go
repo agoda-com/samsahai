@@ -27,6 +27,8 @@ const (
 	CommitStatusSuccess CommitStatus = "success"
 	// CommitStatusFailure represents a failure of commit status
 	CommitStatusFailure CommitStatus = "failed"
+	// CommitStatusPending represents a pending of commit status
+	CommitStatusPending CommitStatus = "pending"
 )
 
 // Gitlab is the interface of Gitlab using Gitlab REST API
@@ -90,6 +92,7 @@ func (c *Client) PublishCommitStatus(repository, commitSHA, labelName, targetURL
 		opts := []http.Option{
 			http.WithTimeout(requestTimeout),
 			http.WithContext(ctx),
+			http.WithHeader("PRIVATE-TOKEN", gitToken),
 		}
 
 		reqJSON := bodyReq{
@@ -182,7 +185,7 @@ func (c *Client) GetMRSourceBranch(repository, MRiid string) (string, error) {
 		}
 
 		logger.Info("get MR source branch successfully ",
-			"repository", repository, "iid", MRiid)
+			"repository", repository, "iid", MRiid, "branch", MR.SourceBranch)
 		return MR.SourceBranch, nil
 	}
 }
