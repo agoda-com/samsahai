@@ -132,7 +132,8 @@ message PullRequestConfig {
     int32 maxHistoryDays = 3;
     PullRequestTriggerConfig trigger = 4;
     string gitRepository = 5;
-    PullRequestTearDownDuration tearDownDuration = 6;
+    string gitProjectID = 6;
+    PullRequestTearDownDuration tearDownDuration = 7;
 }
 
 message PullRequestTriggerConfig {

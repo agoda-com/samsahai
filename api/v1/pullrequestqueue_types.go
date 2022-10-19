@@ -61,6 +61,9 @@ type PullRequestQueueSpec struct {
 	// GitRepository represents a github repository of the pull request
 	GitRepository string `json:"gitRepository,omitempty"`
 
+	// GitProjectID represents a github project ID of the pull request
+	GitProjectID string `json:"gitProjectID,omitempty"`
+
 	// ImageMissingList represents image missing lists
 	// +optional
 	ImageMissingList []Image `json:"imageMissingList,omitempty"`

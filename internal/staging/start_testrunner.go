@@ -359,18 +359,20 @@ func (c *controller) sendTestPendingResult(queue *s2hv1.Queue) error {
 				logger.Error(err, "cannot update queue", "name", queue.Name)
 			}
 			return err
+		} else {
+			logger.Info("sent pull request test runner pending status successfully",
+				"team", c.teamName, "component", queue.Spec.Name, "pr number", queue.Spec.PRNumber)
+			// set state, test pending status has been sent
+			queue.Status.SetCondition(
+				s2hv1.QueueTestPendingStatusSent,
+				v1.ConditionTrue,
+				"queue test pending status has been sent")
+			if err := c.updateQueue(queue); err != nil {
+				logger.Error(err, "cannot update queue", "name", queue.Name)
+				return err
+			}
+			break
 		}
-	}
-	logger.Info("sent pull request test runner pending status successfully",
-		"team", c.teamName, "component", queue.Spec.Name, "pr number", queue.Spec.PRNumber)
-	// set state, test pending status has been sent
-	queue.Status.SetCondition(
-		s2hv1.QueueTestPendingStatusSent,
-		v1.ConditionTrue,
-		"queue test pending status has been sent")
-	if err := c.updateQueue(queue); err != nil {
-		logger.Error(err, "cannot update queue", "name", queue.Name)
-		return err
 	}
 	return nil
 }
