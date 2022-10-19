@@ -21,7 +21,7 @@ spec:
   skipTestRunner: false
 
   # TODO Add description here
-  #! WARNING: noDowntimeGuarantee is not support with the NodePort service
+  #! WARNING: noDowntimeGuarantee is not support for the service that have a fixed nodePort
   # [optional] boolean flag for running an active promotion with no downtime
   # when promoting active environment
   # use 'true' for running an active promotion with no downtime

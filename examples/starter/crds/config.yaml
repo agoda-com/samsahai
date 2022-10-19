@@ -154,7 +154,7 @@ spec:
     maxHistories: 20
 
     # TODO Add description here
-    #! WARNING 
+    #! WARNING: noDowntimeGuarantee is not support for the service that have a fixed nodePort
     # [optional] specify the noDowntimeGuarantee for running an active promotion with no downtime
     # use true for applying noDowntimeGuarantee and it will run promoting an active environment before demote the previous environment
     # use false for applying noDowntimeGuarantee and it will run demoting an previous environment before promote an active environment <default>
