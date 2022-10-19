@@ -5,3 +5,4 @@ metadata:
 spec:
   tearDownDuration: 5m
   skipTestRunner: false
+  noDowntimeGuarantee: false

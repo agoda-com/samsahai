@@ -58,12 +58,13 @@ func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv
 			"Active demotion has been started")
 		atpComp.SetState(s2hv1.ActivePromotionDemoting, "Demoting an active environment")
 		logger.Info("Active environment has been promoted, and start demoting an active environment")
-		return nil
+	} else {
+		atpComp.SetState(s2hv1.ActivePromotionDestroyingPreviousActive,
+			"Destroying the previous active environment")
+		logger.Info("Active environment has been promoted, and start destroying the previous active environment")
 	}
 
-	atpComp.SetState(s2hv1.ActivePromotionDestroyingPreviousActive,
-		"Destroying the previous active environment")
-	logger.Info("Active environment has been promoted, and start destroying the previous active environment")
+	// Send the reports when active namespace has been promoted
 	if err := c.runPostActive(ctx, atpComp); err != nil {
 		return err
 	}

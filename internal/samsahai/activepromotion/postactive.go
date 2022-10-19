@@ -27,7 +27,7 @@ func (c *controller) runPostActive(ctx context.Context, atpComp *s2hv1.ActivePro
 			return err
 		}
 
-		logger.Debug("activepromotionhistory has been created",
+		logger.Debug("active promotion history has been created",
 			"team", atpComp.Name, "status", atpComp.Status.Result, "name", histName)
 		logger.Debug("active promotion report has been sent",
 			"team", atpComp.Name, "status", atpComp.Status.Result)

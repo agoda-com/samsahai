@@ -44,9 +44,6 @@ func (c *controller) demoteActiveEnvironment(ctx context.Context, atpComp *s2hv1
 				atpComp.SetState(s2hv1.ActivePromotionDestroyingPreviousActive,
 					"Failed to demote active environment")
 				logger.Info("Demote failed, and start destroying an active environment")
-				if err := c.runPostActive(ctx, atpComp); err != nil {
-					return err
-				}
 				return nil
 			}
 
@@ -65,9 +62,6 @@ func (c *controller) demoteActiveEnvironment(ctx context.Context, atpComp *s2hv1
 		atpComp.SetState(s2hv1.ActivePromotionDestroyingPreviousActive,
 			"Destroying the previous active environment")
 		logger.Info("Demote successfully, and start destroying the previous active environment")
-		if err := c.runPostActive(ctx, atpComp); err != nil {
-			return err
-		}
 		return nil
 	}
 
@@ -129,9 +123,6 @@ func (c *controller) checkDemotionTimeout(ctx context.Context, atpComp *s2hv1.Ac
 		if *atpComp.Spec.NoDowntimeGuarantee {
 			atpComp.SetState(s2hv1.ActivePromotionDestroyingPreviousActive, "Demoted active environment timeout")
 			logger.Info("Demote timeout, and start destroying an active environment")
-			if err := c.runPostActive(ctx, atpComp); err != nil {
-				return err
-			}
 			return s2herrors.ErrActiveDemotionTimeout
 		}
 

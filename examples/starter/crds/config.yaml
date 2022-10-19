@@ -153,6 +153,13 @@ spec:
     # default value is 7
     maxHistories: 20
 
+    # TODO Add description here
+    #! WARNING 
+    # [optional] specify the noDowntimeGuarantee for running an active promotion with no downtime
+    # use true for applying noDowntimeGuarantee and it will run promoting an active environment before demote the previous environment
+    # use false for applying noDowntimeGuarantee and it will run demoting an previous environment before promote an active environment <default>
+    noDowntimeGuarantee: false
+
     # deployment flow of active environment configuration
     deployment:
       # how long the active environment should be ready?
