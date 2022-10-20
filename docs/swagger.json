@@ -1723,8 +1723,12 @@
                     "type": "object",
                     "$ref": "#/definitions/v1.ConfigDeploy"
                 },
+                "gitProjectID": {
+                    "description": "GitProjectID represents a git repository id\nused for publishing test runner status\n+optional",
+                    "type": "string"
+                },
                 "gitRepository": {
-                    "description": "GitRepository represents a string of git \"\u003cowner\u003e/\u003crepository\u003e\" e.g., agoda-com/samsahai\nused for publishing commit status\n+optional",
+                    "description": "GitRepository represents a string of git repository \"\u003cowner\u003e/\u003crepository\u003e\" e.g., agoda-com/samsahai\nused for publishing commit status\n+optional",
                     "type": "string"
                 },
                 "maxRetry": {
@@ -1853,6 +1857,10 @@
                     "description": "Components represents a list of components which are deployed\n+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1.QueueComponents"
+                },
+                "gitProjectID": {
+                    "description": "GitProjectID represents a github project ID of the pull request",
+                    "type": "string"
                 },
                 "gitRepository": {
                     "description": "GitRepository represents a github repository of the pull request",
