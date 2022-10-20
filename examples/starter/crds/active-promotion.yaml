@@ -20,18 +20,11 @@ spec:
   # use 'false' for using the default setting from Config.yaml <default>
   skipTestRunner: false
 
-  # TODO Add description here
   #! WARNING: noDowntimeGuarantee is not support for the service that have a fixed nodePort
   # [optional] boolean flag for running an active promotion with no downtime
   # when promoting active environment
   # use 'true' for running an active promotion with no downtime
   # use 'false' for using the default setting from Config.yaml <default>
-
-  #? ORRRR
-  # [optional] specify the noDowntimeGuarantee for running an active promotion with no downtime
-  # use true for applying noDowntimeGuarantee and it will run promoting an active environment before demote the previous environment
-  # use false for applying noDowntimeGuarantee and it will run demoting an previous environment before promote an active environment <default>
-
   noDowntimeGuarantee: false
 
   # [optional] name of user who applying active promotion

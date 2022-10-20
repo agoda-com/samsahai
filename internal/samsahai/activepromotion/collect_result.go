@@ -47,7 +47,7 @@ func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1.ActivePro
 		return nil
 	}
 
-	if *atpComp.Spec.NoDowntimeGuarantee {
+	if atpComp.Spec.NoDowntimeGuarantee != nil && *atpComp.Spec.NoDowntimeGuarantee {
 		atpComp.SetState(s2hv1.ActivePromotionActiveEnvironment, "Promoting an active environment")
 		logger.Info("Collected a result, and start promoting an active environment")
 		return nil

@@ -53,7 +53,7 @@ func (c *controller) promoteActiveEnvironment(ctx context.Context, atpComp *s2hv
 	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActivePromoted, corev1.ConditionTrue,
 		"Active environment has been promoted")
 
-	if *atpComp.Spec.NoDowntimeGuarantee {
+	if atpComp.Spec.NoDowntimeGuarantee != nil && *atpComp.Spec.NoDowntimeGuarantee {
 		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemotionStarted, corev1.ConditionTrue,
 			"Active demotion has been started")
 		atpComp.SetState(s2hv1.ActivePromotionDemoting, "Demoting an active environment")

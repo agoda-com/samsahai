@@ -40,7 +40,7 @@ func (c *controller) demoteActiveEnvironment(ctx context.Context, atpComp *s2hv1
 			atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemoted, corev1.ConditionFalse,
 				"Failed to demote active environment, active environment has been deleted")
 
-			if *atpComp.Spec.NoDowntimeGuarantee {
+			if atpComp.Spec.NoDowntimeGuarantee != nil && *atpComp.Spec.NoDowntimeGuarantee {
 				atpComp.SetState(s2hv1.ActivePromotionDestroyingPreviousActive,
 					"Failed to demote active environment")
 				logger.Info("Demote failed, and start destroying an active environment")
@@ -58,7 +58,7 @@ func (c *controller) demoteActiveEnvironment(ctx context.Context, atpComp *s2hv1
 	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemoted, corev1.ConditionTrue,
 		"Demoted an active environment successfully")
 
-	if *atpComp.Spec.NoDowntimeGuarantee {
+	if atpComp.Spec.NoDowntimeGuarantee != nil && *atpComp.Spec.NoDowntimeGuarantee {
 		atpComp.SetState(s2hv1.ActivePromotionDestroyingPreviousActive,
 			"Destroying the previous active environment")
 		logger.Info("Demote successfully, and start destroying the previous active environment")
@@ -120,7 +120,7 @@ func (c *controller) checkDemotionTimeout(ctx context.Context, atpComp *s2hv1.Ac
 		atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemoted, corev1.ConditionFalse,
 			"Demoted an active environment timeout, active environment has been deleted")
 
-		if *atpComp.Spec.NoDowntimeGuarantee {
+		if atpComp.Spec.NoDowntimeGuarantee != nil && *atpComp.Spec.NoDowntimeGuarantee {
 			atpComp.SetState(s2hv1.ActivePromotionDestroyingPreviousActive, "Demoted active environment timeout")
 			logger.Info("Demote timeout, and start destroying an active environment")
 			return s2herrors.ErrActiveDemotionTimeout
