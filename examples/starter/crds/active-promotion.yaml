@@ -20,7 +20,7 @@ spec:
   # use 'false' for using the default setting from Config.yaml <default>
   skipTestRunner: false
 
-  #! WARNING: noDowntimeGuarantee is not support for the service that have a fixed nodePort
+  #! WARNING: noDowntimeGuarantee does not support the service that has a fixed nodePort
   # [optional] boolean flag for running an active promotion with no downtime
   # when promoting active environment
   # use 'true' for running an active promotion with no downtime
