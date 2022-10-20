@@ -755,8 +755,8 @@ definitions:
         type: object
       gitProjectID:
         description: |-
-          GitProjectID represents a git repository id
-          used for publishing test runner status
+          GitProjectID represents a git repository project id
+          used for publishing test runner status to Gitlab
           +optional
         type: string
       gitRepository:
@@ -877,9 +877,6 @@ definitions:
           Components represents a list of components which are deployed
           +optional
         type: object
-      gitProjectID:
-        description: GitProjectID represents a github project ID of the pull request
-        type: string
       gitRepository:
         description: GitRepository represents a github repository of the pull request
         type: string

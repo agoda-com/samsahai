@@ -552,8 +552,8 @@ type PullRequestBundle struct {
 	// used for publishing commit status
 	// +optional
 	GitRepository string `json:"gitRepository,omitempty"`
-	// GitProjectID represents a git repository id
-	// used for publishing test runner status
+	// GitProjectID represents a git repository project id
+	// used for publishing test runner status to Gitlab
 	// +optional
 	GitProjectID           string `json:"gitProjectID,omitempty"`
 	PullRequestExtraConfig `json:",inline"`
