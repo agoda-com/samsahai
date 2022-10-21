@@ -50,6 +50,11 @@ definitions:
     type: object
   v1.ActivePromotionSpec:
     properties:
+      noDowntimeGuarantee:
+        description: |-
+          NoDowntimeGuarantee represents a flag for switching to the new namespace before demoting the active namespace and guarantees the process will not have a downtime
+          +optional
+        type: boolean
       noOfRetry:
         description: |-
           NoOfRetry represents how many times this active promotion process has been run
@@ -258,6 +263,11 @@ definitions:
           MaxRetry defines max retry counts of active promotion process in case failure
           +optional
         type: integer
+      noDowntimeGuarantee:
+        description: NoDowntimeGuarantee defines a flag for switching to the new namespace
+          before demoting the active namespace and guarantees the process will not
+          have a downtime
+        type: boolean
       outdatedNotification:
         $ref: '#/definitions/v1.OutdatedNotification'
         description: |-

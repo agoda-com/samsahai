@@ -319,6 +319,9 @@ type ConfigActivePromotion struct {
 	// +optional
 	OutdatedNotification *OutdatedNotification `json:"outdatedNotification,omitempty"`
 
+	// NoDowntimeGuarantee defines a flag for switching to the new namespace before demoting the active namespace and guarantees the process will not have a downtime
+	NoDowntimeGuarantee bool `json:"noDowntimeGuarantee,omitempty"`
+
 	// Deployment represents configuration about deploy
 	// +optional
 	Deployment *ConfigDeploy `json:"deployment,omitempty"`

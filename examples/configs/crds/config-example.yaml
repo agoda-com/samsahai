@@ -61,6 +61,7 @@ spec:
     tearDownDuration: 10s
     demotionTimeout: 3m
     rollbackTimeout: 5m
+    noDowntimeGuarantee: false
     deployment:
       timeout: 5m
       engine: helm3

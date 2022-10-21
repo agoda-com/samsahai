@@ -130,6 +130,10 @@ type ActivePromotionSpec struct {
 	// PromotedBy represents a person who promoted the ActivePromotion
 	// +optional
 	PromotedBy string `json:"promotedBy,omitempty"`
+
+	// NoDowntimeGuarantee represents a flag for switching to the new namespace before demoting the active namespace and guarantees the process will not have a downtime
+	// +optional
+	NoDowntimeGuarantee *bool `json:"noDowntimeGuarantee,omitempty"`
 }
 
 func (s *ActivePromotionSpec) SetTearDownDuration(d metav1.Duration) {

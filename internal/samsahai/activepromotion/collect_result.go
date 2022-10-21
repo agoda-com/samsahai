@@ -47,9 +47,16 @@ func (c *controller) collectResult(ctx context.Context, atpComp *s2hv1.ActivePro
 		return nil
 	}
 
+	if atpComp.Spec.NoDowntimeGuarantee != nil && *atpComp.Spec.NoDowntimeGuarantee {
+		atpComp.SetState(s2hv1.ActivePromotionActiveEnvironment, "Promoting an active environment")
+		logger.Info("Collected a result, and start promoting an active environment")
+		return nil
+	}
+
 	atpComp.Status.SetCondition(s2hv1.ActivePromotionCondActiveDemotionStarted, corev1.ConditionTrue,
 		"Active demotion has been started")
 	atpComp.SetState(s2hv1.ActivePromotionDemoting, "Demoting an active environment")
+	logger.Info("Collected a result, and start demoting an active environment")
 
 	return nil
 }
