@@ -347,31 +347,32 @@ func (c *controller) sendTestPendingResult(queue *s2hv1.Queue) error {
 			TeamName:   c.teamName,
 			Namespace:  internal.GenStagingNamespace(c.teamName),
 			BundleName: internal.GenPullRequestBundleName(queue.Spec.Name, queue.Spec.PRNumber),
-		}); error == nil {
-			logger.Info("sent pull request test runner pending status successfully",
+		}); error != nil {
+			logger.Error(err,
+				"cannot send pull request test runner pending status report,",
 				"team", c.teamName, "component", queue.Spec.Name, "pr number", queue.Spec.PRNumber)
-			// set state, test pending status has been sent
+			// set state, cannot send test pending status
 			queue.Status.SetCondition(
 				s2hv1.QueueTestPendingStatusSent,
-				v1.ConditionTrue,
-				"queue test pending status has been sent")
+				v1.ConditionFalse,
+				"cannot send queue test pending status")
 			if err := c.updateQueue(queue); err != nil {
 				logger.Error(err, "cannot update queue", "name", queue.Name)
-				return err
 			}
-			break
+			continue
 		}
-		logger.Error(err,
-			"cannot send pull request test runner pending status report,",
+		logger.Info("sent pull request test runner pending status successfully",
 			"team", c.teamName, "component", queue.Spec.Name, "pr number", queue.Spec.PRNumber)
-		// set state, cannot send test pending status
+		// set state, test pending status has been sent
 		queue.Status.SetCondition(
 			s2hv1.QueueTestPendingStatusSent,
-			v1.ConditionFalse,
-			"cannot send queue test pending status")
+			v1.ConditionTrue,
+			"queue test pending status has been sent")
 		if err := c.updateQueue(queue); err != nil {
 			logger.Error(err, "cannot update queue", "name", queue.Name)
+			return err
 		}
+		break
 	}
 	return error
 }
