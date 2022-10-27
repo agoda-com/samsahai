@@ -341,13 +341,12 @@ func (c *controller) sendTestPendingResult(queue *s2hv1.Queue) error {
 		return err
 	}
 
-	var error error
 	for retry := 0; retry <= sendTestPendingRetry; retry++ {
-		if _, error = c.s2hClient.RunPostPullRequestQueueTestRunnerTrigger(ctx, &samsahairpc.TeamWithPullRequest{
+		if _, err = c.s2hClient.RunPostPullRequestQueueTestRunnerTrigger(ctx, &samsahairpc.TeamWithPullRequest{
 			TeamName:   c.teamName,
 			Namespace:  internal.GenStagingNamespace(c.teamName),
 			BundleName: internal.GenPullRequestBundleName(queue.Spec.Name, queue.Spec.PRNumber),
-		}); error != nil {
+		}); err != nil {
 			logger.Error(err,
 				"cannot send pull request test runner pending status report,",
 				"team", c.teamName, "component", queue.Spec.Name, "pr number", queue.Spec.PRNumber)
@@ -368,11 +367,11 @@ func (c *controller) sendTestPendingResult(queue *s2hv1.Queue) error {
 			s2hv1.QueueTestPendingStatusSent,
 			v1.ConditionTrue,
 			"queue test pending status has been sent")
-		if err := c.updateQueue(queue); err != nil {
+		if err = c.updateQueue(queue); err != nil {
 			logger.Error(err, "cannot update queue", "name", queue.Name)
 			return err
 		}
 		break
 	}
-	return error
+	return err
 }
