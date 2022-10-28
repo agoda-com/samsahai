@@ -127,11 +127,11 @@ func (c *Client) PublishCommitStatus(repository, commitSHA, labelName, targetURL
 		return s2herrors.ErrRequestTimeout
 	case err := <-errCh:
 		logger.Error(err, "cannot publish commit status",
-			"repository", repository, "commitSHA", commitSHA)
+			"repository", repository, "commitSHA", commitSHA, "status", status)
 		return err
 	case <-resCh:
 		logger.Info("commit status successfully published to gitlab",
-			"repository", repository, "commitSHA", commitSHA)
+			"repository", repository, "commitSHA", commitSHA, "status", status)
 		return nil
 	}
 }

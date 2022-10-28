@@ -274,8 +274,8 @@ func (r *reporter) getGitlabProjectID(configCtrl internal.ConfigController, team
 
 	projectID := ""
 	for _, b := range conf.Status.Used.PullRequest.Bundles {
-		if b.Name == bundleName && b.Deployment != nil {
-			projectID = b.Deployment.TestRunner.Gitlab.ProjectID
+		if b.Name == bundleName {
+			projectID = b.GitProjectID
 			break
 		}
 	}

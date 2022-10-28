@@ -753,9 +753,15 @@ definitions:
           Deployment represents configuration about deploy
           +optional
         type: object
+      gitProjectID:
+        description: |-
+          GitProjectID represents a git repository project id
+          used for publishing test runner status to Gitlab
+          +optional
+        type: string
       gitRepository:
         description: |-
-          GitRepository represents a string of git "<owner>/<repository>" e.g., agoda-com/samsahai
+          GitRepository represents a string of git repository "<owner>/<repository>" e.g., agoda-com/samsahai
           used for publishing commit status
           +optional
         type: string
