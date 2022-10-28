@@ -100,8 +100,8 @@ func (c *controller) setup(ctx context.Context, atpComp *s2hv1.ActivePromotion) 
 	}
 
 	// set NoDowntimeGuarantee from active-promotion.yaml if the value in the configuration file is not set
-	if atpComp.Spec.NoDowntimeGuarantee == nil {
-		atpComp.Spec.NoDowntimeGuarantee = &config.Spec.ActivePromotion.NoDowntimeGuarantee
+	if atpComp.Spec.NoDowntimeGuarantee == nil && config.Status.Used.ActivePromotion != nil {
+		atpComp.Spec.NoDowntimeGuarantee = &config.Status.Used.ActivePromotion.NoDowntimeGuarantee
 	}
 
 	if *atpComp.Spec.NoDowntimeGuarantee {
