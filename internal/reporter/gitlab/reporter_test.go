@@ -175,13 +175,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 							{
 								Name:          "bundle-1",
 								GitRepository: "error",
-								Deployment: &s2hv1.ConfigDeploy{
-									TestRunner: &s2hv1.ConfigTestRunner{
-										Gitlab: &s2hv1.ConfigGitlab{
-											ProjectID: "error",
-										},
-									},
-								},
+								GitProjectID:  "error",
 							},
 						},
 					},
@@ -206,13 +200,7 @@ func (c *mockConfigCtrl) Get(configName string) (*s2hv1.Config, error) {
 									{},
 								},
 								GitRepository: "samsahai/samsahai",
-								Deployment: &s2hv1.ConfigDeploy{
-									TestRunner: &s2hv1.ConfigTestRunner{
-										Gitlab: &s2hv1.ConfigGitlab{
-											ProjectID: "12345",
-										},
-									},
-								},
+								GitProjectID:  "12345",
 							},
 						},
 					},

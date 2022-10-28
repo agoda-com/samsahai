@@ -548,10 +548,14 @@ type PullRequestBundle struct {
 	// Dependencies defines a list of components which are required to be deployed together with the main component
 	// +optional
 	Dependencies []string `json:"dependencies,omitempty"`
-	// GitRepository represents a string of git "<owner>/<repository>" e.g., agoda-com/samsahai
+	// GitRepository represents a string of git repository "<owner>/<repository>" e.g., agoda-com/samsahai
 	// used for publishing commit status
 	// +optional
-	GitRepository          string `json:"gitRepository,omitempty"`
+	GitRepository string `json:"gitRepository,omitempty"`
+	// GitProjectID represents a git repository project id
+	// used for publishing test runner status to Gitlab
+	// +optional
+	GitProjectID           string `json:"gitProjectID,omitempty"`
 	PullRequestExtraConfig `json:",inline"`
 }
 
