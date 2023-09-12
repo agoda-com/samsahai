@@ -138,6 +138,14 @@ func (c *controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	maxRetry := prConfig.Trigger.MaxRetry
 	gitRepo := prConfig.GitRepository
 
+	// send pending status while test is running
+	isSentPendingStatus := prTrigger.Status.IsContains(s2hv1.PullRequestTriggerCondPendingStatusSent)
+	if !isSentPendingStatus {
+		if err := c.sendTestPendingResult(prTrigger); err != nil {
+			return reconcile.Result{}, errors.Wrapf(err, "cannot get pull request config of team: %s", c.teamName)
+		}
+	}
+
 	var tearDownDuration s2hv1.PullRequestTearDownDuration
 	// overwrite tearDownDuration
 	if prTrigger.Spec.TearDownDuration != nil {

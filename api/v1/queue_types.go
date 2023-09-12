@@ -252,8 +252,6 @@ const (
 	QueueDeployed QueueConditionType = "QueueDeployed"
 	// QueueTestTriggered means the queue has been triggered testing
 	QueueTestTriggered QueueConditionType = "QueueTestTriggered"
-	// QueueTestPendingStatusSent means the queue has been sent the test pipeline pending status while testing
-	QueueTestPendingStatusSent QueueConditionType = "QueueTestPendingStatusSent"
 	// QueueTested means the queue has been finished testing
 	QueueTested QueueConditionType = "QueueTested"
 	// QueueTeamcityTestResult means the test result of Teamcity
