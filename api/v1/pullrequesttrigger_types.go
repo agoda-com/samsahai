@@ -108,6 +108,8 @@ type PullRequestTriggerCondition struct {
 type PullRequestTriggerConditionType string
 
 const (
+	// PullRequestTriggerCondPendingStatusSent means the pull request trigger has been sent the pending status
+	PullRequestTriggerCondPendingStatusSent PullRequestTriggerConditionType = "PendingStatusSent"
 	// PullRequestTriggerCondFailed means the pull request trigger failed to retrieve the image from the registry
 	PullRequestTriggerCondFailed PullRequestTriggerConditionType = "Failed"
 )
@@ -152,4 +154,13 @@ type PullRequestTriggerList struct {
 
 func init() {
 	SchemeBuilder.Register(&PullRequestTrigger{}, &PullRequestTriggerList{})
+}
+
+func (prStatus *PullRequestTriggerStatus) IsContains(conditionType PullRequestTriggerConditionType) bool {
+	for _, c := range prStatus.Conditions {
+		if c.Type == conditionType {
+			return true
+		}
+	}
+	return false
 }
