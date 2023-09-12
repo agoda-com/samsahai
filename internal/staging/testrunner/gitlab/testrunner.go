@@ -212,8 +212,14 @@ func (t *testRunner) GetResult(testConfig *s2hv1.ConfigTestRunner, currentQueue 
 		opts = append(opts, http.WithHeader("PRIVATE-TOKEN", t.privateToken))
 	}
 
-	_, resp, err := http.Get(apiURL, opts...)
+	statusCode, resp, err := http.Get(apiURL, opts...)
+
 	if err != nil {
+		// Retry the process to get the result if a server error
+		if statusCode >= 500 && statusCode < 600 {
+			logger.Info(fmt.Sprintf("The HTTP request failed %v, retrying the process", err), "URL", apiURL)
+			return false, false, nil
+		}
 		logger.Error(err, "The HTTP request failed", "URL", apiURL)
 		return false, false, err
 	}
