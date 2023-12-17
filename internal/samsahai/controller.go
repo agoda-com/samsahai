@@ -13,7 +13,7 @@ import (
 	"github.com/imdario/mergo"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	networkv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -993,7 +993,7 @@ func (c *controller) GetConnections(namespace string) (map[string][]internal.Con
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot list services")
 	}
-	ingresses := v1beta1.IngressList{}
+	ingresses := networkv1.IngressList{}
 	err = c.client.List(ctx, &ingresses, &client.ListOptions{Namespace: namespace})
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot list ingresses")
@@ -1040,7 +1040,7 @@ func (c *controller) GetConnections(namespace string) (map[string][]internal.Con
 			var port *corev1.ServicePort
 			// find match service
 			for _, path := range rule.HTTP.Paths {
-				key := fmt.Sprintf("%s,%s", path.Backend.ServiceName, path.Backend.ServicePort.String())
+				key := fmt.Sprintf("%s,%s", path.Backend.Service.Name, path.Backend.Service.Port.String())
 				if _, ok := servicesAndPorts[key]; ok {
 					port = servicesAndPorts[key]
 					break
