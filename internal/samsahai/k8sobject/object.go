@@ -456,15 +456,6 @@ func GetClusterRole(teamComp *s2hv1.Team, namespace string) client.Object {
 				},
 				Verbs: []string{"*"},
 			},
-			{
-				APIGroups: []string{
-					"policy",
-				},
-				Resources: []string{
-					"podsecuritypolicies",
-				},
-				Verbs: []string{"get", "list", "watch", "create", "update", "patch", "delete"},
-			},
 		},
 	}
 
