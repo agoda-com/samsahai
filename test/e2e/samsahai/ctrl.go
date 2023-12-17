@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	batchv1 "k8s.io/api/batch/v1"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,7 +14,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tidwall/gjson"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -1715,7 +1715,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Verifying CronJob have been created")
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-			cronjobList := &batchv1beta1.CronJobList{}
+			cronjobList := &batchv1.CronJobList{}
 			cronjobLabel := labels.SelectorFromSet(map[string]string{"component": configRedis.Spec.Components[0].Name})
 			listOption := &rclient.ListOptions{Namespace: stgNamespace, LabelSelector: cronjobLabel}
 			if err := client.List(ctx, cronjobList, listOption); err != nil {
@@ -1737,7 +1737,7 @@ var _ = Describe("[e2e] Main controller", func() {
 
 		By("Verifying CronJob should be deleted")
 		err = wait.PollImmediate(verifyTime1s, verifyTime10s, func() (ok bool, err error) {
-			cronjobList := &batchv1beta1.CronJobList{}
+			cronjobList := &batchv1.CronJobList{}
 			cronjobLabel := labels.SelectorFromSet(map[string]string{"component": configRedis.Spec.Components[0].Name})
 			listOption := &rclient.ListOptions{Namespace: stgNamespace, LabelSelector: cronjobLabel}
 			if err := client.List(ctx, cronjobList, listOption); err != nil {
