@@ -7,7 +7,7 @@ GITHUB_API_URL          ?= https://api.github.com
 GITHUB_TOKEN            ?=
 GITHUB_REPO             ?= agoda-com/samsahai
 GO_VERSION              ?= 1.17.2
-GOLANGCI_LINT_VERSION   ?= 1.41.1
+GOLANGCI_LINT_VERSION   ?= 1.55.2
 
 GO                      ?= go
 
@@ -21,11 +21,11 @@ KUBEBUILDER_VERSION     ?= 2.2.0
 KUBEBULIDER_FILENAME    = kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
 KUBEBUILDER_PATH        ?= /usr/local/kubebuilder/
 GORELEASER_VERSION      ?= 0.124.1
-K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.20.11-k3s2
+K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.22.17+k3s1
 KUBECONFIG              = /tmp/s2h/k3s-kubeconfig
 K3S_DOCKER_NAME         ?= s2h-k3s-server
 K3S_PORT                ?= 6443
-K8S_VERSION             ?= 1.21.0
+K8S_VERSION             ?= 1.22.0
 KUSTOMIZE_VERSION       ?= 3.8.6
 HELM_VERSION            ?= 3.6.3
 POD_NAMESPACE           ?= default
@@ -160,8 +160,8 @@ prepare-env-e2e:
 	$(KUBECTL) -n kube-system wait pods -l k8s-app=kube-dns --for=condition=Ready --timeout=5m; \
 	until $(KUBECTL) -n kube-system get pods -l app=svclb-traefik 2>&1 | grep -iv "no resources found" >/dev/null; do sleep 1; done; \
 	$(KUBECTL) -n kube-system wait pods -l app=svclb-traefik --for=condition=Ready --timeout=5m; \
-	until $(KUBECTL) -n kube-system get pods -l app=traefik 2>&1 | grep -iv "no resources found" >/dev/null; do sleep 1; done; \
-	$(KUBECTL) -n kube-system wait pods -l app=traefik --for=condition=Ready --timeout=5m; \
+	until $(KUBECTL) -n kube-system get pods -l app.kubernetes.io/name=traefik 2>&1 | grep -iv "no resources found" >/dev/null; do sleep 1; done; \
+	$(KUBECTL) -n kube-system wait pods -l app.kubernetes.io/name=traefik --for=condition=Ready --timeout=5m; \
 	$(KUBECTL) create ns samsahai-system || echo 'namespace "samsahai-system" already exist'; \
 	\
 	\
