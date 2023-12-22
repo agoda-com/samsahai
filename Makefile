@@ -21,7 +21,7 @@ KUBEBUILDER_VERSION     ?= 2.2.0
 KUBEBULIDER_FILENAME    = kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
 KUBEBUILDER_PATH        ?= /usr/local/kubebuilder/
 GORELEASER_VERSION      ?= 0.124.1
-K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.22.17+k3s1
+K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.22.17-k3s1
 KUBECONFIG              = /tmp/s2h/k3s-kubeconfig
 K3S_DOCKER_NAME         ?= s2h-k3s-server
 K3S_PORT                ?= 6443
@@ -473,9 +473,8 @@ endif
 
 .install-gotools:
 	@echo installing gotools
-	@GO111MODULE=off $(GO) get -u \
+	$(GO) get -d \
 		golang.org/x/tools/cmd/goimports \
-		github.com/golang/protobuf/protoc-gen-go \
 		github.com/twitchtv/twirp/protoc-gen-twirp
 
 # Produce CRDs that work back to Kubernetes 1.21 (no version conversion)
