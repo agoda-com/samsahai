@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func Get(obj interface{}, prop string) (interface{}, error) {
@@ -45,7 +48,8 @@ func getProperty(obj interface{}, prop string) (interface{}, error) {
 		return idx.Interface(), nil
 	}
 
-	prop = strings.Title(prop)
+	caser := cases.Title(language.English)
+	prop = caser.String(prop)
 
 	return getField(obj, prop)
 }
