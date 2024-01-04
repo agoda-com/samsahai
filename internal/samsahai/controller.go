@@ -1447,43 +1447,39 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watching changes of Team
-	err = c.Watch(&source.Kind{Type: &s2hv1.Team{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(source.Kind(mgr.GetCache(), &s2hv1.Team{}), &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	// Watching changes of namespace belongs to Team
-	err = c.Watch(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &s2hv1.Team{},
-	})
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Namespace{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(), &s2hv1.Team{}, handler.OnlyControllerOwner(),
+	))
 	if err != nil {
 		return err
 	}
 
 	// Watching changes of deployment belongs to Team
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &s2hv1.Team{},
-	})
+	err = c.Watch(source.Kind(mgr.GetCache(), &appsv1.Deployment{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(), &s2hv1.Team{}, handler.OnlyControllerOwner(),
+	))
 	if err != nil {
 		return err
 	}
 
 	// Watching changes of service belongs to Team
-	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &s2hv1.Team{},
-	})
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(), &s2hv1.Team{}, handler.OnlyControllerOwner(),
+	))
 	if err != nil {
 		return err
 	}
 
 	// Watching changes of secret belongs to Team
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &s2hv1.Team{},
-	})
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), handler.EnqueueRequestForOwner(
+		mgr.GetScheme(), mgr.GetRESTMapper(), &s2hv1.Team{}, handler.OnlyControllerOwner(),
+	))
 	if err != nil {
 		return err
 	}
