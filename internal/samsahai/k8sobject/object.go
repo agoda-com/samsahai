@@ -154,7 +154,7 @@ func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName s
 								PeriodSeconds:       int32(10),
 								SuccessThreshold:    int32(1),
 								FailureThreshold:    int32(3),
-								Handler: corev1.Handler{
+								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path:   "/healthz",
 										Port:   intstr.FromInt(internal.StagingDefaultPort),
@@ -168,7 +168,7 @@ func GetDeployment(scheme *runtime.Scheme, teamComp *s2hv1.Team, namespaceName s
 								PeriodSeconds:       int32(10),
 								SuccessThreshold:    int32(1),
 								FailureThreshold:    int32(3),
-								Handler: corev1.Handler{
+								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path:   "/healthz",
 										Port:   intstr.FromInt(internal.StagingDefaultPort),
