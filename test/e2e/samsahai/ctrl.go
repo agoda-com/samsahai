@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	batchv1 "k8s.io/api/batch/v1"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"sync"
 	"time"
+
+	batchv1 "k8s.io/api/batch/v1"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,6 +28,7 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -107,7 +109,7 @@ var _ = Describe("[e2e] Main controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
 
 		restCfg = rest.CopyConfig(adminRestConfig)
-		mgr, err = manager.New(restCfg, manager.Options{MetricsBindAddress: "0"})
+		mgr, err = manager.New(restCfg, manager.Options{Metrics: server.Options{BindAddress: "0"}})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
 		client, err = rclient.New(restCfg, rclient.Options{Scheme: scheme.Scheme})
@@ -391,8 +393,8 @@ var _ = Describe("[e2e] Main controller", func() {
 			// create mgr from config
 			stagingCfg := rest.CopyConfig(restCfg)
 			stagingMgr, err := manager.New(stagingCfg, manager.Options{
-				Namespace:          preActiveNs,
-				MetricsBindAddress: "0",
+				LeaderElectionNamespace: preActiveNs,
+				Metrics:                 server.Options{BindAddress: "0"},
 			})
 			Expect(err).NotTo(HaveOccurred())
 

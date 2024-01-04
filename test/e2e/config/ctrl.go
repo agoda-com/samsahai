@@ -20,6 +20,7 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -70,7 +71,7 @@ var _ = Describe("[e2e] Config controller", func() {
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
 
 		restCfg := rest.CopyConfig(adminRestConfig)
-		mgr, err = manager.New(restCfg, manager.Options{MetricsBindAddress: "0"})
+		mgr, err = manager.New(restCfg, manager.Options{Metrics: server.Options{BindAddress: "0"}})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
 		namespace = os.Getenv("POD_NAMESPACE")
