@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -81,7 +82,13 @@ var _ = Describe("Samsahai Exporter", func() {
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(configCtrl).NotTo(BeNil())
 
-		mgr, err := manager.New(cfg, manager.Options{Namespace: namespace, MetricsBindAddress: ":8008"})
+		mgr, err := manager.New(cfg, manager.Options{
+			Scheme:                  scheme.Scheme,
+			LeaderElectionNamespace: namespace,
+			Metrics: server.Options{
+				BindAddress: ":8008",
+			},
+		})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
 		teamList := &s2hv1.TeamList{

@@ -108,16 +108,6 @@ rules:
       - get
       - list
       - watch
-{{- if .Values.rbac.pspEnabled }}
-  - apiGroups:
-      - policy
-    resources:
-      - podsecuritypolicies
-    verbs:
-      - use
-    resourceNames:
-      - {{ include "samsahai.fullname" . }}
-{{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

@@ -130,8 +130,3 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
-
-## Enable RBAC as per https://github.com/kubernetes/ingress/tree/master/examples/rbac/nginx and https://github.com/kubernetes/ingress/issues/266
-rbac:
-  pspEnabled: false
-  pspUseAppArmor: false

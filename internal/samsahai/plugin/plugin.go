@@ -123,6 +123,11 @@ func (p *plugin) executeCmd(ctx context.Context, commandAndArgs ...string) (stri
 	outputCh := make(chan string)
 	errCh := make(chan error)
 
+	// Dummy usage to ensure the compiler recognizes the import as used.
+	// Since, the compiler does not consider the type assertion as a usage,
+	// and keep throwing an "imported and not used" error.
+	var _ exec.Cmd
+
 	go func() {
 		data, err := cmd.ExecuteCommand(ctx, p.cwd, &s2hv1.CommandAndArgs{
 			Command: []string{p.path},

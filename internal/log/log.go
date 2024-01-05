@@ -14,7 +14,7 @@ import (
 // Log is the base logger used by kubebuilder.  It delegates
 // to another logr.Logger.  You *must* call SetLogger to
 // get any actual logging.
-var Log = NewS2hLogger(log.NullLogger{})
+var Log = NewS2hLogger(logr.New(log.NullLogSink{}))
 
 var S2HLog Logger
 
@@ -28,7 +28,7 @@ func init() {
 // logger.  It expects to have *some* logr.Logger set at all times (generally
 // a no-op logger before the promises are fulfilled).
 type DelegatingLogger struct {
-	logger *log.DelegatingLogger
+	logger *logr.Logger
 }
 
 func GetLogger(debug bool) logr.Logger {
@@ -42,20 +42,13 @@ func GetLogger(debug bool) logr.Logger {
 
 func NewS2hLogger(initial logr.Logger) *DelegatingLogger {
 	return &DelegatingLogger{
-		logger: log.NewDelegatingLogger(initial),
+		logger: &initial,
 	}
 }
 
 // SetLogger sets a concrete logging implementation for all deferred Loggers.
 func SetLogger(l logr.Logger) {
-	Log.Fulfill(l)
-}
-
-// Fulfill switches the logger over to use the actual logger
-// provided, instead of the temporary initial one, if this method
-// has not been previously called.
-func (l *DelegatingLogger) Fulfill(actual logr.Logger) {
-	l.logger.Fulfill(actual)
+	Log.logger = &l
 }
 
 // Logger represents the ability to log messages, both errors and not.
@@ -142,31 +135,18 @@ func (l *DelegatingLogger) Warnf(format string, args ...interface{}) {
 
 // WithName implements logr.Logger
 func (l *DelegatingLogger) WithName(name string) Logger {
-	ln := l.logger.WithName(name)
-	delegatingLn, ok := ln.(*log.DelegatingLogger)
-
-	if !ok {
-		delegatingLn = log.NewDelegatingLogger(ln)
+	if l.logger == nil {
+		return l
 	}
-
-	res := &DelegatingLogger{
-		logger: delegatingLn,
-	}
-
-	return res
+	l.logger.WithName(name)
+	return l
 }
 
 // WithValues implements logr.Logger
 func (l *DelegatingLogger) WithValues(tags ...interface{}) Logger {
-	ln := l.logger.WithValues(tags...)
-	delegatingLn, ok := ln.(*log.DelegatingLogger)
-	if !ok {
-		delegatingLn = log.NewDelegatingLogger(ln)
+	if l.logger == nil {
+		return l
 	}
-
-	res := &DelegatingLogger{
-		logger: delegatingLn,
-	}
-
-	return res
+	l.logger.WithValues(tags...)
+	return l
 }
