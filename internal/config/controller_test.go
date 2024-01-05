@@ -6,7 +6,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	batchv1 "k8s.io/api/batch/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -186,25 +185,25 @@ wordpress:
 
 		redisCronJobName := redisConfigComp.Name + "-checker-0x11xxx"
 		redisCronJobLabels := mockController.getCronJobLabels(redisCronJobName, teamTest, redisCompName)
-		mockCronJobs := &batchv1beta1.CronJobList{
+		mockCronJobs := &batchv1.CronJobList{
 			TypeMeta: metav1.TypeMeta{},
 			ListMeta: metav1.ListMeta{},
-			Items: []batchv1beta1.CronJob{
+			Items: []batchv1.CronJob{
 				{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "Cronjob",
-						APIVersion: "batch/v1beta1",
+						APIVersion: "batch/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      redisCronJobName,
 						Namespace: namespaceTest,
 						Labels:    redisCronJobLabels,
 					},
-					Spec: batchv1beta1.CronJobSpec{
+					Spec: batchv1.CronJobSpec{
 						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
 						Schedule:                   "0 11 * * *",
-						ConcurrencyPolicy:          batchv1beta1.ForbidConcurrent,
-						JobTemplate: batchv1beta1.JobTemplateSpec{
+						ConcurrencyPolicy:          batchv1.ForbidConcurrent,
+						JobTemplate: batchv1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
 								Template: corev1.PodTemplateSpec{
 									ObjectMeta: metav1.ObjectMeta{
@@ -238,18 +237,18 @@ wordpress:
 			cronJobLabels05 := mockController.getCronJobLabels(cronJobName05, teamTest, redisConfigComp.Name)
 			g.Expect(cronJobName04).To(Equal("redis-checker-0x4xxx"))
 			g.Expect(cronJobName05).To(Equal("redis-checker-e5x2n3xxx"))
-			expectedCronjob := []batchv1beta1.CronJob{
+			expectedCronjob := []batchv1.CronJob{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      cronJobName04,
 						Namespace: namespaceTest,
 						Labels:    cronJobLabels04,
 					},
-					Spec: batchv1beta1.CronJobSpec{
+					Spec: batchv1.CronJobSpec{
 						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
 						Schedule:                   "0 4 * * *",
-						ConcurrencyPolicy:          batchv1beta1.ForbidConcurrent,
-						JobTemplate: batchv1beta1.JobTemplateSpec{
+						ConcurrencyPolicy:          batchv1.ForbidConcurrent,
+						JobTemplate: batchv1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
 								Template: corev1.PodTemplateSpec{
 									ObjectMeta: metav1.ObjectMeta{
@@ -277,11 +276,11 @@ wordpress:
 						Namespace: namespaceTest,
 						Labels:    cronJobLabels05,
 					},
-					Spec: batchv1beta1.CronJobSpec{
+					Spec: batchv1.CronJobSpec{
 						SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
 						Schedule:                   "*/5 2,3 * * *",
-						ConcurrencyPolicy:          batchv1beta1.ForbidConcurrent,
-						JobTemplate: batchv1beta1.JobTemplateSpec{
+						ConcurrencyPolicy:          batchv1.ForbidConcurrent,
+						JobTemplate: batchv1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
 								Template: corev1.PodTemplateSpec{
 									ObjectMeta: metav1.ObjectMeta{

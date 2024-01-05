@@ -7,7 +7,7 @@ GITHUB_API_URL          ?= https://api.github.com
 GITHUB_TOKEN            ?=
 GITHUB_REPO             ?= agoda-com/samsahai
 GO_VERSION              ?= 1.17.2
-GOLANGCI_LINT_VERSION   ?= 1.41.1
+GOLANGCI_LINT_VERSION   ?= 1.55.2
 
 GO                      ?= go
 
@@ -17,17 +17,17 @@ GOBIN=$(shell $(GO) env GOPATH)/bin
 else
 GOBIN=$(shell $(GO) env GOBIN)
 endif
-KUBEBUILDER_VERSION     ?= 2.2.0
-KUBEBULIDER_FILENAME    = kubebuilder_$(KUBEBUILDER_VERSION)_$(OS)_$(ARCH)
+KUBEBUILDER_VERSION     ?= 3.13.0
+KUBEBULIDER_FILENAME    = kubebuilder_$(OS)_$(ARCH)
 KUBEBUILDER_PATH        ?= /usr/local/kubebuilder/
 GORELEASER_VERSION      ?= 0.124.1
-K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.20.11-k3s2
+K3S_DOCKER_IMAGE        ?= rancher/k3s:v1.22.17-k3s1
 KUBECONFIG              = /tmp/s2h/k3s-kubeconfig
 K3S_DOCKER_NAME         ?= s2h-k3s-server
 K3S_PORT                ?= 6443
-K8S_VERSION             ?= 1.21.0
+K8S_VERSION             ?= 1.22.0
 KUSTOMIZE_VERSION       ?= 3.8.6
-HELM_VERSION            ?= 3.6.3
+HELM_VERSION            ?= 3.13.3
 POD_NAMESPACE           ?= default
 
 GO111MODULE             := on
@@ -35,7 +35,7 @@ SUDO                    ?=
 INSTALL_DIR             ?= $(PWD)/bin/
 OS                      = $$(echo `uname`|tr '[:upper:]' '[:lower:]')
 OS2                     = $$(if [ "$$(uname|tr '[:upper:]' '[:lower:]')" = "linux" ]; then echo linux; elif [ "$$(uname|tr '[:upper:]' '[:lower:]')" = "darwin" ]; then echo osx; fi)
-ARCH                    = $$(if [ "$$(uname -m)" = "x86" ]; then echo 386; elif [ "$$(uname -m)" = "x86_64" ]; then echo amd64; fi)
+ARCH                    = $$(if [ "$$(uname -m)" = "x86" ]; then echo 386; elif [ "$$(uname -m)" = "x86_64" ]; then echo amd64; elif [ "$$(uname -m)" = "arm64" ]; then echo arm64; fi)
 ARCHx86                 = $$(if [ "$$(uname -m)" = "x86" ]; then echo x86_32; elif [ "$$(uname -m)" = "x86_64" ]; then echo x86_64; fi)
 DEBUG                   ?=
 ARCHIVE_EXT             ?= .tar.gz
@@ -72,7 +72,7 @@ init: tidy install-dep
 
 .PHONY: install-dep
 install-dep: .install-kubectl .install-kustomize .install-golangci-lint .install-kubebuilder .install-helm \
-			.install-protoc .install-swag .install-gotools
+			.install-protoc .install-swag
 	@echo 'done!'
 
 .PHONY: format
@@ -160,8 +160,8 @@ prepare-env-e2e:
 	$(KUBECTL) -n kube-system wait pods -l k8s-app=kube-dns --for=condition=Ready --timeout=5m; \
 	until $(KUBECTL) -n kube-system get pods -l app=svclb-traefik 2>&1 | grep -iv "no resources found" >/dev/null; do sleep 1; done; \
 	$(KUBECTL) -n kube-system wait pods -l app=svclb-traefik --for=condition=Ready --timeout=5m; \
-	until $(KUBECTL) -n kube-system get pods -l app=traefik 2>&1 | grep -iv "no resources found" >/dev/null; do sleep 1; done; \
-	$(KUBECTL) -n kube-system wait pods -l app=traefik --for=condition=Ready --timeout=5m; \
+	until $(KUBECTL) -n kube-system get pods -l app.kubernetes.io/name=traefik 2>&1 | grep -iv "no resources found" >/dev/null; do sleep 1; done; \
+	$(KUBECTL) -n kube-system wait pods -l app.kubernetes.io/name=traefik --for=condition=Ready --timeout=5m; \
 	$(KUBECTL) create ns samsahai-system || echo 'namespace "samsahai-system" already exist'; \
 	\
 	\
@@ -367,12 +367,15 @@ install-go:
 
 .install-kubebuilder: export APP_NAME 		= kubebuilder
 .install-kubebuilder: export APP_VERSION 	= $(KUBEBUILDER_VERSION)
+.install-kubebuilder: export _DOWNLOAD_URL 	= https://go.kubebuilder.io/dl/latest/$(OS)/$(ARCH)
 .install-kubebuilder:
-	export _FILENAME="$(KUBEBULIDER_FILENAME)"; \
-	export _DOWNLOAD_URL="https://github.com/kubernetes-sigs/kubebuilder/releases/download/v$(KUBEBUILDER_VERSION)/$$_FILENAME.tar.gz"; \
-	export _MOVE_CMD="$(MKDIR) -p /usr/local/$(APP_NAME)/bin && $(MV) $(TMP_DIR)/$$_FILENAME/bin/* /usr/local/$(APP_NAME)/bin/"; \
-	export INSTALL_DIR="/usr/local/$(APP_NAME)/bin/"; \
-	$(MAKE) .install-archive
+	$(MKDIR) -p $(TMP_DIR); \
+	$(PWD); \
+	$(CURL) -sLo $(TMP_DIR)/$(APP_NAME) $(_DOWNLOAD_URL); \
+	$(CHMOD) +x $(TMP_DIR)/$(APP_NAME); \
+	$(MKDIR) -p /usr/local/$(APP_NAME)/bin; \
+	$(MV) $(TMP_DIR)/$(APP_NAME) /usr/local/$(APP_NAME)/bin/; \
+	echo $(APP_NAME) $(APP_VERSION) installed;
 
 .install-helm: export APP_NAME 			= helm
 .install-helm: export APP_VERSION 		= $(HELM_VERSION)
@@ -473,21 +476,20 @@ endif
 
 .install-gotools:
 	@echo installing gotools
-	@GO111MODULE=off $(GO) get -u \
+	$(GO) get -d \
 		golang.org/x/tools/cmd/goimports \
-		github.com/golang/protobuf/protoc-gen-go \
 		github.com/twitchtv/twirp/protoc-gen-twirp
 
 # Produce CRDs that work back to Kubernetes 1.21 (no version conversion)
 CRD_OPTIONS ?= "crd"
 
-CONTROLLER_GEN=$(GO) run $$GOPATH/pkg/mod/github.com/phantomnat/controller-tools@v0.2.4-1/cmd/controller-gen/main.go
+CONTROLLER_GEN=$(GO) run $$GOPATH/pkg/mod/sigs.k8s.io/controller-tools@v0.13.0/cmd/controller-gen/main.go
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(GO) get sigs.k8s.io/controller-tools
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." crd:crdVersions=v1 output:crd:artifacts:config=config/crds output:none
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." crd:crdVersions=v1beta1 output:crd:artifacts:config=test/data/crds output:none
+	$(CONTROLLER_GEN) paths="./..." crd:crdVersions=v1 output:crd:artifacts:config=config/crds output:none
+	$(CONTROLLER_GEN) paths="./..." crd:crdVersions=v1 output:crd:artifacts:config=test/data/crds output:none
 
 # Generate code
 generate: controller-gen

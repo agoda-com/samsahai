@@ -145,7 +145,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to PullRequestQueue
-	err = c.Watch(&source.Kind{Type: &s2hv1.PullRequestQueue{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(source.Kind(mgr.GetCache(), &s2hv1.PullRequestQueue{}), &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}

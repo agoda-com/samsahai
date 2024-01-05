@@ -784,7 +784,7 @@ func (cs *ConfigStatus) SetCondition(cond ConfigConditionType, status corev1.Con
 }
 
 // +k8s:deepcopy-gen=false
-//ComponentValues represents values of a component chart
+// ComponentValues represents values of a component chart
 type ComponentValues map[string]interface{}
 
 func (in *ComponentValues) DeepCopyInto(out *ComponentValues) {

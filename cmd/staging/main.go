@@ -34,6 +34,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	s2h "github.com/agoda-com/samsahai/internal"
@@ -117,9 +118,11 @@ func startCtrlCmd() *cobra.Command {
 			// Create a new Cmd to provide shared dependencies and start components
 			logger.Info("setting up manager")
 			mgr, err := manager.New(cfg, manager.Options{
-				Scheme:             scheme,
-				MetricsBindAddress: ":" + httpMetricPort,
-				Namespace:          namespace,
+				Scheme: scheme,
+				Metrics: server.Options{
+					BindAddress: ":" + httpMetricPort,
+				},
+				LeaderElectionNamespace: namespace,
 			})
 			if err != nil {
 				logger.Error(err, "unable to set up overall controller manager")

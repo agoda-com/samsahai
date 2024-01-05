@@ -72,7 +72,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to PullRequestTrigger
-	err = c.Watch(&source.Kind{Type: &s2hv1.PullRequestTrigger{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(source.Kind(mgr.GetCache(), &s2hv1.PullRequestTrigger{}), &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}

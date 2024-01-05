@@ -215,7 +215,7 @@ func (c *controller) triggerTest(queue *s2hv1.Queue, testRunners []internal.Stag
 		// if test is not triggered yet, do...
 		if !testRunner.IsTriggered(queue) {
 			wg.Add(1)
-			go func(runner internal.StagingTestRunner) {
+			go func(i int, runner internal.StagingTestRunner) {
 				defer wg.Done()
 				// trigger test and update k8s object
 				if err := runner.Trigger(testConfig, c.getCurrentQueue()); err != nil {
@@ -228,7 +228,7 @@ func (c *controller) triggerTest(queue *s2hv1.Queue, testRunners []internal.Stag
 				if tr := runner.GetName(); tr == teamcity.TestRunnerName {
 					queue.Status.TestRunner.Teamcity.BuildNumber = "Build cannot be triggered in time"
 				}
-			}(testRunner)
+			}(i, testRunner)
 		}
 	}
 

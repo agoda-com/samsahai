@@ -9,7 +9,6 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/imdario/mergo"
 	batchv1 "k8s.io/api/batch/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -381,14 +380,14 @@ func teamNameRendering(teamName, values string) []byte {
 	))
 }
 
-func (c *controller) createCronJob(cronJob batchv1beta1.CronJob) error {
+func (c *controller) createCronJob(cronJob batchv1.CronJob) error {
 	if err := c.client.Create(context.TODO(), &cronJob); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *controller) deleteCronJobAndMatchingJobs(cronJob batchv1beta1.CronJob) error {
+func (c *controller) deleteCronJobAndMatchingJobs(cronJob batchv1.CronJob) error {
 	ctx := context.TODO()
 	jobList := &batchv1.JobList{}
 	selectors := labels.SelectorFromSet(cronJob.Labels)
@@ -411,10 +410,10 @@ func (c *controller) deleteCronJobAndMatchingJobs(cronJob batchv1beta1.CronJob) 
 }
 
 func (c *controller) getCreatingCronJobs(namespace, teamName string, comp s2hv1.Component,
-	cronJobList *batchv1beta1.CronJobList) []batchv1beta1.CronJob {
+	cronJobList *batchv1.CronJobList) []batchv1.CronJob {
 
-	creatingCronJobs := make([]batchv1beta1.CronJob, 0)
-	uniqueCreatingCronJobs := map[string]batchv1beta1.CronJob{}
+	creatingCronJobs := make([]batchv1.CronJob, 0)
+	uniqueCreatingCronJobs := map[string]batchv1.CronJob{}
 	cronJobCmd := c.getCronJobCmd(comp.Name, teamName, comp.Image.Repository)
 
 	for _, schedule := range comp.Schedules {
@@ -449,21 +448,21 @@ func (c *controller) getCreatingCronJobs(namespace, teamName string, comp s2hv1.
 	return creatingCronJobs
 }
 
-func (c *controller) generateCronJob(cronJobName, cronJobCmd, schedule, compName, namespace, teamName string) batchv1beta1.CronJob {
+func (c *controller) generateCronJob(cronJobName, cronJobCmd, schedule, compName, namespace, teamName string) batchv1.CronJob {
 	successfulJobsHistoryLimit := successfulJobsHistoryLimit
 	cronJobLabels := c.getCronJobLabels(cronJobName, teamName, compName)
 	cronJobDefaultArgs := []string{"/bin/sh", "-c", cronJobCmd}
-	cronJob := batchv1beta1.CronJob{
+	cronJob := batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cronJobName,
 			Namespace: namespace,
 			Labels:    cronJobLabels,
 		},
-		Spec: batchv1beta1.CronJobSpec{
+		Spec: batchv1.CronJobSpec{
 			SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
 			Schedule:                   schedule,
-			ConcurrencyPolicy:          batchv1beta1.ForbidConcurrent,
-			JobTemplate: batchv1beta1.JobTemplateSpec{
+			ConcurrencyPolicy:          batchv1.ForbidConcurrent,
+			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
@@ -490,9 +489,9 @@ func (c *controller) generateCronJob(cronJobName, cronJobCmd, schedule, compName
 }
 
 func (c *controller) getDeletingCronJobs(teamName string, comp s2hv1.Component,
-	cronJobList *batchv1beta1.CronJobList) []batchv1beta1.CronJob {
+	cronJobList *batchv1.CronJobList) []batchv1.CronJob {
 
-	deletingCronJobObjs := make([]batchv1beta1.CronJob, 0)
+	deletingCronJobObjs := make([]batchv1.CronJob, 0)
 	cronJobCmd := c.getCronJobCmd(comp.Name, teamName, comp.Image.Repository)
 
 	for _, cj := range cronJobList.Items {
@@ -517,7 +516,7 @@ func (c *controller) getDeletingCronJobs(teamName string, comp s2hv1.Component,
 }
 
 func (c *controller) getUpdatedCronJobs(namespace, teamName string, comp *s2hv1.Component,
-	cronJobList *batchv1beta1.CronJobList) ([]batchv1beta1.CronJob, []batchv1beta1.CronJob) {
+	cronJobList *batchv1.CronJobList) ([]batchv1.CronJob, []batchv1.CronJob) {
 
 	creatingCronJobObjs := c.getCreatingCronJobs(namespace, teamName, *comp, cronJobList)
 	deletingCronJobObjs := c.getDeletingCronJobs(teamName, *comp, cronJobList)
@@ -642,7 +641,7 @@ func (c *controller) EnsureConfigTemplateChanged(config *s2hv1.Config) error {
 func (c *controller) detectSchedulerChanged(comps map[string]*s2hv1.Component, teamName, namespace string) error {
 	ctx := context.TODO()
 	for _, comp := range comps {
-		cronJobList := &batchv1beta1.CronJobList{}
+		cronJobList := &batchv1.CronJobList{}
 		componentLabel := labels.SelectorFromSet(map[string]string{"component": comp.Name})
 		listOption := &client.ListOptions{Namespace: namespace, LabelSelector: componentLabel}
 		err := c.client.List(ctx, cronJobList, listOption)

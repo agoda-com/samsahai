@@ -37,11 +37,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	cr "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	docs2 "github.com/agoda-com/samsahai/docs"
@@ -119,9 +119,11 @@ func startCtrlCmd() *cobra.Command {
 
 			// Create a new Cmd to provide shared dependencies and start components
 			logger.Info("setting up manager")
-			mgr, err := cr.NewManager(cfg, manager.Options{
-				Scheme:             scheme,
-				MetricsBindAddress: ":" + httpMetricPort,
+			mgr, err := manager.New(cfg, manager.Options{
+				Scheme: scheme,
+				Metrics: server.Options{
+					BindAddress: ":" + httpMetricPort,
+				},
 			})
 			if err != nil {
 				logger.Error(err, "unable to set up overall controller manager")

@@ -24,6 +24,7 @@ import (
 	rclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	s2hv1 "github.com/agoda-com/samsahai/api/v1"
 	"github.com/agoda-com/samsahai/internal"
@@ -346,7 +347,7 @@ var _ = Describe("[e2e] Staging controller", func() {
 		restCfg, err = config.GetConfig()
 		Expect(err).NotTo(HaveOccurred(), "Please provide credential for accessing k8s cluster")
 
-		mgr, err = manager.New(restCfg, manager.Options{Namespace: namespace, MetricsBindAddress: "0"})
+		mgr, err = manager.New(restCfg, manager.Options{LeaderElectionNamespace: namespace, Metrics: server.Options{BindAddress: "0"}})
 		Expect(err).NotTo(HaveOccurred(), "should create manager successfully")
 
 		client, err = rclient.New(restCfg, rclient.Options{Scheme: scheme.Scheme})
