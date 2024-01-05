@@ -72,7 +72,7 @@ init: tidy install-dep
 
 .PHONY: install-dep
 install-dep: .install-kubectl .install-kustomize .install-golangci-lint .install-kubebuilder .install-helm \
-			.install-protoc .install-swag
+			.install-protoc .install-swag .install-gotools
 	@echo 'done!'
 
 .PHONY: format

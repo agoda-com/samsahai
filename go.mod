@@ -186,3 +186,10 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
+
+replace (
+	helm.sh/helm/v3 => helm.sh/helm/v3 v3.13.3
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.28.4
+	k8s.io/kubectl => k8s.io/kubectl v0.28.4
+	sigs.k8s.io/kustomize/api => sigs.k8s.io/kustomize/api v0.10.1
+)
