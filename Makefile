@@ -72,7 +72,7 @@ init: tidy install-dep
 
 .PHONY: install-dep
 install-dep: .install-kubectl .install-kustomize .install-golangci-lint .install-kubebuilder .install-helm \
-			.install-protoc .install-swag .install-gotools
+			.install-protoc .install-swag
 	@echo 'done!'
 
 .PHONY: format
@@ -367,12 +367,15 @@ install-go:
 
 .install-kubebuilder: export APP_NAME 		= kubebuilder
 .install-kubebuilder: export APP_VERSION 	= $(KUBEBUILDER_VERSION)
+.install-kubebuilder: export _DOWNLOAD_URL 	= https://go.kubebuilder.io/dl/latest/$(OS)/$(ARCH)
 .install-kubebuilder:
-	export _FILENAME="$(KUBEBULIDER_FILENAME)"; \
-	export _DOWNLOAD_URL="https://github.com/kubernetes-sigs/kubebuilder/releases/download/v$(KUBEBUILDER_VERSION)/$$_FILENAME"; \
-	export _MOVE_CMD="$(MKDIR) -p /usr/local/$(APP_NAME)/bin && $(MV) $(TMP_DIR)/$$_FILENAME/bin/* /usr/local/$(APP_NAME)/bin/"; \
-	export INSTALL_DIR="/usr/local/$(APP_NAME)/bin/"; \
-	$(MAKE) .install-archive
+	$(MKDIR) -p $(TMP_DIR); \
+	$(PWD); \
+	$(CURL) -sLo $(TMP_DIR)/$(APP_NAME) $(_DOWNLOAD_URL); \
+	$(CHMOD) +x $(TMP_DIR)/$(APP_NAME); \
+	$(MKDIR) -p /usr/local/$(APP_NAME)/bin; \
+	$(MV) $(TMP_DIR)/$(APP_NAME) /usr/local/$(APP_NAME)/bin/; \
+	echo $(APP_NAME) $(APP_VERSION) installed;
 
 .install-helm: export APP_NAME 			= helm
 .install-helm: export APP_VERSION 		= $(HELM_VERSION)
